@@ -14,7 +14,9 @@ import { Quality } from './kit/quality.js';
 import { txt, panel, uiScale, powerColor, gradeColor, HUD, hudView, measure, paragraph, MessageQueue, FONT_DISPLAY } from './kit/hud.js';
 import { clamp, lerp, hash } from './engine.js';
 import { SONGS } from './audio.js';
-import { Race, buildTimeline, LANES, START, COOL, LEVELS } from './racer-sim.js';
+import { Race, buildTimeline, LANES, START, COOL } from './racer-sim.js';
+import { GameMenu, ResultsView } from './kit/menu.js';
+import { makeRandom } from './kit/rng.js';
 import { t, fmtDec, ordinal } from '../i18n.js';
 
 const you = () => t('games.racer.you'); // il giocatore è riconosciuto dal nome interno 'TU'
@@ -26,7 +28,6 @@ const STEP = 2;            // campionamento della strada (m)
 const ROAD_W = 8.4;
 const DURATIONS = [300, 600, 1200]; // s: tappa breve, media, lunga
 const STAGE_FOR = [0, 2, 1];        // scenario per durata: litorale, colline, passo di montagna
-const LEVEL_KEYS = ['easy', 'normal', 'hard'];
 const WORLD_SCALE = 1.25;  // il mondo scorre un po' più veloce della bici
 const VIS_GRADE = 1.6;     // le salite si vedono un po' più ripide
 const RUNOUT = 140;        // strada dopo l'arrivo (podio)
@@ -96,14 +97,24 @@ export class Racer3D {
     this.hud = hudCanvas; this.hooks = hooks; this.audio = audio;
     this.active = false;
     const ls = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : Number(v); } catch { return d; } };
-    this.durIdx = clamp(ls('racerDur', 0) | 0, 0, DURATIONS.length - 1); this.level = clamp(ls('racerLevel', 1) | 0, 0, 2); this.adaptMem = clamp(ls('racerAdapt', 0), -0.15, 0.15);
-    this.stageIndex = STAGE_FOR[this.durIdx];
+    this.adaptMem = clamp(ls('racerAdapt', 0), -0.15, 0.15);
+    this.seed = null; this.rnd = makeRandom(this.seed);
+    // menu e risultati condivisi (kit/menu.js): durata e livello restano in racerDur / racerLevel
+    this.menu = new GameMenu({
+      id: 'racer', title: () => t('games.racer.hud.title'), pitch: () => t('games.racer.hud.tagline'),
+      howto: () => [t('games.racer.menu.how1'), t('games.racer.menu.how2'), t('games.racer.menu.ftp', { w: this.hooks.ftp?.() || 200 })],
+      best: (d, l) => { const bt = Number(lsGet(`racer3dBest${STAGE_FOR[d]}`)) || 0; return { stars: Number(lsGet(`racerStars${d}_${l}`)) || 0, text: bt ? fmt(bt) : null }; },
+      sfx: (n) => this.audio.sfx(n), ready: () => this.state === 'menu',
+      onStart: (d, l) => { this.durIdx = d; this.level = l; this.stageIndex = STAGE_FOR[d]; this.begin(); },
+    });
+    this.results = new ResultsView({ sfx: (n) => this.audio.sfx(n), onAgain: () => this.begin(), onBack: () => this.hooks.close?.() });
+    this.durIdx = this.menu.durIdx; this.level = this.menu.level; this.stageIndex = STAGE_FOR[this.durIdx];
     this.loop = this.loop.bind(this);
   }
 
   // ---------- ciclo di vita ----------
   async start() {
-    this.active = true;
+    this.active = true; this.rnd = makeRandom(this.seed);
     this.quality = new Quality();
     this.stage = new Stage(this.hud, { quality: this.quality });
     this.stage.onQuality = (cfg) => this.applyDensity(cfg);
@@ -112,13 +123,11 @@ export class Racer3D {
     this.last = performance.now();
     requestAnimationFrame(this.loop);
     this.audio.playSong(SONGS.menu);
-    // tocco sui tasti del menu (durata, livello): in cattura sulla finestra, così non parte anche il + / − del tocco a metà schermo
-    this.onPointer = (e) => {
-      if (this.state !== 'select' || e.target !== this.hud) return;
-      const r = this.hud.getBoundingClientRect();
-      if (this.tap((e.clientX - r.left) * (this.W / r.width), (e.clientY - r.top) * (this.H / r.height))) { e.stopImmediatePropagation(); e.preventDefault(); }
-    };
-    window.addEventListener('pointerdown', this.onPointer, true);
+    // tocco su menu e risultati (in cattura, così non parte anche il + / − del tocco a metà schermo)
+    const size = () => ({ W: this.W, H: this.H });
+    const d1 = this.menu.attach(this.hud, size, () => this.state === 'menu');
+    const d2 = this.results.attach(this.hud, size, () => this.state === 'results');
+    this.detach = () => { d1(); d2(); };
     try {
       this.models = await loadAll(MODELS, (p) => { this.loadPct = p * 0.85; });
       // corridori: modello Meshy con scheletro automatico; se non si carica, il ciclista Quaternius di prima
@@ -127,7 +136,7 @@ export class Racer3D {
       this.loadPct = 1;
       if (!this.active) return;
       this.buildStage();
-      this.state = 'select'; this.selT = 0;
+      this.state = 'menu'; this.menu.reset();
     } catch (err) {
       console.error(err);
       this.state = 'error'; this.error = err.message;
@@ -136,7 +145,7 @@ export class Racer3D {
 
   stop() {
     this.active = false;
-    window.removeEventListener('pointerdown', this.onPointer, true);
+    this.detach?.();
     this.audio.stopSong();
     this.hooks.setGrade(null);
     this.disposeStage();
@@ -256,7 +265,7 @@ export class Racer3D {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
     geo.setIndex(idx); geo.computeVertexNormals();
-    const road = new THREE.Mesh(geo, toonMaterial({ map: roadTexture(), side: THREE.DoubleSide }));
+    const road = new THREE.Mesh(geo, toonMaterial({ map: roadTexture(this.rnd), side: THREE.DoubleSide }));
     road.receiveShadow = true;
     this.scene.add(road);
     const cg = new THREE.BufferGeometry();
@@ -666,6 +675,7 @@ export class Racer3D {
   get dur() { return DURATIONS[this.durIdx]; }
 
   newRace() {
+    this.rnd = makeRandom(this.seed);
     const D = this.dur;
     this.race = new Race({ tl: this.tl, duration: D, stage: this.stageIndex, level: this.level, adapt: this.adaptMem, names: RIVALS.map((r) => t(r.name)) });
     this.rivals = this.race.rivals;
@@ -684,17 +694,8 @@ export class Racer3D {
 
   input(dir) {
     this.audio.ensure();
-    if (this.state === 'select') {
-      if (this.selT < 0.4) return;
-      if (dir < 0) { this.durIdx = (this.durIdx + 1) % DURATIONS.length; this.audio.sfx('select'); this.saveSetup(); }
-      else { this.saveSetup(); this.audio.sfx('pickup'); this.begin(); }
-      return;
-    }
-    if (this.state === 'results') {
-      if (this.stateT < 2) return;
-      if (dir > 0) this.begin(); else { this.state = 'select'; this.selT = 0; this.audio.playSong(SONGS.menu); this.rebuild(); }
-      return;
-    }
+    if (this.state === 'menu') { this.menu.input(dir); return; }
+    if (this.state === 'results') { this.results.input(dir); return; }
     if (this.state !== 'race' && this.state !== 'countdown') return;
     // + / − restano il cambio: marce virtuali dell'app
     this.hooks.shift?.(dir);
@@ -702,7 +703,7 @@ export class Racer3D {
     this.gearFlash = 1.2;
   }
 
-  saveSetup() { try { localStorage.setItem('racerDur', this.durIdx); localStorage.setItem('racerLevel', this.level); } catch { /* niente storage */ } }
+  hold(dir) { if (this.state === 'menu') this.menu.hold(dir); }
 
   // il percorso dipende dalla durata: se serve si ricostruisce, poi si parte
   begin() {
@@ -710,18 +711,6 @@ export class Racer3D {
     if (this.builtKey === key && this.scene) { this.newRace(); return; }
     this.state = 'loading'; this.loadPct = 1;
     setTimeout(() => { if (!this.active) return; this.buildStage(); this.newRace(); }, 60);
-  }
-
-  rebuild() {
-    this.state = 'loading';
-    setTimeout(() => { if (!this.active) return; if (this.builtKey !== `${this.durIdx}`) this.buildStage(); else this.positionIdle(); this.state = 'select'; this.selT = 0; }, 30);
-  }
-
-  // tocco sul menu: scelta di durata e livello
-  tap(x, y) {
-    if (this.state !== 'select') return false;
-    const z = this.hitZones || []; for (const h of z) if (x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h) { h.fn(); this.audio.sfx('select'); this.saveSetup(); return true; }
-    return false;
   }
 
   prog(stat, n = 1, xp = 0) { this.hooks.progress?.event(stat, n, xp); }
@@ -744,11 +733,11 @@ export class Racer3D {
   }
 
   update(dt, realDt) {
-    this.t += realDt; this.selT = (this.selT || 0) + realDt;
+    this.t += realDt;
     this.sense(realDt);
     this.msgs.update(realDt);
     this.gearFlash = Math.max(0, (this.gearFlash || 0) - realDt);
-    if (this.state === 'loading' || this.state === 'error' || this.state === 'select') return;
+    if (this.state === 'loading' || this.state === 'error' || this.state === 'menu') return;
     this.stateT += realDt;
     if (this.state === 'countdown') {
       const left = 3 - Math.floor(this.stateT);
@@ -819,7 +808,7 @@ export class Racer3D {
     for (const r of this.rivals) {
       const e = (this.race.paceOf(r) || 0); r.hard = e > 1.07;
       const gap = r.s - this.s;
-      if (gap < -1 && gap > -4 && r.said < this.t - 25 && Math.random() < dt * 2) { r.said = this.t; this.say(`${r.name}: "${r.line}"`, r.color, 2.2, false, 0); }
+      if (gap < -1 && gap > -4 && r.said < this.t - 25 && this.rnd() < dt * 2) { r.said = this.t; this.say(`${r.name}: "${r.line}"`, r.color, 2.2, false, 0); }
     }
   }
 
@@ -911,7 +900,7 @@ export class Racer3D {
   }
 
   toPodium() {
-    this.state = 'results'; this.stateT = 0; this.camMode = 'podium'; this.camInit = false;
+    this.state = 'results'; this.results.reset(); this.stateT = 0; this.camMode = 'podium'; this.camInit = false;
     this.standing = this.race.ranking().map((q) => (q.me ? { name: 'TU', me: true, d: q.s, fin: this.race.player.fin, color: PLAYER_COLOR } : { name: this.rivals[q.i].name, d: q.s, fin: this.rivals[q.i].fin, color: this.rivals[q.i].color, r: this.rivals[q.i] }));
     const top = this.standing.slice(0, 3);
     for (const r of this.riders) r.cy.root.visible = false;
@@ -954,7 +943,7 @@ export class Racer3D {
   }
 
   poseAll(dt) {
-    const pre = this.state === 'select' || this.state === 'loading' || !this.rivals;
+    const pre = this.state === 'menu' || this.state === 'loading' || !this.rivals;
     if (pre) {
       this.poseRider(this.player, START, 0, 0, 0, dt);
       this.rivalRiders.forEach((r, i) => this.poseRider(r, START - 3 + (6 - i) * 1.7, LANES[i % 3], 0, 0, dt));
@@ -983,7 +972,7 @@ export class Racer3D {
 
   draw(dt, realDt) {
     if (!this.scene) return;
-    const sel = this.state === 'select' || this.state === 'loading';
+    const sel = this.state === 'menu' || this.state === 'loading';
     this.poseAll(dt);
     this.updateCar(dt);
     this.lean = (this.lean || 0) * Math.pow(0.05, dt);
@@ -1022,12 +1011,12 @@ export class Racer3D {
       // menu: il gruppo fermo alla partenza, inquadrato da davanti
       const sw = Math.sin(this.t * 0.25);
       const c = this.at(START + 13.5, sw * 2.6); pos = new THREE.Vector3(c.x, c.y + 1.9 + Math.cos(this.t * 0.3) * 0.2, c.z);
-      const l = this.at(START + 3, 0); look = new THREE.Vector3(l.x, l.y + 0.9, l.z); fov = 50;
+      const l = this.at(START + 3, 0); look = new THREE.Vector3(l.x, l.y + (this.H > this.W ? 1.8 : 0.9), l.z); fov = 50;
     } else if (this.state === 'results') {
       const a = this.stateT * 0.12;
       const port = this.H > this.W;
-      const c = this.podium.localToWorld(new THREE.Vector3(Math.sin(a) * 1.0 + (port ? 0 : 2.4), port ? 3.2 : 2.3, (port ? 13 : 8.2) + Math.cos(a) * 0.3));
-      pos = c; look = this.podium.localToWorld(new THREE.Vector3(port ? 0 : 2.6, port ? 0.5 : 1.6, 0)); fov = port ? 44 : 40;
+      const c = this.podium.localToWorld(new THREE.Vector3(Math.sin(a) * 1.0 + (port ? 0 : -2.0), port ? 3.2 : 2.3, (port ? 13 : 8.2) + Math.cos(a) * 0.3));
+      pos = c; look = this.podium.localToWorld(new THREE.Vector3(port ? 0 : -2.2, port ? 0.5 : 1.6, 0)); fov = port ? 44 : 40;
     } else {
       const off = sel ? 0 : (this.x || 0) * 0.6;
       const speedK = clamp((this.speed || 0) / 14, 0, 1);
@@ -1072,7 +1061,7 @@ export class Racer3D {
       return;
     }
     if (this.state === 'error') { txt(ctx, t('ui.error', { error: this.error }), W / 2, H / 2, { size: 15, align: 'center', color: '#ff6b6b' }); return; }
-    if (this.state === 'select') return this.drawSelect(ctx, W, H);
+    if (this.state === 'menu') return this.drawMenu(ctx, W, H, dt);
     if (this.state === 'results') return this.drawResults(ctx, W, H, dt);
     const u = uiScale(W, H); const top = 56;
     if (this.state === 'finishCam') return this.drawFinish(ctx, W, H, u, dt);
@@ -1239,83 +1228,36 @@ export class Racer3D {
     ctx.fillStyle = HUD.lime; ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X(this.s || 0), Y(this.at(this.s || 0).y), 6 * u, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   }
 
-  drawSelect(ctx, W, H) {
-    const S = STAGES[STAGE_FOR[this.durIdx]]; const u = uiScale(W, H);
-    const g = ctx.createLinearGradient(0, 0, 0, H * 0.55); g.addColorStop(0, 'rgba(8,8,12,.9)'); g.addColorStop(1, 'rgba(8,8,12,0)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * 0.55);
-    const g2 = ctx.createLinearGradient(0, H * 0.5, 0, H); g2.addColorStop(0, 'rgba(8,8,12,0)'); g2.addColorStop(1, 'rgba(8,8,12,.94)');
-    ctx.fillStyle = g2; ctx.fillRect(0, H * 0.5, W, H * 0.5);
-    txt(ctx, t('games.racer.hud.title'), W / 2, 96 * u, { size: 46 * u, align: 'center', color: HUD.lime, italic: true });
-    txt(ctx, t('games.racer.hud.tagline'), W / 2, 122 * u, { size: 16 * u, align: 'center', color: HUD.dim, font: 'text', maxW: W - 28 });
-    this.hitZones = [];
-    // durata (tre tasti) e livello (tre tasti)
-    const chip = (label, x, y, w, h, on, fn, col = HUD.lime) => {
-      panel(ctx, x, y, w, h, { r: 12 * u, fill: on ? col : 'rgba(12,12,18,.7)', border: on ? null : 'rgba(255,255,255,.35)' });
-      txt(ctx, label, x + w / 2, y + h * 0.66, { size: 20 * u, align: 'center', color: on ? '#15141b' : HUD.white, stroke: on ? null : undefined, maxW: w - 8 });
-      this.hitZones.push({ x, y, w, h, fn });
-    };
-    const cw = Math.min(104 * u, (W - 28 - 16) / 3); const cx0 = (W - (cw * 3 + 16)) / 2;
-    txt(ctx, t('games.racer.menu.duration'), W / 2, 156 * u, { size: 14 * u, align: 'center', color: HUD.dim, font: 'text' });
-    DURATIONS.forEach((d, i) => chip(t('games.racer.menu.min', { n: d / 60 }), cx0 + i * (cw + 8), 164 * u, cw, 42 * u, i === this.durIdx, () => { this.durIdx = i; }));
-    txt(ctx, t(S.name), W / 2, 238 * u, { size: 26 * u, align: 'center', maxW: W - 28 });
-    txt(ctx, t(S.desc), W / 2, 260 * u, { size: 15 * u, align: 'center', color: HUD.dim, font: 'text', maxW: W - 28 });
-    txt(ctx, t('games.racer.menu.level'), W / 2, 292 * u, { size: 14 * u, align: 'center', color: HUD.dim, font: 'text' });
-    LEVEL_KEYS.forEach((k, i) => chip(t(`games.racer.menu.${k}`), cx0 + i * (cw + 8), 300 * u, cw, 38 * u, i === this.level, () => { this.level = i; }, HUD.cyan));
-    // che cosa succede nella tappa e a quale ritmo (in % della TUA FTP)
-    const ftp = this.hooks.ftp?.() || 200; const lv = LEVELS[this.level];
-    txt(ctx, t('games.racer.menu.ftp', { w: ftp }), W / 2, 366 * u, { size: 15 * u, align: 'center', color: HUD.gold, font: 'text', maxW: W - 28 });
-    const hold = Math.round(1.05 * lv * 20) * 5; const kick = Math.round(1.3 * lv * 20) * 5;
-    txt(ctx, t('games.racer.menu.example', { a: hold, wa: Math.round(hold * ftp / 500) * 5, b: kick, wb: Math.round(kick * ftp / 500) * 5 }), W / 2, 388 * u, { size: 14 * u, align: 'center', color: HUD.dim, font: 'text', maxW: W - 28 });
-    const stars = Number(localStorage.getItem(`racerStars${this.durIdx}_${this.level}`)) || 0;
-    const best = Number(localStorage.getItem(`racer3dBest${STAGE_FOR[this.durIdx]}`));
-    txt(ctx, `${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}${best ? `  ·  ${t('games.racer.best', { time: fmt(best) })}` : ''}`, W / 2, 414 * u, { size: 18 * u, align: 'center', color: HUD.gold, font: 'text' });
-    this.drawProfile(ctx, W, H, u, H - 96 * u);
-    txt(ctx, t('games.racer.menuKeys'), W / 2, H - 44 * u, { size: 19 * u, align: 'center', color: HUD.lime, font: 'text', maxW: W - 28 });
-    this.hooks.progress?.drawToasts(ctx, W, 0.016);
+  drawMenu(ctx, W, H, dt) {
+    const m = this.menu;
+    m.update(dt, { connected: this.hooks.connected(), power: this.hooks.stats().power });
+    m.draw(ctx, W, H, { connected: this.hooks.connected() });
+    this.hooks.progress?.drawToasts(ctx, W, dt);
   }
 
   drawResults(ctx, W, H, dt) {
     const u = uiScale(W, H); const place = this.place(); const res = this.result || { stars: 1, objDone: 0, objTotal: 0 };
-    if (H >= W * 0.83) {
-      const g = ctx.createLinearGradient(0, H * 0.42, 0, H); g.addColorStop(0, 'rgba(8,8,12,0)'); g.addColorStop(0.2, 'rgba(8,8,12,.86)'); g.addColorStop(1, 'rgba(8,8,12,.95)');
-      ctx.fillStyle = g; ctx.fillRect(0, H * 0.42, W, H * 0.58);
-    }
-    const g2 = ctx.createLinearGradient(0, 0, 0, 190 * u); g2.addColorStop(0, 'rgba(8,8,12,.78)'); g2.addColorStop(1, 'rgba(8,8,12,0)');
-    ctx.fillStyle = g2; ctx.fillRect(0, 0, W, 190 * u);
-    txt(ctx, place === 1 ? t('games.racer.victory') : place <= 3 ? t('games.racer.podium') : t('games.racer.finish'), W / 2, 92 * u, { size: 42 * u, align: 'center', color: place <= 3 ? HUD.lime : HUD.white, italic: true });
-    txt(ctx, `${ordinal(place)} · ${fmt(this.finishT)}${this.newBest ? t('games.common.newBest') : ''}`, W / 2, 120 * u, { size: 20 * u, align: 'center' });
-    txt(ctx, `${'★'.repeat(res.stars)}${'☆'.repeat(3 - res.stars)}`, W / 2, 158 * u, { size: 34 * u, align: 'center', color: HUD.gold, font: 'text', stroke: 'rgba(0,0,0,.85)' });
+    const R = this.results; R.update(dt);
     // nomi sopra le teste sul podio
     const v = new THREE.Vector3();
     (this.podiumTop || []).forEach((e, i) => {
       const cy = e.me ? this.player : this.rivalRiders[e.r.i];
       v.copy(cy.root.position); v.y += 2.15; v.project(this.camera);
-      txt(ctx, `${i + 1}. ${e.me ? you() : first(e.name)}`, (v.x + 1) / 2 * W, (1 - v.y) / 2 * H, { size: 18 * u, align: 'center', color: e.me ? HUD.lime : HUD.white });
+      txt(ctx, `${i + 1}. ${e.me ? you() : first(e.name)}`, (v.x + 1) / 2 * W, (1 - v.y) / 2 * H, { size: 16 * u, align: 'center', color: e.me ? HUD.lime : HUD.white });
     });
-    const land = W > H * 1.2;
-    const cx = land ? W * 0.74 : W / 2; let y0 = land ? H * 0.2 : H * 0.5;
-    if (land) { panel(ctx, cx - 190 * u * 0.85, y0 - 30 * u, 380 * u * 0.85, (130 + this.standing.length * 22) * u, { fill: 'rgba(8,8,12,.72)' }); }
-    // obiettivi riusciti / mancati, uno per momento
-    txt(ctx, t('games.racer.res.goals', { a: res.objDone, b: res.objTotal }), cx, y0, { size: 16 * u, align: 'center', color: HUD.white });
-    const hist = this.race?.objHist || []; const cw2 = Math.min(W - 28, 360 * u);
-    hist.forEach((hh, i) => {
-      const per = Math.ceil(hist.length / (hist.length > 8 ? 2 : 1)); const col = i % per; const row = Math.floor(i / per); const cw = cw2 / per;
-      txt(ctx, `${hh.ok ? '✓' : '✗'} ${t(`games.racer.kind.${hh.kind}`)}`, cx - cw2 / 2 + col * cw + cw / 2, y0 + 20 * u + row * 17 * u, { size: 12 * u, align: 'center', color: hh.ok ? HUD.lime : HUD.red, font: 'text', maxW: cw - 4 });
-    });
-    y0 += (hist.length > 8 ? 52 : 36) * u;
-    const gr = this.leader('green'); const km = this.leader('kom');
-    if (gr || km) { txt(ctx, t('games.racer.jerseysEnd', { green: gr ? who(gr.name) : '-', dots: km ? who(km.name) : '-' }), cx, y0, { size: 13 * u, align: 'center', color: HUD.dim, maxW: W - 24 }); y0 += 8 * u; }
-    const lh = 19 * u; const cw = land ? 0.85 : 1;
-    this.standing.forEach((r, i) => {
-      const y = y0 + 18 * u + i * lh;
-      txt(ctx, `${i + 1}.`, cx - 130 * u * cw, y, { size: 16 * u, align: 'right', color: r.me ? HUD.lime : HUD.dim });
-      txt(ctx, r.me ? you() : r.name, cx - 120 * u * cw, y, { size: 16 * u, color: r.me ? HUD.lime : HUD.white, maxW: 170 * u });
-      const first1 = this.standing[0].fin;
-      txt(ctx, i === 0 ? fmt(r.fin) : `+${fmtGap(r.fin - first1)}`, cx + 140 * u * cw, y, { size: 16 * u, align: 'right', color: r.me ? HUD.lime : HUD.dim });
-    });
+    const top3 = place <= 3;
+    const star2 = res.objDone >= Math.ceil(res.objTotal * 0.6) || top3;
     const cool = Math.ceil(this.cool ?? 0);
-    txt(ctx, cool > 0 ? t('games.racer.res.cool', { t: `0:${String(cool).padStart(2, '0')}` }) : t('games.racer.res.coolDone'), W / 2, H - 58 * u, { size: 15 * u, align: 'center', color: HUD.cyan, font: 'text', maxW: W - 24 });
-    if (this.stateT > 2) txt(ctx, t('games.racer.endKeys'), W / 2, H - 30 * u, { size: 19 * u, align: 'center', color: HUD.lime, font: 'text', maxW: W - 24 });
+    const bt = Number(lsGet(`racer3dBest${this.stageIndex}`)) || 0;
+    R.draw(ctx, W, H, {
+      title: place === 1 ? t('games.racer.victory') : top3 ? t('games.racer.podium') : t('games.racer.finish'),
+      subtitle: `${ordinal(place)} · ${fmt(this.finishT)}`,
+      stars: res.stars,
+      criteria: [{ ok: true, label: t('games.racer.res.star1') }, { ok: star2, label: t('games.racer.res.star2') }, { ok: res.stars >= 3, label: t('games.racer.res.star3') }],
+      score: fmt(this.finishT), best: bt ? fmt(bt) : null, newBest: !!this.newBest,
+      lines: [t('games.racer.res.goals', { a: res.objDone, b: res.objTotal })],
+      note: cool > 0 ? t('games.racer.res.cool', { t: `0:${String(cool).padStart(2, '0')}` }) : t('games.racer.res.coolDone'),
+    });
     this.hooks.progress?.drawToasts(ctx, W, dt);
   }
 
@@ -1346,11 +1288,11 @@ function mergeGeometriesSafe(list) {
   }
   return out;
 }
-function roadTexture() {
+function roadTexture(rnd) {
   const c = document.createElement('canvas'); c.width = 128; c.height = 128;
   const g = c.getContext('2d');
   g.fillStyle = '#5a5960'; g.fillRect(0, 0, 128, 128);
-  for (let i = 0; i < 700; i++) { g.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.08)'; g.fillRect(Math.random() * 128, Math.random() * 128, 1, 1); }
+  for (let i = 0; i < 700; i++) { g.fillStyle = rnd() > 0.5 ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.08)'; g.fillRect(rnd() * 128, rnd() * 128, 1, 1); }
   g.fillStyle = '#f2f2f2'; g.fillRect(3, 0, 3, 128); g.fillRect(122, 0, 3, 128);
   g.fillRect(63, 0, 2, 64);
   const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
@@ -1435,6 +1377,7 @@ function questionTexture() {
   g.fillStyle = '#fff'; g.font = `400 44px ${FONT_DISPLAY}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('?', 32, 35);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
+function lsGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
 function fmtGap(s) { s = Math.max(0, s); const m = Math.floor(s / 60); return m ? `${m}:${(s - m * 60).toFixed(0).padStart(2, '0')}` : `${s.toFixed(1)} s`; }
 function fmt(s) {
   if (!Number.isFinite(s)) return '--:--';
