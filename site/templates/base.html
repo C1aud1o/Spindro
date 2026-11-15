@@ -38,6 +38,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().the
   rs.forEach(function (r) { if (r.scope === location.origin + '/') r.unregister(); });
 }).catch(function () {});
 </script>
+{{{analytics}}}
 </head>
 <body>
 <a class="skip" href="#main">{{nav.skip}}</a>

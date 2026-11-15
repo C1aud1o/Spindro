@@ -133,6 +133,8 @@ function ctxFor(lang, extra) {
   return {
     ...t, ...extra,
     htmlLang: t.htmlLang, cssVersion,
+    // contatore di visite senza cookie (GoatCounter): solo se configurato in config.json
+    analytics: cfg.goatcounter ? `<script data-goatcounter="${cfg.goatcounter}" async src="https://gc.zgo.at/count.js"></script>` : '',
     homeUrl: pageUrl(lang), compatUrl: pageUrl(lang, 'compatibility'), appUrl: cfg.appPath,
     github: cfg.github, issues: cfg.contactIssues,
     androidUrl: androidLive ? cfg.playStore : cfg.apk,

@@ -7,8 +7,9 @@ Spindro è un'app gratuita e open source per rulli smart. Funziona nel browser e
 ## In breve
 
 - **Spindro non ha account né server propri.** Non raccogliamo, non riceviamo e non conserviamo dati personali.
+- Contiamo le visite in forma **anonima**, senza cookie. Nell'app solo se dici di sì.
 - Uscite, impostazioni e dati del rullo restano **sul tuo dispositivo**.
-- Il sito **non usa cookie né tracciamento**.
+- Il sito **non usa cookie** e non ti segue da un sito all'altro.
 - Le uniche connessioni verso altre aziende partono **da te** e sono elencate qui sotto.
 
 ## Cosa resta sul tuo dispositivo
@@ -26,6 +27,15 @@ L'app parla con rullo, misuratore di potenza, fascia cardio e controller Zwift v
 - **Caratteri da Google Fonts.** L'app carica i font Barlow da Google (`fonts.googleapis.com`, `fonts.gstatic.com`). Google riceve il tuo indirizzo IP e i dati tecnici della richiesta.
 - **Il sito stesso** è ospitato su GitHub Pages. GitHub può registrare i dati tecnici di una richiesta, come l'indirizzo IP.
 - **Aggiornamenti.** Il codice dell'app viene caricato dallo stesso sito.
+
+## Statistiche anonime
+
+Per capire quante persone usano Spindro contiamo le visite con **GoatCounter** (`goatcounter.com`), un servizio open source che non usa cookie e non salva nulla sul tuo dispositivo.
+
+- **Sul sito** viene contata la pagina aperta, con dati tecnici generici: pagina di provenienza, tipo di browser e di sistema, dimensione dello schermo, paese. L'indirizzo IP non viene conservato.
+- **Nell'app** il conteggio parte **solo se accetti** alla prima apertura. Puoi cambiare idea in Impostazioni → Privacy. Vengono contati: apertura dell'app, lingua, tipo di protocollo del rullo (per esempio FTMS), gioco aperto, uscita completata. Mai potenza, battito, posizione o nomi dei dispositivi.
+
+Da questi dati non possiamo risalire a te.
 
 ## Servizi che scegli tu di usare
 
