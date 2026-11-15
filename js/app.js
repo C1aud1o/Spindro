@@ -5,7 +5,7 @@ import { Devices } from './devices.js';
 import { initDevicesUi } from './devices-ui.js';
 import { pickPower, pickCadence } from './sources.js';
 import { SensorDebug } from './debug.js';
-import { BUILD } from './build.js';
+import { BUILD, CHANNEL } from './build.js';
 import { watchGuide, GARMIN_RE, WATCH_BRANDS, brandGuide } from './watchguide.js';
 import { ZwiftClick } from './click.js';
 import { GEARS, virtualSpeed, powerForSpeed } from './gears.js';
@@ -854,7 +854,8 @@ trainer.addEventListener('connected', () => renderWelcome());
 trainer.addEventListener('disconnected', () => renderWelcome());
 
 setupDebug({ trainer, click, hrm, extra: [{ dbg: pmDbg }, garminDbg], appLog: () => $('log').textContent });
-const showVersion = () => { $('appVersion').textContent = t('about.version', { platform: isNative ? t('about.android') : 'Web', build: BUILD }); };
+const showVersion = () => { $('appVersion').textContent = t('about.version', { platform: isNative ? t('about.android') : 'Web', build: BUILD }) + (CHANNEL === 'beta' ? ' · BETA' : ''); }; // "BETA" è un'etichetta, non si traduce
+if (CHANNEL === 'beta') $('betaBadge').hidden = false;
 showVersion();
 
 // ---------- Modalità sviluppatore (7 tocchi sul numero di versione) ----------
@@ -1385,6 +1386,19 @@ $('backupOut').addEventListener('click', () => {
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   toast(t('backup.exported'));
 });
+// ---------- Beta web: copia i dati dell'app stabile (stessa origine) nello spazio "beta:" ----------
+// Solo in una direzione: stabile -> beta. Lo shim (scripts/beta-storage-shim.js) espone lo Storage vero come window.__spindroStable.
+if (window.__spindroStable) {
+  $('betaCopy').hidden = false;
+  $('betaCopy').addEventListener('click', async () => {
+    const { storage, prefix } = window.__spindroStable;
+    const keys = []; for (let i = 0; i < storage.length; i++) { const k = storage.key(i); if (k && !k.startsWith(prefix) && !NO_BACKUP.test(k)) keys.push(k); }
+    if (!keys.length) return toast(t('beta.copyNone'));
+    if (!await ask(t('beta.copyConfirm'))) return;
+    keys.forEach((k) => localStorage.setItem(k, storage.getItem(k)));
+    toast(t('beta.copyDone')); setTimeout(() => location.reload(), 900);
+  });
+}
 // ---------- Cancella tutti i dati di questo dispositivo ----------
 $('wipeData').addEventListener('click', async () => {
   if (!await ask(t('wipe.confirm'), { ok: t('wipe.go'), danger: true })) return;
