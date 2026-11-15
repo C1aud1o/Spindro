@@ -1,9 +1,9 @@
 Spindro convierte tu teléfono en una app de ciclismo gratuita y de código abierto para tu rodillo inteligente. Sin suscripción y sin cuenta obligatoria. Tus datos se quedan en tu dispositivo.
 
 CONECTA TU RODILLO
-• Bluetooth con elección automática del protocolo: FTMS (la mayoría de los rodillos inteligentes desde 2020 aproximadamente), Tacx FE-C por Bluetooth y Wahoo legacy (experimentales: hasta ahora probados solo con un rodillo simulado, no con equipos reales) o solo lectura Cycling Power / Speed & Cadence.
+• Bluetooth con elección automática del protocolo: FTMS (el protocolo Bluetooth estándar que usa la mayoría de los rodillos inteligentes recientes), Tacx FE-C por Bluetooth y Wahoo legacy (experimentales: hasta ahora probados solo con un rodillo simulado, no con equipos reales) o solo lectura Cycling Power / Speed & Cadence.
 • Potencia, cadencia, velocidad y frecuencia cardíaca en tiempo real (banda Bluetooth o reloj que emite el pulso).
-• Desarrollada y probada sobre todo con el Van Rysel D100. ¿Tu rodillo no funciona? Hay un botón «Informar de un problema»: cada informe mejora la lista de compatibilidad.
+• Probada en equipo real solo con un rodillo por ahora, el Van Rysel D100. ¿Tu rodillo no funciona? Hay un botón «Informar de un problema»: cada informe mejora la lista de compatibilidad.
 
 CUATRO FORMAS DE PEDALEAR
 • Marchas: 24 desarrollos virtuales. Un modelo físico (cadencia, desarrollo, pendiente, peso) calcula la potencia ERG, así que cambiar de marcha cambia de verdad la resistencia. El cambio automático opcional mantiene la cadencia elegida.
@@ -13,7 +13,7 @@ CUATRO FORMAS DE PEDALEAR
 Cambia con los botones de pantalla, el teclado, mandos Bluetooth o un Zwift Click (soporte experimental; también se reconocen Zwift Play y Zwift Ride).
 
 JUEGOS QUE SE JUEGAN CON LAS PIERNAS
-Juegos 3D a pedales: una etapa en línea con ocho rivales, un shooter lateral, un shooter de hordas, un avión que vuela a vatios, un juego de rueda y un rompeladrillos. Más vatios = más velocidad o más disparos; las subidas llegan al rodillo como pendiente real.
+Seis juegos 3D que son entrenamientos: Breakaway (una carrera por etapas), Horde Run, Pedal Strike, Slipstream, Updraft y Feed Zone. Cada uno es una sesión de 5, 10 o 20 minutos en porcentaje de tu FTP, con tres niveles y un solo menú. Las subidas de Breakaway llegan al rodillo como pendiente real.
 
 ENTRENAMIENTOS ESTRUCTURADOS
 • Entrenos ERG calculados sobre tu FTP (sweet spot, umbral, VO2max, pirámide, 30/30…) y test de FTP en rampa.

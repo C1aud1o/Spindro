@@ -1,19 +1,19 @@
 Spindro turns your phone into a free, open-source cycling app for your smart trainer. No subscription. No account needed. Your data stays on your device.
 
 CONNECT YOUR TRAINER
-• Bluetooth with automatic protocol choice: FTMS (most smart trainers since about 2020), Tacx FE-C over Bluetooth and Wahoo legacy (experimental: so far tested only against a simulated trainer, not on real hardware), or read-only Cycling Power / Speed & Cadence.
+• Bluetooth with automatic protocol choice: FTMS (the standard Bluetooth protocol most recent smart trainers use), Tacx FE-C over Bluetooth and Wahoo legacy (experimental: so far tested only against a simulated trainer, not on real hardware), or read-only Cycling Power / Speed & Cadence.
 • Real-time power, cadence, speed and heart rate (Bluetooth chest strap, or a watch that broadcasts heart rate).
-• Developed and tested mainly with the Van Rysel D100. Your trainer not working? There is a built-in "Report a problem" button; every report helps the compatibility list.
+• Ridden for real on one trainer so far, the Van Rysel D100. Your trainer not working? There is a built-in "Report a problem" button; every report helps the compatibility list.
 
 FOUR WAYS TO RIDE
 • Gears: 24 virtual gears. A physics model (cadence, gear, slope, weight) sets the ERG power, so shifting really changes the resistance. Optional automatic shifting keeps your target cadence.
 • ERG: fixed power.
 • Slope: simulated gradient.
 • Resistance: resistance level in %.
-Shift with on-screen buttons, keyboard or Bluetooth remotes, or a Zwift Click (experimental support; Zwift Play and Zwift Ride are also recognised).
+Shift with on-screen buttons, keyboard or Bluetooth remotes, or a Zwift Click (experimental: only its + and − keys were tried on real hardware; Zwift Play and Zwift Ride are also recognised, and a key check shows what the app receives).
 
 GAMES THAT USE YOUR LEGS
-Pedal-powered 3D games: a road stage with eight rivals, a side-scrolling shooter, a horde shooter, a plane that flies on watts, a drafting game and a brick breaker. More watts, more speed or firepower; climbs arrive on the trainer as real gradient.
+Six 3D games that are workouts: Breakaway (a stage race), Horde Run, Pedal Strike, Slipstream, Updraft and Feed Zone. Each is a 5, 10 or 20 minute session in percent of your FTP, with three levels and one shared menu. Climbs in Breakaway arrive on the trainer as real gradient.
 
 STRUCTURED TRAINING
 • ERG workouts computed on your FTP (sweet spot, threshold, VO2max, pyramid, 30/30…) and a ramp FTP test.
