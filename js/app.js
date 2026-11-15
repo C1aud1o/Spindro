@@ -1104,13 +1104,13 @@ function workoutForGames() {
     const a = workout.wattsOf(x, 0) * k; const b = workout.wattsOf(x, x.d) * k; const watts = Math.round((a + b) / 2);
     const pct = +(watts / state.ftp).toFixed(3);
     const kind = i === 0 && b > a && pct < 0.7 ? 'warm' : b < a && pct < 0.65 ? 'cool' : pct >= 1.05 ? (x.d <= 60 ? 'sprint' : 'effort') : pct >= 0.85 ? 'effort' : pct >= 0.6 ? 'pace' : 'rest';
-    const o = { t0, dur: x.d, pct, watts, kind }; t0 += x.d; return o;
+    const o = { t0, dur: x.d, pct, watts, kind, w0: Math.round(a), w1: Math.round(b), label: x.label }; t0 += x.d; return o;
   });
   return { name: w.name, total: workout.total, elapsed: Math.round(workout.t), steps };
 }
 // striscia in cima al gioco: passo dell'allenamento, watt del rullo e tempo che resta nel passo
 function updateGameStrip(st) {
-  const strip = $('gameStrip'); const on = !!(workout && st && !$('gamePanel').hidden);
+  const strip = $('gameStrip'); const on = !!(workout && st && !$('gamePanel').hidden && !gameHooks.workoutHud); // i giochi con workoutHud mostrano da soli il passo nel loro HUD
   strip.hidden = !on; $('gamePanel').classList.toggle('has-strip', on);
   if (!on) return;
   $('gameStrip').title = workout.w.name; $('gsLabel').textContent = st.x.label;
@@ -1146,9 +1146,11 @@ const gameHooks = {
   //   total   durata totale (s)
   //   elapsed secondi già fatti
   //   steps   [{ t0, dur, pct, watts, kind }]: inizio (s), durata (s), media in frazione della FTP (0.75 = 75%, con l'intensità scelta),
-  //           watt medi, e kind come nei piani dei giochi: warm | pace | effort | sprint | rest | cool
+  //           watt medi, e kind come nei piani dei giochi: warm | pace | effort | sprint | rest | cool; w0/w1 watt a inizio e fine
+  //           del passo (rampe), label nome del passo. I giochi usano kit/workout-plan.js per leggerlo.
   // Con un allenamento in corso setGrade viene ignorato: il rullo resta in ERG sui watt dell'allenamento.
   workout: () => workoutForGames(),
+  workoutHud: true, // i giochi mostrano il passo dell'allenamento nel proprio HUD: la striscia dell'app sta nascosta
   setGrade: (g) => {
     if (workout) return; // l'ERG dell'allenamento non si tocca
     // stessa regola dei percorsi: la pendenza arriva al rullo scalata dal "realismo salite" (default 50%)

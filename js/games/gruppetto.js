@@ -17,7 +17,8 @@ import { t } from '../i18n.js';
 import { SONGS } from './audio.js';
 import { GameMenu, ResultsView } from './kit/menu.js';
 import { makeRandom } from './kit/rng.js';
-import { DURATIONS, LEVELS, COOL_S, buildPlan, segAt, targetW, closingSpeed, HOLD_PCT, DROP_AFTER, Adapter, starsFor, nextStarHint } from './slip-plan.js';
+import { DURATIONS, LEVELS, COOL_S, buildPlan, planFromWorkout, WARM_BRIDGE, segAt, targetW, closingSpeed, HOLD_PCT, DROP_AFTER, Adapter, starsFor, nextStarHint } from './slip-plan.js';
+import { WorkoutClock, BandMeter, workoutStars, SETTLE_S } from './kit/workout-plan.js';
 
 const A = 'assets/3d';
 const PLAYER_COLOR = '#d9ff3d';
@@ -55,7 +56,7 @@ export class Gruppetto {
       save: ({ durIdx, level }) => { try { localStorage.setItem('slipDur', durIdx); localStorage.setItem('slipLvl', level); } catch { /* niente storage */ } },
       best: (d, l) => { const r = this.recordOf(DURATIONS[d], LEVELS[l].id); return { stars: r.stars || 0, text: r.score ? String(r.score) : null }; },
       onStart: (d, l) => { this.configure(d, l); this.reset(); this.begin(); },
-      sfx: (n) => this.audio.sfx(n), ready: () => this.state === 'menu',
+      sfx: (n) => this.audio.sfx(n), ready: () => this.state === 'menu', workout: () => this.hooks.workout?.(),
     });
     this.results = new ResultsView({ onAgain: () => { this.reset(); this.begin(); }, onBack: () => this.hooks.close?.(), sfx: (n) => this.audio.sfx(n) });
     this.free = {}; this.loop = this.loop.bind(this);
@@ -179,7 +180,7 @@ export class Gruppetto {
     this.configure(this.durIdx, this.lvlIdx);
     this.rnd = makeRandom(this.seed ?? globalThis.__spindroSeed ?? 9001 + this.durIdx * 7 + this.lvlIdx);
     this.group = []; this.drops = []; this.escapees = []; this.gems = []; this.bridge = null; this.line = null;
-    this.z = 0; this.x = 0; this.lane = 0; this.pops = []; this.el = 0; this.segIdx = -1; this.seg = this.plan.segs[0];
+    this.z = 0; this.x = 0; this.lane = 0; this.pops = []; this.el = this.wk ? this.wc.el : 0; this.segIdx = -1; this.seg = this.plan.segs[0];
     this.score = 0; this.caught = 0; this.dropped = 0; this.bridgesDone = 0; this.bridgesTotal = 0; this.finalWon = false; this.finalTried = false;
     this.paused = false; this.pauseT = 0; this.startT = 0; this.finished = false; this.result = null; this.v = V_BASE;
     this.adapt = new Adapter(); this.evLog = []; this.sprinting = false; this.sentGrade = undefined; this.msgs.clear();
@@ -188,7 +189,7 @@ export class Gruppetto {
     this.player = this.rider(PLAYER_COLOR, 0, false);
     this.player.root.position.set(0, 0, 0);
     // il primo corridore è già lì davanti, nel menu: si parte con qualcosa da prendere
-    this.spawnBridge(this.plan.segs[0], { gap: this.plan.segs[0].bridge.gap, born: false });
+    this.spawnBridge(this.plan.segs[0], { gap: (this.plan.segs[0].bridge || WARM_BRIDGE).gap, born: false });
     this.bridge.state = 'attack'; this.bridge.kind = 'warm'; this.bridge.dur = 30; this.bridge.t0 = 0;
     this.road.update(0); for (const i of this.inst) i.update(0, true);
     this.view(0);
@@ -196,13 +197,17 @@ export class Gruppetto {
 
   configure(durIdx, lvlIdx) {
     this.durIdx = durIdx; this.lvlIdx = lvlIdx;
-    this.total = DURATIONS[durIdx]; this.level = LEVELS[lvlIdx]; this.plan = buildPlan(this.total);
+    this.level = LEVELS[lvlIdx];
+    // allenamento in corso: la partita È l'allenamento (durata, tratti e watt vengono da lì; il livello non cambia i watt)
+    this.wc = new WorkoutClock(this.hooks); this.wk = this.wc.begin(this.ftp);
+    if (this.wk) { this.plan = planFromWorkout(this.wk); this.total = this.plan.total; } else { this.total = DURATIONS[durIdx]; this.plan = buildPlan(this.total); }
+    this.band = new BandMeter();
   }
 
   get ftp() { return Math.max(80, this.hooks.ftp?.() || Number(localStorage.getItem('ftp')) || 200); }
   recordKey() { return `slipBest:${this.total}:${this.level.id}`; }
   recordOf(total, id) { try { return JSON.parse(localStorage.getItem(`slipBest:${total}:${id}`) || '{}'); } catch { return {}; } }
-  record() { return this.recordOf(this.total, this.level.id); }
+  record() { return this.wk ? {} : this.recordOf(this.total, this.level.id); }
 
   // ---------- eventi: tutto ciò che chiede o premia qualcosa (si misura nel test) ----------
   ev(kind) { if (this.evLog.length < 20000) this.evLog.push({ t: this.el, k: kind }); }
@@ -240,16 +245,16 @@ export class Gruppetto {
     return free[Math.floor(this.rnd() * free.length)];
   }
   spawnBridge(seg, { gap = APPROACH_GAP, born = true } = {}) {
-    const n = seg.bridge.riders; const busy = this.escapees.filter((e) => e.gap < 70).map((e) => e.lane);
+    const n = (seg.bridge || WARM_BRIDGE).riders; const busy = this.escapees.filter((e) => e.gap < 70).map((e) => e.lane);
     const lane = this.pickLane(busy);
     const riders = [];
     for (let k = 0; k < n; k++) riders.push(this.newR(laneX(lane), this.z + gap + k * PACK_DZ, k + this.caught, born, true));
-    this.bridge = { riders, n, gap, gap0: seg.bridge.gap, nominalGap: seg.bridge.gap, lane, x: laneX(lane), state: 'approach', seg, dur: seg.t1 - seg.t0, t0: seg.t0, swerved: false, startGap: gap, close: 0 };
+    this.bridge = { riders, n, gap, gap0: (seg.bridge || WARM_BRIDGE).gap, nominalGap: (seg.bridge || WARM_BRIDGE).gap, lane, x: laneX(lane), state: 'approach', seg, dur: seg.t1 - seg.t0, t0: seg.t0, swerved: false, startGap: gap, close: 0 };
     if (born) for (const R of riders) this.fx.spawn(R.x, 0.9, R.z, { tex: 'smoke', size: 2.6, life: 0.7, grow: 1.6, additive: false });
     this.ev('spawn');
   }
 
-  tgtNow() { return targetW(this.seg, this.ftp, this.level.k, this.adapt.value); }
+  tgtNow() { return targetW(this.seg, this.ftp, this.level.k, this.adapt.value, this.el); }
 
   enterSeg(idx) {
     // un ponte ancora aperto alla fine del tratto precedente è fallito
@@ -320,7 +325,7 @@ export class Gruppetto {
     if (seg.kind === 'effort' || seg.kind === 'sprint') {
       this.bridgesDone++; if (seg.kind === 'sprint' && seg.line === 'finish') this.finalWon = true;
       if (seg.kind === 'sprint') this.prog('sprintsWon', 1, 10);
-      const d = this.adapt.report(true); if (d > 0) this.say(t('games.gruppetto.adaptUp'), '#7dff6a', 2.2);
+      const d = this.wk ? 0 : this.adapt.report(true); if (d > 0) this.say(t('games.gruppetto.adaptUp'), '#7dff6a', 2.2);
       this.say(t('games.gruppetto.caught'), '#7dff6a', 1.6, true, 2, t('games.gruppetto.caughtSub', { n: this.group.length }));
     } else this.say(t('games.gruppetto.caught'), '#7dff6a', 1.6, true, 2, t('games.gruppetto.caughtSub', { n: this.group.length }));
   }
@@ -332,7 +337,7 @@ export class Gruppetto {
     this.ev('escape'); this.blocked = false;
     const seg = b.seg;
     if (!silent && (seg.kind === 'effort' || seg.kind === 'sprint') && b.state === 'attack') {
-      const d = this.adapt.report(false); if (d < 0) this.say(t('games.gruppetto.adaptDown'), '#ffd34d', 2.4);
+      const d = this.wk ? 0 : this.adapt.report(false); if (d < 0) this.say(t('games.gruppetto.adaptDown'), '#ffd34d', 2.4);
       else this.say(t('games.gruppetto.gotAway'), '#ff8d8d', 1.8, false, 1, t('games.gruppetto.gotAwaySub'));
     }
     if (seg.kind === 'sprint' && seg.line === 'finish') this.finalTried = true;
@@ -363,7 +368,7 @@ export class Gruppetto {
     this.t += dt;
     const connected = this.hooks.connected(); const st = this.hooks.stats(); const ftp = this.ftp;
     // senza rullo la demo simula 0,8 × FTP con scatti (e un po' meno nel recupero)
-    const demoP = !connected ? ftp * (this.state === 'play' && this.seg?.kind === 'rest' ? 0.58 : 0.8) * (((this.t % 40) > 31 && this.seg?.kind !== 'rest') ? 1.6 : 1) : 0;
+    const demoP = !connected && this.wk && this.seg ? targetW(this.seg, ftp, 0, 0, this.el) : !connected ? ftp * (this.state === 'play' && this.seg?.kind === 'rest' ? 0.58 : 0.8) * (((this.t % 40) > 31 && this.seg?.kind !== 'rest') ? 1.6 : 1) : 0;
     this.power = connected ? st.power || 0 : demoP;
     this.cadence = connected ? st.cadence || 0 : 88;
     if (this.pwInit) { this.pw = this.power; this.pwInit = false; } else this.pw += (this.power - this.pw) * Math.min(1, dt / 1.2);
@@ -376,22 +381,25 @@ export class Gruppetto {
     if (this.state === 'menu') { this.menuTick(dt, connected); this.view(dt); return; }
     if (this.state === 'over') { this.results.update(dt); this.view(dt, true); return; }
 
+    // con un allenamento il tempo è quello dell'allenamento (anche se in pausa); finito lui, finisce la partita
+    if (this.wk) { this.el = this.wc.tick(dt); if (this.wc.ended) return this.finish(); }
     // pausa: chi smette di pedalare non perde, il tempo si ferma
     if (connected) {
       if (this.power < 12) { this.pauseT += dt; if (this.pauseT > 2.5 && !this.paused) { this.paused = true; this.audio.sfx('beep'); } } else if (this.power > 25) { this.pauseT = 0; this.paused = false; }
     }
     if (this.paused) { this.view(dt, true); return; }
 
-    this.el += dt;
+    if (!this.wk) this.el += dt;
     let seg = segAt(this.plan, this.el); const idx = this.plan.segs.indexOf(seg);
     if (idx !== this.segIdx) { this.enterSeg(idx); seg = this.seg; }
     if (this.el >= this.total) return this.finish();
     const tgt = this.tgtNow(); this.tgtW = tgt; seg.inT += dt;
+    if (this.wk) this.band.add(dt, this.pw, tgt, this.el - seg.stepStart);
     const zone = this.pw >= HOLD_PCT * tgt; this.inTarget = this.pw >= 0.92 * tgt; this.holdOk = zone;
     this.sprinting = seg.kind === 'sprint' && zone;
     const vT = seg.kind === 'sprint' ? V_SPRINT : V_BASE; this.v += (vT - this.v) * Math.min(1, dt * 2);
     this.z += this.v * dt;
-    const g = GRADE[seg.kind] ?? 0; if (g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade(g); }
+    const g = GRADE[seg.kind] ?? 0; if (!this.wk && g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade(g); }
 
     // corsia: il giocatore scivola verso quella scelta; senza rullo (demo) la scelta giusta è automatica
     this.updateAssist(dt);
@@ -477,7 +485,7 @@ export class Gruppetto {
     this.drops = this.drops.filter((d) => { if (d.rel < HIDE_REL - 6) { this.release(d.R.cy); return false; } return true; });
     // tieni il gruppo: nel vento contro (e nel recupero) chi è in scia resta solo se tieni i watt
     if ((seg.kind === 'pace' || seg.kind === 'rest') && this.group.length) {
-      if (this.pw < HOLD_PCT * tgt) { this.deficit += dt; if (this.deficit > DROP_AFTER) { this.dropOne(); this.deficit = DROP_AFTER - 1.3; } } else this.deficit = Math.max(0, this.deficit - dt * 2);
+      if (this.pw < HOLD_PCT * tgt && !(this.wk && this.el - seg.stepStart < SETTLE_S)) { this.deficit += dt; if (this.deficit > DROP_AFTER) { this.dropOne(); this.deficit = DROP_AFTER - 1.3; } } else this.deficit = Math.max(0, this.deficit - dt * 2);
     } else this.deficit = 0;
   }
 
@@ -534,14 +542,15 @@ export class Gruppetto {
   menuTick(dt, connected) { this.menu.update(dt, { connected, power: this.hooks.stats()?.power || 0 }); }
 
   finishResult() {
-    const s = starsFor({ done: this.bridgesDone, total: this.bridgesTotal, finalWon: this.finalWon, dropped: this.dropped });
+    // con un allenamento le stelle sono le stesse di tutti i giochi: tempo entro ±7 % del bersaglio (kit/workout-plan.js)
+    const s = this.wk ? { stars: workoutStars(this.band.ratio, true), ratio: this.band.ratio } : starsFor({ done: this.bridgesDone, total: this.bridgesTotal, finalWon: this.finalWon, dropped: this.dropped });
     const rec = this.record(); const prevBest = rec.score || 0; const newBest = this.score > prevBest;
-    if (newBest || s.stars > (rec.stars || 0)) { try { localStorage.setItem(this.recordKey(), JSON.stringify({ score: Math.max(prevBest, this.score), stars: Math.max(rec.stars || 0, s.stars) })); } catch { /* niente storage */ } }
+    if (!this.wk && (newBest || s.stars > (rec.stars || 0))) { try { localStorage.setItem(this.recordKey(), JSON.stringify({ score: Math.max(prevBest, this.score), stars: Math.max(rec.stars || 0, s.stars) })); } catch { /* niente storage */ } }
     this.score = Math.round(this.score);
     this.result = { best: Math.max(prevBest, this.score), ...s, done: this.bridgesDone, total: this.bridgesTotal, caught: this.caught, riders: this.plan.riders, dropped: this.dropped, finalWon: this.finalWon, group: this.group.length, score: this.score, newBest, prevStars: rec.stars || 0 };
-    this.result.hint = nextStarHint(this.result);
+    this.result.hint = this.wk ? null : nextStarHint(this.result); this.result.wk = !!this.wk; this.result.band = this.band.ratio;
     this.prog('races', 0, 40 + s.stars * 40 + this.bridgesDone * 10);
-    this.hooks.progress?.setMax('slipStars', s.stars);
+    if (!this.wk) this.hooks.progress?.setMax('slipStars', s.stars);
   }
 
   finish() {
@@ -549,7 +558,7 @@ export class Gruppetto {
     this.state = 'over'; this.stateT = 0; this.finished = true; this.results.reset();
     this.audio.stopSong(); this.audio.sfx('win');
     this.hooks.runEnd?.({ game: 'gruppetto', score: this.score });
-    this.hooks.setGrade(0);
+    if (!this.wk) this.hooks.setGrade(0);
   }
 
   // ---------- vista ----------
@@ -606,19 +615,19 @@ export class Gruppetto {
     const col = SEG_COLOR[seg.kind]; const by = y0 + 22; const bh2 = 44;
     ctx.fillStyle = 'rgba(8,10,26,.72)'; rrect(ctx, pad - 4, by, W - 2 * pad + 8, bh2, 12); ctx.fill();
     ctx.fillStyle = col; rrect(ctx, pad - 4, by, 7, bh2, 3); ctx.fill();
-    const tw = this.tgtW || this.tgtNow(); const left = Math.max(0, Math.ceil(seg.t1 - this.el));
+    const tw = this.tgtW || this.tgtNow(); const left = Math.max(0, Math.ceil((this.wk ? seg.stepEnd : seg.t1) - this.el)); // con un allenamento: nome del passo e tempo che manca alla fine del passo
     const easy = seg.kind === 'rest' || seg.kind === 'cool' || seg.kind === 'warm';
-    hudText(ctx, t(`games.gruppetto.seg.${seg.kind}`), pad + 12, by + 29, { size: 21, color: col, maxW: W * 0.34 });
+    hudText(ctx, this.wk ? (seg.label || t(`games.wk.seg.${seg.wkKind}`)) : t(`games.gruppetto.seg.${seg.kind}`), pad + 12, by + 29, { size: 21, color: col, maxW: W * 0.34 });
     hudText(ctx, `${tw} W`, W / 2 + 8, by + 32, { size: 32, align: 'center', color: this.inTarget || easy ? '#ffffff' : '#ffd34d', maxW: W * 0.34 });
     hudText(ctx, `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`, W - pad - 4, by + 29, { size: 21, align: 'right', color: '#e8e8f4', maxW: 70 });
-    const segK = clamp((seg.t1 - this.el) / (seg.t1 - seg.t0), 0, 1);
+    const segK = this.wk ? clamp((seg.stepEnd - this.el) / (seg.stepEnd - seg.stepStart), 0, 1) : clamp((seg.t1 - this.el) / (seg.t1 - seg.t0), 0, 1);
     ctx.fillStyle = 'rgba(255,255,255,.18)'; rrect(ctx, pad, by + bh2 + 4, W - 2 * pad, 6, 3); ctx.fill();
     ctx.fillStyle = col; rrect(ctx, pad, by + bh2 + 4, Math.max(6, (W - 2 * pad) * segK), 6, 3); ctx.fill();
     const ty = by + bh2 + 15; const tk = clamp(this.el / this.total, 0, 1);
     ctx.fillStyle = 'rgba(255,255,255,.14)'; rrect(ctx, pad, ty, W - 2 * pad, 5, 2.5); ctx.fill();
     ctx.fillStyle = '#d9ff3d'; rrect(ctx, pad, ty, Math.max(5, (W - 2 * pad) * tk), 5, 2.5); ctx.fill();
     ctx.fillStyle = 'rgba(8,10,26,.9)';
-    for (const s of this.plan.segs) if (s.kind === 'pace') ctx.fillRect(pad + (W - 2 * pad) * (s.t0 / this.total) - 1, ty - 1, 2, 7);
+    for (const [i, s] of this.plan.segs.entries()) if (this.wk ? (s.wave >= 1 && s.wave !== this.plan.segs[i - 1]?.wave) : s.kind === 'pace') ctx.fillRect(pad + (W - 2 * pad) * (s.t0 / this.total) - 1, ty - 1, 2, 7);
     const goalBottom = ty + 14 + 46; this.drawGoal(ctx, W, H, ty + 14, col);
     if (!this.connected) hudText(ctx, t('games.common.demo'), W / 2, H - 6, { size: 13, align: 'center', color: '#ffd34d' });
 
@@ -701,7 +710,11 @@ export class Gruppetto {
     const ok = (n) => r.stars >= n;
     this.results.draw(ctx, W, H, {
       title: t('games.gruppetto.res.title'), subtitle: t('games.gruppetto.name'), stars: r.stars,
-      criteria: [
+      criteria: r.wk ? [
+        { ok: true, label: t('games.wk.res.done') },
+        { ok: r.band >= 0.85, label: t('games.wk.res.band', { p: Math.round(r.band * 100) }) },
+        { ok: r.finalWon, label: t('games.gruppetto.crit.sprint') },
+      ] : [
         { ok: true, label: t('games.gruppetto.crit.finish') },
         { ok: ok(2), label: t('games.gruppetto.crit.half') },
         { ok: r.total > 0 && r.done / r.total >= 0.8, label: t('games.gruppetto.crit.most') },
