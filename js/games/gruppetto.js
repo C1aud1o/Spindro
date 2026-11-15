@@ -564,7 +564,9 @@ export class Gruppetto {
     const cx = this.x * 0.8; const tx = cx; const ty = CAM_H; const tz = this.z - CAM_BACK;
     if (!this.camInit) { cam.position.set(tx, ty, tz); this.camInit = true; this.camX = cx; }
     this.camX += (cx - this.camX) * Math.min(1, dt * 4); cam.position.set(this.camX, ty, tz);
-    cam.lookAt(this.camX * 0.9, 0.9, this.z + CAM_LOOK);
+    // solo nei risultati in verticale: il pannello copre il basso, il ciclista sale nella fascia libera sotto le stelle
+    const up = this.state === 'over' && this.stage.W < this.stage.H * 1.15 ? 3.2 : 0;
+    cam.lookAt(this.camX * 0.9, 0.9 - up, this.z + CAM_LOOK);
     this.shake.apply(cam);
     const fov = 46 + sprint * 5 + (this.seg?.kind === 'effort' ? 1.5 : 0); cam.fov += (fov - cam.fov) * Math.min(1, dt * 3); cam.updateProjectionMatrix();
     // gli altri ciclisti: si animano solo quelli che si vedono
