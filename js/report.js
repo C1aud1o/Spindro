@@ -10,7 +10,7 @@ export function platformOption({ native, android }) {
   return android ? 'Web app (Chrome or another Chromium browser on Android)' : 'Web app (Chrome on desktop)';
 }
 
-export function buildReportUrl({ name = '', services = [], protocol = '', features = null, native = false, android = false, version = '', lang = '' } = {}) {
+export function buildReportUrl({ name = '', services = [], protocol = '', features = null, kind = 'trainer', native = false, android = false, version = '', lang = '' } = {}) {
   const yn = (v) => (v ? 'yes' : 'no');
   const lines = [];
   lines.push(`BLE name: ${name || 'not connected'}`);
@@ -22,7 +22,7 @@ export function buildReportUrl({ name = '', services = [], protocol = '', featur
   lines.push('', 'What works and what does not:', '');
   const q = new URLSearchParams({
     template: TEMPLATE,
-    title: `[Trainer] ${name || 'My trainer'}`,
+    title: kind === 'device' ? `[Device] ${name || 'Unknown device'}` : `[Trainer] ${name || 'My trainer'}`,
     model: name,
     platform: platformOption({ native, android }),
     details: lines.join('\n'),

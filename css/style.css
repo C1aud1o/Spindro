@@ -975,3 +975,19 @@ body:not(.riding) .metrics dt { overflow: hidden; text-overflow: ellipsis; lette
 @media (min-width: 1024px) { body:not(.riding) .readout { grid-template-columns: 1fr; gap: 8px; } body:not(.riding) .metrics { grid-template-columns: repeat(4, auto); justify-content: space-between; } }
 #consentSheet .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 #consentSheet .consent-btn { min-height: 56px; width: 100%; }
+
+/* Collegare i dispositivi (D1): avviso di caduta, suggerimento, stato per dispositivo */
+.drop-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border-color: rgba(255, 212, 58, .5); }
+.drop-banner span { flex: 1 1 14ch; min-width: 0; overflow-wrap: anywhere; }
+.suggest { display: grid; gap: 8px; border-color: var(--accent-line); background: var(--accent-5); }
+.suggest p { margin: 0; color: var(--t1); }
+.suggest .row2 { display: flex; flex-wrap: wrap; gap: 8px; }
+.suggest button, .drop-banner button { min-height: 44px; }
+.dev-down { border-style: dashed; opacity: .92; }
+.dev-why, .dev-meta { margin: 0; }
+.dev-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.dev-life.live { color: var(--accent); }
+.dev-life.stale { color: #f2c230; }
+.dev-test-note { margin: 0; }
+#deviceList [data-test], #deviceList [data-remove], #deviceList [data-forget], #reconnectDevice { min-height: 44px; }
+#unsupported { overflow-wrap: anywhere; }

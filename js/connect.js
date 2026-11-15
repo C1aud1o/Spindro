@@ -28,7 +28,7 @@ export function explainError(err, { afterPick = false } = {}) {
   if (err?.unsupported) return 'unsupportedDevice';
   if (/already connected/i.test(msg)) return 'already';
   if (/bluetooth.*(off|disabled|not enabled|not available|unavailable)|adapter|powered off|not enabled|is disabled|turned off/i.test(msg)) return 'off';
-  if (/permission|not allowed|denied|blocked|SecurityError/i.test(msg) || name === 'SecurityError') return 'permission';
+  if (/permission|denied|blocked/i.test(msg) || name === 'SecurityError' || (name === 'NotAllowedError' && !/gesture/i.test(msg))) return 'permission';
   if (name === 'NotFoundError' && /cancel|no device|chooser|selected/i.test(msg)) return 'cancelled';
   if (/cancel|dismiss/i.test(msg)) return 'cancelled';
   if (afterPick || name === 'NetworkError' || /GATT|connection|connect|timeout|timed out|busy|failed/i.test(msg)) return afterPick ? 'busy' : 'noDevice';
