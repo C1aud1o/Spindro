@@ -47,6 +47,5 @@ cd android && ./gradlew assembleFossDebug   # serve Android SDK (ANDROID_HOME) e
 ```
 Su GitHub lo fa il workflow `.github/workflows/android.yml` a ogni push e pubblica l'APK nella release.
 
-Note: la chiave `android/app/ridefreedom-debug.keystore` serve solo a firmare le build debug;
-la build release (APK foss + AAB per il Play Store) e la chiave privata sono spiegate in
-[android-release.md](android-release.md).
+Nota: senza i Secret `ANDROID_*` il workflow compila un APK di debug; con i Secret compila l'APK e l'AAB di release firmati.
+La chiave privata non sta mai nel repository.

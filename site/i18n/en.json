@@ -49,7 +49,7 @@
       },
       {
         "q": "What happens to my data and privacy?",
-        "a": "This website has no trackers and no cookies, and its fonts are served from the same site. In the app, ride data stays on your device. Data leaves it only if you use Strava (it sends the ride to Strava), play a YouTube video (Google's player loads) or export a file. Read the privacy policy for the details."
+        "a": "This website has no cookies and no ads, and its fonts are served from the same site. We count visits anonymously with GoatCounter, with no cookies and no personal data. In the app, ride data stays on your device. Data leaves it only if you use Strava (it sends the ride to Strava), play a YouTube video (Google's player loads) or export a file. Read the privacy policy for the details."
       }
     ],
     "kicker": "Indoor cycling app · free and open source",

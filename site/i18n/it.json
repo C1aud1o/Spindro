@@ -49,7 +49,7 @@
       },
       {
         "q": "Che fine fanno i miei dati? E la privacy?",
-        "a": "Questo sito non ha tracker né cookie e i suoi font sono serviti dal sito stesso. Nell'app i dati delle uscite restano sul tuo dispositivo. Ne escono solo se usi Strava (l'uscita viene inviata a Strava), guardi un video YouTube (si carica il lettore di Google) o esporti un file. Per i dettagli leggi l'informativa sulla privacy."
+        "a": "Questo sito non usa cookie né pubblicità e i suoi font sono serviti dal sito stesso. Contiamo le visite in forma anonima con GoatCounter, senza cookie e senza dati personali. Nell'app i dati delle uscite restano sul tuo dispositivo. Ne escono solo se usi Strava (l'uscita viene inviata a Strava), guardi un video YouTube (si carica il lettore di Google) o esporti un file. Per i dettagli leggi l'informativa sulla privacy."
       }
     ],
     "kicker": "App per il ciclismo indoor · gratuita e open source",
