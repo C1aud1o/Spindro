@@ -2,6 +2,7 @@
 title: Why we built a free indoor-cycling app
 description: A smart trainer you already paid for, subscriptions for everything else. Why we built Spindro, what it does, and the limits we want you to know about before you try it.
 date: 2026-11-15
+order: 1
 image: home
 ---
 You bought a smart trainer. It can hold a power target, simulate a climb and talk to your phone over Bluetooth. Then you discover that using it comfortably means another monthly payment, and often an account, for software that mostly does one thing: tell the trainer what resistance to apply.

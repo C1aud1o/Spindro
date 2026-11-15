@@ -2,6 +2,7 @@
 title: Come funzionano cambio virtuale ed ERG su un rullo economico
 description: Cos'è FTMS in parole semplici, cosa fa l'ERG, perché l'app rinvia l'obiettivo di potenza ogni due secondi su certi rulli, come si stima la cadenza dal volano e cosa aggiunge un controller.
 date: 2026-11-15
+order: 2
 image: ride
 ---
 Un rullo smart è un volano con un freno e una radio. Al freno si può dire cosa fare. Questo articolo spiega come glielo dice Spindro, usando le parti di codice che fanno il lavoro, così che ogni affermazione si possa controllare nel repository.

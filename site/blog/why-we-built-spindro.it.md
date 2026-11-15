@@ -2,6 +2,7 @@
 title: Perché abbiamo creato un'app gratuita per l'indoor cycling
 description: Un rullo smart che hai già pagato e abbonamenti per tutto il resto. Perché abbiamo creato Spindro, cosa fa e i limiti che vogliamo farti conoscere prima di provarla.
 date: 2026-11-15
+order: 1
 image: home
 ---
 Hai comprato un rullo smart. Sa tenere una potenza, simulare una salita e parlare con il telefono via Bluetooth. Poi scopri che usarlo comodamente significa un altro pagamento mensile, e spesso un account, per un software che fa soprattutto una cosa: dire al rullo quanta resistenza applicare.

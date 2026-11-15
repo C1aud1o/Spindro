@@ -2,6 +2,7 @@
 title: Games that are workouts
 description: Spindro's six games follow a few design rules so that playing is training: sessions in percent of FTP, three levels, something to do every few seconds. And an invitation to build one.
 date: 2026-11-15
+order: 3
 image: game-racer
 ---
 Most cycling games treat your watts as a speedometer. Push harder, go faster. That is a fine start, but it makes for a poor workout: you sprint until you are tired, then you stop, and the game has taught you nothing about pacing.

@@ -148,7 +148,7 @@ const blogDir = join(here, 'blog');
 const POSTS = {}; // lang -> [{ slug, meta, body }] dal più recente
 for (const lang of cfg.langs) {
   POSTS[lang] = existsSync(blogDir) ? readdirSync(blogDir).filter((f) => f.endsWith(`.${lang}.md`)).map((f) => ({ slug: f.replace(`.${lang}.md`, ''), ...parsePost(join(blogDir, f)) })) : [];
-  POSTS[lang].sort((a, b) => b.meta.date.localeCompare(a.meta.date));
+  POSTS[lang].sort((a, b) => b.meta.date.localeCompare(a.meta.date) || Number(a.meta.order || 99) - Number(b.meta.order || 99));
 }
 const fmtDate = (iso, lang) => new Date(iso + 'T12:00:00Z').toLocaleDateString(T[lang].htmlLang, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 function blogCards(lang, n = 99) {
@@ -287,7 +287,7 @@ for (const lang of cfg.langs) {
     const draft = placeholders.length > 0 || /DRAFT|BOZZA/.test(src);
     if (draft && lang === cfg.defaultLang) legalWarnings.push(`${p}: ${placeholders.join(' ') || 'bozza'}`);
     writePage({
-      lang, slug: p, tplName: 'legal', title: t.legal.title.replace('{title}', title), description: t.legal.title.replace('{title}', title),
+      lang, slug: p, tplName: 'legal', title: t.legal.title.replace('{title}', title), description: t.legal.description.replace('{title}', title),
       index: !draft, langsAvailable: cfg.langs.filter(have),
       extra: { body: html, contentLang, draftNote: draft ? `<blockquote><p>${esc(t.legal.draft)}</p></blockquote>` : '' },
     });

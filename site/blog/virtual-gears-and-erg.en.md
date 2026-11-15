@@ -2,6 +2,7 @@
 title: How virtual gears and ERG mode work on a budget trainer
 description: What FTMS is in plain words, what ERG does, why the app re-sends the power target every two seconds on some trainers, how cadence is estimated from the flywheel, and what a controller adds.
 date: 2026-11-15
+order: 2
 image: ride
 ---
 A smart trainer is a flywheel with a brake and a radio. The brake can be told what to do. This article explains how Spindro tells it, using the parts of the code that do the work, so that every claim here can be checked in the repository.

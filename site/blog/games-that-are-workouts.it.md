@@ -2,6 +2,7 @@
 title: Giochi che sono allenamenti
 description: I sei giochi di Spindro seguono poche regole di design perché giocare sia allenarsi: sessioni in percentuale della FTP, tre livelli, qualcosa da fare ogni pochi secondi. E un invito a crearne uno.
 date: 2026-11-15
+order: 3
 image: game-racer
 ---
 Quasi tutti i giochi di ciclismo trattano i tuoi watt come un tachimetro. Spingi di più, vai più veloce. È un buon inizio, ma fa un allenamento povero: scatti finché sei stanco, poi smetti, e il gioco non ti ha insegnato nulla sul passo.

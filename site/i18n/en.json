@@ -303,7 +303,8 @@
   "legal": {
     "title": "{title} | Spindro",
     "draft": "Draft: this text is still being reviewed and has placeholders in square brackets.",
-    "back": "Back to home"
+    "back": "Back to home",
+    "description": "{title}: legal information about Spindro, the free and open-source indoor cycling app."
   },
   "legalNames": {
     "privacy": "Privacy",
@@ -332,7 +333,7 @@
     "home": "Go to the home page"
   },
   "blog": {
-    "title": "Blog | Spindro",
+    "title": "Blog: notes on building a free indoor-cycling app | Spindro",
     "description": "Why we built Spindro, how virtual gears and ERG mode work on a budget trainer, and how games can be workouts.",
     "h1": "Blog",
     "lead": "Notes from building a free indoor-cycling app: the reasons, the technical details, and the design rules we hold ourselves to.",

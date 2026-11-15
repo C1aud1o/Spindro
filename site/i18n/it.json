@@ -303,7 +303,8 @@
   "legal": {
     "title": "{title} | Spindro",
     "draft": "Bozza: questo testo è ancora in revisione e contiene segnaposto tra parentesi quadre.",
-    "back": "Torna alla home"
+    "back": "Torna alla home",
+    "description": "{title}: informazioni legali su Spindro, l'app gratuita e open source per l'indoor cycling."
   },
   "legalNames": {
     "privacy": "Privacy",
@@ -332,7 +333,7 @@
     "home": "Vai alla home"
   },
   "blog": {
-    "title": "Blog | Spindro",
+    "title": "Blog: appunti su un'app gratuita di indoor cycling | Spindro",
     "description": "Perché abbiamo creato Spindro, come funzionano il cambio virtuale e l'ERG su un rullo economico e come i giochi possono essere allenamenti.",
     "h1": "Blog",
     "lead": "Appunti da un'app gratuita di indoor cycling: le ragioni, i dettagli tecnici e le regole di design che ci siamo dati.",
