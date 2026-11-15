@@ -12,7 +12,7 @@ export const Y_LO = 4.2;        // quota (m) a PCT_LO
 export const Y_HI = 16.2;       // quota (m) a PCT_HI
 export const SPEED = 15;        // velocità di avanzamento (m/s): costante, così i tempi non dipendono dal rullo
 export const RING_EVERY = 3.6;  // secondi fra un anello e l'altro
-export const FIRST_RING = 5.5;  // secondi dall'inizio al primo anello
+export const FIRST_RING = 4;    // secondi dall'inizio al primo anello
 
 const lerp = (a, b, k) => a + (b - a) * k;
 const smooth = (k) => { k = Math.max(0, Math.min(1, k)); return k * k * (3 - 2 * k); };

@@ -13,12 +13,12 @@ import { t } from '../i18n.js';
 import { SONGS } from './audio.js';
 import { DURATIONS, LEVELS, COOL_S, SPEED, RING_EVERY, FIRST_RING, Y_LO, Y_HI, PCT_LO, PCT_HI, buildPlan, segAt, targetW, targetPct, profilePct, altOf, pctOf, Adapter, starsFor, nextStarHint } from './planata-plan.js';
 
-const PLANE_SPAN = 9;       // apertura alare (m)
+const PLANE_SPAN = 8;       // apertura alare (m)
 const RIDER_S = 1.75;       // scala del ciclista (più grande del vero: si legge da lontano)
 const RIDER_Z = -0.6;       // posizione lungo la fusoliera
 const GUST_DROP = 1.0;      // di quanto spinge giù una raffica (m)
 const LAND_S = 6;           // secondi di discesa finale
-const CAM_BACK = 10; const CAM_UP = 4.0; const CAM_BACK_T = 9; const CAM_UP_T = 4.2;
+const CAM_BACK = 10; const CAM_UP = 5.0; const CAM_BACK_T = 9; const CAM_UP_T = 5.4;
 // la pista: i laghi e gli alberi la lasciano libera
 let RUNWAY_Z = null;
 function setRunway(z) { RUNWAY_Z = z; }
@@ -137,7 +137,7 @@ class Layer {
 // aereo: elica che gira alla cadenza (due pale e un disco trasparente)
 function makePropeller() {
   const grp = new THREE.Group();
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.2, 0.05), new THREE.MeshBasicMaterial({ color: '#2a2a33' }));
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.2, 0.05), new THREE.MeshBasicMaterial({ color: '#2a2a33', transparent: true }));
   const hub = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.4, 8).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: HUD.lime }));
   hub.position.z = 0.1;
   const disc = new THREE.Mesh(new THREE.CircleGeometry(1.4, 24), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, fog: false }));
@@ -177,7 +177,7 @@ class SpeedStreaks {
 }
 
 // ---------- costanti del gioco ----------
-const LANE_W = 4.2;           // distanza fra le corsie (3 corsie: −1, 0, +1; +1 = destra sullo schermo)
+const LANE_W = 5.4;           // distanza fra le corsie (3 corsie: −1, 0, +1; +1 = destra sullo schermo)
 const RING_R = 3.2;           // raggio dell'anello (m)
 const HIT_R = 2.7;            // si passa dentro l'anello se la distanza dal centro è minore
 const PERFECT_R = 0.9;        // nel mezzo: bonus
@@ -335,10 +335,10 @@ export class Planata {
     const buckets = {}; for (const k of Object.keys(this.lay)) buckets[k] = [];
     for (let ci = first; ci < first + NCH; ci++) {
       const r = rng(ci * 7919 + 13); const z0 = ci * CH;
-      const put = (k, x, z, h, rot = r() * 6.28, up = 0) => { if (terrainH(x, z) < 0.15 || onRunway(x, z, 12)) return false; const y = Math.max(terrainH(x, z), 0) + up; buckets[k].push({ x, y: y - (k === 'cypress' || k.startsWith('tree') ? 0.2 : 0), z, h, rot }); return true; };
+      const put = (k, x, z, h, rot = r() * 6.28, up = 0) => { if (terrainH(x, z) < 0.15 || onRunway(x, z, 12) || Math.abs(x) < (k === 'bush' ? 9 : 14)) return false; const y = Math.max(terrainH(x, z), 0) + up; buckets[k].push({ x, y: y - (k === 'cypress' || k.startsWith('tree') ? 0.2 : 0), z, h, rot }); return true; };
       for (let i = 0; i < 34; i++) {
         const side = r() < 0.5 ? -1 : 1; const x = side * (8 + Math.pow(r(), 0.8) * 100); const z = z0 + r() * CH;
-        if (Math.abs(x) < 9) continue;
+        if (Math.abs(x) < 14) continue;
         const gate = Math.abs(x) < 30 ? 0.25 : 1; if (r() > gate) continue;
         const kind = r() < 0.34 ? 'tree1' : r() < 0.5 ? 'tree2' : 'tree3';
         put(kind, x, z, 5 + r() * 5);
@@ -391,7 +391,7 @@ export class Planata {
     this.score = 0; this.combo = 0; this.bestCombo = 0; this.rings = 0; this.ringsTotal = 0; this.coins = 0; this.pods = 0; this.hits = 0;
     this.waveRings = {}; this.waveHit = {};
     this.effortsDone = 0; this.effortsTotal = 0; this.adapt = new Adapter(); this.evLog = []; this.sprinting = false; this.inTarget = false;
-    this.paused = false; this.pauseT = 0; this.startT = 0; this.result = null; this.finished = false; this.landing = 0; this.rollV = 0;
+    this.paused = false; this.pauseT = 0; this.startT = 0; this.result = null; this.recStart = null; this.finished = false; this.landing = 0; this.rollV = 0;
     this.hurtT = 0; this.boostT = 0; this.gustK = 0; this.sentGrade = undefined; this.pops = []; this.msgs.clear();
     this.nextRingT = FIRST_RING; this.cn = 0; this.prev = { t: FIRST_RING - RING_EVERY, z: 0, x: 0, lane: 0 }; this.lastRing = this.prev; this.courseDone = false;
     this.rnd = rng(Math.floor(Math.random() * 1e9));
@@ -414,6 +414,7 @@ export class Planata {
   }
 
   finish() {
+    this.finishResult(true); // numeri definitivi: anelli e punti arrivati dopo l'inizio del defaticamento
     this.state = 'over'; this.stateT = 0; this.finished = true;
     this.audio.stopSong(); this.audio.sfx('win');
     this.hooks.runEnd?.({ game: 'planata', score: Math.round(this.score) });
@@ -446,7 +447,7 @@ export class Planata {
     if (this.state === 'over') { if (this.stateT > 1.4) { this.reset(); this.state = 'menu'; this.stateT = 0; this.audio.playSong(SONGS.menu); } return; }
     if (this.state !== 'play' || this.paused || this.landing > 0) return;
     // + = destra, − = sinistra: una corsia per volta; il pilota automatico riprende dopo qualche secondo
-    const now = clamp(Math.round(-this.x / LANE_W), -1, 1);
+    const now = this.manualT > 0 ? this.lane : clamp(Math.round(-this.x / LANE_W), -1, 1);
     this.lane = clamp(now + dir, -1, 1); this.manualT = MANUAL_S; this.audio.sfx('select');
   }
   hold(dir) { this.held = dir; this.heldT = 0; }
@@ -479,13 +480,13 @@ export class Planata {
       const tk = p.t + (ta - p.t) * k / 4; if (tk < 0.5) continue;
       this.addCoin(lerp(p.x, x, smoothstep(k / 4)), this.pathY(tk), this.zBase + tk * SPEED);
     }
-    // pallone bonus e tempesta: in una corsia che la rotta non attraversa mai (sempre ≥ 4,2 m dalla linea)
+    // pallone bonus e tempesta: in una corsia che la rotta non attraversa mai (sempre ≥ 5,4 m dalla linea)
     if (this.cn >= 3 && this.cn % 3 === 0 && Math.abs(lane - p.lane) < 2 && seg.kind !== 'climb' && seg.kind !== 'cool' && seg.kind !== 'warm') {
       const cands = [-1, 0, 1].filter((l) => l !== p.lane && l !== lane);
       if (cands.length) {
-        const pl = cands[r() < 0.5 ? 0 : cands.length - 1]; const tp = p.t + (ta - p.t) * 0.36;
+        const pl = cands[r() < 0.5 ? 0 : cands.length - 1]; const tp = p.t + (ta - p.t) * 0.3;
         this.addPod(-pl * LANE_W, this.pathY(tp), this.zBase + tp * SPEED);
-        if (r() < 0.65) { const ts = p.t + (ta - p.t) * 0.7; this.addStorm(-pl * LANE_W, this.pathY(ts), this.zBase + ts * SPEED); }
+        if (r() < 0.65) { const ts = p.t + (ta - p.t) * 0.78; this.addStorm(-pl * LANE_W, this.pathY(ts), this.zBase + ts * SPEED); }
       }
     }
     // termica nei recuperi, raffica negli sforzi: una per tratto, a metà fra due anelli
@@ -519,8 +520,8 @@ export class Planata {
 
   addStorm(x, y, z) {
     const g = new THREE.Group(); const r = this.rnd;
-    for (const [dx, dy, dz, s] of [[0, 0, 0, 1.9], [-1.5, -0.3, 0.2, 1.4], [1.5, -0.2, -0.2, 1.5], [-0.6, 0.9, 0.4, 1.2], [0.8, 0.8, -0.3, 1.3]]) { const m = new THREE.Mesh(this.stormGeo, this.stormMat); m.position.set(dx, dy, dz); m.scale.setScalar(s * (0.9 + r() * 0.2)); g.add(m); }
-    const bolt = new THREE.Mesh(this.boltGeo, this.boltMat); bolt.position.set(0.2, -2.4, -2.2); g.add(bolt);
+    for (const [dx, dy, dz, s] of [[0, 0, 0, 2.1], [-1.5, -0.3, 0.2, 1.5], [1.5, -0.2, -0.2, 1.6], [-0.6, 1.0, 0.4, 1.3], [0.8, 0.9, -0.3, 1.4]]) { const m = new THREE.Mesh(this.stormGeo, this.stormMat); m.position.set(dx, dy, dz); m.scale.setScalar(s * (0.9 + r() * 0.2)); g.add(m); }
+    const bolt = new THREE.Mesh(this.boltGeo, this.boltMat); bolt.position.set(0.2, -2.8, -2.4); bolt.scale.setScalar(1.3); g.add(bolt);
     g.position.set(x, y, z); this.stage.scene.add(g); this.items.push({ kind: 'storm', group: g, x, y, z, bolt });
   }
 
@@ -548,7 +549,7 @@ export class Planata {
     this.segIdx = i; this.seg = seg; seg.inT = 0; seg.okT = 0;
     const W = targetW(seg, this.ftp, this.level.k, this.adapt.value);
     const N = this.plan.N;
-    if (seg.kind === 'warm') this.say(t('games.planata.say.warm'), SEG_COLOR.warm, 3, true, 2, t('games.planata.say.warmSub'));
+    if (seg.kind === 'warm') { this.say(t('games.planata.say.warm'), SEG_COLOR.warm, 3, true, 2, t('games.planata.say.warmSub')); this.ev('start'); }
     else if (seg.kind === 'pace') { this.say(t('games.planata.say.wave', { n: seg.wave, m: N }), '#d9ff3d', 2.6, true, 3, t('games.planata.say.waveSub', { w: W })); this.ev('wave'); }
     else if (seg.kind === 'effort') { this.say(t('games.planata.say.effort', { w: W }), SEG_COLOR.effort, 2.4, true, 3, t('games.planata.say.effortSub')); this.audio.sfx('go'); this.ev('segment'); }
     else if (seg.kind === 'climb') { this.say(t('games.planata.say.climb', { w: W }), SEG_COLOR.climb, 2.4, true, 3, t('games.planata.say.climbSub', { s: Math.round(seg.t1 - seg.t0) })); this.audio.sfx('alarm'); this.ev('segment'); }
@@ -577,13 +578,14 @@ export class Planata {
     this.audio.sfx('win');
   }
 
-  finishResult() {
+  finishResult(update = false) {
     const s = starsFor({ done: this.effortsDone, total: this.effortsTotal, hits: this.hits });
-    const rec = this.record(); const prevBest = rec.score || 0; const score = Math.round(this.score);
+    const rec = this.recStart || (this.recStart = this.record()); const prevBest = rec.score || 0; const score = Math.round(this.score);
     const newBest = score > prevBest;
     if (newBest || s.stars > (rec.stars || 0)) { try { localStorage.setItem(this.recordKey(), JSON.stringify({ score: Math.max(prevBest, score), stars: Math.max(rec.stars || 0, s.stars) })); } catch { /* niente storage */ } }
     this.result = { ...s, done: this.effortsDone, total: this.effortsTotal, rings: this.rings, ringsTotal: this.ringsTotal, hits: this.hits, score, newBest, prevStars: rec.stars || 0, bestCombo: this.bestCombo };
     this.result.hint = nextStarHint(this.result);
+    if (update) return;
     this.prog('races', 0, 40 + s.stars * 40 + this.effortsDone * 10);
     this.hooks.progress?.setMax('planataStars', s.stars);
     this.hooks.progress?.setMax('planataDist', Math.round(this.z - this.zBase));
@@ -696,7 +698,7 @@ export class Planata {
         if (d < 2.2) { this.pods++; this.score += 60 * mult; this.ev('pod'); this.audio.sfx('rescue'); this.pop(`+${60 * mult}`, '#ff8cc4'); this.fx.spawn(it.x, it.y, it.z, { tex: 'spark', size: 5, life: 0.4, color: '#ff8cc4' }); this.shake.add(0.1); it.group.visible = false; this.say(t('games.planata.podSay'), '#ff8cc4', 1.2, false, 1); }
       } else if (it.kind === 'storm') {
         this.ev('storm');
-        if (d < 2.7 && this.hurtT <= 0) this.hitStorm(it);
+        if (d < 3.0 && this.hurtT <= 0) this.hitStorm(it);
       }
     }
   }
@@ -731,15 +733,15 @@ export class Planata {
     // aereo: muso su e giù con la quota, ala inclinata nelle virate
     const pitchT = clamp(this.vy * 0.045, -0.3, 0.3);
     this.pitch = lerp(this.pitch, pitchT, Math.min(1, dt * 4));
-    this.roll = lerp(this.roll, clamp(-(this.vx || 0) * 0.05, -0.4, 0.4), Math.min(1, dt * 5));
+    this.roll = lerp(this.roll, clamp(-(this.vx || 0) * 0.035, -0.22, 0.22), Math.min(1, dt * 5));
     this.plane.position.set(this.x, this.y, this.z);
     this.plane.rotation.set(-this.pitch, 0, this.roll + Math.sin(this.t * 1.7) * 0.03);
     this.plane.visible = !(this.hurtT > 0 && Math.floor(this.hurtT * 12) % 2);
     // elica e gambe: sempre in movimento (cadenza vera; in pausa o nel menu un giro lento)
     const cad = this.paused ? 20 : (this.cadence || 60);
     const rps = clamp(cad / 60, 0.4, 2.2) * 2.2; this.prop.spin.rotation.z += Math.min(rps * Math.PI * 2 * dt, 1.2);
-    const blur = clamp((rps - 1.5) / 3, 0, 1);
-    this.prop.disc.material.opacity = 0.28 * blur; this.prop.blade.visible = blur < 0.85;
+    const blur = clamp((rps - 0.8) / 1.6, 0, 1);
+    this.prop.disc.material.opacity = 0.32 * blur; this.prop.blade.material.opacity = 1 - 0.75 * blur;
     this.rider.pose(dt, Math.max(cad, 30), SPEED);
     this.riderMount.rotation.z = Math.sin(this.t * 1.3) * 0.015;
     // ombra sul terreno
@@ -751,11 +753,11 @@ export class Planata {
       if (it.kind === 'ring') {
         const k = it.flash > 0 ? (it.flash = Math.max(0, it.flash - dt * 2.2)) : 0;
         if (!it.done) { it.ring.rotation.z = this.t * 0.8; it.filmMat.opacity = 0.14 + 0.06 * Math.sin(this.t * 4 + it.z); } else {
-          const s = it.hit ? 1 + (1 - k) * 0.9 : 1; it.ring.scale.setScalar(s); it.film.scale.setScalar(s);
+          const s = it.hit ? 1 + (1 - k) * 0.35 : 1; it.ring.scale.setScalar(s); it.film.scale.setScalar(s);
           it.filmMat.opacity = (it.hit ? 0.4 : 0.25) * k; it.ringMat.opacity = clamp(k * 1.4, 0, 1); if (it.hit) it.ringMat.color.setScalar(0.4 + k * 0.6);
           if (k <= 0) gk.visible = false;
         }
-      } else if (it.kind === 'coin') gk.rotation.y = this.t * 3.2 + it.z;
+      } else if (it.kind === 'coin') { gk.rotation.y = this.t * 3.2 + it.z; if (it.done) { it.fade = Math.min(1, (it.fade || 0) + dt * 6); gk.scale.setScalar(Math.max(0.001, 1 - it.fade)); } }
       else if (it.kind === 'pod') { gk.position.y = it.y + Math.sin(this.t * 2.4 + it.z) * 0.3; it.halo.rotation.z = this.t * 1.6; }
       else if (it.kind === 'storm') { gk.rotation.y = Math.sin(this.t * 0.7 + it.z) * 0.25; it.bolt.visible = Math.sin(this.t * 17 + it.z) > -0.35; }
       else if (it.kind === 'thermal') it.rings.forEach((m, i) => { const k = (this.t * 0.5 + i / 3) % 1; m.position.y = k * 24; m.material.opacity = 0.8 * (1 - k); });
@@ -766,11 +768,11 @@ export class Planata {
     this.streaks.update(dt, this.plane.position, SPEED, strength * (this.streakMax / 56));
     // camera: dietro e sopra, il telefono in verticale sta più vicino
     const tall = this.stage.H > this.stage.W; const back = tall ? CAM_BACK_T : CAM_BACK; const up = tall ? CAM_UP_T : CAM_UP;
-    const target = new THREE.Vector3(this.x * 0.55, this.y + up, this.z - back);
+    const target = new THREE.Vector3(this.x * 0.85, this.y + up, this.z - back);
     if (!this.camInit) { cam.position.copy(target); this.camInit = true; }
     cam.position.lerp(target, Math.min(1, dt * 3.5));
-    const lift = this.state === 'menu' ? (tall ? 5.2 : 2) : 0; this.lift = lerp(this.lift ?? 0, lift, Math.min(1, dt * 3));
-    cam.lookAt(this.x * 0.7, this.y + 0.2 + this.lift, this.z + 22);
+    const lift = this.state === 'menu' ? (tall ? 5.2 : 2) : (this.state === 'over' || this.seg?.kind === 'cool') ? (tall ? 3.2 : 1.2) : 0; this.lift = lerp(this.lift ?? 0, lift, Math.min(1, dt * 3));
+    cam.lookAt(this.x * 0.9, this.y - 0.2 + this.lift, this.z + 22);
     this.shake.apply(cam);
     const fov = (tall ? 64 : 58) + strength * 6; cam.fov += (fov - cam.fov) * Math.min(1, dt * 2.5); cam.updateProjectionMatrix();
     this.light.follow(this.x, 0, this.z);
@@ -833,20 +835,7 @@ export class Planata {
     if (!this.hooks.connected()) hudText(ctx, t('games.common.demo'), W / 2, gy + gh + 17, { size: 13, align: 'center', color: '#ffd34d' });
 
     // altimetro: 50 % in basso, 130 % in alto; il segno dorato è dove sta il prossimo anello
-    const aw = 22; const ax = W - pad - aw - 2; const ay = Math.round(H * 0.46); const ah = Math.max(120, H - 168 - ay);
-    const yPx = (y) => ay + ah - clamp((y - Y_LO) / (Y_HI - Y_LO), 0, 1.04) * ah;
-    ctx.fillStyle = 'rgba(8,10,26,.55)'; rrect(ctx, ax - 4, ay - 4, aw + 8, ah + 8, 9); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,.28)'; for (let i = 0; i <= 4; i++) ctx.fillRect(ax + 2, Math.round(ay + ah - ah * i / 4) - 1, aw - 4, 2);
-    hudText(ctx, `${Math.round(ftp * PCT_HI)}`, ax - 8, ay + 12, { size: 13, align: 'right', color: HUD.dim, font: 'text' });
-    hudText(ctx, `${Math.round(ftp * PCT_LO)}`, ax - 8, ay + ah, { size: 13, align: 'right', color: HUD.dim, font: 'text' });
-    const nr = this.items.find((it) => it.kind === 'ring' && !it.done);
-    if (nr) {
-      const py = yPx(nr.y); ctx.fillStyle = HUD.gold; ctx.fillRect(ax - 1, py - 4, aw + 2, 8);
-      hudText(ctx, `${Math.round(ftp * pctOf(nr.y) / 5) * 5}`, ax - 8, clamp(py + 6, ay + 26, ay + ah - 16), { size: 19, align: 'right', color: HUD.gold });
-    }
-    const my = yPx(this.y); ctx.fillStyle = '#fff'; ctx.strokeStyle = 'rgba(0,0,0,.8)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(ax - 1, my); ctx.lineTo(ax - 12, my - 7); ctx.lineTo(ax - 12, my + 7); ctx.closePath(); ctx.fill(); ctx.stroke();
-
+    if (seg.kind !== 'cool' && this.state !== 'over') this.drawAltimeter(ctx, W, H, ftp, pad);
     // in basso: potenza (numero grande + barra con il bersaglio)
     const bh = 22; const barY = H - 16 - bh; const bx = pad + 2; const bw2 = W - 2 * pad - 4;
     const gr = ctx.createLinearGradient(0, H - 118, 0, H); gr.addColorStop(0, 'rgba(6,8,22,0)'); gr.addColorStop(0.35, 'rgba(6,8,22,.55)'); gr.addColorStop(1, 'rgba(6,8,22,.82)');
@@ -861,13 +850,13 @@ export class Planata {
     ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.fillRect(t0, barY, Math.max(2, bx + bw2 * clamp(tw * 1.15 / maxW, 0, 1) - t0), bh);
     ctx.fillStyle = '#fff'; ctx.fillRect(bx + bw2 * clamp(tw / maxW, 0, 1) - 1, barY - 4, 3, bh + 8);
 
-    this.msgs.draw(ctx, W, H, { u: W < 500 ? 0.9 : 1.1, y: H * 0.37 });
+    this.msgs.draw(ctx, W, H, { u: W < 500 ? 0.9 : 1.1, y: H * 0.34 });
     const v3 = new THREE.Vector3();
     for (const p of this.pops) {
       p.t -= dt; const k = 1 - p.t / p.t0;
-      v3.set(this.x, this.y + 5.2 + k * 1.4, this.z).project(this.stage.camera);
+      v3.set(this.x, this.y + 3.6 + k * 1.4, this.z).project(this.stage.camera);
       ctx.globalAlpha = clamp((p.t / p.t0) * 2, 0, 1);
-      hudText(ctx, p.text, clamp((v3.x + 1) / 2 * W, 70, W - 90), clamp((1 - v3.y) / 2 * H, H * 0.4, H - 160), { size: 22, align: 'center', color: p.color, maxW: 150 });
+      hudText(ctx, p.text, clamp((v3.x + 1) / 2 * W, 70, W - 90), clamp((1 - v3.y) / 2 * H, H * 0.44, H - 160), { size: 22, align: 'center', color: p.color, maxW: 150 });
       ctx.globalAlpha = 1;
     }
     this.pops = this.pops.filter((p) => p.t > 0 && this.state !== 'over');
@@ -878,7 +867,25 @@ export class Planata {
       paragraph(ctx, t('games.planata.pausedSub'), W / 2, H * 0.42 + 36, { size: 20, maxW: W - 40, color: '#f0f0f0' });
     }
     if (this.result && (seg.kind === 'cool' || this.state === 'over')) this.drawResult(ctx, W, H, this.state === 'over');
-    if (!['pace', 'effort', 'climb'].includes(seg.kind) || this.state === 'over') this.hooks.progress?.drawToasts(ctx, W, dt, this.result && seg.kind === 'cool' ? 400 : 206, true);
+    // i riquadri dei traguardi non coprono l'azione: aspettano la fine del volo
+    if (this.state === 'over') this.hooks.progress?.drawToasts(ctx, W, dt, 330, true);
+  }
+
+  drawAltimeter(ctx, W, H, ftp, pad) {
+    const aw = 22; const ax = W - pad - aw - 2; const ay = Math.round(H * 0.46); const ah = Math.max(120, H - 168 - ay);
+    const yPx = (y) => ay + ah - clamp((y - Y_LO) / (Y_HI - Y_LO), 0, 1.04) * ah;
+    ctx.fillStyle = 'rgba(8,10,26,.55)'; rrect(ctx, ax - 4, ay - 4, aw + 8, ah + 8, 9); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.28)'; for (let i = 0; i <= 4; i++) ctx.fillRect(ax + 2, Math.round(ay + ah - ah * i / 4) - 1, aw - 4, 2);
+    hudText(ctx, `${Math.round(ftp * PCT_HI)}`, ax - 8, ay + 12, { size: 13, align: 'right', color: HUD.dim, font: 'text' });
+    hudText(ctx, `${Math.round(ftp * PCT_LO)}`, ax - 8, ay + ah, { size: 13, align: 'right', color: HUD.dim, font: 'text' });
+    const nr = this.items.find((it) => it.kind === 'ring' && !it.done);
+    if (nr) {
+      const py = yPx(nr.y); ctx.fillStyle = HUD.gold; ctx.fillRect(ax - 1, py - 4, aw + 2, 8);
+      hudText(ctx, `${Math.round(ftp * pctOf(nr.y) / 5) * 5}`, ax - 8, clamp(py + 6, ay + 26, ay + ah - 16), { size: 19, align: 'right', color: HUD.gold });
+    }
+    const my = yPx(this.y); ctx.fillStyle = '#fff'; ctx.strokeStyle = 'rgba(0,0,0,.8)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(ax - 1, my); ctx.lineTo(ax - 12, my - 7); ctx.lineTo(ax - 12, my + 7); ctx.closePath(); ctx.fill(); ctx.stroke();
+
   }
 
   drawMenu(ctx, W, H, dt) {
@@ -914,18 +921,27 @@ export class Planata {
 
   // riepilogo: stelle, sforzi tenuti, anelli, tempeste, record e cosa manca alla prossima stella
   drawResult(ctx, W, H, full) {
-    const r = this.result; const top = full ? H * 0.2 : 84 + 134;
-    if (full) { ctx.fillStyle = 'rgba(8,4,20,.82)'; ctx.fillRect(0, 0, W, H); } else { ctx.fillStyle = 'rgba(8,10,26,.78)'; rrect(ctx, 12, top - 6, W - 24, 178, 14); ctx.fill(); }
-    const y = top + 38;
-    hudText(ctx, t('games.planata.res.title'), W / 2, y - (full ? 0 : 6), { size: full ? 30 : 22, align: 'center', color: '#d9ff3d' });
-    drawStars(ctx, W / 2, y + (full ? 44 : 30), full ? 34 : 24, r.stars);
-    let yy = y + (full ? 100 : 74);
+    const r = this.result;
+    if (!full) { // durante la discesa: un riquadro piccolo sopra l'aereo (stelle, sforzi, anelli, punti)
+      const top = Math.round(H * 0.4); const h = 122;
+      ctx.fillStyle = 'rgba(8,10,26,.78)'; rrect(ctx, 12, top, W - 24, h, 14); ctx.fill();
+      hudText(ctx, t('games.planata.res.title'), W / 2, top + 26, { size: 22, align: 'center', color: '#d9ff3d' });
+      drawStars(ctx, W / 2, top + 52, 17, r.stars);
+      hudText(ctx, `${t('games.planata.res.efforts', { a: r.done, b: r.total })} · ${t('games.planata.res.rings', { a: r.rings, b: r.ringsTotal })}`, W / 2, top + 91, { size: 15, align: 'center', color: '#f0f0f0', font: 'text', maxW: W - 40 });
+      hudText(ctx, `${t('games.common.score', { n: r.score })}${r.newBest ? t('games.common.newBest') : ''}`, W / 2, top + 112, { size: 15, align: 'center', color: r.newBest ? '#7dff6a' : '#f0f0f0', font: 'text', maxW: W - 40 });
+      return;
+    }
+    ctx.fillStyle = 'rgba(8,4,20,.82)'; ctx.fillRect(0, 0, W, H);
+    const y = H * 0.2 + 38;
+    hudText(ctx, t('games.planata.res.title'), W / 2, y, { size: 30, align: 'center', color: '#d9ff3d' });
+    drawStars(ctx, W / 2, y + 44, 34, r.stars);
+    let yy = y + 100;
     const line = (s, c = '#f0f0f0') => { const o = paragraph(ctx, s, W / 2, yy, { size: 17, maxW: W - 40, color: c, maxLines: 2 }); yy = o.bottom + 4; };
     line(t('games.planata.res.efforts', { a: r.done, b: r.total }));
     line(t('games.planata.res.rings', { a: r.rings, b: r.ringsTotal }) + ' · ' + t('games.planata.res.storms', { n: r.hits }));
     line(`${t('games.common.score', { n: r.score })}${r.newBest ? t('games.common.newBest') : ''}`, r.newBest ? '#7dff6a' : '#f0f0f0');
     if (r.hint) line(t(r.hint.key, { n: r.hint.n }), '#ffd34d');
-    if (full && this.stateT > 1.4) hudText(ctx, t('games.common.retry'), W / 2, H - 70, { size: 22, align: 'center', color: '#d9ff3d' });
+    if (this.stateT > 1.4) hudText(ctx, t('games.common.retry'), W / 2, H - 70, { size: 22, align: 'center', color: '#d9ff3d' });
   }
 }
 
