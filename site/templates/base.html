@@ -46,6 +46,8 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().the
   <a class="wordmark" href="{{homeUrl}}" aria-label="Spindro">Spin<b>dro</b></a>
   <nav class="nav" aria-label="Main">
     <a class="nav-link" href="{{compatUrl}}"{{{compatCurrent}}}>{{nav.compat}}</a>
+    <a class="nav-link" href="{{devUrl}}"{{{devCurrent}}}>{{nav.developers}}</a>
+    <a class="nav-link" href="{{blogUrl}}"{{{blogCurrent}}}>{{nav.blog}}</a>
     <a class="nav-link" href="{{homeUrl}}#faq">{{nav.faq}}</a>
     <a class="nav-link" href="{{github}}" rel="noopener">{{cta.github}}</a>
     {{{langLinks}}}
@@ -67,6 +69,9 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().the
         <ul>
           <li><a href="{{appUrl}}">{{cta.app}}</a></li>
           <li><a href="{{compatUrl}}">{{nav.compat}}</a></li>
+          <li><a href="{{devUrl}}">{{footer.developers}}</a></li>
+          <li><a href="{{blogUrl}}">{{footer.blog}}</a></li>
+          <li><a href="{{feedUrl}}">{{footer.rss}}</a></li>
           <li><a href="{{github}}" rel="noopener">{{footer.source}}</a></li>
           <li><a href="{{issues}}" rel="noopener">{{footer.issues}}</a></li>
         </ul>

@@ -7,8 +7,8 @@
       "protocol": "FTMS",
       "status": "verified",
       "note": {
-        "en": "Tested by the author: connection, virtual gears, ERG, grade (up to about 6%).",
-        "it": "Provato dall'autore: connessione, cambio virtuale, ERG, pendenza (fino a circa il 6%)."
+        "en": "Tested by the author on the real trainer: connection, virtual gears, ERG and slope mode. It does not send cadence, so Spindro estimates it from flywheel speed; calibrate it in Settings.",
+        "it": "Provato dall'autore sul rullo vero: connessione, cambio virtuale, ERG e modalità pendenza. Non trasmette la cadenza, quindi Spindro la stima dalla velocità del volano; calibrala nelle Impostazioni."
       }
     },
     {
@@ -104,13 +104,13 @@
   ],
   "controllers": [
     {
-      "name": "Zwift Click",
+      "name": "Zwift Click (v2)",
       "brand": "Zwift",
       "protocol": "Zwift BLE",
-      "status": "expected",
+      "status": "partial",
       "note": {
-        "en": "Used as a Bluetooth shifter (+ / −). Experimental: built from open-source projects, not yet checked on every firmware.",
-        "it": "Usato come comando del cambio (+ / −) via Bluetooth. Sperimentale: costruito da progetti open source, non ancora verificato su ogni firmware."
+        "en": "Only the + and − keys were used on real hardware (a Click that came with a Van Rysel D100). The arrows and A/B/Y/Z follow open-source tables and are not confirmed: the key check in the app lets you verify and map them.",
+        "it": "Solo i tasti + e − sono stati usati su hardware vero (un Click arrivato con un Van Rysel D100). Frecce e A/B/Y/Z seguono tabelle open source e non sono confermati: la verifica tasti dell'app permette di controllarli e associarli."
       }
     },
     {
@@ -119,8 +119,8 @@
       "protocol": "Zwift BLE",
       "status": "expected",
       "note": {
-        "en": "Experimental. Some firmware versions encrypt the buttons, which is not implemented yet; use the on-screen buttons if nothing happens.",
-        "it": "Sperimentale. Alcuni firmware cifrano i tasti, cosa non ancora implementata; se non succede nulla usa i pulsanti a schermo."
+        "en": "Experimental. Written from open-source projects and tested only against simulated devices. Some firmware versions encrypt the buttons, which is not implemented; use the on-screen buttons if nothing happens.",
+        "it": "Sperimentale. Scritto a partire da progetti open source e provato solo con dispositivi simulati. Alcune versioni del firmware cifrano i tasti, cosa non ancora realizzata; se non succede nulla usa i tasti a schermo."
       }
     },
     {
@@ -141,8 +141,8 @@
       "protocol": "BLE sensor bridge (Android app)",
       "status": "expected",
       "note": {
-        "en": "The phone appears as a power / cadence / speed sensor. If the watch is already linked to the phone it may need the steps in the app's help. Android app only.",
-        "it": "Il telefono appare come sensore di potenza / cadenza / velocità. Se l'orologio è già collegato al telefono possono servire i passi della guida nell'app. Solo app Android."
+        "en": "The phone appears as a power, cadence and speed sensor. Built for Garmin watches, but not tested by us on real hardware, so it is listed as should-work. If the watch is already linked to the phone it may need the steps in the app's help. Android app only.",
+        "it": "Il telefono compare come sensore di potenza, cadenza e velocità. Pensato per gli orologi Garmin, ma non provato da noi su hardware vero, quindi è indicato come «dovrebbe funzionare». Se l'orologio è già associato al telefono possono servire i passi della guida nell'app. Solo app Android."
       }
     },
     {

@@ -37,8 +37,8 @@
       <h2>{{playTitle}}</h2>
       <p class="lead">{{playText}}</p>
     </div>
-    <div class="reel">{{{games}}}</div>
-    <p class="fine">{{home.gamesMore}}</p>
+    <ul class="reel">{{{games}}}</ul>
+    <p class="fine">{{home.gamesMore}}{{gamesFollow}}</p>
   </div>
 </section>
 
@@ -58,6 +58,17 @@
   </div>
 </section>
 
+<section class="dev" id="build">
+  <div class="wrap dev-grid">
+    <div>
+      <h2>{{home.devTitle}}</h2>
+      <p class="lead">{{home.devLead}}</p>
+      <div class="btns"><a class="btn primary" href="{{devUrl}}">{{home.devBtn}}</a></div>
+    </div>
+    <ul class="pledge">{{{devPoints}}}</ul>
+  </div>
+</section>
+
 <section class="compat" id="compat">
   <div class="wrap compat-grid">
     <div>
@@ -66,6 +77,13 @@
       <div class="btns"><a class="btn" href="{{compatUrl}}">{{home.compatBtn}}</a><a class="btn ghost" href="{{issues}}" rel="noopener">{{home.compatReport}}</a></div>
     </div>
     <table class="mini"><tbody>{{{compatRows}}}</tbody></table>
+  </div>
+</section>
+
+<section class="blog-teaser" id="blog">
+  <div class="wrap">
+    <div class="blog-head"><h2>{{home.blogTitle}}</h2><p class="lead">{{home.blogLead}} <a href="{{blogUrl}}">{{home.blogAll}}</a></p></div>
+    <ul class="cards">{{{blogCards}}}</ul>
   </div>
 </section>
 
