@@ -26,6 +26,12 @@ async function boot(page, { model = 'click', proto = null, seen = true, lang = '
   await expect(page.locator('#trainerStatus')).toContainText('FTMS');
   await page.evaluate(async ([m, p]) => { window.__fakeBle.clickModel = m; if (p) window.__fakeBle.clickProto = p; window.__fakeBle.next = 'click'; return window.rfDevices.add(); }, [model, proto]);
   await expect(page.locator('#clickStatus')).toContainText('Zwift');
+  if (!seen) {
+    // prima volta: finché il modello non è noto (primo messaggio) c'è solo un avviso piccolo; poi la verifica si apre da sola
+    await expect(page.locator('.cc-banner')).toBeVisible(); await expect(page.locator('#clickCheck')).toHaveCount(0);
+    await page.evaluate((n) => window.__fakeBle.pressNums([n]), proto === 'v1' ? 99 : model === 'play' ? 7 : 15); await page.waitForTimeout(150); // un tasto qualsiasi (nessun ruolo): dice il modello
+    await expect(page.locator('#clickCheck')).toBeVisible(); await expect(page.locator('.cc-banner')).toBeHidden();
+  }
   if (seen) {
     // il Click non dice se è v1 o v2 finché non manda un messaggio: un tasto "sconosciuto" qualsiasi lo sveglia senza muovere nulla
     if (wake) { await page.evaluate((n) => window.__fakeBle.pressNums([n]), model === 'play' ? 7 : 15); await page.waitForTimeout(150); }
@@ -442,6 +448,25 @@ test.describe('verifica tasti', () => {
     const t2 = await cc.locator('.cc-report pre').textContent();
     expect(t2).toContain('Mapping: confirmed by the user');
     expect(t2).toContain('plus = ride:8 (learned)');
+  });
+
+  test('Click v1 e v2 hanno lo stesso nome: ognuno si verifica la prima volta, poi più né banner né verifica', async ({ page }) => {
+    await boot(page, { seen: false, proto: 'v1' });
+    const cc = page.locator('#clickCheck');
+    await cc.locator('[data-cc="close"]').first().click(); await expect(cc).toBeHidden();
+    await page.evaluate(() => window.rfDevices.disconnectAll());
+    // stesso nome, ma questa volta è un v2: si capisce dal primo messaggio, e la verifica si apre di nuovo
+    await page.evaluate(async () => { window.__fakeBle.clickProto = 'ride'; window.__fakeBle.next = 'click'; return window.rfDevices.add(); });
+    await page.evaluate(() => window.__fakeBle.pressNums([15])); await page.waitForTimeout(150);
+    await expect(cc).toBeVisible(); await expect(page.locator('.cc-banner')).toBeHidden();
+    await cc.locator('[data-cc="close"]').first().click();
+    // visti entrambi: ricollegando il v2 niente avviso e niente verifica
+    await page.evaluate(() => window.rfDevices.disconnectAll());
+    await page.evaluate(async () => { window.__fakeBle.next = 'click'; return window.rfDevices.add(); });
+    await page.waitForTimeout(300);
+    await expect(page.locator('.cc-banner')).toBeHidden(); await expect(cc).toBeHidden();
+    await page.evaluate(() => window.__fakeBle.pressNums([15])); await page.waitForTimeout(200);
+    await expect(cc).toBeHidden();
   });
 
   test('Play: la procedura guidata chiede le quattro frecce', async ({ page }) => {
