@@ -1461,6 +1461,7 @@
   "games.menu.start": "+  SALIDA",
   "games.menu.keys": "−  duración    +  nivel    mantén +  salir",
   "games.menu.pedal": "o empieza a pedalear",
+  "games.wk.left": "{left} para acabar el paso",
   "games.wk.charge": "Sigue el objetivo para cargar",
   "games.wk.finalPhase": "¡FASE FINAL!",
   "games.menu.wkLine": "Tu entrenamiento: {name} · {n} min",

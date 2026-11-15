@@ -1461,6 +1461,7 @@
   "games.menu.start": "+  START",
   "games.menu.keys": "−  Dauer    +  Stufe    + halten  Start",
   "games.menu.pedal": "oder einfach losfahren",
+  "games.wk.left": "{left} bis zum Ende des Schritts",
   "games.wk.charge": "Ziel halten zum Laden",
   "games.wk.finalPhase": "LETZTE PHASE!",
   "games.menu.wkLine": "Dein Training: {name} · {n} Min.",

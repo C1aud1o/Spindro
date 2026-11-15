@@ -1461,6 +1461,7 @@
   "games.menu.start": "+  START",
   "games.menu.keys": "−  length    +  level    hold +  start",
   "games.menu.pedal": "or just start pedalling",
+  "games.wk.left": "{left} left in this step",
   "games.wk.charge": "Ride the target to charge",
   "games.wk.finalPhase": "FINAL PHASE!",
   "games.menu.wkLine": "Your workout: {name} · {n} min left",

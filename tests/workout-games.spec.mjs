@@ -27,8 +27,8 @@ test.beforeEach(async ({ page }) => {
 test.afterEach(async ({ page }) => { expect(page.errors, 'errori JavaScript non gestiti nella pagina').toEqual([]); });
 
 // Bot: dentro la pagina. `reqW(g)` = watt che il gioco chiede in questo istante.
-function botRun({ id, startAt, steps, ftp }) {
-  const g = window.__game; g.active = false;
+async function botRun({ id, startAt, steps, ftp }) {
+  const g = window.__game; const stopLoop = () => { g.active = false; };
   let t0 = 0; const list = steps.map(([dur, pct, label]) => { const o = { t0, dur, pct, watts: Math.round(ftp * pct / 5) * 5, kind: 'pace', label }; t0 += dur; return o; });
   const total = t0; let clock = startAt; let grade = 0;
   const wk = () => ({ name: 'Test 6', total, elapsed: Math.round(clock), steps: list });
@@ -36,12 +36,14 @@ function botRun({ id, startAt, steps, ftp }) {
   g.hooks = { ...g.hooks, connected: () => true, ftp: () => ftp, workout: wk, speedKmh: () => 30, setGrade() { grade++; } };
   // il rullo è in ERG: la potenza è il bersaglio del passo
   g.hooks.stats = () => ({ power: stepAt(clock).watts, cadence: 88 });
-  g.durIdx = 0; g.lvlIdx = 1; g.reset?.(); g.begin();
-  const reqW = window.__wkReq; const timeOf = (x) => (x.st != null && x.block !== undefined ? x.st : x.el);
+  g.durIdx = 0; g.lvlIdx = 1; if (g.reset) { stopLoop(); g.reset(); } g.begin();
+  while (g.state === 'loading') await new Promise((r) => setTimeout(r, 50)); // Breakaway costruisce la tappa un attimo dopo (serve il ciclo attivo)
+  stopLoop();
+  const reqW = window.__wkReq; const timeOf = (x) => (x.st != null && x.block !== undefined ? x.st : (x.el ?? x.wc?.el));
   const bad = []; const seen = new Set(); let n = 0; let first = null; const dt = 1 / 30; let played = 0;
   while (g.state !== 'over' && g.state !== 'results' && n < 600 * 30) {
     const b = window.__wkBot?.(g); if (b) g.input(b);
-    clock += dt; g.update(dt); n++;
+    clock += dt; g.update(dt, dt); n++;
     const got0 = reqW(g);
     if (!first && got0 != null) first = { el: timeOf(g), w: got0 };
     if (got0 != null) played++;
@@ -56,7 +58,9 @@ function botRun({ id, startAt, steps, ftp }) {
 // req: watt chiesti dal gioco adesso · bot: l'unico input del bot (+1 / −1) o 0
 const GAMES = [
   { id: 'horde', req: (g) => (g.state === 'play' ? g.tgtW : null), bot: () => 0 },
+  { id: 'racer', req: (g) => ((g.state === 'race' || g.state === 'countdown') && g.tgtW ? g.tgtW : null), bot: () => 0 },
   { id: 'shooter', req: (g) => (g.block ? g.tgW() : null), bot: () => 0 },
+  { id: 'mattoni', req: (g) => (g.state === 'play' ? g.tgtW : null), bot: () => 0 },
   { id: 'planata', req: (g) => (g.state === 'play' ? g.tgtW : null), bot: () => 0 },
   { id: 'gruppetto', req: (g) => (g.state === 'play' ? g.tgtW : null), bot: (g) => { const b = g.bridge; return b && b.state === 'attack' && b.lane !== g.lane ? (b.lane > g.lane ? 1 : -1) : 0; } },
 ];

@@ -17,7 +17,8 @@ import { makeRandom } from './kit/rng.js';
 import { clamp, lerp } from './engine.js';
 import { SONGS } from './audio.js';
 import { t } from '../i18n.js';
-import { DURATIONS, LEVELS, COOL_S, buildPlan, segAt, targetW, targetPct, Adapter, starsFor, nextStarHint } from './horde-plan.js';
+import { DURATIONS, LEVELS, COOL_S, buildPlan, planFromWorkout, segAt, targetW, targetPct, Adapter, starsFor, nextStarHint } from './horde-plan.js';
+import { WorkoutClock, BandMeter, workoutStars } from './kit/workout-plan.js';
 
 const A = 'assets/3d';
 export const HW = 5.6;             // metà larghezza del campo (m)
@@ -140,7 +141,7 @@ export class Mattoni {
       load: () => ({ durIdx: clamp(Number(ls('feedDur', 0)) || 0, 0, DURATIONS.length - 1), level: clamp(Number(ls('feedLvl', 1)) || 0, 0, LEVELS.length - 1) }),
       save: ({ durIdx, level }) => { try { localStorage.setItem('feedDur', durIdx); localStorage.setItem('feedLvl', level); } catch { /* niente storage */ } },
       best: (d, l) => { try { const r = JSON.parse(localStorage.getItem(`feedBest:${DURATIONS[d]}:${LEVELS[l].id}`) || '{}'); return { stars: r.stars || 0, text: r.score ? String(r.score) : null }; } catch { return { stars: 0, text: null }; } },
-      sfx: (n) => this.audio.sfx(n),
+      sfx: (n) => this.audio.sfx(n), workout: () => this.hooks.workout?.(),
       onStart: () => { this.reset(); this.begin(); },
     });
     this.results = new ResultsView({ sfx: (n) => this.audio.sfx(n), onAgain: () => { this.reset(); this.begin(); }, onBack: () => this.hooks.close?.() });
@@ -306,10 +307,16 @@ export class Mattoni {
   // ---------- partita ----------
   configure(durIdx, lvlIdx) {
     this.durIdx = durIdx; this.lvlIdx = lvlIdx;
-    this.total = DURATIONS[durIdx]; this.level = LEVELS[lvlIdx]; this.plan = buildPlan(this.total);
+    this.level = LEVELS[lvlIdx];
+    // allenamento in corso: la partita È l'allenamento (durata, tratti e watt vengono da lì; il livello non cambia i watt:
+    // qui cambia solo la velocità delle borracce e le vite, come sempre). Con il rullo in ERG la potenza segue il bersaglio da sola;
+    // il gioco resta la cadenza (= velocità) e il + / − per le corsie, e non chiede mai watt diversi da quelli del passo.
+    this.wc = new WorkoutClock(this.hooks); this.wk = this.wc.begin(this.ftp);
+    if (this.wk) { this.plan = planFromWorkout(this.wk); this.total = this.plan.total; } else { this.total = DURATIONS[durIdx]; this.plan = buildPlan(this.total); }
+    this.band = new BandMeter();
   }
   recordKey() { return `feedBest:${this.total}:${this.level.id}`; }
-  record() { try { return JSON.parse(localStorage.getItem(this.recordKey()) || '{}'); } catch { return {}; } }
+  record() { if (this.wk) return {}; try { return JSON.parse(localStorage.getItem(this.recordKey()) || '{}'); } catch { return {}; } }
 
   reset() {
     const { scene } = this.stage;
@@ -320,7 +327,7 @@ export class Mattoni {
     this.setTime(['morning', 'golden', 'dusk'][this.lvlIdx] || 'golden');
     this.x = 0; this.tx = 0; this.held = 0; this.heldT = 0; this.pw = 0; this.power = 0; this.cadence = 0; // niente residui del menu: la prima borraccia non dipende da come si pedalava prima
     this.lives = 4; this.score = 0; this.combo = 0; this.bestCombo = 0; this.charge = 0; this.hot = false; this.inTarget = false;
-    this.el = 0; this.segIdx = -1; this.seg = this.plan.segs[0]; this.gels = []; this.pop = null;
+    this.el = this.wk ? this.wc.el : 0; this.segIdx = -1; this.seg = this.plan.segs[0]; this.tgtW = undefined; this.gels = []; this.pop = null;
     this.paused = false; this.pauseT = 0; this.startT = 0; this.finished = false; this.result = null; this.ko = 0;
     this.effortsDone = 0; this.effortsTotal = 0; this.bossKilled = 0; this.bossSpawned = new Set(); this.delivered = 0; this.waveGot = 0; this.waveQuota = Infinity; this.waveClears = 0; this.waveNo = 0;
     this.adapt = new Adapter(); this.evLog = []; this.sprinting = false; this.sentGrade = undefined; this.msgs.clear(); this.boss = null; this.bossAt = null;
@@ -596,26 +603,35 @@ export class Mattoni {
 
   // ---------- il piano ----------
   enterSeg(i) {
-    const prev = this.seg; const seg = this.plan.segs[i];
-    if (this.segIdx >= 0) this.judge(prev);
+    const prev = this.seg; const seg = this.plan.segs[i]; const first = this.segIdx < 0;
+    if (!first) this.judge(prev);
     this.segIdx = i; this.seg = seg; seg.inT = 0; seg.okT = 0;
-    const W = targetW(seg, this.ftp, this.level.k, this.adapt.value);
+    const W = targetW(seg, this.ftp, this.level.k, this.adapt.value, this.el);
     const isBoss = this.plan.bossWaves.includes(seg.wave);
-    if (seg.kind === 'warm') { this.say(t('games.horde.say.warm'), SEG_COLOR.warm, 3, true, 2, t('games.mattoni.say.warmSub')); }
+    // con un allenamento un'ondata può cominciare con qualunque tratto (non solo con il ritmo): le file si costruiscono al cambio d'ondata
+    if (this.wk && seg.wave >= 1 && seg.wave <= this.plan.N && seg.wave !== prev?.wave && seg.kind !== 'pace') this.startWave(seg, i);
+    if (seg.kind === 'warm' && !first && prev?.kind === 'warm') { /* riscaldamento lungo spezzato: un solo annuncio */ }
+    else if (seg.kind === 'warm') { this.say(t('games.horde.say.warm'), SEG_COLOR.warm, 3, true, 2, t('games.mattoni.say.warmSub')); }
     else if (seg.kind === 'pace') {
-      this.waveNo = seg.wave; this.waveGot = 0; this.waveDone = false; this.rowsClosed = false;
-      const form = formAt(seg.wave, isBoss);
-      this.buildRows(form, seg.wave);
-      const L = seg.t1 - seg.t0 + (this.plan.segs[i + 1] ? this.plan.segs[i + 1].t1 - this.plan.segs[i + 1].t0 : 0);
-      this.waveQuota = Math.max(8, Math.round(L * 0.6 * (form.id === 'car' ? 0.7 : 1)));
+      const form = this.startWave(seg, i);
       this.say(t('games.mattoni.zoneOf', { n: seg.wave, m: this.plan.N }), '#d9ff3d', 2.6, true, 3, t('games.horde.say.waveSub', { what: t(`games.mattoni.f.${form.id}`), w: W }));
-      this.ev('wave');
     } else if (seg.kind === 'effort') { this.say(t('games.horde.say.effort', { w: W }), SEG_COLOR.effort, 1.9, true, 3, t('games.mattoni.say.effortSub')); this.audio.sfx('go'); this.ev('segment'); this.maybeBoss(seg); }
-    else if (seg.kind === 'sprint') { this.say(t('games.horde.say.sprint', { w: W }), SEG_COLOR.sprint, 2.4, true, 3, t('games.mattoni.say.sprintSub', { s: Math.round(seg.t1 - seg.t0) })); this.audio.sfx('alarm'); this.ev('segment'); }
+    else if (seg.kind === 'sprint') { if (this.wk) this.maybeBoss(seg); this.say(t('games.horde.say.sprint', { w: W }), SEG_COLOR.sprint, 2.4, true, 3, t('games.mattoni.say.sprintSub', { s: Math.round(seg.t1 - seg.t0) })); this.audio.sfx('alarm'); this.ev('segment'); }
     else if (seg.kind === 'rest') {
       this.say(t('games.horde.say.rest'), SEG_COLOR.rest, 2.4, true, 2, t('games.horde.say.restSub', { w: W })); this.ev('segment');
       if (this.boss && !this.boss.dead) { this.boss.leave = true; this.say(t('games.mattoni.carGone'), '#ffb84d', 2, false, 2); }
     } else if (seg.kind === 'cool') { this.startCool(); }
+  }
+
+  // inizio di un'ondata: file di borracce e quota da consegnare
+  startWave(seg, i) {
+    this.waveNo = seg.wave; this.waveGot = 0; this.waveDone = false; this.rowsClosed = false;
+    const form = formAt(seg.wave, this.plan.bossWaves.includes(seg.wave));
+    this.buildRows(form, seg.wave);
+    const L = this.wk ? this.plan.segs.filter((q) => q.wave === seg.wave).reduce((a, q) => a + q.t1 - q.t0, 0) : seg.t1 - seg.t0 + (this.plan.segs[i + 1] ? this.plan.segs[i + 1].t1 - this.plan.segs[i + 1].t0 : 0);
+    this.waveQuota = Math.max(8, Math.round(L * 0.6 * (form.id === 'car' ? 0.7 : 1)));
+    this.ev('wave');
+    return form;
   }
 
   judge(seg) {
@@ -628,7 +644,7 @@ export class Mattoni {
       this.say(t(seg.kind === 'sprint' ? 'games.horde.sprintOk' : 'games.horde.effortOk'), '#7dff6a', 1.8, true, 2); this.prog('sprintsWon', seg.kind === 'sprint' ? 1 : 0, 20);
     } else this.say(t('games.horde.effortKo'), '#ffb84d', 1.6, false, 1);
     this.ev(ok ? 'effortOk' : 'effortKo');
-    const moved = this.adapt.report(ok);
+    const moved = this.wk ? 0 : this.adapt.report(ok); // con un allenamento i watt li decide lui
     if (moved) this.say(t(moved < 0 ? 'games.horde.adaptDown' : 'games.horde.adaptUp'), moved < 0 ? '#4de3ff' : '#ffd34d', 2.2, false, 2);
   }
 
@@ -642,13 +658,14 @@ export class Mattoni {
 
   finishResult() {
     const bossTotal = this.plan.bossWaves.length;
-    const s = starsFor({ done: this.effortsDone, total: this.effortsTotal, bossKilled: this.bossKilled, bossTotal, ko: this.ko });
+    // con un allenamento le stelle sono le stesse di tutti i giochi: tempo entro ±7 % del bersaglio (kit/workout-plan.js)
+    const s = this.wk ? { stars: workoutStars(this.band.ratio, true), ratio: this.band.ratio } : starsFor({ done: this.effortsDone, total: this.effortsTotal, bossKilled: this.bossKilled, bossTotal, ko: this.ko });
     const rec = this.record(); const prevBest = rec.score || 0; const newBest = this.score > prevBest;
-    if (newBest || s.stars > (rec.stars || 0)) { try { localStorage.setItem(this.recordKey(), JSON.stringify({ score: Math.max(prevBest, this.score), stars: Math.max(rec.stars || 0, s.stars) })); } catch { /* niente storage */ } }
+    if (!this.wk && (newBest || s.stars > (rec.stars || 0))) { try { localStorage.setItem(this.recordKey(), JSON.stringify({ score: Math.max(prevBest, this.score), stars: Math.max(rec.stars || 0, s.stars) })); } catch { /* niente storage */ } }
     this.result = { ...s, prevBest, done: this.effortsDone, total: this.effortsTotal, bossKilled: this.bossKilled, bossTotal, ko: this.ko, score: this.score, newBest, delivered: this.delivered, waves: this.waveClears, combo: this.bestCombo };
-    this.result.hint = nextStarHint(this.result);
+    this.result.hint = this.wk ? null : nextStarHint(this.result); this.result.wk = !!this.wk; this.result.band = this.band.ratio;
     this.prog('races', 0, 40 + s.stars * 40 + this.effortsDone * 10);
-    this.hooks.progress?.setMax('feedStars', s.stars);
+    if (!this.wk) this.hooks.progress?.setMax('feedStars', s.stars);
   }
 
   // chiusura anticipata (come negli altri giochi: la usano i test e l'app): calcola il riepilogo e termina
@@ -657,8 +674,9 @@ export class Mattoni {
   finish() {
     this.state = 'over'; this.stateT = 0; this.finished = true; this.results.reset();
     this.audio.stopSong(); this.audio.sfx('win');
+    if (!this.result) this.finishResult();
     this.hooks.runEnd?.({ game: 'mattoni', score: this.score });
-    this.hooks.setGrade?.(0);
+    if (!this.wk) this.hooks.setGrade?.(0);
   }
 
   // ---------- aggiornamento ----------
@@ -667,7 +685,7 @@ export class Mattoni {
     const connected = this.hooks.connected(); const st = this.hooks.stats();
     const ftp = this.ftp;
     // senza rullo la demo simula 0,8 × FTP con scatti (e un po' meno nel recupero)
-    const demoP = !connected ? ftp * (this.state === 'play' && this.seg?.kind === 'rest' ? 0.58 : 0.8) * (((this.t % 40) > 31 && this.seg?.kind !== 'rest') ? 1.6 : 1) : 0;
+    const demoP = !connected && this.wk && this.seg ? targetW(this.seg, ftp, 0, 0, this.el) : !connected ? ftp * (this.state === 'play' && this.seg?.kind === 'rest' ? 0.58 : 0.8) * (((this.t % 40) > 31 && this.seg?.kind !== 'rest') ? 1.6 : 1) : 0;
     this.power = connected ? st.power || 0 : demoP;
     this.cadence = connected ? st.cadence || 0 : 88;
     this.pw += (this.power - this.pw) * Math.min(1, dt / 0.9);
@@ -679,19 +697,22 @@ export class Mattoni {
     if (this.state === 'menu') { this.menu.update(dt, { connected, power: st.power || 0 }); this.setTime(['morning', 'golden', 'dusk'][this.lvlIdx] || 'golden'); this.view(dt); return; }
     if (this.state === 'over') { this.results.update(dt); this.view(dt); return; }
 
+    // con un allenamento il tempo è quello dell'allenamento (anche se in pausa); finito lui, finisce la partita
+    if (this.wk) { this.el = this.wc.tick(dt); if (this.wc.ended) return this.finish(); }
     // pausa: chi smette di pedalare non perde, il tempo si ferma
     if (connected) {
       if (this.power < 12) { this.pauseT += dt; if (this.pauseT > 2.5 && !this.paused) { this.paused = true; this.audio.sfx('beep'); } } else if (this.power > 25) { this.pauseT = 0; this.paused = false; }
     }
     if (this.paused) { this.view(0); return; }
 
-    this.el += dt;
+    if (!this.wk) this.el += dt;
     let seg = segAt(this.plan, this.el);
     const idx = this.plan.segs.indexOf(seg);
     if (idx !== this.segIdx) { this.enterSeg(idx); seg = this.seg; }
     if (this.el >= this.total) return this.finish();
-    const tgt = targetW(seg, ftp, this.level.k, this.adapt.value);
+    const tgt = targetW(seg, ftp, this.level.k, this.adapt.value, this.el);
     seg.inT += dt; this.tgtW = tgt;
+    if (this.wk) this.band.add(dt, this.pw, tgt, this.el - seg.stepStart);
     this.inTarget = this.pw >= 0.92 * tgt;
     const rush = seg.kind === 'effort' || seg.kind === 'sprint';
     if (rush && seg.inT > (seg.kind === 'sprint' ? 2 : 4) && this.inTarget) seg.okT += dt;
@@ -701,7 +722,7 @@ export class Mattoni {
     if (hot && !this.hot) { this.audio.sfx('overdrive'); this.prog('overdrives', 1, 15); this.ev('hot'); }
     this.hot = hot; this.sprinting = hot;
     const g = this.boss && !this.boss.dead ? 4 : seg.kind === 'rest' || seg.kind === 'cool' ? 0 : seg.kind === 'warm' ? 1 : seg.kind === 'pace' ? 2 : 3;
-    if (g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade?.(g); }
+    if (!this.wk && g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade?.(g); }
 
     if (this.held) { this.heldT += dt; if (this.heldT > 0.12) this.tx = clamp(this.tx - this.held * MOVE * dt, -this.reach(), this.reach()); }
     this.x = lerp(this.x, this.tx, 1 - Math.exp(-dt * 12));
@@ -849,14 +870,14 @@ export class Mattoni {
     const col = SEG_COLOR[seg.kind]; const by = y0 + 22; const bh2 = 44;
     ctx.fillStyle = 'rgba(8,10,26,.72)'; rrect(ctx, pad - 4, by, W - 2 * pad + 8, bh2, 12); ctx.fill();
     ctx.fillStyle = col; rrect(ctx, pad - 4, by, 7, bh2, 3); ctx.fill();
-    const tw = this.tgtW || targetW(seg, this.ftp, this.level.k, this.adapt.value);
-    const left = Math.max(0, Math.ceil(seg.t1 - this.el));
-    hudText(ctx, t(`games.horde.seg.${seg.kind}`), pad + 12, by + 29, { size: 21, color: col, maxW: W * 0.34 });
+    const tw = this.tgtW || targetW(seg, this.ftp, this.level.k, this.adapt.value, this.el);
+    const left = Math.max(0, Math.ceil((this.wk ? seg.stepEnd : seg.t1) - this.el)); // con un allenamento: nome del passo e tempo che manca alla fine del passo
+    hudText(ctx, this.wk ? (seg.label || t(`games.wk.seg.${seg.wkKind}`)) : t(`games.horde.seg.${seg.kind}`), pad + 12, by + 29, { size: 21, color: col, maxW: W * 0.34 });
     hudText(ctx, `${tw} W`, W / 2 + 8, by + 32, { size: 32, align: 'center', color: this.inTarget || ['rest', 'cool', 'warm'].includes(seg.kind) ? '#ffffff' : '#ffd34d', maxW: W * 0.34 });
     hudText(ctx, `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`, W - pad - 4, by + 29, { size: 21, align: 'right', color: '#e8e8f4', maxW: 70 });
     // barra del tratto, poi l'obiettivo dell'ondata (musette consegnate) e, se c'è, la vita dell'auto
     let y = by + bh2 + 4;
-    const segK = clamp((seg.t1 - this.el) / (seg.t1 - seg.t0), 0, 1);
+    const segK = this.wk ? clamp((seg.stepEnd - this.el) / (seg.stepEnd - seg.stepStart), 0, 1) : clamp((seg.t1 - this.el) / (seg.t1 - seg.t0), 0, 1);
     ctx.fillStyle = 'rgba(255,255,255,.18)'; rrect(ctx, pad, y, W - 2 * pad, 6, 3); ctx.fill();
     ctx.fillStyle = col; rrect(ctx, pad, y, Math.max(6, (W - 2 * pad) * segK), 6, 3); ctx.fill();
     y += 12;
@@ -931,12 +952,15 @@ export class Mattoni {
 
   drawResult(ctx, W, H) {
     const r = this.result; const crit = [{ ok: true, label: t('games.mattoni.crit.finish') }];
-    crit.push({ ok: r.ratio >= 0.5, label: t('games.mattoni.crit.half') });
-    crit.push({ ok: r.ratio >= 0.8, label: t('games.mattoni.crit.most') });
-    crit.push({ ok: r.bossKilled >= r.bossTotal, label: t('games.mattoni.crit.cars') });
-    crit.push({ ok: r.ko <= 3, label: t('games.mattoni.crit.flats') });
+    if (r.wk) { crit.length = 0; crit.push({ ok: true, label: t('games.wk.res.done') }, { ok: r.band >= 0.85, label: t('games.wk.res.band', { p: Math.round(r.band * 100) }) }, { ok: r.bossKilled >= r.bossTotal, label: t('games.mattoni.crit.cars') }); }
+    else {
+      crit.push({ ok: r.ratio >= 0.5, label: t('games.mattoni.crit.half') });
+      crit.push({ ok: r.ratio >= 0.8, label: t('games.mattoni.crit.most') });
+      crit.push({ ok: r.bossKilled >= r.bossTotal, label: t('games.mattoni.crit.cars') });
+      crit.push({ ok: r.ko <= 3, label: t('games.mattoni.crit.flats') });
+    }
     this.results.draw(ctx, W, H, {
-      title: t('games.horde.res.title'), subtitle: `${t('games.mattoni.name')} · ${t('games.menu.min', { n: this.total / 60 })} · ${t(`games.menu.${['easy', 'normal', 'hard'][this.lvlIdx]}`)}`,
+      title: t('games.horde.res.title'), subtitle: `${t('games.mattoni.name')} · ${r.wk ? this.wk.name : t('games.menu.min', { n: this.total / 60 })} · ${t(`games.menu.${['easy', 'normal', 'hard'][this.lvlIdx]}`)}`,
       stars: r.stars, criteria: crit, score: r.score, best: r.prevBest ? String(r.prevBest) : null, newBest: r.newBest,
       lines: [t('games.horde.res.efforts', { a: r.done, b: r.total }), t('games.mattoni.res.cars', { a: r.bossKilled, b: r.bossTotal }) + ' · ' + t('games.mattoni.res.flats', { n: r.ko }), t('games.mattoni.res.bags', { n: r.delivered }) + ' · ' + t('games.mattoni.res.combo', { n: r.combo })],
     });

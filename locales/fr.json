@@ -1461,6 +1461,7 @@
   "games.menu.start": "+  DÉPART",
   "games.menu.keys": "−  durée    +  niveau    maintenir +  départ",
   "games.menu.pedal": "ou commence à pédaler",
+  "games.wk.left": "{left} avant la fin de l'étape",
   "games.wk.charge": "Tiens la cible pour charger",
   "games.wk.finalPhase": "PHASE FINALE !",
   "games.menu.wkLine": "Ton entraînement : {name} · {n} min",

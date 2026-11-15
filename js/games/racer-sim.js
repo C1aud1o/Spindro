@@ -7,6 +7,8 @@
 // Il giocatore va alla velocità della sua potenza reale ÷ FTP: stessa curva per tutti, quindi la gara
 // è combattuta con 120 W di FTP come con 320.
 
+import { workoutStars } from './kit/workout-plan.js';
+
 export const LANES = [-2.4, 0, 2.4];
 export const START = 14;       // m: dove parte il giocatore
 export const V100 = 10.5;      // m/s nel mondo di gioco a 100 % FTP in piano, senza scia
@@ -71,9 +73,28 @@ export function packPace(m, fr, t, scale) {
   return base * scale * (t < 8 ? lerp(0.45, 1, clamp((t - 3) / 5, 0, 1)) : 1);
 }
 
+// ---------- allenamento in corso → momenti (kit/workout-plan.js workoutPlan) ----------
+// Il tempo della gara è quello dell'allenamento, da `from` (secondi di allenamento in cui parte la gara) in poi.
+//   warm → start · facile, recupero, defaticamento → recover · ritmo → climb · sforzo → break · scatto → sprint
+//   l'ultimo tratto di lavoro (ritmo, sforzo o scatto) diventa la volata finale. Il ritmo del gruppo e l'obiettivo sono i
+//   watt dell'allenamento: l'obiettivo è sempre «tieni il bersaglio del passo» (mai watt diversi).
+const WK_MOMENT = { warm: 'start', easy: 'recover', recovery: 'recover', cool: 'recover', tempo: 'climb', effort: 'break', sprint: 'sprint' };
+export function itemsFromWorkout(wp, from = 0) {
+  const parts = wp.segs.map((g) => ({ g, a: Math.max(g.t0, from), b: g.t1 })).filter((x) => x.b - x.a > 0.5);
+  const items = parts.map(({ g, a, b }) => {
+    const dur = b - a; const kind = WK_MOMENT[g.kind];
+    const hold = ['climb', 'break', 'sprint'].includes(kind) && dur >= 15;
+    return { kind, dur, pace: g.pct, wkSeg: g, t0w: a, obj: kind === 'start' ? { type: 'stay' } : hold ? { type: 'hold', pct: g.pct, sec: Math.max(4, Math.round(dur * 0.6)) } : { type: 'rest' }, pre: hold ? 8 : undefined };
+  });
+  const last = items.map((x, i) => [x, i]).filter(([x]) => ['climb', 'break', 'sprint'].includes(x.kind)).pop();
+  if (last) { const [x, i] = last; items[i] = { ...x, kind: 'final', obj: x.obj.type === 'hold' ? x.obj : { type: 'rest' }, pre: x.obj.type === 'hold' ? 8 : undefined }; }
+  items.total = items.reduce((a, x) => a + x.dur, 0);
+  return items;
+}
+
 // ---------- costruzione della tappa: momenti con posizione sulla strada ----------
-export function buildTimeline(D, stage = 0) {
-  const items = plan(D); const R = D - COOL;
+export function buildTimeline(D, stage = 0, wkItems = null) {
+  const items = wkItems || plan(D); const R = D - COOL;
   let climbs = [];
   const gradeFn = () => (s) => {
     let g = Math.sin(s / 190) * ROLL[stage] + Math.sin(s / 71 + 1) * ROLL[stage] * 0.4;
@@ -87,7 +108,7 @@ export function buildTimeline(D, stage = 0) {
   for (let it = 0; it < 6; it++) {
     let s = START; let t = 0; moments = [];
     for (const it2 of items) {
-      const def = M[it2.kind]; const s0 = s; const t0 = t;
+      const def = { ...M[it2.kind], ...(it2.pace != null ? { pace: it2.pace } : {}), ...(it2.obj ? { obj: it2.obj } : {}) }; const s0 = s; const t0 = t;
       const dt = 0.1;
       for (; t < t0 + it2.dur - 1e-9; t += dt) s += (t < 3 ? 0 : speedFor(packPace(def, (t - t0) / it2.dur, t, 1), grade(s))) * dt;
       moments.push({ ...it2, ...def, t0, t1: t0 + it2.dur, s0, s1: s });
@@ -95,20 +116,21 @@ export function buildTimeline(D, stage = 0) {
     climbs = moments.filter((x) => x.kind === 'climb').map((x) => ({ s0: x.s0, s1: x.s1 }));
     grade = gradeFn();
   }
-  const length = moments.at(-1).s1;
+  // con un allenamento la tappa finisce con l'allenamento (a tempo), non al traguardo: la strada è più lunga di quanto il gruppo ne fa, così nessuno arriva prima
+  const length = moments.at(-1).s1 * (wkItems ? 1.3 : 1);
   const lines = [];
   moments.forEach((m, i) => {
     m.i = i;
     if (m.kind === 'sprint') lines.push({ type: 'green', s: m.s1 - 8, mi: i });
     if (m.kind === 'climb') lines.push({ type: 'kom', s: m.s1 - 8, mi: i });
   });
-  return { moments, lines, length: length, gradeAt: grade, duration: D, race: R, stage, climbs };
+  return { moments, lines, length: length, gradeAt: grade, duration: D, race: R, stage, climbs, wk: !!wkItems };
 }
 
 // ---------- la gara ----------
 export class Race {
   constructor({ tl = null, duration = 300, stage = 0, level = 1, names = [], adapt = 0, seed = 1 } = {}) {
-    this.tl = tl || buildTimeline(duration, stage);
+    this.tl = tl || buildTimeline(duration, stage); this.wk = !!this.tl.wk; // con un allenamento: tempo = quello dell'allenamento, watt = quelli dell'allenamento
     this.kD = TUNE.kD[duration <= 300 ? 0 : duration <= 600 ? 1 : 2]; this.D = duration; this.levelMul = LEVELS[level] ?? 1; this.adapt = adapt;
     this.names = names; this.events = []; this.log = [];
     let rs = seed; this.rnd = () => ((rs = (rs * 16807) % 2147483647) / 2147483647);
@@ -131,7 +153,8 @@ export class Race {
     this.escapee = null; this.pass = 0;
   }
 
-  get scale() { return this.levelMul * (1 + this.adapt); }
+  // il livello cambia la forza dei rivali; con un allenamento niente adattamento e mai i watt del giocatore (obiettivi in watt fissi)
+  get scale() { return this.wk ? this.levelMul : this.levelMul * (1 + this.adapt); }
   moment(i = this.mi) { return this.tl.moments[Math.max(0, i)]; }
   say(key, p = {}, prio = 1, o = {}) {
     // lo stesso testo non si ripete a ruota
@@ -175,12 +198,13 @@ export class Race {
     this.t += dt; pl.e = e;
     // momento attuale (dalla posizione del giocatore): annunci, obiettivi
     let mi = this.mi < 0 ? 0 : this.mi;
-    while (mi < tl.moments.length - 1 && pl.s >= tl.moments[mi].s1) mi++;
+    if (this.wk) while (mi < tl.moments.length - 1 && this.t >= tl.moments[mi].t1) mi++; // a tempo: i momenti seguono l'allenamento
+    else while (mi < tl.moments.length - 1 && pl.s >= tl.moments[mi].s1) mi++;
     if (mi !== this.mi) this.enter(mi);
-    const m = this.moment(); const fr = this.frAt(m, pl.s);
+    const m = this.moment(); const fr = this.wk ? clamp((this.t - m.t0) / Math.max(1, m.t1 - m.t0), 0, 1) : this.frAt(m, pl.s);
     this.fr = fr;
     const nx = tl.moments[mi + 1];
-    if (nx && nx.pre && !this.announced.has(nx.i) && pl.s >= nx.s0 - nx.pre * Math.max(8, pl.speed)) { this.announced.add(nx.i); this.announce(nx); }
+    if (nx && nx.pre && !this.announced.has(nx.i) && (this.wk ? this.t >= nx.t0 - nx.pre : pl.s >= nx.s0 - nx.pre * Math.max(8, pl.speed))) { this.announced.add(nx.i); this.announce(nx); }
     const cd = this.t < 3; // via
     const ramp = this.t < 8 ? lerp(0.45, 1, clamp((this.t - 3) / 5, 0, 1)) : 1;
     // il gruppo = la mediana dei rivali
@@ -248,14 +272,14 @@ export class Race {
   }
   announce(nx) {
     const key = { break: 'games.racer.say.preBreak', sprint: 'games.racer.say.preSprint', climb: 'games.racer.say.preClimb', chase: 'games.racer.say.preChase', final: 'games.racer.say.preFinal' }[nx.kind];
-    if (key) this.say(key, { pct: Math.round(((nx.obj.pct ?? 1) * this.scale) * 20) * 5, sec: nx.obj.sec }, 3, { every: 0, big: true });
+    if (key) this.say(key, { pct: Math.round(((nx.obj.pct ?? 1) * (this.wk ? 1 : this.scale)) * 20) * 5, sec: nx.obj.sec }, 3, { every: 0, big: true });
     this.next = nx; this.nextT = this.t;
   }
 
   // ---------- obiettivi ----------
   openObjective(m) {
     const o = m.obj; if (!o || o.type === 'rest') { this.obj = null; return; }
-    const pct = o.pct != null ? o.pct * this.scale : null;
+    const pct = o.pct != null ? o.pct * (this.wk ? 1 : this.scale) : null;
     const sec = o.type === 'hold' && o.sec < 1 ? Math.round(m.dur * o.sec) : o.sec;
     this.obj = { type: o.type, pct, sec, bar: 0, done: false, kind: m.kind, m, t: 0, gap: o.gap };
     this.objTotal++;
@@ -263,7 +287,7 @@ export class Race {
   updateObjective(dt, m, fr) {
     const ob = this.obj; if (!ob || ob.done) return; const pl = this.player; ob.t += dt;
     if (ob.type === 'hold') {
-      if (pl.e >= ob.pct * 0.97) ob.bar = Math.min(ob.sec, ob.bar + dt); else ob.bar = Math.max(0, ob.bar - dt * 0.5);
+      if (pl.e >= ob.pct * (this.wk ? 0.93 : 0.97)) ob.bar = Math.min(ob.sec, ob.bar + dt); else ob.bar = Math.max(0, ob.bar - dt * 0.5); // con un allenamento la tolleranza è ±7 % (come le stelle)
       if (ob.bar >= ob.sec) this.succeed();
     } else if (ob.type === 'kick') {
       const line = this.tl.lines.find((l) => l.mi === m.i)?.s ?? m.s1;
@@ -278,7 +302,7 @@ export class Race {
   succeed() {
     const ob = this.obj; ob.done = true; this.objDone++; this.streak.ok++; this.streak.ko = 0; this.objHist.push({ kind: ob.kind, ok: true, t: this.t });
     this.say('games.racer.say.objOk', { kind: ob.kind }, 3, { big: true, every: 0, ok: true });
-    if (this.streak.ok >= 3 && this.adapt < 0.15) { this.adapt = Math.min(0.15, this.adapt + 0.05); this.streak.ok = 0; this.say('games.racer.say.harder', {}, 1, { every: 0 }); }
+    if (!this.wk && this.streak.ok >= 3 && this.adapt < 0.15) { this.adapt = Math.min(0.15, this.adapt + 0.05); this.streak.ok = 0; this.say('games.racer.say.harder', {}, 1, { every: 0 }); }
   }
   closeObjective() {
     const ob = this.obj; if (!ob) return;
@@ -292,7 +316,7 @@ export class Race {
       else {
         this.streak.ko++; this.streak.ok = 0; this.objHist.push({ kind: ob.kind, ok: false, t: this.t });
         this.say('games.racer.say.objKo', { kind: ob.kind }, 2, { every: 0, ko: true });
-        if (ob.type !== 'stay' && this.streak.ko >= 2 && this.adapt > -0.15) { this.adapt = Math.max(-0.15, this.adapt - 0.05); this.streak.ko = 0; this.say('games.racer.say.easier', {}, 1, { every: 0 }); }
+        if (!this.wk && ob.type !== 'stay' && this.streak.ko >= 2 && this.adapt > -0.15) { this.adapt = Math.max(-0.15, this.adapt - 0.05); this.streak.ko = 0; this.say('games.racer.say.easier', {}, 1, { every: 0 }); }
       }
     }
     this.obj = null;
@@ -319,7 +343,7 @@ export class Race {
     if (this.winnerT != null && this.t - this.winnerT > 15) { this.over = true; this.timeout = true; }
     return this.over;
   }
-  finalize() {
+  finalize(bandRatio = null) {
     this.closeObjective();
     // tempi stimati per chi non è arrivato
     for (const r of this.rivals) if (r.fin == null) r.fin = this.t + (this.tl.length - r.s) / Math.max(3, r.speed);
@@ -330,7 +354,9 @@ export class Race {
     let stars = 1;
     if (this.objDone >= Math.ceil(this.objTotal * 0.6) || top3) stars = 2;
     if ((frac >= 0.7 && top3) || (this.objTotal > 0 && this.objDone === this.objTotal && frac >= 0.99)) stars = 3; // 3 stelle: tutti gli obiettivi, oppure il 70 % e il podio
-    this.result = { place, stars, objDone: this.objDone, objTotal: this.objTotal, time: this.player.fin, adapt: this.adapt };
+    // con un allenamento le stelle sono le stesse di tutti i giochi: tempo entro ±7 % del bersaglio (kit/workout-plan.js)
+    if (this.wk && bandRatio != null) stars = workoutStars(bandRatio, true);
+    this.result = { place, stars, objDone: this.objDone, objTotal: this.objTotal, time: this.player.fin, adapt: this.adapt, wk: this.wk, band: bandRatio };
     return this.result;
   }
 
