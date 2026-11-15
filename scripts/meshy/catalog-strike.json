@@ -1,0 +1,98 @@
+[
+ {
+  "name": "robot_trooper",
+  "prompt": "Full body cartoon humanoid robot soldier standing in T-pose, legs apart, chunky boxy armor plates on chest arms and legs in bright pure green flat color, dark grey metal joints, round helmet head with one big glowing visor eye, toy-like friendly style, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "character",
+  "height_m": 1.9,
+  "task_preview": "01a1deef-525d-73ff-8f52-14ccc4dd0894",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1deef-dde7-7775-9d89-e274bf48a1bd"
+ },
+ {
+  "name": "robot_brute",
+  "prompt": "Full body big heavy cartoon robot brute standing in T-pose, legs apart, huge round shoulders and big fists, small head with glowing eye, thick armor plates in bright pure green flat color, dark grey metal joints, exhaust pipes on the back, toy-like style, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "character",
+  "height_m": 2.6,
+  "task_preview": "01a1def0-5ea8-7694-90b6-5f275f94e885",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1def0-e7fb-77e7-b86d-bcaf566584e1"
+ },
+ {
+  "name": "boss_mech",
+  "prompt": "Full body giant cartoon battle mech robot standing in T-pose, legs apart, massive chest with a round glowing core, thick cannon forearms, armor plates in bright pure green flat color, dark steel joints, small head with red glowing eyes, toy-like style, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "character",
+  "height_m": 7,
+  "task_preview": "01a1def1-6c27-7702-821f-7f112743ea1e",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1def2-203b-77da-91d7-75fc222af582"
+ },
+ {
+  "name": "drone",
+  "prompt": "Flying robot drone, round body with a single big glowing camera eye in front, four small rotors on short arms, small gun underneath, orange and dark grey, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 1,
+  "task_preview": "01a1def2-a262-73a5-9f65-31af5d5397ff",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1def3-0697-73ac-a728-1cfd6491f2e4"
+ },
+ {
+  "name": "boss_tank",
+  "prompt": "Giant armored bulldozer tank robot, huge front blade, two big tracks, cannon turret on top, two angry headlights like eyes, yellow and black hazard stripes, dark grey metal, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 4.5,
+  "task_preview": "01a1def3-88ba-73f7-8126-b14b2186c332",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1def4-39bb-756e-841a-cac88f29fd46"
+ },
+ {
+  "name": "boss_airship",
+  "prompt": "Armored robot airship blimp, riveted steel grey balloon, gondola underneath with two cannons, red glowing eyes on the front, three propellers at the back, red fins, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 5,
+  "task_preview": "01a1def4-bba3-7559-af92-75e5058fe2b3",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1def5-1e02-731f-8736-b9b0333d5fbf",
+  "balance_diff": 20,
+  "note": "differenza di saldo gonfiata da un'altra sessione sullo stesso account; costo reale 15 (preview + refine)"
+ },
+ {
+  "name": "cage",
+  "prompt": "Square metal prison cage with thick vertical bars, flat roof, padlock on the door, dark rusty metal, empty open interior, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 2.2,
+  "task_preview": "01a1def5-9f07-75f4-9730-c708d8b0da03",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1def6-275b-73c5-934d-6aba281c6720",
+  "balance_diff": 20,
+  "note": "differenza di saldo gonfiata da un'altra sessione sullo stesso account; costo reale 15 (preview + refine)"
+ },
+ {
+  "name": "harbor_crane",
+  "prompt": "Harbor container gantry crane, tall steel frame painted red and white, four legs, long horizontal boom on top, operator cabin, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 18,
+  "task_preview": "01a1def6-f9f8-7172-ac32-1957075653f2",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1def7-5af7-7332-a506-444471dc3b9f",
+  "balance_diff": 25,
+  "note": "differenza di saldo gonfiata da un'altra sessione sullo stesso account; costo reale 15 (preview + refine)"
+ },
+ {
+  "name": "neon_tower",
+  "prompt": "Futuristic city skyscraper, tall rectangular tower, dark blue facade with glowing cyan and magenta neon stripes and lit windows, flat roof with antenna, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 30,
+  "task_preview": "01a1defc-7c8f-7404-bdbc-c38d097950f2",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1defd-0659-7022-b0d9-9e7fe75319e8"
+ }
+]

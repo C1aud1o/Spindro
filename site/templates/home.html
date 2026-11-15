@@ -1,0 +1,89 @@
+<section class="hero wrap">
+  <p class="kicker">{{home.kicker}}</p>
+  <h1><span class="l1">{{home.h1a}}</span> <span class="l2"><mark>{{home.h1b}}</mark></span></h1>
+  <div class="hero-grid">
+    <div class="hero-copy">
+      <p class="lead">{{home.lead}}</p>
+      <div class="btns">
+        <a class="btn primary" href="{{appUrl}}">{{cta.app}}</a>
+        <a class="btn" href="{{androidUrl}}" rel="noopener">{{cta.android}}</a>
+      </div>
+      <p class="fine">{{home.heroNote}}</p>
+    </div>
+    <figure class="hero-phone">
+      <div class="sticker" aria-hidden="true"><b>{{home.stickerTop}}</b><span>{{home.stickerBottom}}</span></div>
+      <div class="phone">{{{heroImg}}}</div>
+    </figure>
+  </div>
+</section>
+
+<nav class="route" aria-label="{{home.routeAria}}">
+  <div class="wrap">
+    <p class="label">{{home.routeTitle}}</p>
+    <div class="route-map">
+      {{{routeSvg}}}
+      <ol>{{{routeLinks}}}</ol>
+    </div>
+  </div>
+</nav>
+
+{{{stageConnect}}}
+{{{stageTrain}}}
+
+<section class="stage play" id="play">
+  <div class="wrap">
+    <div class="play-head">
+      {{{bibPlay}}}
+      <h2>{{playTitle}}</h2>
+      <p class="lead">{{playText}}</p>
+    </div>
+    <div class="reel">{{{games}}}</div>
+    <p class="fine">{{home.gamesMore}}</p>
+  </div>
+</section>
+
+{{{stageRecord}}}
+
+<section class="stage own" id="own">
+  <div class="wrap own-grid">
+    <div>
+      {{{bibOwn}}}
+      <h2>{{ownTitle}}</h2>
+      <p class="zero" aria-label="{{home.ownBig}} {{home.ownUnit}}"><b>{{home.ownBig}}</b><span>{{home.ownUnit}}</span></p>
+    </div>
+    <div>
+      <ul class="pledge">{{{ownPoints}}}</ul>
+      <div class="btns"><a class="btn primary" href="{{github}}" rel="noopener">{{home.ownBtn}}</a></div>
+    </div>
+  </div>
+</section>
+
+<section class="compat" id="compat">
+  <div class="wrap compat-grid">
+    <div>
+      <h2>{{home.compatTitle}}</h2>
+      <p class="lead">{{home.compatLead}}</p>
+      <div class="btns"><a class="btn" href="{{compatUrl}}">{{home.compatBtn}}</a><a class="btn ghost" href="{{issues}}" rel="noopener">{{home.compatReport}}</a></div>
+    </div>
+    <table class="mini"><tbody>{{{compatRows}}}</tbody></table>
+  </div>
+</section>
+
+<section class="faq" id="faq">
+  <div class="wrap faq-grid">
+    <h2>{{home.faqTitle}}</h2>
+    <div>{{{faq}}}</div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <h2>{{home.finalTitle}}</h2>
+    <p class="lead">{{home.finalText}}</p>
+    <div class="btns">
+      <a class="btn primary" href="{{appUrl}}">{{cta.app}}</a>
+      <a class="btn" href="{{androidUrl}}" rel="noopener">{{cta.android}}</a>
+    </div>
+    <p class="fine">{{{androidNote}}}</p>
+  </div>
+</section>

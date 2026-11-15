@@ -1,0 +1,27 @@
+node_modules/
+www/
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/app/src/main/assets/public/
+android/capacitor-cordova-android-plugins/build/
+
+# chiavi di firma Android e loro copie base64: mai nel repository (docs/android-release.md)
+*.jks
+*.b64
+test-results/
+playwright-report/
+
+# Firebase: log e cache locali, build delle Cloud Functions
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebase/
+functions/lib/
+
+# catture grezze degli store (si rigenerano con scripts/store-shots.mjs)
+store/raw/
+scripts/meshy/work/
+site/dist/
+pub/

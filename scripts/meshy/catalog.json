@@ -1,0 +1,208 @@
+[
+ {
+  "name": "bike",
+  "prompt": "Road racing bicycle, side view proportions, thin black tubes, two thin spoked wheels, drop handlebars, pedals and crankset clearly separated, saddle, no rider, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 1,
+  "task_preview": "01a1dbad-09b5-7244-be27-2ffbf9551817",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1dbad-6906-75f7-9f55-0bd5d90b0af6"
+ },
+ {
+  "name": "finish_arch",
+  "prompt": "Inflatable finish line arch for a road cycling race, two thick vertical inflatable pillars and a thick horizontal top beam, wide enough to span a two-lane road, bright red pillars with white top beam, small weighted bases, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 8,
+  "task_preview": "01a1dbae-bbc9-731d-a8d7-d3a8457f3568",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1dbaf-4693-7053-b143-ca94853fc62c"
+ },
+ {
+  "name": "podium",
+  "prompt": "Winners podium for a cycling race, one single compact block made of three rectangular boxes side by side, center box tallest, left box medium, right box lowest, all boxes flat white with plain yellow front faces, no numbers, no letters, no wall, simple box shapes, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 2,
+  "credits": 15,
+  "status": "done",
+  "retry_of": "01a1dbaf-f1d6-7709-b3be-ac8540c2a0c4",
+  "credits_first_try": 15,
+  "task_preview": "01a1dbbd-502f-765c-94bf-80f5e1b19dd9",
+  "task_refine": "01a1dbbd-d604-70af-93d2-87653cb1dbd2"
+ },
+ {
+  "name": "team_car",
+  "prompt": "Cycling team support car, compact station wagon, white body with a wide yellow stripe along the side, a roof rack on top carrying two complete road bicycles lying on their side, clearly visible bicycle wheels and frames on the roof, no brand, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 1.6,
+  "credits": 15,
+  "status": "done",
+  "retry_of": "01a1dbb1-9e54-74b9-a7ee-0513ddceef16",
+  "credits_first_try": 15,
+  "task_preview": "01a1dbbe-813c-76bc-a54a-2bdfe314e4a8",
+  "task_refine": "01a1dbbe-e496-703f-8436-67180f8290ec"
+ },
+ {
+  "name": "feed_tent",
+  "prompt": "Cycling race feed zone gazebo tent, white canopy with green edge, table with water bottles underneath, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 3,
+  "task_preview": "01a1dbb2-d327-7653-a74c-af26cb9cf430",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1dbb3-5c0a-7143-b23e-7f1d257093a0"
+ },
+ {
+  "name": "alpine_hut",
+  "prompt": "Small alpine mountain hut, stone ground floor, dark wooden upper floor, steep roof, balcony with flower boxes, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 7,
+  "task_preview": "01a1dbb3-de28-7643-b830-dc7e842315d6",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1dbb4-4000-7051-a063-37a273a5503f"
+ },
+ {
+  "name": "church",
+  "prompt": "Small Italian village church with square bell tower, cream walls, terracotta roof, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 14,
+  "task_preview": "01a1dbb4-eba7-71bd-9c09-ac8872cd1b5c",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1dbb5-7544-76ac-b0a4-34c3a6c2aeb0"
+ },
+ {
+  "name": "farmhouse",
+  "prompt": "Italian countryside farmhouse, ochre plaster walls, terracotta roof, green wooden shutters, arched portico, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 8,
+  "task_preview": "01a1dbb5-f638-7128-8ae4-850b03b98df0",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1dbb6-54cf-7798-a004-0b12945a55a3"
+ },
+ {
+  "name": "cypress",
+  "prompt": "Tall slim Italian cypress tree, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 9,
+  "task_preview": "01a1dbb6-d6f9-7546-8449-8e0b402d6a98",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1dbb7-3829-704f-a601-f61ce9041b59"
+ },
+ {
+  "name": "hay_bale",
+  "prompt": "Round hay bale, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 1.5,
+  "task_preview": "01a1dbb7-8f08-76a0-bf76-7ed4cbc22cc1",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1dbb7-efbd-722e-b5f5-13121bc081c7"
+ },
+ {
+  "name": "zombie_runner",
+  "prompt": "Full body skinny cartoon zombie runner standing in T-pose, legs slightly apart, torn bright pure green tank top in one flat color, ripped shorts, pale grey-green skin, wild hair, slightly funny not gory, no blood, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "character",
+  "height_m": 1.7,
+  "task_preview": "01a1dbb8-9ad6-7538-86c6-b38d09d7869f",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1dbb9-4f12-7659-8259-136fda29131b"
+ },
+ {
+  "name": "zombie_brute",
+  "prompt": "Full body fat cartoon zombie brute standing in T-pose, legs slightly apart, very big belly, torn bright pure green overalls in one flat color, sickly pale green skin on face arms and hands, hollow eyes, open mouth, small head, slightly funny not gory, no blood, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "character",
+  "height_m": 1.9,
+  "credits": 15,
+  "status": "done",
+  "retry_of": "01a1dbb9-cf9b-7549-bfd2-a6d005126c3c",
+  "credits_first_try": 15,
+  "task_preview": "01a1dbbf-b736-7137-b931-0aa7fac540d6",
+  "task_refine": "01a1dbc0-3fce-7237-9ebb-02191317fb06"
+ },
+ {
+  "name": "skeleton",
+  "prompt": "Full body cartoon skeleton warrior standing in T-pose, legs slightly apart, rusty helmet, bright pure green tattered cloth belt in one flat color, slightly funny not scary, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "character",
+  "height_m": 1.7,
+  "task_preview": "01a1dbbb-7de3-75a9-97f0-cc7308233399",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1dbbc-07ca-7755-8339-91230b7d5517"
+ },
+ {
+  "name": "tombstones",
+  "prompt": "graveyard tombstone set, three rounded stone headstones, mossy grey stone, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 1.2,
+  "task_preview": "01a1de3b-8ed2-7051-a0ed-bc83be5d8630",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1de3c-bc7b-7742-b2a1-20907b4a682b"
+ },
+ {
+  "name": "iron_fence",
+  "prompt": "wrought iron graveyard fence section, black pointed bars, stone posts, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 1.6,
+  "task_preview": "01a1de3d-9118-72b4-b449-7c70897a07ab",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1de3e-1753-7730-bb8a-4252f796b74a"
+ },
+ {
+  "name": "crypt",
+  "prompt": "small stone crypt mausoleum with iron door, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 4,
+  "task_preview": "01a1de3e-c1c2-72dc-a4ba-260000ddfc89",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1de3f-208a-752f-bdee-cf66790db1df"
+ },
+ {
+  "name": "dead_tree",
+  "prompt": "dead twisted tree without leaves, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 6,
+  "task_preview": "01a1de3f-cc2b-74b1-bd7e-ed53c0a436b5",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1de40-2f76-77cc-b0f6-38a22d75f50b"
+ },
+ {
+  "name": "street_lamp",
+  "prompt": "old street lamp, black iron post, warm glowing lantern, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 4.5,
+  "task_preview": "01a1de40-da0f-76ff-8f63-3253aec713b5",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1de41-3747-71d6-ac1d-6644b943be74"
+ },
+ {
+  "name": "portal",
+  "prompt": "glowing magic portal arch, stone frame with bright cyan energy, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 4,
+  "task_preview": "01a1de41-e297-713e-98f4-6e8fcfd50b06",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1de42-42a8-77ab-8fa9-f7e0d61c3554"
+ },
+ {
+  "name": "blaster",
+  "prompt": "compact blaster gun mounted on bicycle handlebars, orange and dark grey, toy-like, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 0.5,
+  "task_preview": "01a1de42-c2f4-7283-a9fe-ce990d740021",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1de43-2050-7640-9c62-d22cebb84396"
+ }
+]

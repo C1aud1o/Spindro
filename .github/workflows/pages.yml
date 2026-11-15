@@ -1,0 +1,57 @@
+name: Pubblica su GitHub Pages
+
+on:
+  push:
+    branches: [main, ccr-28a29a79-yshigo]
+  workflow_dispatch:
+  # quando è pronto un nuovo APK, ripubblica il sito con il file aggiornato
+  workflow_run:
+    workflows: ["App Android (APK)"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    # dopo una build Android, ripubblica solo se era una build riuscita del ramo principale
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && contains(fromJSON('["main","ccr-28a29a79-yshigo"]'), github.event.workflow_run.head_branch))
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - name: Prepara l'app (solo i file web, senza android/)
+        run: node scripts/copy-web.mjs && cp sw.js www/
+        env:
+          VERSION_CODE: web-${{ github.run_number }}
+      - name: Costruisci il sito vetrina (site/dist)
+        run: node site/build.mjs
+      # Struttura pubblicata: sito vetrina alla radice (/, /it/, /compatibility/…), app sotto /app/,
+      # APK in /app/spindro.apk. Per cambiare dominio: CNAME qui sotto e "siteUrl" in site/config.json.
+      - name: Sito alla radice, app sotto /app/, ultimo APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rm -rf pub && mkdir -p pub/app
+          cp -r site/dist/. pub/
+          cp -r www/. pub/app/
+          gh release download app-android -p spindro.apk -D pub/app --repo "$GITHUB_REPOSITORY" || echo "APK non ancora disponibile"
+          [ -f pub/app/spindro.apk ] && cp pub/app/spindro.apk pub/app/ride-freedom.apk  # vecchi link
+          cp CNAME pub/CNAME
+          touch pub/.nojekyll
+          ls -la pub pub/app | head -40
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: pub
+      - id: deployment
+        uses: actions/deploy-pages@v4

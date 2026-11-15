@@ -1,0 +1,62 @@
+[
+ {
+  "name": "trainer",
+  "prompt": "Indoor smart bike trainer: small cycling roller with a flywheel and a road bike rear wheel clamped on it, single 3D icon object, centered, chunky rounded toy-like stylized game icon, glossy bright flat colors with lime green #d9ff3d and dark ink accents, clean simple shapes, no text, no logos, no base, no background",
+  "kind": "prop",
+  "height_m": 1,
+  "task_preview": "01a1def3-d197-7714-99f3-bb1ce491265d",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1def4-3220-769d-af5b-076ab15084d5"
+ },
+ {
+  "name": "click",
+  "prompt": "A small simple rectangular remote control, like a tiny TV clicker, flat dark charcoal grey body with rounded corners, on its front face exactly two large round orange buttons side by side, the left button has a raised plus sign, the right button has a raised minus sign, nothing else on it, no handlebar, no antenna, single 3D icon object, centered, chunky rounded toy-like stylized game icon, glossy flat colors orange and dark charcoal grey, clean simple shapes, no other text, no logos, no brand names, no base, no background",
+  "kind": "prop",
+  "height_m": 1,
+  "credits": 15,
+  "task_preview": "01a1df36-d2b3-77e8-bda7-251413711b9f",
+  "status": "done",
+  "task_refine": "01a1df37-334f-774c-92f2-a07f55673602"
+ },
+ {
+  "name": "heart",
+  "prompt": "Chunky red heart with a white heartbeat pulse line across it, single 3D icon object, centered, chunky rounded toy-like stylized game icon, glossy bright flat colors with lime green #d9ff3d and dark ink accents, clean simple shapes, no text, no logos, no base, no background",
+  "kind": "prop",
+  "height_m": 1,
+  "task_preview": "01a1def5-94bc-76bf-8781-385424963b4f",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1def5-f457-71e1-8cb7-80440e65bbda"
+ },
+ {
+  "name": "workouts",
+  "prompt": "Orange stopwatch with a lightning bolt on face, chunky, with top button, single 3D icon object, centered, chunky rounded toy-like stylized game icon, glossy bright flat colors with lime green #d9ff3d and dark ink accents, clean simple shapes, no text, no logos, no base, no background",
+  "kind": "prop",
+  "height_m": 1,
+  "task_preview": "01a1def6-9f2a-7262-b19f-64d1a75b61a3",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1def6-ff86-773d-9c24-2112035c2111"
+ },
+ {
+  "name": "games",
+  "prompt": "Game controller gamepad with two thumbsticks and four colored buttons, chunky rounded, single 3D icon object, centered, chunky rounded toy-like stylized game icon, glossy bright flat colors with lime green #d9ff3d and dark ink accents, clean simple shapes, no text, no logos, no base, no background",
+  "kind": "prop",
+  "height_m": 1,
+  "task_preview": "01a1def7-aa55-7178-a334-02ff2faa26dd",
+  "credits": 5,
+  "status": "done",
+  "task_refine": "01a1def8-6735-769d-9ea4-162b268034d4"
+ },
+ {
+  "name": "trophy",
+  "prompt": "Golden winner trophy cup with two handles and a star, chunky, single 3D icon object, centered, chunky rounded toy-like stylized game icon, glossy bright flat colors with lime green #d9ff3d and dark ink accents, clean simple shapes, no text, no logos, no base, no background",
+  "kind": "prop",
+  "height_m": 1,
+  "task_preview": "01a1def8-e8f2-7656-84f9-794430e4cb28",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1def9-49a2-77dc-91a2-83c23c5392f6"
+ }
+]

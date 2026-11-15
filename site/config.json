@@ -1,0 +1,22 @@
+{
+  "siteUrl": "https://spindro.fun",
+  "name": "Spindro",
+  "defaultLang": "en",
+  "langs": [
+    "en",
+    "it"
+  ],
+  "appPath": "/app/",
+  "github": "https://github.com/C1aud1o/Spindro",
+  "apk": "https://spindro.fun/app/spindro.apk",
+  "playStore": "https://play.google.com/store/apps/details?id=com.spindro.app",
+  "playStoreLive": false,
+  "contactIssues": "https://github.com/C1aud1o/Spindro/issues",
+  "legalPages": [
+    "privacy",
+    "terms",
+    "account-deletion",
+    "licenses",
+    "trademarks"
+  ]
+}

@@ -1,0 +1,29 @@
+[
+ {
+  "name": "bottle",
+  "prompt": "Cycling water bottle (borraccia)",
+  "kind": "prop",
+  "task_preview": "01a1de92-cb2a-775b-815f-d84f43a5d696",
+  "credits": 0,
+  "status": "done",
+  "note": "già generata da una sessione precedente; usata come blocco di Mattoni (assets/3d/meshy/bottle.glb, decimate 28 512 12)"
+ },
+ {
+  "name": "stage_sign",
+  "prompt": "Cycling stage direction sign (cartello di tappa)",
+  "kind": "prop",
+  "task_preview": "01a1de94-014e-7560-9301-0a3695c4b8a9",
+  "credits": 0,
+  "status": "done",
+  "note": "già generato; blocco da 2 colpi (assets/3d/meshy/stage_sign.glb, decimate 40 512 12)"
+ },
+ {
+  "name": "energy_gel",
+  "prompt": "Energy gel pouch",
+  "kind": "prop",
+  "task_preview": "01a1de97-f219-767c-a356-8373b82ab0e8",
+  "credits": 0,
+  "status": "scartato",
+  "note": "la texture ha un logo tipo swoosh e testo: non usato, il gel dei power-up è procedurale (js/games/mattoni.js)"
+ }
+]

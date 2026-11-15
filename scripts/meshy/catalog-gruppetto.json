@@ -1,0 +1,52 @@
+[
+ {
+  "name": "tractor",
+  "prompt": "Small red farm tractor, big rear wheels, small front wheels, open seat, no driver, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 2,
+  "task_preview": "01a1de3b-73a9-7614-a9cf-3f25ee444a00",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1de3c-4cc3-70c2-b481-3cb9c3bef0f4"
+ },
+ {
+  "name": "fence",
+  "prompt": "Wooden countryside fence section, two horizontal rails and three posts, straight and low, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 1.2,
+  "task_preview": "01a1de3d-21c7-77bf-a7c3-fd4f54a0fa31",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1de3d-8256-765f-8c09-65dc70986d08"
+ },
+ {
+  "name": "sheep",
+  "prompt": "Cartoon white sheep standing, four legs, dark face, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 1,
+  "task_preview": "01a1de3e-57c5-75dc-b21a-bad288c9c85f",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1de3e-b75b-74ee-b9f6-9534be8172f3"
+ },
+ {
+  "name": "cow",
+  "prompt": "Cartoon black and white dairy cow standing, four legs, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 1.5,
+  "task_preview": "01a1de3f-3946-709d-8bc4-a2b191ea2f81",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1de3f-98c6-7195-a450-302146c1232e"
+ },
+ {
+  "name": "windmill",
+  "prompt": "Small wooden windmill with four sails, stone base, stylized low poly game asset, flat colors, clean simple shapes, no text, no logos",
+  "kind": "prop",
+  "height_m": 9,
+  "task_preview": "01a1de40-431e-7360-ae29-38dab96e3eb5",
+  "credits": 15,
+  "status": "done",
+  "task_refine": "01a1de40-cbe4-7675-b9af-1d7c47b06c41"
+ }
+]
