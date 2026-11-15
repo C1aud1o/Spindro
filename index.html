@@ -48,6 +48,7 @@
     <!-- stato vuoto: benvenuto (utente nuovo) o riga "bentornato" (utente che torna, rullo non collegato) -->
     <section id="welcome" class="card welcome" hidden></section>
 
+    <div class="stage">
     <!-- UNA scheda principale: l'allenamento del piano di oggi oppure il giro libero. Durante l'uscita diventa il cruscotto. -->
     <section id="today" class="card today" data-i18n-attr="aria-label:today.title">
       <h2 class="label today-label"><span data-i18n="today.title"></span></h2>
@@ -171,6 +172,7 @@
       <button id="rideGames" class="act" data-i18n="nav.games"></button>
       <button id="rideMode" class="act act-mode" data-i18n-attr="aria-label:home.modes"><span id="rideModeLabel"></span></button>
     </div>
+    </div>
 
     <section id="challengeCard" class="card challenges" hidden></section>
     <section id="garminBanner" class="card banner" hidden></section>
@@ -229,6 +231,9 @@
       <div class="sheet-head"><h2 id="workoutTitle" data-i18n="workouts.title"></h2><button class="close" data-close="workoutSheet" data-i18n-attr="aria-label:ui.close">×</button></div>
       <div class="chips wk-tabs" role="tablist"><button id="tabWk" class="on" role="tab" aria-selected="true" data-i18n="workouts.tab"></button><button id="tabPlans" role="tab" aria-selected="false" data-i18n="plans.tab"></button></div>
       <div id="wkPaneMain">
+      <h3 class="wk-h3" data-i18n="workouts.heading"></h3>
+      <p class="fine wk-intro" data-i18n-html="workouts.intro"></p>
+      <div id="workoutList" class="wk-list"></div>
       <section class="rt-pick">
         <h3 data-i18n="routes.title"></h3>
         <p class="fine" data-i18n="routes.intro"></p>
@@ -237,9 +242,6 @@
         <p class="fine" data-i18n="routes.realism"></p>
         <div class="chips rt-real" id="routeReal"><button data-r="0.5">50%</button><button data-r="0.75">75%</button><button data-r="1">100%</button></div>
       </section>
-      <h3 class="wk-h3" data-i18n="workouts.heading"></h3>
-      <p class="fine wk-intro" data-i18n-html="workouts.intro"></p>
-      <div id="workoutList" class="wk-list"></div>
       </div>
       <div id="wkPanePlans" class="pl-pane" hidden></div>
     </div>
@@ -417,10 +419,10 @@
   <div id="gamePanel" class="game-panel" hidden role="region" data-i18n-attr="aria-label:games.title">
     <canvas id="gameCanvas"></canvas>
     <div class="game-bar">
-      <!-- allenamento in corso sotto al gioco: passo, watt e tempo che restano -->
-      <div id="gameStrip" class="game-strip" hidden><b id="gsName"></b><span id="gsLine"></span><i class="gs-bar" aria-hidden="true"><u id="gsFill"></u></i></div>
       <strong id="gameTitle" data-i18n="games.title"></strong>
       <span id="gameHelp" class="game-help"></span>
+      <!-- allenamento in corso sotto al gioco: passo, watt e tempo che restano (prende il posto della guida) -->
+      <div id="gameStrip" class="game-strip" hidden><span id="gsLabel"></span><b id="gsTail"></b><i class="gs-bar" aria-hidden="true"><u id="gsFill"></u></i></div>
       <button id="muteGame" class="small" data-i18n-attr="aria-label:games.audio"></button>
       <button id="closeGame" class="small" data-i18n="games.exit"></button>
     </div>

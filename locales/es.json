@@ -1370,5 +1370,5 @@
   "modes.more": "Otros modos",
   "ride.resume": "Reanudar",
   "ride.end": "Terminar",
-  "workoutStrip.line": "{label} · {watts} W · quedan {left}"
+  "workoutStrip.tail": "{watts} W · quedan {left}"
 }

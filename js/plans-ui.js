@@ -49,7 +49,7 @@ export function renderHome(riding = false) {
   } else {
     const mins = Math.round(duration(w) / 60);
     body = `<h3 class="today-title" data-key="${s.key}">${esc(w.name)}</h3>
-      <p class="today-meta">${s.status === 'today' ? '' : `<b>${esc(when(s))}</b> · `}${t('today.minutes', { n: mins })}${w.tag ? ` · ${esc(w.tag)}` : ''}</p>
+      <p class="today-meta">${s.status === 'today' ? '' : `<b>${esc(when(s))}</b> · `}${w.tag ? esc(w.tag) : t('today.minutes', { n: mins })}</p>
       <canvas class="today-profile" data-prof="${w.id}" aria-hidden="true"></canvas>
       <div class="today-actions"><button class="cta" data-pl-start="${w.id}" data-key="${s.key}">${t('today.startWorkout')}</button><button class="ghost" data-pl-game="${w.id}" data-key="${s.key}">${t('today.playGame')}</button></div>
       <span class="pl-act"><button class="link" data-pl-move="${s.key}">${t('plans.moveTomorrow')}</button><button class="link" data-pl-skip="${s.key}">${t('plans.skip')}</button></span>`;

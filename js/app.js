@@ -888,11 +888,8 @@ function renderWelcome() {
       <ol><li>${t('welcome.step1')}</li><li>${t('welcome.step2')}</li><li>${t('welcome.step3')}</li></ol>
       <button class="ghost" id="welcomeConnect">${t('welcome.connect')}</button>`;
   } else {
-    // utente che torna: una riga sola (ultima uscita) col tasto per collegare il rullo
-    const last = hist[hist.length - 1];
-    const days = Math.floor((Date.now() - last.t) / 864e5);
-    const when = days === 0 ? t('time.today') : days === 1 ? t('time.yesterday') : t('time.daysAgo', { count: days });
-    el.innerHTML = `<p>${t('welcome.last', { when })}</p><button class="ghost" id="welcomeConnect">${t('welcome.connect')}</button>${goalHtml(hist)}`;
+    // utente che torna: solo il tasto per collegare il rullo (e l'obiettivo della settimana, se c'è)
+    el.innerHTML = `<button class="ghost" id="welcomeConnect">${t('welcome.connect')}</button>${goalHtml(hist)}`;
   }
   $('welcomeConnect')?.addEventListener('click', () => addDevice()); // apre direttamente la scelta Bluetooth
 }
@@ -1112,8 +1109,8 @@ function updateGameStrip(st) {
   const strip = $('gameStrip'); const on = !!(workout && st && !$('gamePanel').hidden);
   strip.hidden = !on; $('gamePanel').classList.toggle('has-strip', on);
   if (!on) return;
-  $('gsName').textContent = workout.w.name;
-  $('gsLine').textContent = t('workoutStrip.line', { label: st.x.label, watts: st.target, left: fmtClock(st.left) });
+  $('gameStrip').title = workout.w.name; $('gsLabel').textContent = st.x.label;
+  $('gsTail').textContent = t('workoutStrip.tail', { watts: st.target, left: fmtClock(st.left) });
   $('gsFill').style.width = `${Math.min(100, (workout.t / workout.total) * 100)}%`;
 }
 const refreshGameStrip = () => { if (workout) updateGameStrip(workout.locate()); else updateGameStrip(null); };
