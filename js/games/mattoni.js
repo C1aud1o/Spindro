@@ -318,7 +318,7 @@ export class Mattoni {
     this.rand = makeRandom(this.seed); // il caso è nostro: con un seme (this.seed o window.__spindroSeed) la partita si ripete uguale (test)
     this.configure(this.durIdx, this.lvlIdx);
     this.setTime(['morning', 'golden', 'dusk'][this.lvlIdx] || 'golden');
-    this.x = 0; this.tx = 0; this.held = 0; this.heldT = 0; this.pw = 0;
+    this.x = 0; this.tx = 0; this.held = 0; this.heldT = 0; this.pw = 0; this.power = 0; this.cadence = 0; // niente residui del menu: la prima borraccia non dipende da come si pedalava prima
     this.lives = 4; this.score = 0; this.combo = 0; this.bestCombo = 0; this.charge = 0; this.hot = false; this.inTarget = false;
     this.el = 0; this.segIdx = -1; this.seg = this.plan.segs[0]; this.gels = []; this.pop = null;
     this.paused = false; this.pauseT = 0; this.startT = 0; this.finished = false; this.result = null; this.ko = 0;
@@ -837,7 +837,7 @@ export class Mattoni {
     if (this.state === 'loading') { ctx.fillStyle = '#0f0e0c'; ctx.fillRect(0, 0, W, H); hudText(ctx, t('games.common.loading'), W / 2, H / 2, { size: 22, align: 'center', color: '#d9ff3d' }); hudText(ctx, `${Math.round((this.loadPct || 0) * 100)}%`, W / 2, H / 2 + 28, { size: 14, align: 'center' }); return; }
     if (this.state === 'error') { hudText(ctx, t('ui.error', { error: this.error }), W / 2, H / 2, { size: 14, align: 'center', color: '#ff6b6b' }); return; }
     if (this.state === 'menu') { this.drawMenu(ctx, W, H, dt); return; }
-    if (this.state === 'over') { this.drawResult(ctx, W, H); this.hooks.progress?.drawToasts(ctx, W, dt, 238, true); return; }
+    if (this.state === 'over') { this.drawResult(ctx, W, H); this.kitToasts(ctx, W, H, dt, 238, true); return; }
     const seg = this.seg; const pad = 12; const y0 = 84;
     // riga in alto: punteggio · zona n/N · vite
     ctx.fillStyle = 'rgba(8,10,26,.62)'; rrect(ctx, pad - 4, y0 - 22, W - 2 * pad + 8, 36, 10); ctx.fill();
@@ -920,7 +920,13 @@ export class Mattoni {
   drawMenu(ctx, W, H, dt) {
     const connected = this.hooks.connected();
     this.menu.draw(ctx, W, H, { connected });
-    this.hooks.progress?.drawToasts(ctx, W, dt);
+    this.kitToasts(ctx, W, H, dt, 48, false);
+  }
+
+  // i riquadri dei progressi: in orizzontale stanno a destra della colonna di testo del menu / risultati
+  kitToasts(ctx, W, H, dt, y0, still) {
+    const left = W > H * 1.15 ? 24 + Math.min(W * 0.38, 440 * Math.min(uiScale(W, H), H / 600)) + 40 : 0;
+    ctx.save(); ctx.translate(left, 0); this.hooks.progress?.drawToasts(ctx, W - left, dt, y0, still); ctx.restore();
   }
 
   drawResult(ctx, W, H) {
