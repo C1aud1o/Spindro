@@ -1137,6 +1137,7 @@ const gameHooks = {
   speedKmh: () => (state.mode === 'gears' ? currentVirtualSpeed() * 3.6 : state.data.speed || 0),
   stats: () => ({ power: Math.round(state.data.power || 0), cadence: Math.round(currentCadence()), gear: state.mode === 'gears' ? state.gear + 1 : null }),
   shift: (d) => shift(d),
+  close: () => closeGame(), // "− = ai giochi" nella schermata dei risultati: torna all'elenco dei giochi
   runStart: () => { gameRunT0 = Date.now(); },
   runEnd: (r) => reportGameScore(r),
   // Allenamento in corso sotto al gioco, oppure null. Serve ai giochi per far seguire alle loro fasi di sforzo i passi dell'allenamento.

@@ -100,9 +100,11 @@ test('Feed Zone: livelli e piano: 5/10/20 minuti, Facile −10 % e Difficile +10
 test('Feed Zone: menu (− durata, + livello, pressione lunga inizia) e comandi: solo +1 / −1 muovono la bici', async ({ page }) => {
   await openGame(page);
   const r = await page.evaluate(async () => {
-    const g = window.__game; g.active = false; g.durIdx = 0; g.lvlIdx = 1; g.reset(); g.state = 'menu'; g.stateT = 1;
-    g.input(-1); const d1 = g.durIdx; g.input(1); const l1 = g.lvlIdx;
-    g.hold(1); for (let i = 0; i < 40; i++) g.update(1 / 30); const started = g.state;
+    const g = window.__game; g.active = false; g.seed = 3; g.durIdx = 0; g.lvlIdx = 1; g.reset(); g.state = 'menu'; g.stateT = 1; g.menu.reset();
+    const run = (n) => { for (let i = 0; i < n; i++) g.update(1 / 30); };
+    run(20); // il menu ignora i tasti nei primi istanti
+    g.input(-1); run(4); const d1 = g.menu.durIdx; g.input(1); run(4); const l1 = g.menu.level;
+    g.hold(1); run(40); const started = g.state;
     // in partita: un tocco sposta di 1,4 m (+ = destra sullo schermo = −X), tenuto premuto si muove di continuo
     g.hooks = { ...g.hooks, connected: () => true, ftp: () => 200, stats: () => ({ power: 160, cadence: 85 }), speedKmh: () => 30, setGrade() {} };
     g.tx = 0; g.x = 0; g.input(1); const nudged = g.tx;

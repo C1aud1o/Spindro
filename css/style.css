@@ -597,6 +597,7 @@ body:not(.dev) .lab-game { display: none; }
 .dv { position: relative; flex: 1 1 0; min-width: 0; display: grid; grid-template-columns: auto 1fr; column-gap: 6px; align-items: center; padding: 0 4px; }
 .dv-l { font: 700 12px/1.1 var(--font-num); letter-spacing: .06em; text-transform: uppercase; color: var(--t3); }
 .dv.on .dv-l { color: var(--t1); }
+.dv-ico { display: inline-block; width: 22px; height: 13px; margin-right: 5px; vertical-align: -2px; }
 .dv-s { font-size: 12px; line-height: 1.2; color: var(--t3); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
 .dv.on .dv-s { color: var(--t2); }
 .dv-go { width: 18px; height: 18px; flex: none; color: var(--t3); }

@@ -10,8 +10,10 @@ import { loadMeshyTemplate, CYCLIST_URL, MESHY_FAN_URL, BIKE } from './kit/cycli
 import { Walker, FarCrowd, makeEnemyKit, bakePose, enemyMaterial } from './kit/walkers.js';
 import { buildSky, buildGround, Scenery, LampLights } from './horde-world.js';
 import { clamp, lerp } from './engine.js';
-import { txt as hudText, hudView, paragraph, wrapLines, MessageQueue, loadHudFonts } from './kit/hud.js';
+import { txt as hudText, hudView, paragraph, MessageQueue, loadHudFonts } from './kit/hud.js';
 import { t, fmtDec } from '../i18n.js';
+import { GameMenu, ResultsView } from './kit/menu.js';
+import { makeRandom } from './kit/rng.js';
 import { SONGS } from './audio.js';
 import { DURATIONS, LEVELS, COOL_S, buildPlan, segAt, composAt, targetW, targetPct, Adapter, starsFor, nextStarHint } from './horde-plan.js';
 
@@ -81,14 +83,31 @@ export class Horde {
   constructor(hudCanvas, hooks, audio) {
     this.hudCanvas = hudCanvas; this.hooks = hooks; this.audio = audio;
     this.active = false;
+    this.seed = null; this.rnd = makeRandom(this.seed);
     const ls = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
-    this.durIdx = clamp(Number(ls('hordeDur', 0)) || 0, 0, DURATIONS.length - 1);
-    this.lvlIdx = clamp(Number(ls('hordeLvl', 1)) || 0, 0, LEVELS.length - 1);
+    this.menu = new GameMenu({
+      id: 'horde', title: () => t('games.horde.hud.title'), pitch: () => t('games.horde.hud.tagline'),
+      howto: () => [t('games.horde.rule2'), t('games.horde.rule3'), t('games.horde.rule4')],
+      load: () => ({ durIdx: clamp(Number(ls('hordeDur', 0)) || 0, 0, DURATIONS.length - 1), level: clamp(Number(ls('hordeLvl', 1)) || 0, 0, LEVELS.length - 1) }),
+      save: ({ durIdx, level }) => { try { localStorage.setItem('hordeDur', durIdx); localStorage.setItem('hordeLvl', level); } catch { /* niente storage */ } },
+      best: (d, l) => { const r = this.recordFor(DURATIONS[d], LEVELS[l].id); return { stars: r.stars || 0, text: r.score ? String(r.score) : null }; },
+      sfx: (n) => this.audio.sfx(n), ready: () => this.state === 'menu',
+      onStart: () => { this.reset(); this.begin(); },
+    });
+    this.results = new ResultsView({ sfx: (n) => this.audio.sfx(n), onAgain: () => { this.reset(); this.begin(); }, onBack: () => this.hooks.close?.() });
+    this.detach = [];
     this.loop = this.loop.bind(this);
   }
 
+  get durIdx() { return this.menu.durIdx; }
+  set durIdx(v) { this.menu.durIdx = v; }
+  get lvlIdx() { return this.menu.level; }
+  set lvlIdx(v) { this.menu.level = v; }
+
   async start() {
     this.active = true;
+    const size = () => ({ W: this.stage.W, H: this.stage.H });
+    this.detach = [this.menu.attach(this.hudCanvas, size, () => this.state === 'menu'), this.results.attach(this.hudCanvas, size, () => this.state === 'over')];
     this.quality = new Quality();
     this.stage = new Stage(this.hudCanvas, { quality: this.quality });
     this.stage.onQuality = (cfg) => this.applyQuality(cfg);
@@ -115,12 +134,13 @@ export class Horde {
       await loadHudFonts();
       if (!this.active) return;
       this.build();
-      this.state = 'menu'; this.stateT = 0;
+      this.state = 'menu'; this.stateT = 0; this.menu.reset();
     } catch (err) { console.error(err); this.state = 'error'; this.error = err.message; }
   }
 
   stop() {
     this.active = false; this.audio.stopSong(); this.hooks.setGrade(null);
+    for (const d of this.detach) d(); this.detach = [];
     for (const m of this.litMats || []) m.emissive?.set('#000000');
     this.stage?.dispose();
   }
@@ -214,12 +234,13 @@ export class Horde {
     if (this.player) scene.remove(this.player.root);
     for (const b of this.bullets) b.mesh.visible = false;
     this.bullets = [];
-    this.configure(this.durIdx, this.lvlIdx);
+    this.rnd = makeRandom(this.seed); this.configure(this.durIdx, this.lvlIdx);
     this.z = 0; this.x = 0; this.tx = 0; this.held = 0; this.heldT = 0; this.hp = 6; this.maxHp = 6; this.pops = [];
     this.weapon = 0; this.xp = 0; this.rateMul = 1; this.dmgMul = 1;
     this.kills = 0; this.score = 0; this.spawnAcc = 0; this.el = 0; this.segIdx = -1; this.seg = this.plan.segs[0];
     this.enemies = []; this.allies = []; this.gates = []; this.gems = [];
     this.gateN = 0; this.lastPair = -1; this.nextGate = 12; this.overdrive = 0; this.hurtT = 0; this.shake = 0; this.bossAlive = false;
+    this.pw = 0; this.sinceSpawn = 0; this.gemAcc = 0; this.gemT = 0; this.popN = 0; // niente eredità dal menu o dalla partita prima: la potenza di allora dipende dal tempo reale
     this.paused = false; this.pauseT = 0; this.startT = 0; this.calm = 0; this.finished = false; this.result = null;
     this.nextSize = 0; this.trailT = 5; this.pressure = 1; this.lastHitT = 0; this.ko = 0; this.effortsDone = 0; this.effortsTotal = 0; this.bossKilled = 0; this.bossSpawned = new Set(); this.passed = 0;
     this.adapt = new Adapter(); this.evLog = []; this.sprinting = false; this.sentGrade = undefined; this.msgs.clear();
@@ -237,7 +258,8 @@ export class Horde {
 
   get ftp() { return Math.max(80, this.hooks.ftp?.() || Number(localStorage.getItem('ftp')) || 200); }
   recordKey() { return `hordeBest2:${this.total}:${this.level.id}`; }
-  record() { try { return JSON.parse(localStorage.getItem(this.recordKey()) || '{}'); } catch { return {}; } }
+  recordFor(total, id) { try { return JSON.parse(localStorage.getItem(`hordeBest2:${total}:${id}`) || '{}'); } catch { return {}; } }
+  record() { return this.recordFor(this.total, this.level.id); }
 
   // ---------- eventi: tutto ciò che chiede o premia qualcosa (si misura nel test) ----------
   ev(kind) { if (this.evLog.length < 20000) this.evLog.push({ t: this.el, k: kind }); }
@@ -250,20 +272,14 @@ export class Horde {
   // ---------- gioco ----------
   input(dir) {
     this.audio.ensure();
-    if (this.state === 'menu') {
-      if (this.stateT < 0.3) return;
-      // − cambia la durata, + cambia il livello; tenuti premuti iniziano (hold)
-      if (dir < 0) this.configure((this.durIdx + 1) % DURATIONS.length, this.lvlIdx); else this.configure(this.durIdx, (this.lvlIdx + 1) % LEVELS.length);
-      try { localStorage.setItem('hordeDur', this.durIdx); localStorage.setItem('hordeLvl', this.lvlIdx); } catch { /* niente storage */ }
-      this.audio.sfx('select'); return;
-    }
-    if (this.state === 'over') { if (this.stateT > 1.4) { this.reset(); this.state = 'menu'; this.stateT = 0; this.audio.playSong(SONGS.menu); } return; }
+    if (this.state === 'menu') { this.menu.input(dir); return; }
+    if (this.state === 'over') { this.results.input(dir); return; }
     if (this.state !== 'play' || this.paused) return;
     this.tx = clamp(this.tx - dir * NUDGE, -ROAD, ROAD); // destra sullo schermo = −X (camera rivolta a +Z)
   }
 
   // tenuto premuto: sterzata continua (nel menu: dopo 0,8 s inizia la partita)
-  hold(dir) { this.held = dir; this.heldT = 0; }
+  hold(dir) { if (this.state === 'menu') { this.menu.hold(dir); return; } this.held = dir; this.heldT = 0; }
 
   begin() {
     this.state = 'play'; this.stateT = 0; this.hooks.runStart?.();
@@ -285,7 +301,7 @@ export class Horde {
       r.setShadows(false);
       const slot = FORMATION[k];
       // nascono dal portale appena passato (davanti a te, lontani dalla telecamera) e crescono mentre si mettono in formazione
-      const a = { r, slot, fireT: 0.15 + Math.random() * 0.3, x: this.x + slot[0] * 0.3, z: this.z + 1.5, born: 0 };
+      const a = { r, slot, fireT: 0.15 + this.rnd() * 0.3, x: this.x + slot[0] * 0.3, z: this.z + 1.5, born: 0 };
       r.root.position.set(a.x, 0, a.z); r.root.scale.setScalar(RIDER_S * 0.2);
       this.allies.push(a);
       this.fx.spawn(a.x, 1.6, a.z + 1, { tex: 'green', size: 2.2, life: 0.4 });
@@ -307,7 +323,7 @@ export class Horde {
   spawnEnemy(type, x, z, hp = null) {
     const def = ENEMIES[type];
     hp = hp ?? Math.max(1, Math.round(def.hp * this.hpScale()));
-    const e = { type, def, w: null, x, z, hp, maxHp: hp, dead: false, deadT: 0, flash: 0, wob: Math.random() * 6, shade: 0.8 + Math.random() * 0.28, contact: 0, atk: 1 + Math.random(), off: (Math.random() - 0.5) * 1.6, sc: def.boss ? 1 : 0.92 + Math.random() * 0.16, dodgeT: 0, dodgeCd: Math.random(), dodgeV: 0 };
+    const e = { type, def, w: null, x, z, hp, maxHp: hp, dead: false, deadT: 0, flash: 0, wob: this.rnd() * 6, shade: 0.8 + this.rnd() * 0.28, contact: 0, atk: 1 + this.rnd(), off: (this.rnd() - 0.5) * 1.6, sc: def.boss ? 1 : 0.92 + this.rnd() * 0.16, dodgeT: 0, dodgeCd: this.rnd(), dodgeV: 0 };
     this.enemies.push(e); return e;
   }
   xpNeed() { return WEAPONS[this.weapon].xp * 2.2 * Math.sqrt(this.total / 300); }
@@ -320,7 +336,7 @@ export class Horde {
     const w = list.pop() || new Walker(this.kits[e.type]);
     w.body.castShadow = this.quality.level === 'high';
     w.root.visible = true; w.fall = 0; w.lunge = 0; w.hit = 0; w.pivot.rotation.set(0, 0, 0); w.pivot.position.y = 0; w.inner.scale.setScalar(this.kits[e.type].scale * e.sc);
-    w.update(Math.random() * 0.5, e.def.style, e.def.speed);
+    w.update(this.rnd() * 0.5, e.def.style, e.def.speed);
     w.root.position.set(e.x, 0, e.z); w.root.rotation.y = Math.PI;
     if (!w.root.parent) this.stage.scene.add(w.root);
     e.w = w;
@@ -334,7 +350,7 @@ export class Horde {
   }
 
   pickType(mix) {
-    let r = Math.random(); let last = 'zombie';
+    let r = this.rnd(); let last = 'zombie';
     for (const [k, p] of Object.entries(mix)) { last = k; if ((r -= p) < 0) return k; }
     return last;
   }
@@ -342,25 +358,25 @@ export class Horde {
   // dimensione del branco: quanto "matura" in ~3 s (così non passano mai più di pochi secondi fra un branco e l'altro)
   packSize(comp, rate = 0.8) {
     const prog = clamp(this.el / this.total, 0, 1); const [a, b] = comp.pack;
-    return Math.max(a, Math.min(Math.round(b * (1 + prog)), Math.round(rate * 3.2 * (0.7 + Math.random() * 0.6))));
+    return Math.max(a, Math.min(Math.round(b * (1 + prog)), Math.round(rate * 3.2 * (0.7 + this.rnd() * 0.6))));
   }
 
   spawnPack(comp, seg, atZ = null, size = this.packSize(comp)) {
     const type = this.pickType(comp.mix);
     const wide = comp.id === 'walkers' ? 1.0 : 0.6; // i camminatori arrivano "in massa", larghi quanto la strada
-    const cx = (Math.random() * 2 - 1) * (ROAD - 1.2);
+    const cx = (this.rnd() * 2 - 1) * (ROAD - 1.2);
     const spread = Math.min(2 * ROAD, 2 + size * 0.55 * wide);
-    const z0 = atZ ?? this.z + SPAWN_Z + Math.random() * 12;
+    const z0 = atZ ?? this.z + SPAWN_Z + this.rnd() * 12;
     for (let i = 0; i < size; i++) {
-      const ty = Math.random() < 0.18 && type !== 'brute' ? this.pickType(comp.mix) : type; // qualche intruso nel branco
-      this.spawnEnemy(ty, clamp(cx + (Math.random() - 0.5) * spread, -ROAD - 0.6, ROAD + 0.6), z0 + Math.random() * (3 + size * 0.5));
+      const ty = this.rnd() < 0.18 && type !== 'brute' ? this.pickType(comp.mix) : type; // qualche intruso nel branco
+      this.spawnEnemy(ty, clamp(cx + (this.rnd() - 0.5) * spread, -ROAD - 0.6, ROAD + 0.6), z0 + this.rnd() * (3 + size * 0.5));
     }
   }
 
   // la strada all'inizio non è vuota: come se il flusso di nemici fosse già in corso
   prefill() {
     const comp = composAt(0); let d = 20;
-    while (d < SPAWN_Z - 4) { this.spawnPack(comp, this.seg, this.z + d, 2 + Math.floor(Math.random() * 3)); d += 11 + Math.random() * 6; }
+    while (d < SPAWN_Z - 4) { this.spawnPack(comp, this.seg, this.z + d, 2 + Math.floor(this.rnd() * 3)); d += 11 + this.rnd() * 6; }
     this.spawnAcc = 2;
     this.spawnTrail(this.z + 24); this.spawnTrail(this.z + 52);
     this.spawnGatePair(this.z + 62);
@@ -387,7 +403,7 @@ export class Horde {
     if (!this.nextSize) this.nextSize = this.packSize(comp, rate);
     this.sinceSpawn = (this.sinceSpawn || 0) + dt;
     if (this.spawnAcc >= this.nextSize && alive < cap) { this.spawnAcc -= this.nextSize; this.spawnPack(comp, seg, null, this.nextSize); this.nextSize = 0; this.sinceSpawn = 0; }
-    else if (this.sinceSpawn > 1.9 && alive < cap) { this.spawnPack(comp, seg, null, 1 + (Math.random() < 0.5 ? 1 : 0)); this.sinceSpawn = 0; this.spawnAcc = Math.max(0, this.spawnAcc - 1); } // mai più di pochi secondi fra un branco e l'altro
+    else if (this.sinceSpawn > 1.9 && alive < cap) { this.spawnPack(comp, seg, null, 1 + (this.rnd() < 0.5 ? 1 : 0)); this.sinceSpawn = 0; this.spawnAcc = Math.max(0, this.spawnAcc - 1); } // mai più di pochi secondi fra un branco e l'altro
     if (alive >= cap) this.spawnAcc = Math.min(this.spawnAcc, this.nextSize || 4);
   }
 
@@ -464,7 +480,7 @@ export class Horde {
     const rec = this.record(); const prevBest = rec.score || 0;
     const newBest = this.score > prevBest;
     if (newBest || (s.stars > (rec.stars || 0))) { try { localStorage.setItem(this.recordKey(), JSON.stringify({ score: Math.max(prevBest, this.score), stars: Math.max(rec.stars || 0, s.stars) })); } catch { /* niente storage */ } }
-    this.result = { ...s, done: this.effortsDone, total: this.effortsTotal, bossKilled: this.bossKilled, bossTotal, ko: this.ko, score: this.score, newBest, prevStars: rec.stars || 0 };
+    this.result = { ...s, done: this.effortsDone, total: this.effortsTotal, bossKilled: this.bossKilled, bossTotal, ko: this.ko, score: this.score, newBest, prevStars: rec.stars || 0, bestScore: Math.max(prevBest, this.score) };
     this.result.hint = nextStarHint(this.result);
     this.prog('races', 0, 40 + s.stars * 40 + this.effortsDone * 10);
     this.hooks.progress?.setMax('hordeStars', s.stars);
@@ -488,7 +504,7 @@ export class Horde {
     this.fx.update(dt);
     this.stateT += dt;
     if (this.state === 'menu') { this.menuTick(dt, connected); this.animateIdle(dt); return; }
-    if (this.state === 'over') { this.animateIdle(dt); return; }
+    if (this.state === 'over') { this.results.update(dt); this.animateIdle(dt); return; }
 
     // pausa: chi smette di pedalare non perde, il tempo si ferma
     if (connected) {
@@ -525,9 +541,9 @@ export class Horde {
     if (g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade(g); }
 
     this.directorTick(dt, seg);
-    if (seg.kind !== 'cool') { this.trailT -= dt; if (this.trailT <= 0) { this.spawnTrail(this.z + SPAWN_Z); this.trailT = 6 + Math.random() * 3; } }
+    if (seg.kind !== 'cool') { this.trailT -= dt; if (this.trailT <= 0) { this.spawnTrail(this.z + SPAWN_Z); this.trailT = 6 + this.rnd() * 3; } }
     // portali: una coppia ogni 13–17 s; nascono lontano e si vedono arrivare
-    if (seg.kind !== 'cool') { this.nextGate -= dt; if (this.nextGate <= 0) { this.spawnGatePair(this.z + GATE_Z); this.nextGate = 13 + Math.random() * 4; } }
+    if (seg.kind !== 'cool') { this.nextGate -= dt; if (this.nextGate <= 0) { this.spawnGatePair(this.z + GATE_Z); this.nextGate = 13 + this.rnd() * 4; } }
 
     this.updateShooters(dt);
     this.updateBullets(dt);
@@ -537,16 +553,11 @@ export class Horde {
     this.animate(dt);
   }
 
-  menuTick(dt, connected) {
-    // si parte pedalando (o tenendo premuto + / −)
-    if (this.stateT > 1 && ((connected && this.power > 30) || (this.held && this.heldT > 0.8))) this.startT += dt; else this.startT = Math.max(0, this.startT - dt * 2);
-    if (this.held) this.heldT += dt;
-    if (this.startT > 1.6 || (this.held && this.heldT > 0.8 && this.stateT > 1)) { this.held = 0; this.begin(); }
-  }
+  menuTick(dt, connected) { this.menu.update(dt, { connected, power: this.power }); }
 
   finish() {
     this.state = 'over'; this.stateT = 0; this.finished = true;
-    this.audio.stopSong(); this.audio.sfx('win');
+    this.audio.stopSong(); this.audio.sfx('win'); this.results.reset();
     this.hooks.runEnd?.({ game: 'horde', score: this.score });
     this.hooks.setGrade(0);
   }
@@ -565,7 +576,7 @@ export class Horde {
     let k = this.gateN++ % PAIRS.length; if (k === this.lastPair) k = (k + 1) % PAIRS.length; this.lastPair = k;
     const pair = PAIRS[k](this);
     const P = this.portal; const width = 3.4; const s = width / P.wide; const sy = Math.min(s, 3.8 / P.height);
-    const sides = Math.random() < 0.5 ? [0, 1] : [1, 0];
+    const sides = this.rnd() < 0.5 ? [0, 1] : [1, 0];
     pair.forEach((def, i) => {
       const x = (sides[i] ? 1 : -1) * 2.5; // fra i due portali resta un varco: chi passa in mezzo non attraversa i pilastri
       const group = new THREE.Group();
@@ -623,7 +634,7 @@ export class Horde {
       const ang = Math.atan2(target.x - s.x, target.z - s.z);
       if (this.bullets.length >= MAX_BULLETS) { this.hitscan(target, w, od); continue; } // troppi colpi in volo (costano disegni): il danno arriva subito, senza la scia
       for (let k = 0; k < w.shots; k++) {
-        const a = ang + (w.shots > 1 ? (k / (w.shots - 1) - 0.5) * w.spread : (Math.random() - 0.5) * w.spread);
+        const a = ang + (w.shots > 1 ? (k / (w.shots - 1) - 0.5) * w.spread : (this.rnd() - 0.5) * w.spread);
         const mesh = this.bulletPool.get();
         mesh.glow.material.color.set(od ? '#4de3ff' : w.color);
         // forma per tipo d'arma: razzi corti e grossi, laser lunghi e sottili, raffiche medie
@@ -634,9 +645,9 @@ export class Horde {
         mesh.core.visible = s.self && w.rate <= 8; // il nucleo bianco solo per i colpi lenti del giocatore: meno disegni
       }
       // vampata alla bocca dell'arma (per gli alleati solo ogni tanto)
-      if (s.self || Math.random() < 0.4) this.fx.spawn(s.x + Math.sin(ang) * 1.15, 1.5, s.z + Math.cos(ang) * 1.15, { tex: w.splash ? 'fire' : 'muzzle', size: w.splash ? 1.5 : 1.1, life: 0.08, grow: 0.6, color: od ? '#9eeeff' : null });
+      if (s.self || this.rnd() < 0.4) this.fx.spawn(s.x + Math.sin(ang) * 1.15, 1.5, s.z + Math.cos(ang) * 1.15, { tex: w.splash ? 'fire' : 'muzzle', size: w.splash ? 1.5 : 1.1, life: 0.08, grow: 0.6, color: od ? '#9eeeff' : null });
       if (s.self) this.audio.sfx(w.splash ? 'rocket' : w.rate > 8 ? 'mg' : w.pierce ? 'laser' : 'shot');
-      else if (Math.random() < 0.35) holder.r.root.userData.kick = 0.1;
+      else if (this.rnd() < 0.35) holder.r.root.userData.kick = 0.1;
     }
   }
 
@@ -648,9 +659,9 @@ export class Horde {
   // chi spara sceglie il nemico più vicino; gli alleati ne scelgono uno fra i tre più vicini: non si accanisce tutti sullo stesso
   pickTarget(s, range) {
     // il Custode attira i colpi quando è a tiro (altrimenti li prenderebbero i più vicini della folla)
-    if (this.bossAlive && Math.random() < 0.85) { const b = this.enemies.find((e) => e.def.boss && !e.dead && e.z > s.z && e.z - s.z < BOSS_RANGE); if (b) return b; }
+    if (this.bossAlive && this.rnd() < 0.85) { const b = this.enemies.find((e) => e.def.boss && !e.dead && e.z > s.z && e.z - s.z < BOSS_RANGE); if (b) return b; }
     if (s.self) return this.nearest(s.x, s.z, range);
-    return this.nearest(s.x, s.z, range * 0.8, 1 + Math.floor(Math.random() * 3));
+    return this.nearest(s.x, s.z, range * 0.8, 1 + Math.floor(this.rnd() * 3));
   }
   nearest(x, z, range, skip = 0) {
     let best = null; let bd = range; const near = [];
@@ -675,7 +686,7 @@ export class Horde {
             this.fx.explode(bx, 1, bz, b.splash / 2.5);
             this.audio.sfx('boom'); this.shake = Math.max(this.shake, 0.12);
             for (const o of this.enemies) if (!o.dead && Math.hypot(o.x - bx, o.z - bz) < b.splash) this.damage(o, b.dmg);
-          } else { this.damage(e, b.dmg); this.fx.spawn(bx, 1.3, bz, { tex: 'spark', size: 1.0, life: 0.09, grow: 1 }); for (let q = 0; q < 2; q++) this.fx.spawn(bx, 1.3, bz, { tex: 'spark', size: 0.22, life: 0.25, vx: (Math.random() - 0.5) * 6, vy: 2 + Math.random() * 3, vz: -b.vz * 0.08 + (Math.random() - 0.5) * 3, grow: 0 }); }
+          } else { this.damage(e, b.dmg); this.fx.spawn(bx, 1.3, bz, { tex: 'spark', size: 1.0, life: 0.09, grow: 1 }); for (let q = 0; q < 2; q++) this.fx.spawn(bx, 1.3, bz, { tex: 'spark', size: 0.22, life: 0.25, vx: (this.rnd() - 0.5) * 6, vy: 2 + this.rnd() * 3, vz: -b.vz * 0.08 + (this.rnd() - 0.5) * 3, grow: 0 }); }
           if (b.pierce) (b.hits = b.hits || new Set()).add(e); else { b.life = 0; break; }
         }
       }
@@ -694,7 +705,7 @@ export class Horde {
     this.prog('kills', 1, e.def.boss ? 200 : 1);
     this.xp += e.def.xp;
     if (this.xp >= this.xpNeed()) this.evolve();
-    if ((Math.random() < 0.2 && this.gems.length < 28) || e.def.boss) this.dropGem(e.x, e.z, e.def.boss ? 12 : e.def.xp > 2 ? 3 : 1);
+    if ((this.rnd() < 0.2 && this.gems.length < 28) || e.def.boss) this.dropGem(e.x, e.z, e.def.boss ? 12 : e.def.xp > 2 ? 3 : 1);
     if (e.def.boss) {
       this.bossAlive = false; this.fx.explode(e.x, 2.5, e.z, 2.5); this.shake = 0.8; this.bossKilled++;
       this.audio.sfx('win'); this.say(t('games.horde.bossDown'), '#d9ff3d', 2.6, true, 3); this.prog('bosses', 1, 150);
@@ -707,14 +718,14 @@ export class Horde {
     const jewel = this.m.jewel.scene.clone(true); jewel.scale.setScalar(this.gemScale); mesh.add(jewel);
     const halo = new THREE.Sprite(this.gemGlow); halo.scale.setScalar(1.6); halo.position.y = 0.35; mesh.add(halo);
     mesh.position.set(x, 0.6, z);
-    this.stage.scene.add(mesh); this.gems.push({ mesh, t: Math.random() * 3, trail });
+    this.stage.scene.add(mesh); this.gems.push({ mesh, t: this.rnd() * 3, trail });
   }
   dropGem(x, z, n) {
-    for (let i = 0; i < n; i++) this.addGem(clamp(x + (Math.random() - 0.5) * (n > 1 ? 4 : 0.5), -ROAD, ROAD), z + (Math.random() - 0.5) * (n > 1 ? 4 : 0.5));
+    for (let i = 0; i < n; i++) this.addGem(clamp(x + (this.rnd() - 0.5) * (n > 1 ? 4 : 0.5), -ROAD, ROAD), z + (this.rnd() - 0.5) * (n > 1 ? 4 : 0.5));
   }
   // una fila di gemme su una corsia: sterzando la raccogli tutta (la strada non è mai senza qualcosa da fare)
   spawnTrail(z) {
-    const x = (Math.random() * 2 - 1) * (ROAD - 1); const n = 5;
+    const x = (this.rnd() * 2 - 1) * (ROAD - 1); const n = 5;
     for (let i = 0; i < n; i++) this.addGem(x, z + i * 3, true);
   }
 
@@ -876,12 +887,16 @@ export class Horde {
   // telecamera bassa e vicina: il ciclista è grande, l'orda riempie lo schermo
   camera(dt) {
     const cam = this.stage.camera;
-    const sx = this.shake > 0 ? (Math.random() - 0.5) * this.shake * 0.6 : 0;
-    const sy = this.shake > 0 ? (Math.random() - 0.5) * this.shake * 0.3 : 0;
+    const sx = this.shake > 0 ? (this.rnd() - 0.5) * this.shake * 0.6 : 0;
+    const sy = this.shake > 0 ? (this.rnd() - 0.5) * this.shake * 0.3 : 0;
     const target = new THREE.Vector3(this.x * 0.6 + sx, 3.3 + sy, this.z - 7.0);
     if (!this.camInit) { cam.position.copy(target); this.camInit = true; }
     cam.position.lerp(target, 1 - Math.exp(-dt * 6));
-    cam.lookAt(this.x * 0.7, 0.8, this.z + 8);
+    // solo nel menu: il ciclista sta nella fascia libera (verticale: tra testo e tasto; orizzontale: a destra della colonna di testo)
+    const { W, H } = this.stage; const m = this.menu; const menuOn = this.state === 'menu' && m.contentBottom;
+    const wantX = menuOn && W > H * 1.15 ? -1.3 : 0; const wantY = menuOn && W <= H * 1.15 ? 0.55 : 0;
+    this.menuOffX = lerp(this.menuOffX || 0, wantX, 1 - Math.exp(-dt * 4)); this.menuOffY = lerp(this.menuOffY || 0, wantY, 1 - Math.exp(-dt * 4));
+    cam.lookAt(this.x * 0.7 + this.menuOffX, 0.8 + this.menuOffY, this.z + 8);
     const wantFov = 60 + (this.overdrive > 0 ? 4 : 0);
     this.fov = lerp(this.fov, wantFov, 1 - Math.exp(-dt * 5));
     cam.fov = this.fov; cam.far = 520; cam.updateProjectionMatrix();
@@ -897,6 +912,7 @@ export class Horde {
     if (this.state === 'loading') { ctx.fillStyle = '#0f0e0c'; ctx.fillRect(0, 0, W, H); hudText(ctx, t('games.common.loading'), W / 2, H / 2, { size: 22, align: 'center', color: '#d9ff3d' }); hudText(ctx, `${Math.round((this.loadPct || 0) * 100)}%`, W / 2, H / 2 + 28, { size: 14, align: 'center' }); return; }
     if (this.state === 'error') { hudText(ctx, t('ui.error', { error: this.error }), W / 2, H / 2, { size: 14, align: 'center', color: '#ff6b6b' }); return; }
     if (this.state === 'menu') { this.drawMenu(ctx, W, H, dt); return; }
+    if (this.state === 'over' && this.result) { this.drawOver(ctx, W, H, dt); return; }
     const w = WEAPONS[this.weapon]; const seg = this.seg;
     const pad = 12; const y0 = 84; // sotto la barra del gioco (titolo, audio, esci)
     // riga in alto
@@ -974,60 +990,47 @@ export class Horde {
       hudText(ctx, t('games.horde.paused'), W / 2, H * 0.42, { size: 42, align: 'center', color: '#ffd34d' });
       paragraph(ctx, t('games.horde.pausedSub'), W / 2, H * 0.42 + 36, { size: 20, maxW: W - 40, color: '#f0f0f0' });
     }
-    if (this.result && (seg.kind === 'cool' || this.state === 'over')) this.drawResult(ctx, W, H, this.state === 'over');
+    if (this.result && seg.kind === 'cool') this.drawResult(ctx, W, H);
     // i riquadri dei traguardi non coprono l'azione: durante sforzi e scatti aspettano il recupero
     if (!['pace', 'effort', 'sprint'].includes(seg.kind) || this.state === 'over') this.hooks.progress?.drawToasts(ctx, W, dt, this.result && seg.kind === 'cool' ? 400 : 206, true);
   }
 
   drawMenu(ctx, W, H, dt) {
-    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, 'rgba(8,10,28,.8)'); g.addColorStop(0.5, 'rgba(8,10,28,.1)'); g.addColorStop(1, 'rgba(8,10,28,.9)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    hudText(ctx, t('games.horde.hud.title'), W / 2, 124, { size: 56, align: 'center', color: '#d9ff3d' });
-    hudText(ctx, t('games.horde.hud.tagline'), W / 2, 154, { size: 17, align: 'center', font: 'text' });
-    // scelte: durata (−) e livello (+)
-    const rowW = Math.min(W - 28, 440); const x0 = (W - rowW) / 2; let y = 184;
-    const chip = (label, opts, idx, key) => {
-      hudText(ctx, label, x0, y + 20, { size: 16, color: '#c8c8c8', font: 'text', maxW: rowW * 0.25 });
-      const cw = (rowW * 0.74) / opts.length; const cx0 = x0 + rowW * 0.26;
-      opts.forEach((o, i) => {
-        ctx.fillStyle = i === idx ? '#d9ff3d' : 'rgba(255,255,255,.14)'; rrect(ctx, cx0 + i * cw + 2, y, cw - 4, 30, 9); ctx.fill();
-        hudText(ctx, o, cx0 + i * cw + cw / 2, y + 22, { size: 17, align: 'center', color: i === idx ? '#15141b' : '#f0f0f0', stroke: i === idx ? null : 'rgba(0,0,0,.85)', maxW: cw - 8 });
-      });
-      hudText(ctx, key, x0 + rowW, y + 48, { size: 13, align: 'right', color: '#9aa', font: 'text' });
-      y += 62;
-    };
-    chip(t('games.horde.dur'), DURATIONS.map((d) => t('games.horde.durMin', { n: d / 60 })), this.durIdx, t('games.horde.keyDur'));
-    chip(t('games.horde.level'), LEVELS.map((l) => t(`games.horde.lv.${l.id}`)), this.lvlIdx, t('games.horde.keyLvl'));
-    const mw = Math.min(W - 28, 460); let fs = W < 500 ? 16 : 18; const rules = [1, 2, 3, 4, 5].map((i) => t(`games.horde.rule${i}`));
-    const bottom = H * 0.64;
-    const count = () => rules.reduce((a, r) => a + wrapLines(ctx, '· ' + r, mw, fs, { font: 'text' }).length, 0);
-    while (fs > 11 && count() * 1.28 * fs + rules.length * 5 > bottom - y) fs -= 0.5;
-    for (const r of rules) { const o = paragraph(ctx, '· ' + r, W / 2, y + fs, { size: fs, maxW: mw, lineK: 1.28, color: '#f0f0f0' }); y = o.bottom + 5; }
-    const rec = this.record();
-    if (rec.score) hudText(ctx, `${t('games.common.best', { n: rec.score })} · ${'★'.repeat(rec.stars || 0)}`, W / 2, H - 92, { size: 16, align: 'center', color: '#c8c8c8', font: 'text' });
-    // inizio: si riempie pedalando
-    hudText(ctx, t(this.hooks.connected() ? 'games.horde.startPedal' : 'games.horde.startHold'), W / 2, H - 56, { size: 22, align: 'center', color: '#d9ff3d' });
-    ctx.fillStyle = 'rgba(255,255,255,.2)'; rrect(ctx, W / 2 - 80, H - 40, 160, 8, 4); ctx.fill();
-    ctx.fillStyle = '#d9ff3d'; rrect(ctx, W / 2 - 80, H - 40, Math.max(0, 160 * clamp(Math.max(this.startT / 1.6, this.held ? this.heldT / 0.8 : 0), 0, 1)), 8, 4); ctx.fill();
+    const connected = this.hooks.connected();
+    this.menu.draw(ctx, W, H, { connected });
     this.hooks.progress?.drawToasts(ctx, W, dt);
   }
 
-  // riepilogo: stelle, sforzi riusciti, Custodi, cadute, record e cosa manca alla prossima stella
-  drawResult(ctx, W, H, full) {
+  // fine partita: il riepilogo comune (stelle, criteri, punteggio, record)
+  drawOver(ctx, W, H, dt) {
     const r = this.result;
-    const top = full ? H * 0.2 : 84 + 118;
-    if (full) { ctx.fillStyle = 'rgba(8,4,20,.82)'; ctx.fillRect(0, 0, W, H); }
-    else { ctx.fillStyle = 'rgba(8,10,26,.78)'; rrect(ctx, 12, top - 6, W - 24, 172, 14); ctx.fill(); }
+    const hint = r.hint ? t(r.hint.key, { n: r.hint.n }) : null;
+    this.results.draw(ctx, W, H, {
+      title: t('games.horde.res.title'), stars: r.stars, score: r.score,
+      criteria: [
+        { ok: r.ratio >= 0.8, label: t('games.horde.res.efforts', { a: r.done, b: r.total }) },
+        { ok: r.bossKilled >= r.bossTotal, label: t('games.horde.res.bosses', { a: r.bossKilled, b: r.bossTotal }) },
+        { ok: r.ko <= 3, label: t('games.horde.res.falls', { n: r.ko }) },
+      ],
+      best: r.bestScore ? String(r.bestScore) : null, newBest: r.newBest, note: hint,
+    });
+    if (W <= H * 1.15) this.hooks.progress?.drawToasts(ctx, W, dt, 200, true); // in orizzontale il riquadro coprirebbe il pannello: resta in coda
+  }
+
+  // riepilogo: stelle, sforzi riusciti, Custodi, cadute, record e cosa manca alla prossima stella
+  drawResult(ctx, W, H) {
+    const r = this.result;
+    const top = 84 + 118;
+    ctx.fillStyle = 'rgba(8,10,26,.78)'; rrect(ctx, 12, top - 6, W - 24, 172, 14); ctx.fill();
     const y = top + 38;
-    hudText(ctx, t('games.horde.res.title'), W / 2, y - (full ? 0 : 6), { size: full ? 30 : 22, align: 'center', color: '#d9ff3d' });
-    drawStars(ctx, W / 2, y + (full ? 44 : 30), full ? 34 : 24, r.stars);
-    let yy = y + (full ? 100 : 74);
+    hudText(ctx, t('games.horde.res.title'), W / 2, y - 6, { size: 22, align: 'center', color: '#d9ff3d' });
+    drawStars(ctx, W / 2, y + 30, 24, r.stars);
+    let yy = y + 74;
     const line = (s, c = '#f0f0f0') => { const o = paragraph(ctx, s, W / 2, yy, { size: 17, maxW: W - 40, color: c, maxLines: 2 }); yy = o.bottom + 4; };
     line(t('games.horde.res.efforts', { a: r.done, b: r.total }));
     line(t('games.horde.res.bosses', { a: r.bossKilled, b: r.bossTotal }) + ' · ' + t('games.horde.res.falls', { n: r.ko }));
     line(`${t('games.common.score', { n: r.score })}${r.newBest ? t('games.common.newBest') : ''}`, r.newBest ? '#7dff6a' : '#f0f0f0');
     if (r.hint) line(t(r.hint.key, { n: r.hint.n }), '#ffd34d');
-    if (full && this.stateT > 1.4) hudText(ctx, t('games.common.retry'), W / 2, H - 70, { size: 22, align: 'center', color: '#d9ff3d' });
   }
 
   loop(now) {

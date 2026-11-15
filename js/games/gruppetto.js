@@ -10,11 +10,13 @@
 import { THREE, Stage, loadAll, Effects, Quality, Cyclist, makeKit, loadCyclistTemplate, toonMaterial, prepareModel, skyDome, styleLights, styleFog, PALETTE, WindLines, Shake } from './kit3d.js';
 import { loadGLTF } from './kit/loader.js';
 import { loadMeshyTemplate, CYCLIST_URL, MESHY_FAN_URL } from './kit/cyclist.js';
-import { Road, buildScenery, buildArch, rng, LANE_W } from './slip-world.js';
+import { Road, buildScenery, buildArch, LANE_W } from './slip-world.js';
 import { clamp, lerp } from './engine.js';
-import { txt as hudText, hudView, paragraph, wrapLines, MessageQueue, loadHudFonts } from './kit/hud.js';
+import { txt as hudText, hudView, paragraph, MessageQueue, loadHudFonts } from './kit/hud.js';
 import { t } from '../i18n.js';
 import { SONGS } from './audio.js';
+import { GameMenu, ResultsView } from './kit/menu.js';
+import { makeRandom } from './kit/rng.js';
 import { DURATIONS, LEVELS, COOL_S, buildPlan, segAt, targetW, closingSpeed, HOLD_PCT, DROP_AFTER, Adapter, starsFor, nextStarHint } from './slip-plan.js';
 
 const A = 'assets/3d';
@@ -44,17 +46,32 @@ export class Gruppetto {
   constructor(hudCanvas, hooks, audio) {
     this.hudCanvas = hudCanvas; this.hooks = hooks; this.audio = audio; this.active = false;
     const ls = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
-    this.durIdx = clamp(Number(ls('slipDur', 0)) || 0, 0, DURATIONS.length - 1);
-    this.lvlIdx = clamp(Number(ls('slipLvl', 1)) || 0, 0, LEVELS.length - 1);
+    this.seed = null; this.state = 'loading';
+    // menu e risultati: kit comune; durata e livello restano nelle chiavi di sempre (slipDur / slipLvl)
+    this.menu = new GameMenu({
+      id: 'gruppetto', title: () => t('games.gruppetto.hud.title'), pitch: () => t('games.gruppetto.hud.tagline'),
+      howto: () => [t('games.gruppetto.help'), t('games.gruppetto.how2'), t('games.gruppetto.how3')],
+      load: () => ({ durIdx: clamp(Number(ls('slipDur', 0)) || 0, 0, DURATIONS.length - 1), level: clamp(Number(ls('slipLvl', 1)) || 0, 0, LEVELS.length - 1) }),
+      save: ({ durIdx, level }) => { try { localStorage.setItem('slipDur', durIdx); localStorage.setItem('slipLvl', level); } catch { /* niente storage */ } },
+      best: (d, l) => { const r = this.recordOf(DURATIONS[d], LEVELS[l].id); return { stars: r.stars || 0, text: r.score ? String(r.score) : null }; },
+      onStart: (d, l) => { this.configure(d, l); this.reset(); this.begin(); },
+      sfx: (n) => this.audio.sfx(n), ready: () => this.state === 'menu',
+    });
+    this.results = new ResultsView({ onAgain: () => { this.reset(); this.begin(); }, onBack: () => this.hooks.close?.(), sfx: (n) => this.audio.sfx(n) });
     this.free = {}; this.loop = this.loop.bind(this);
   }
+  get durIdx() { return this.menu.durIdx; }
+  set durIdx(v) { this.menu.durIdx = v; }
+  get lvlIdx() { return this.menu.level; }
+  set lvlIdx(v) { this.menu.level = v; }
 
   async start() {
     this.active = true;
     this.quality = new Quality();
     this.stage = new Stage(this.hudCanvas, { quality: this.quality });
     this.stage.onQuality = (cfg) => this.applyQuality(cfg);
-    this.state = 'loading'; this.t = 0; this.msgs = new MessageQueue(); this.power = 0; this.pw = 0; this.cadence = 0; this.pops = [];
+    this.state = 'loading'; this.t = 0;
+    this.detach = [this.menu.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'menu'), this.results.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'over')]; this.msgs = new MessageQueue(); this.power = 0; this.pw = 0; this.cadence = 0; this.pops = [];
     this.last = performance.now();
     requestAnimationFrame(this.loop);
     this.audio.playSong(SONGS.menu);
@@ -73,11 +90,11 @@ export class Gruppetto {
       await loadHudFonts();
       if (!this.active) return;
       this.build();
-      this.state = 'menu'; this.stateT = 0;
+      this.state = 'menu'; this.stateT = 0; this.menu.reset();
     } catch (err) { console.error(err); this.state = 'error'; this.error = err.message; }
   }
 
-  stop() { this.active = false; this.audio.stopSong(); this.hooks.setGrade(null); this.stage?.dispose(); }
+  stop() { this.active = false; for (const d of this.detach || []) d(); this.detach = []; this.audio.stopSong(); this.hooks.setGrade(null); this.stage?.dispose(); }
 
   // ---------- scena ----------
   build() {
@@ -160,7 +177,7 @@ export class Gruppetto {
     if (this.player) this.release(this.player);
     if (this.arch) this.arch.visible = false;
     this.configure(this.durIdx, this.lvlIdx);
-    this.rnd = rng(9001 + this.durIdx * 7 + this.lvlIdx);
+    this.rnd = makeRandom(this.seed ?? globalThis.__spindroSeed ?? 9001 + this.durIdx * 7 + this.lvlIdx);
     this.group = []; this.drops = []; this.escapees = []; this.gems = []; this.bridge = null; this.line = null;
     this.z = 0; this.x = 0; this.lane = 0; this.pops = []; this.el = 0; this.segIdx = -1; this.seg = this.plan.segs[0];
     this.score = 0; this.caught = 0; this.dropped = 0; this.bridgesDone = 0; this.bridgesTotal = 0; this.finalWon = false; this.finalTried = false;
@@ -184,7 +201,8 @@ export class Gruppetto {
 
   get ftp() { return Math.max(80, this.hooks.ftp?.() || Number(localStorage.getItem('ftp')) || 200); }
   recordKey() { return `slipBest:${this.total}:${this.level.id}`; }
-  record() { try { return JSON.parse(localStorage.getItem(this.recordKey()) || '{}'); } catch { return {}; } }
+  recordOf(total, id) { try { return JSON.parse(localStorage.getItem(`slipBest:${total}:${id}`) || '{}'); } catch { return {}; } }
+  record() { return this.recordOf(this.total, this.level.id); }
 
   // ---------- eventi: tutto ciò che chiede o premia qualcosa (si misura nel test) ----------
   ev(kind) { if (this.evLog.length < 20000) this.evLog.push({ t: this.el, k: kind }); }
@@ -202,20 +220,14 @@ export class Gruppetto {
   // ---------- comandi ----------
   input(dir) {
     this.audio.ensure();
-    if (this.state === 'menu') {
-      if (this.stateT < 0.3) return;
-      // − cambia la durata, + cambia il livello; tenuti premuti iniziano (hold)
-      if (dir < 0) this.configure((this.durIdx + 1) % DURATIONS.length, this.lvlIdx); else this.configure(this.durIdx, (this.lvlIdx + 1) % LEVELS.length);
-      try { localStorage.setItem('slipDur', this.durIdx); localStorage.setItem('slipLvl', this.lvlIdx); } catch { /* niente storage */ }
-      this.reset(); this.audio.sfx('select'); return;
-    }
-    if (this.state === 'over') { if (this.stateT > 1.4) { this.reset(); this.state = 'menu'; this.stateT = 0; this.audio.playSong(SONGS.menu); } return; }
+    if (this.state === 'menu') { this.menu.input(dir); return; }
+    if (this.state === 'over') { this.results.input(dir); return; }
     if (this.state !== 'play' || this.paused) return;
     // una sola cosa: cambia corsia (+ destra, − sinistra)
     const l = clamp(this.lane + (dir > 0 ? 1 : -1), -1, 1);
     if (l !== this.lane) { this.lane = l; this.audio.sfx('shiftUp'); }
   }
-  hold(dir) { this.held = dir; this.heldT = 0; }
+  hold(dir) { if (this.state === 'menu') this.menu.hold(dir); }
 
   begin() {
     this.state = 'play'; this.stateT = 0; this.pwInit = true; this.hooks.runStart?.();
@@ -362,7 +374,7 @@ export class Gruppetto {
     this.fx.update(dt); this.shake.update(dt);
     this.stateT += dt;
     if (this.state === 'menu') { this.menuTick(dt, connected); this.view(dt); return; }
-    if (this.state === 'over') { this.view(dt, true); return; }
+    if (this.state === 'over') { this.results.update(dt); this.view(dt, true); return; }
 
     // pausa: chi smette di pedalare non perde, il tempo si ferma
     if (connected) {
@@ -519,19 +531,14 @@ export class Gruppetto {
     }
   }
 
-  menuTick(dt, connected) {
-    // si parte pedalando (o tenendo premuto + / −)
-    if (this.stateT > 1 && ((connected && this.power > 30) || (this.held && this.heldT > 0.8))) this.startT += dt; else this.startT = Math.max(0, this.startT - dt * 2);
-    if (this.held) this.heldT += dt;
-    if (this.startT > 1.6 || (this.held && this.heldT > 0.8 && this.stateT > 1)) { this.held = 0; this.begin(); }
-  }
+  menuTick(dt, connected) { this.menu.update(dt, { connected, power: this.hooks.stats()?.power || 0 }); }
 
   finishResult() {
     const s = starsFor({ done: this.bridgesDone, total: this.bridgesTotal, finalWon: this.finalWon, dropped: this.dropped });
     const rec = this.record(); const prevBest = rec.score || 0; const newBest = this.score > prevBest;
     if (newBest || s.stars > (rec.stars || 0)) { try { localStorage.setItem(this.recordKey(), JSON.stringify({ score: Math.max(prevBest, this.score), stars: Math.max(rec.stars || 0, s.stars) })); } catch { /* niente storage */ } }
     this.score = Math.round(this.score);
-    this.result = { ...s, done: this.bridgesDone, total: this.bridgesTotal, caught: this.caught, riders: this.plan.riders, dropped: this.dropped, finalWon: this.finalWon, group: this.group.length, score: this.score, newBest, prevStars: rec.stars || 0 };
+    this.result = { best: Math.max(prevBest, this.score), ...s, done: this.bridgesDone, total: this.bridgesTotal, caught: this.caught, riders: this.plan.riders, dropped: this.dropped, finalWon: this.finalWon, group: this.group.length, score: this.score, newBest, prevStars: rec.stars || 0 };
     this.result.hint = nextStarHint(this.result);
     this.prog('races', 0, 40 + s.stars * 40 + this.bridgesDone * 10);
     this.hooks.progress?.setMax('slipStars', s.stars);
@@ -539,7 +546,7 @@ export class Gruppetto {
 
   finish() {
     if (!this.result) this.finishResult();
-    this.state = 'over'; this.stateT = 0; this.finished = true;
+    this.state = 'over'; this.stateT = 0; this.finished = true; this.results.reset();
     this.audio.stopSong(); this.audio.sfx('win');
     this.hooks.runEnd?.({ game: 'gruppetto', score: this.score });
     this.hooks.setGrade(0);
@@ -557,7 +564,9 @@ export class Gruppetto {
     const cx = this.x * 0.8; const tx = cx; const ty = CAM_H; const tz = this.z - CAM_BACK;
     if (!this.camInit) { cam.position.set(tx, ty, tz); this.camInit = true; this.camX = cx; }
     this.camX += (cx - this.camX) * Math.min(1, dt * 4); cam.position.set(this.camX, ty, tz);
-    cam.lookAt(this.camX * 0.9, 0.9, this.z + CAM_LOOK);
+    // solo nei risultati in verticale: il pannello copre il basso, il ciclista sale nella fascia libera sotto le stelle
+    const up = this.state === 'over' && this.stage.W < this.stage.H * 1.15 ? 3.2 : 0;
+    cam.lookAt(this.camX * 0.9, 0.9 - up, this.z + CAM_LOOK);
     this.shake.apply(cam);
     const fov = 46 + sprint * 5 + (this.seg?.kind === 'effort' ? 1.5 : 0); cam.fov += (fov - cam.fov) * Math.min(1, dt * 3); cam.updateProjectionMatrix();
     // gli altri ciclisti: si animano solo quelli che si vedono
@@ -584,7 +593,8 @@ export class Gruppetto {
     ctx.clearRect(0, 0, W, H); hudView(ctx, W, H);
     if (this.state === 'loading') { ctx.fillStyle = '#0f0e0c'; ctx.fillRect(0, 0, W, H); hudText(ctx, t('games.common.loading'), W / 2, H / 2, { size: 22, align: 'center', color: '#d9ff3d' }); hudText(ctx, `${Math.round((this.loadPct || 0) * 100)}%`, W / 2, H / 2 + 28, { size: 14, align: 'center' }); return; }
     if (this.state === 'error') { hudText(ctx, t('ui.error', { error: this.error }), W / 2, H / 2, { size: 14, align: 'center', color: '#ff6b6b' }); return; }
-    if (this.state === 'menu') { this.drawMenu(ctx, W, H, dt); return; }
+    if (this.state === 'menu') { this.menu.draw(ctx, W, H, { connected: this.hooks.connected() }); this.hooks.progress?.drawToasts(ctx, W, dt); return; }
+    if (this.state === 'over') { this.drawResult(ctx, W, H); this.hooks.progress?.drawToasts(ctx, W, dt); return; }
     const seg = this.seg; const pad = 12; const y0 = 84;
     // riga in alto: punti · ponte · presi x/y
     ctx.fillStyle = 'rgba(8,10,26,.62)'; rrect(ctx, pad - 4, y0 - 22, W - 2 * pad + 8, 36, 10); ctx.fill();
@@ -662,8 +672,7 @@ export class Gruppetto {
       hudText(ctx, t('games.gruppetto.paused'), W / 2, H * 0.42, { size: 42, align: 'center', color: '#ffd34d' });
       paragraph(ctx, t('games.gruppetto.pausedSub'), W / 2, H * 0.42 + 36, { size: 20, maxW: W - 40, color: '#f0f0f0' });
     }
-    if (this.result && (seg.kind === 'cool' || this.state === 'over')) this.drawResult(ctx, W, H, this.state === 'over');
-    if (!['pace', 'effort', 'sprint'].includes(seg.kind) || this.state === 'over') this.hooks.progress?.drawToasts(ctx, W, dt, this.result && seg.kind === 'cool' ? 400 : 224, true);
+    if (!['pace', 'effort', 'sprint'].includes(seg.kind)) this.hooks.progress?.drawToasts(ctx, W, dt, 224, true);
   }
 
   // obiettivo sempre visibile: metri al prossimo corridore (o al traguardo), con barra
@@ -686,51 +695,22 @@ export class Gruppetto {
     ctx.fillStyle = c; rrect(ctx, pad + 4, y + 30, Math.max(9, (w - 8) * clamp(frac, 0, 1)), 9, 4.5); ctx.fill();
   }
 
-  drawMenu(ctx, W, H, dt) {
-    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, 'rgba(8,10,28,.8)'); g.addColorStop(0.5, 'rgba(8,10,28,.1)'); g.addColorStop(1, 'rgba(8,10,28,.9)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    hudText(ctx, t('games.gruppetto.hud.title'), W / 2, 124, { size: 56, align: 'center', color: '#d9ff3d' });
-    hudText(ctx, t('games.gruppetto.hud.tagline'), W / 2, 154, { size: 17, align: 'center', font: 'text', maxW: W - 24 });
-    const rowW = Math.min(W - 28, 440); const x0 = (W - rowW) / 2; let y = 184;
-    const chip = (label, opts, idx, key) => {
-      hudText(ctx, label, x0, y + 20, { size: 16, color: '#c8c8c8', font: 'text', maxW: rowW * 0.25 });
-      const cw = (rowW * 0.74) / opts.length; const cx0 = x0 + rowW * 0.26;
-      opts.forEach((o, i) => {
-        ctx.fillStyle = i === idx ? '#d9ff3d' : 'rgba(255,255,255,.14)'; rrect(ctx, cx0 + i * cw + 2, y, cw - 4, 30, 9); ctx.fill();
-        hudText(ctx, o, cx0 + i * cw + cw / 2, y + 22, { size: 17, align: 'center', color: i === idx ? '#15141b' : '#f0f0f0', stroke: i === idx ? null : 'rgba(0,0,0,.85)', maxW: cw - 8 });
-      });
-      hudText(ctx, key, x0 + rowW, y + 48, { size: 13, align: 'right', color: '#9aa', font: 'text' });
-      y += 62;
-    };
-    chip(t('games.gruppetto.dur'), DURATIONS.map((d) => t('games.gruppetto.durMin', { n: d / 60 })), this.durIdx, t('games.gruppetto.keyDur'));
-    chip(t('games.gruppetto.level'), LEVELS.map((l) => t(`games.gruppetto.lv.${l.id}`)), this.lvlIdx, t('games.gruppetto.keyLvl'));
-    const mw = Math.min(W - 28, 460); let fs = W < 500 ? 16 : 18; const rules = [1, 2, 3, 4, 5].map((i) => t(`games.gruppetto.rule${i}`));
-    const bottom = H * 0.64;
-    const count = () => rules.reduce((a, r) => a + wrapLines(ctx, '· ' + r, mw, fs, { font: 'text' }).length, 0);
-    while (fs > 11 && count() * 1.28 * fs + rules.length * 5 > bottom - y) fs -= 0.5;
-    for (const r of rules) { const o = paragraph(ctx, '· ' + r, W / 2, y + fs, { size: fs, maxW: mw, lineK: 1.28, color: '#f0f0f0' }); y = o.bottom + 5; }
-    const rec = this.record();
-    if (rec.score) hudText(ctx, `${t('games.common.best', { n: rec.score })} · ${'★'.repeat(rec.stars || 0)}`, W / 2, H - 92, { size: 16, align: 'center', color: '#c8c8c8', font: 'text' });
-    hudText(ctx, t(this.hooks.connected() ? 'games.gruppetto.startPedal' : 'games.gruppetto.startHold'), W / 2, H - 56, { size: 22, align: 'center', color: '#d9ff3d' });
-    ctx.fillStyle = 'rgba(255,255,255,.2)'; rrect(ctx, W / 2 - 80, H - 40, 160, 8, 4); ctx.fill();
-    ctx.fillStyle = '#d9ff3d'; rrect(ctx, W / 2 - 80, H - 40, Math.max(0, 160 * clamp(Math.max(this.startT / 1.6, this.held ? this.heldT / 0.8 : 0), 0, 1)), 8, 4); ctx.fill();
-    this.hooks.progress?.drawToasts(ctx, W, dt);
-  }
-
-  // riepilogo: stelle, ponti, corridori presi, persi, record e cosa manca alla stella dopo
-  drawResult(ctx, W, H, full) {
-    const r = this.result; const top = full ? H * 0.2 : 84 + 134;
-    if (full) { ctx.fillStyle = 'rgba(8,4,20,.82)'; ctx.fillRect(0, 0, W, H); } else { ctx.fillStyle = 'rgba(8,10,26,.78)'; rrect(ctx, 12, top - 6, W - 24, 176, 14); ctx.fill(); }
-    const y = top + 38;
-    hudText(ctx, t('games.gruppetto.res.title'), W / 2, y - (full ? 0 : 6), { size: full ? 30 : 22, align: 'center', color: '#d9ff3d' });
-    drawStars(ctx, W / 2, y + (full ? 44 : 30), full ? 34 : 24, r.stars);
-    let yy = y + (full ? 100 : 74);
-    const line = (s, c = '#f0f0f0') => { const o = paragraph(ctx, s, W / 2, yy, { size: 17, maxW: W - 40, color: c, maxLines: 2 }); yy = o.bottom + 4; };
-    line(t('games.gruppetto.res.bridges', { a: r.done, b: r.total }));
-    line(t('games.gruppetto.res.riders', { a: r.caught, b: r.riders }) + ' · ' + t('games.gruppetto.res.lost', { n: r.dropped }));
-    line(`${t('games.common.score', { n: r.score })}${r.newBest ? t('games.common.newBest') : ''}`, r.newBest ? '#7dff6a' : '#f0f0f0');
-    if (r.hint) line(t(r.hint.key, { n: r.hint.n }), '#ffd34d');
-    if (full && this.stateT > 1.4) hudText(ctx, t('games.common.retry'), W / 2, H - 70, { size: 22, align: 'center', color: '#d9ff3d' });
+  // riepilogo (kit): le stelle sono i criteri di starsFor() (slip-plan.js)
+  drawResult(ctx, W, H) {
+    const r = this.result;
+    const ok = (n) => r.stars >= n;
+    this.results.draw(ctx, W, H, {
+      title: t('games.gruppetto.res.title'), subtitle: t('games.gruppetto.name'), stars: r.stars,
+      criteria: [
+        { ok: true, label: t('games.gruppetto.crit.finish') },
+        { ok: ok(2), label: t('games.gruppetto.crit.half') },
+        { ok: r.total > 0 && r.done / r.total >= 0.8, label: t('games.gruppetto.crit.most') },
+        { ok: r.finalWon, label: t('games.gruppetto.crit.sprint') },
+        { ok: r.dropped <= 3, label: t('games.gruppetto.crit.lost', { n: r.dropped }) },
+      ],
+      score: r.score, best: r.best ? String(r.best) : null, newBest: r.newBest,
+      lines: [t('games.gruppetto.res.bridges', { a: r.done, b: r.total }), t('games.gruppetto.res.riders', { a: r.caught, b: r.riders })],
+    });
   }
 
   loop(now) {
@@ -741,16 +721,6 @@ export class Gruppetto {
     if (this.player) this.stage.render();
     this.drawHud(dt);
     requestAnimationFrame(this.loop);
-  }
-}
-
-function drawStars(ctx, cx, cy, r, n) {
-  for (let i = 0; i < 3; i++) {
-    const x = cx + (i - 1) * r * 2.5; ctx.beginPath();
-    for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5; const rr = k % 2 ? r * 0.45 : r; ctx.lineTo(x + Math.cos(a) * rr, cy + Math.sin(a) * rr); }
-    ctx.closePath(); ctx.lineJoin = 'round';
-    ctx.fillStyle = i < n ? '#ffd34d' : 'rgba(255,255,255,.14)'; ctx.fill();
-    ctx.lineWidth = 3; ctx.strokeStyle = i < n ? '#a8741a' : 'rgba(255,255,255,.4)'; ctx.stroke();
   }
 }
 

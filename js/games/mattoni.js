@@ -11,7 +11,9 @@ import { skyDome, styleLights, styleFog, toonMaterial, toonify, TIMES, PALETTE }
 import { Cyclist, loadMeshyTemplate, loadCyclistTemplate, makeKit, makeMeshyCrowdGeometry, crowdMaterial, CYCLIST_URL } from './kit/cyclist.js';
 import { scatterModel, groundModel, crowdInstances } from './kit/env.js';
 import { Shake, Confetti } from './kit/juice.js';
-import { txt as hudText, hudView, paragraph, wrapLines, MessageQueue, loadHudFonts } from './kit/hud.js';
+import { txt as hudText, hudView, paragraph, MessageQueue, loadHudFonts, uiScale } from './kit/hud.js';
+import { GameMenu, ResultsView } from './kit/menu.js';
+import { makeRandom } from './kit/rng.js';
 import { clamp, lerp } from './engine.js';
 import { SONGS } from './audio.js';
 import { t } from '../i18n.js';
@@ -132,11 +134,24 @@ export class Mattoni {
     this.hudCanvas = hudCanvas; this.hooks = hooks; this.audio = audio;
     this.active = false;
     const ls = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
-    this.durIdx = clamp(Number(ls('feedDur', 0)) || 0, 0, DURATIONS.length - 1);
-    this.lvlIdx = clamp(Number(ls('feedLvl', 1)) || 0, 0, LEVELS.length - 1);
+    this.menu = new GameMenu({
+      id: 'mattoni', title: () => t('games.mattoni.hud.title'), pitch: () => t('games.mattoni.hud.tagline'),
+      howto: () => [t('games.mattoni.rule1'), t('games.mattoni.rule3'), t('games.mattoni.rule4')],
+      load: () => ({ durIdx: clamp(Number(ls('feedDur', 0)) || 0, 0, DURATIONS.length - 1), level: clamp(Number(ls('feedLvl', 1)) || 0, 0, LEVELS.length - 1) }),
+      save: ({ durIdx, level }) => { try { localStorage.setItem('feedDur', durIdx); localStorage.setItem('feedLvl', level); } catch { /* niente storage */ } },
+      best: (d, l) => { try { const r = JSON.parse(localStorage.getItem(`feedBest:${DURATIONS[d]}:${LEVELS[l].id}`) || '{}'); return { stars: r.stars || 0, text: r.score ? String(r.score) : null }; } catch { return { stars: 0, text: null }; } },
+      sfx: (n) => this.audio.sfx(n),
+      onStart: () => { this.reset(); this.begin(); },
+    });
+    this.results = new ResultsView({ sfx: (n) => this.audio.sfx(n), onAgain: () => { this.reset(); this.begin(); }, onBack: () => this.hooks.close?.() });
     this.loop = this.loop.bind(this);
-    this.seed = null; this.rand = rng(1);
+    this.seed = null; this.rand = makeRandom(1);
   }
+  // durata e livello vivono nel menu (i test e configure() li leggono/scrivono da qui)
+  get durIdx() { return this.menu.durIdx; }
+  set durIdx(v) { this.menu.durIdx = v; }
+  get lvlIdx() { return this.menu.level; }
+  set lvlIdx(v) { this.menu.level = v; }
 
   get ftp() { return Math.max(80, this.hooks.ftp?.() || Number(localStorage.getItem('ftp')) || 200); }
 
@@ -147,6 +162,7 @@ export class Mattoni {
     this.stage.onQuality = (cfg) => this.applyQuality(cfg);
     this.state = 'loading'; this.t = 0; this.msgs = new MessageQueue(); this.power = 0; this.pw = 0; this.cadence = 0; this.pops = [];
     this.last = performance.now();
+    this.detach = [this.menu.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'menu'), this.results.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'over')];
     requestAnimationFrame(this.loop);
     this.audio.playSong(SONGS.menu);
     try {
@@ -160,11 +176,11 @@ export class Mattoni {
       await loadHudFonts();
       if (!this.active) return;
       this.build();
-      this.state = 'menu'; this.stateT = 0;
+      this.state = 'menu'; this.stateT = 0; this.menu.reset();
     } catch (err) { console.error(err); this.state = 'error'; this.error = err.message; }
   }
 
-  stop() { this.active = false; this.audio.stopSong(); this.hooks.setGrade?.(null); this.stage?.dispose(); }
+  stop() { this.active = false; for (const d of this.detach || []) d(); this.detach = []; this.audio.stopSong(); this.hooks.setGrade?.(null); this.stage?.dispose(); }
 
   // ---------- scena ----------
   build() {
@@ -299,10 +315,10 @@ export class Mattoni {
     const { scene } = this.stage;
     for (const g of this.gels || []) scene.remove(g.mesh);
     if (this.player) scene.remove(this.player.root);
-    this.rand = rng(this.seed ?? ((Math.random() * 1e9) | 0)); // il caso è nostro: con un seme fisso la partita si ripete uguale (test)
+    this.rand = makeRandom(this.seed); // il caso è nostro: con un seme (this.seed o window.__spindroSeed) la partita si ripete uguale (test)
     this.configure(this.durIdx, this.lvlIdx);
     this.setTime(['morning', 'golden', 'dusk'][this.lvlIdx] || 'golden');
-    this.x = 0; this.tx = 0; this.held = 0; this.heldT = 0; this.pw = 0;
+    this.x = 0; this.tx = 0; this.held = 0; this.heldT = 0; this.pw = 0; this.power = 0; this.cadence = 0; // niente residui del menu: la prima borraccia non dipende da come si pedalava prima
     this.lives = 4; this.score = 0; this.combo = 0; this.bestCombo = 0; this.charge = 0; this.hot = false; this.inTarget = false;
     this.el = 0; this.segIdx = -1; this.seg = this.plan.segs[0]; this.gels = []; this.pop = null;
     this.paused = false; this.pauseT = 0; this.startT = 0; this.finished = false; this.result = null; this.ko = 0;
@@ -331,23 +347,17 @@ export class Mattoni {
   // ---------- comandi: + / − muovono la bici ----------
   input(dir) {
     this.audio.ensure();
-    if (this.state === 'menu') {
-      if (this.stateT < 0.3) return;
-      if (dir < 0) this.configure((this.durIdx + 1) % DURATIONS.length, this.lvlIdx); else this.configure(this.durIdx, (this.lvlIdx + 1) % LEVELS.length);
-      try { localStorage.setItem('feedDur', this.durIdx); localStorage.setItem('feedLvl', this.lvlIdx); } catch { /* niente storage */ }
-      this.setTime(['morning', 'golden', 'dusk'][this.lvlIdx] || 'golden');
-      this.audio.sfx('select'); return;
-    }
-    if (this.state === 'over') { if (this.stateT > 1.4) { this.reset(); this.state = 'menu'; this.stateT = 0; this.audio.playSong(SONGS.menu); } return; }
+    if (this.state === 'menu') { this.menu.input(dir); return; }
+    if (this.state === 'over') { this.results.input(dir); return; }
     if (this.state !== 'play' || this.paused) return;
     this.tx = clamp(this.tx - dir * NUDGE, -this.reach(), this.reach()); // destra sullo schermo = −X
   }
-  hold(dir) { this.held = dir; this.heldT = 0; }
+  hold(dir) { if (this.state === 'menu') { this.menu.hold(dir); return; } this.held = dir; this.heldT = 0; }
   reach() { return HW - this.pw2() * 0.7; }
   pw2() { return this.stripW / 2; }
 
   begin() {
-    this.state = 'play'; this.stateT = 0; this.hooks.runStart?.();
+    this.state = 'play'; this.stateT = 0; this.held = 0; this.hooks.runStart?.();
     this.audio.playSong(SONGS.desert); this.audio.sfx('go');
     this.serve(true);
   }
@@ -635,7 +645,7 @@ export class Mattoni {
     const s = starsFor({ done: this.effortsDone, total: this.effortsTotal, bossKilled: this.bossKilled, bossTotal, ko: this.ko });
     const rec = this.record(); const prevBest = rec.score || 0; const newBest = this.score > prevBest;
     if (newBest || s.stars > (rec.stars || 0)) { try { localStorage.setItem(this.recordKey(), JSON.stringify({ score: Math.max(prevBest, this.score), stars: Math.max(rec.stars || 0, s.stars) })); } catch { /* niente storage */ } }
-    this.result = { ...s, done: this.effortsDone, total: this.effortsTotal, bossKilled: this.bossKilled, bossTotal, ko: this.ko, score: this.score, newBest, delivered: this.delivered, waves: this.waveClears, combo: this.bestCombo };
+    this.result = { ...s, prevBest, done: this.effortsDone, total: this.effortsTotal, bossKilled: this.bossKilled, bossTotal, ko: this.ko, score: this.score, newBest, delivered: this.delivered, waves: this.waveClears, combo: this.bestCombo };
     this.result.hint = nextStarHint(this.result);
     this.prog('races', 0, 40 + s.stars * 40 + this.effortsDone * 10);
     this.hooks.progress?.setMax('feedStars', s.stars);
@@ -645,7 +655,7 @@ export class Mattoni {
   end() { if (this.state !== 'play') return; if (!this.result) this.finishResult(); this.finish(); }
 
   finish() {
-    this.state = 'over'; this.stateT = 0; this.finished = true;
+    this.state = 'over'; this.stateT = 0; this.finished = true; this.results.reset();
     this.audio.stopSong(); this.audio.sfx('win');
     this.hooks.runEnd?.({ game: 'mattoni', score: this.score });
     this.hooks.setGrade?.(0);
@@ -666,8 +676,8 @@ export class Mattoni {
     if (this.state === 'loading' || this.state === 'error') return;
     this.fx.update(dt); this.confetti.update(dt);
     this.stateT += dt;
-    if (this.state === 'menu') { this.menuTick(dt, connected); this.view(dt); return; }
-    if (this.state === 'over') { this.view(dt); return; }
+    if (this.state === 'menu') { this.menu.update(dt, { connected, power: st.power || 0 }); this.setTime(['morning', 'golden', 'dusk'][this.lvlIdx] || 'golden'); this.view(dt); return; }
+    if (this.state === 'over') { this.results.update(dt); this.view(dt); return; }
 
     // pausa: chi smette di pedalare non perde, il tempo si ferma
     if (connected) {
@@ -699,12 +709,6 @@ export class Mattoni {
     this.stepRows(dt); this.stepBoss(dt); this.stepBall(dt); this.stepGels(dt);
     if (this.pop) { this.pop.t -= dt; this.pop.age += dt; if (this.pop.t <= 0) this.pop = null; }
         this.view(dt);
-  }
-
-  menuTick(dt, connected) {
-    if (this.stateT > 1 && ((connected && this.power > 30) || (this.held && this.heldT > 0.8))) this.startT += dt; else this.startT = Math.max(0, this.startT - dt * 2);
-    if (this.held) this.heldT += dt;
-    if (this.startT > 1.6 || (this.held && this.heldT > 0.8 && this.stateT > 1)) { this.held = 0; this.begin(); }
   }
 
   // ---------- vista: attori, camera ----------
@@ -808,8 +812,22 @@ export class Mattoni {
     cam.lookAt(this.x * 0.3, 0.4, tall ? 7.9 : 8);
     const fov = (tall ? 62 : 48) + (this.hot ? 3 : 0); cam.fov += (fov - cam.fov) * Math.min(1, (dt || 0.03) * 3); cam.updateProjectionMatrix();
     this.shake.apply(cam);
+    this.menuFrame(cam);
     const sd = this.sunDir || new THREE.Vector3(0.5, 0.75, -0.45);
     this.light.sun.position.set(sd.x * 60, sd.y * 60, TOP / 2 + sd.z * 60); this.light.sun.target.position.set(0, 0, TOP / 2);
+  }
+
+  // nel menu il ciclista sta nella fascia libera tra testo e tasto VIA (verticale: al centro della fascia; orizzontale: a destra della colonna)
+  menuFrame(cam) {
+    cam.clearViewOffset();
+    if (this.state !== 'menu' || !this.menu.startTop) return;
+    const W = this.stage.W; const H = this.stage.H; const land = W > H * 1.15;
+    const p = this._mp || (this._mp = new THREE.Vector3()); p.set(this.x, 1.5, PZ - 1.9).project(cam);
+    const sx = (p.x + 1) / 2 * W; const sy = (1 - p.y) / 2 * H;
+    let tx; let ty;
+    if (land) { const u = Math.min(uiScale(W, H), H / 600); const left = 24 + Math.min(W * 0.38, 440 * u) + 40; tx = (left + W) / 2; ty = H * 0.55; }
+    else { tx = W / 2; ty = (this.menu.contentBottom + this.menu.startTop) / 2; }
+    cam.setViewOffset(W, H, sx - tx, sy - ty, W, H);
   }
 
   // ---------- interfaccia ----------
@@ -819,6 +837,7 @@ export class Mattoni {
     if (this.state === 'loading') { ctx.fillStyle = '#0f0e0c'; ctx.fillRect(0, 0, W, H); hudText(ctx, t('games.common.loading'), W / 2, H / 2, { size: 22, align: 'center', color: '#d9ff3d' }); hudText(ctx, `${Math.round((this.loadPct || 0) * 100)}%`, W / 2, H / 2 + 28, { size: 14, align: 'center' }); return; }
     if (this.state === 'error') { hudText(ctx, t('ui.error', { error: this.error }), W / 2, H / 2, { size: 14, align: 'center', color: '#ff6b6b' }); return; }
     if (this.state === 'menu') { this.drawMenu(ctx, W, H, dt); return; }
+    if (this.state === 'over') { this.drawResult(ctx, W, H); this.kitToasts(ctx, W, H, dt, 238, true); return; }
     const seg = this.seg; const pad = 12; const y0 = 84;
     // riga in alto: punteggio · zona n/N · vite
     ctx.fillStyle = 'rgba(8,10,26,.62)'; rrect(ctx, pad - 4, y0 - 22, W - 2 * pad + 8, 36, 10); ctx.fill();
@@ -895,61 +914,32 @@ export class Mattoni {
       hudText(ctx, t('games.horde.paused'), W / 2, H * 0.42, { size: 42, align: 'center', color: '#ffd34d' });
       paragraph(ctx, t('games.horde.pausedSub'), W / 2, H * 0.42 + 36, { size: 20, maxW: W - 40, color: '#f0f0f0' });
     }
-    if (this.result && (seg.kind === 'cool' || this.state === 'over')) this.drawResult(ctx, W, H, this.state === 'over');
-    if (!['pace', 'effort', 'sprint'].includes(seg.kind) || this.state === 'over') this.hooks.progress?.drawToasts(ctx, W, dt, this.result && seg.kind === 'cool' ? 516 : 238, true);
+    if (!['pace', 'effort', 'sprint'].includes(seg.kind)) this.hooks.progress?.drawToasts(ctx, W, dt, 238, true);
   }
 
   drawMenu(ctx, W, H, dt) {
-    const compact = H < 520; // schermo basso (telefono in orizzontale): titolo piccolo, scelte più strette, regole che stanno nello spazio libero
-    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, 'rgba(8,10,28,.8)'); g.addColorStop(0.5, 'rgba(8,10,28,.1)'); g.addColorStop(1, 'rgba(8,10,28,.9)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    hudText(ctx, t('games.mattoni.hud.title'), W / 2, compact ? 84 : 124, { size: compact ? 36 : 56, align: 'center', color: '#d9ff3d' });
-    hudText(ctx, t('games.mattoni.hud.tagline'), W / 2, compact ? 106 : 154, { size: compact ? 14 : 17, align: 'center', font: 'text' });
-    const rowW = Math.min(W - 28, 440); const x0 = (W - rowW) / 2; let y = compact ? 118 : 184;
-    const chip = (label, opts, idx, key) => {
-      const ch = compact ? 26 : 30;
-      hudText(ctx, label, x0, y + (compact ? 14 : 20), { size: compact ? 14 : 16, color: '#c8c8c8', font: 'text', maxW: rowW * 0.25 });
-      if (compact) hudText(ctx, key, x0, y + 28, { size: 11, color: '#9aa', font: 'text', maxW: rowW * 0.25 });
-      const cw = (rowW * 0.74) / opts.length; const cx0 = x0 + rowW * 0.26;
-      opts.forEach((o, i) => {
-        ctx.fillStyle = i === idx ? '#d9ff3d' : 'rgba(255,255,255,.14)'; rrect(ctx, cx0 + i * cw + 2, y, cw - 4, ch, 9); ctx.fill();
-        hudText(ctx, o, cx0 + i * cw + cw / 2, y + ch - 8, { size: compact ? 15 : 17, align: 'center', color: i === idx ? '#15141b' : '#f0f0f0', stroke: i === idx ? null : 'rgba(0,0,0,.85)', maxW: cw - 8 });
-      });
-      if (!compact) hudText(ctx, key, x0 + rowW, y + 48, { size: 13, align: 'right', color: '#9aa', font: 'text' });
-      y += compact ? 38 : 62;
-    };
-    chip(t('games.horde.dur'), DURATIONS.map((d) => t('games.horde.durMin', { n: d / 60 })), this.durIdx, t('games.horde.keyDur'));
-    chip(t('games.horde.level'), LEVELS.map((l) => t(`games.horde.lv.${l.id}`)), this.lvlIdx, t('games.horde.keyLvl'));
-    const mw = Math.min(W - 28, 460); let fs = W < 500 ? 16 : 18; const rules = [1, 2, 3, 4].map((i) => t(`games.mattoni.rule${i}`));
-    const bottom = compact ? H - 40 : H * 0.64; const startY = compact ? H - 30 : H - 56;
-    const count = () => rules.reduce((a, r) => a + wrapLines(ctx, '· ' + r, mw, fs, { font: 'text' }).length, 0);
-    while (fs > 11 && count() * 1.28 * fs + rules.length * 5 > bottom - y) fs -= 0.5;
-    for (const r of rules) { if (y + fs * 1.3 > bottom) break; const o = paragraph(ctx, '· ' + r, W / 2, y + fs, { size: fs, maxW: mw, lineK: 1.28, color: '#f0f0f0' }); y = o.bottom + 5; }
-    const rec = this.record();
-    if (rec.score && !compact) hudText(ctx, `${t('games.common.best', { n: rec.score })} · ${'★'.repeat(rec.stars || 0)}`, W / 2, H - 92, { size: 16, align: 'center', color: '#c8c8c8', font: 'text' });
-    hudText(ctx, t(this.hooks.connected() ? 'games.horde.startPedal' : 'games.horde.startHold'), W / 2, startY, { size: compact ? 18 : 22, align: 'center', color: '#d9ff3d' });
-    const by = startY + (compact ? 8 : 16);
-    ctx.fillStyle = 'rgba(255,255,255,.2)'; rrect(ctx, W / 2 - 80, by, 160, 8, 4); ctx.fill();
-    ctx.fillStyle = '#d9ff3d'; rrect(ctx, W / 2 - 80, by, Math.max(0, 160 * clamp(Math.max(this.startT / 1.6, this.held ? this.heldT / 0.8 : 0), 0, 1)), 8, 4); ctx.fill();
-    this.hooks.progress?.drawToasts(ctx, W, dt);
+    const connected = this.hooks.connected();
+    this.menu.draw(ctx, W, H, { connected });
+    this.kitToasts(ctx, W, H, dt, 48, false);
   }
 
-  drawResult(ctx, W, H, full) {
-    const r = this.result;
-    const top = full ? H * 0.2 : 84 + 150;
-    if (full) { ctx.fillStyle = 'rgba(8,4,20,.82)'; ctx.fillRect(0, 0, W, H); }
-    else { ctx.fillStyle = 'rgba(8,10,26,.86)'; rrect(ctx, 12, top - 6, W - 24, 268, 14); ctx.fill(); }
-    const y = top + 38;
-    hudText(ctx, t('games.horde.res.title'), W / 2, y - (full ? 0 : 6), { size: full ? 30 : 22, align: 'center', color: '#d9ff3d' });
-    drawStars(ctx, W / 2, y + (full ? 44 : 30), full ? 34 : 24, r.stars);
-    let yy = y + (full ? 100 : 74);
-    const line = (s, c = '#f0f0f0') => { const o = paragraph(ctx, s, W / 2, yy, { size: 17, maxW: W - 40, color: c, maxLines: 2 }); yy = o.bottom + 4; };
-    line(t('games.horde.res.efforts', { a: r.done, b: r.total }));
-    line(t('games.mattoni.res.cars', { a: r.bossKilled, b: r.bossTotal }) + ' · ' + t('games.mattoni.res.flats', { n: r.ko }));
-    line(t('games.mattoni.res.bags', { n: r.delivered }) + ' · ' + t('games.mattoni.res.combo', { n: r.combo }));
-    line(`${t('games.common.score', { n: r.score })}${r.newBest ? t('games.common.newBest') : ''}`, r.newBest ? '#7dff6a' : '#f0f0f0');
-    if (r.hint) line(t(r.hint.key.endsWith('next2') ? 'games.horde.res.next2' : 'games.mattoni.res.next3', { n: r.hint.n }), '#ffd34d');
-    if (full && this.stateT > 1.4) hudText(ctx, t('games.common.retry'), W / 2, H - 70, { size: 22, align: 'center', color: '#d9ff3d' });
+  // i riquadri dei progressi: in orizzontale stanno a destra della colonna di testo del menu / risultati
+  kitToasts(ctx, W, H, dt, y0, still) {
+    const left = W > H * 1.15 ? 24 + Math.min(W * 0.38, 440 * Math.min(uiScale(W, H), H / 600)) + 40 : 0;
+    ctx.save(); ctx.translate(left, 0); this.hooks.progress?.drawToasts(ctx, W - left, dt, y0, still); ctx.restore();
+  }
+
+  drawResult(ctx, W, H) {
+    const r = this.result; const crit = [{ ok: true, label: t('games.mattoni.crit.finish') }];
+    crit.push({ ok: r.ratio >= 0.5, label: t('games.mattoni.crit.half') });
+    crit.push({ ok: r.ratio >= 0.8, label: t('games.mattoni.crit.most') });
+    crit.push({ ok: r.bossKilled >= r.bossTotal, label: t('games.mattoni.crit.cars') });
+    crit.push({ ok: r.ko <= 3, label: t('games.mattoni.crit.flats') });
+    this.results.draw(ctx, W, H, {
+      title: t('games.horde.res.title'), subtitle: `${t('games.mattoni.name')} · ${t('games.menu.min', { n: this.total / 60 })} · ${t(`games.menu.${['easy', 'normal', 'hard'][this.lvlIdx]}`)}`,
+      stars: r.stars, criteria: crit, score: r.score, best: r.prevBest ? String(r.prevBest) : null, newBest: r.newBest,
+      lines: [t('games.horde.res.efforts', { a: r.done, b: r.total }), t('games.mattoni.res.cars', { a: r.bossKilled, b: r.bossTotal }) + ' · ' + t('games.mattoni.res.flats', { n: r.ko }), t('games.mattoni.res.bags', { n: r.delivered }) + ' · ' + t('games.mattoni.res.combo', { n: r.combo })],
+    });
   }
 
   loop(now) {
@@ -963,15 +953,6 @@ export class Mattoni {
   }
 }
 
-function drawStars(ctx, cx, cy, r, n) {
-  for (let i = 0; i < 3; i++) {
-    const x = cx + (i - 1) * r * 2.5; ctx.beginPath();
-    for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5; const rr = k % 2 ? r * 0.45 : r; ctx.lineTo(x + Math.cos(a) * rr, cy + Math.sin(a) * rr); }
-    ctx.closePath(); ctx.lineJoin = 'round';
-    ctx.fillStyle = i < n ? '#ffd34d' : 'rgba(255,255,255,.14)'; ctx.fill();
-    ctx.lineWidth = 3; ctx.strokeStyle = i < n ? '#a8741a' : 'rgba(255,255,255,.4)'; ctx.stroke();
-  }
-}
 function rrect(ctx, x, y, w, h, r) {
   const rr = Math.min(r, w / 2, h / 2);
   ctx.beginPath(); ctx.moveTo(x + rr, y); ctx.arcTo(x + w, y, x + w, y + h, rr); ctx.arcTo(x + w, y + h, x, y + h, rr); ctx.arcTo(x, y + h, x, y, rr); ctx.arcTo(x, y, x + w, y, rr); ctx.closePath();

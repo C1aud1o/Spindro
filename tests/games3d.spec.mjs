@@ -24,8 +24,8 @@ test.afterEach(async ({ page }) => {
 test('Breakaway: si carica, parte, il direttore annuncia, + / − cambiano marcia', async ({ page }) => {
   await page.click('#openGame');
   await page.click('[data-game=racer]');
-  await expect.poll(() => page.evaluate(() => window.__game?.state), { timeout: 120_000 }).toBe('select');
-  await page.evaluate(() => { window.__game.selT = 1; window.__game.input(1); });
+  await expect.poll(() => page.evaluate(() => window.__game?.state), { timeout: 120_000 }).toBe('menu');
+  await page.evaluate(() => { window.__game.menu.age = 1; window.__game.menu.start(); });
   await expect.poll(() => page.evaluate(() => window.__game.state), { timeout: 60_000 }).toMatch(/countdown|race/);
   const gear0 = await page.locator('#gearNum').textContent();
   await page.evaluate(() => window.__game.input(1));
@@ -48,10 +48,12 @@ test('Breakaway: si carica, parte, il direttore annuncia, + / − cambiano marci
 test('Breakaway: − cambia durata, la tappa lunga si costruisce e parte con il primo evento entro 8 s', async ({ page }) => {
   await page.click('#openGame');
   await page.click('[data-game=racer]');
-  await expect.poll(() => page.evaluate(() => window.__game?.state), { timeout: 120_000 }).toBe('select');
-  await page.evaluate(() => { const g = window.__game; g.selT = 1; g.input(-1); g.input(-1); });
+  await expect.poll(() => page.evaluate(() => window.__game?.state), { timeout: 120_000 }).toBe('menu');
+  // − cambia la durata (5 → 10 → 20 min), poi si parte dal menu
+  await page.evaluate(() => { const g = window.__game; g.menu.durIdx = 0; g.menu.age = 1; g.input(-1); g.menu.update(0.1, {}); g.input(-1); g.menu.update(0.1, {}); });
+  expect(await page.evaluate(() => window.__game.menu.durIdx)).toBe(2);
+  await page.evaluate(() => window.__game.menu.start());
   expect(await page.evaluate(() => window.__game.dur)).toBe(1200);
-  await page.evaluate(() => window.__game.input(1));
   await expect.poll(() => page.evaluate(() => window.__game.state), { timeout: 120_000 }).toBe('countdown');
   // si fa correre la logica a mano: 8 s di gara
   const first = await page.evaluate(() => {
@@ -67,11 +69,15 @@ test('Pedal Strike: allenamento a tempo, + / − cambiano corsia, scudo del boss
   await page.evaluate(() => document.body.classList.add('dev'));
   await page.click('[data-game=shooter]');
   await expect.poll(() => page.evaluate(() => window.__game?.state), { timeout: 120_000 }).toBe('menu');
-  // menu: − passa alla riga dopo (durata), + cambia la durata; poi di nuovo su «Parti»
-  await page.evaluate(() => { const g = window.__game; g.stateT = 1; g.minutes = 5; g.input(-1); g.input(1); });
-  expect(await page.evaluate(() => window.__game.minutes)).toBe(10);
-  await page.evaluate(() => { const g = window.__game; g.minutes = 5; g.row = 0; g.input(1); });
+  // menu comune: − cambia la durata, + cambia il livello, + tenuto premuto parte
+  await page.evaluate(() => { const g = window.__game; g.menu.age = 1; g.menu.durIdx = 0; g.menu.level = 1; g.input(-1); g.hold(-1); g.hold(0); });
+  expect(await page.evaluate(() => window.__game.menu.durIdx)).toBe(1);
+  expect(await page.evaluate(() => localStorage.getItem('strikeMin'))).toBe('10');
+  await page.evaluate(() => { const g = window.__game; g.input(1); g.hold(1); g.hold(0); });
+  expect(await page.evaluate(() => window.__game.menu.level)).toBe(2);
+  await page.evaluate(() => { const g = window.__game; g.menu.durIdx = 0; g.menu.level = 1; g.menu.save(); g.input(1); g.hold(1); g.update(0.7); });
   await expect.poll(() => page.evaluate(() => window.__game.state), { timeout: 30_000 }).toBe('intro');
+  expect(await page.evaluate(() => window.__game.minutes)).toBe(5);
   // la partita è un allenamento: avvio, sforzi, mini-boss a metà, boss, defaticamento di 30 s
   const plan = await page.evaluate(() => window.__game.blocks.map((b) => b.kind));
   expect(plan[0]).toBe('warm'); expect(plan).toContain('mini'); expect(plan.at(-2)).toBe('boss'); expect(plan.at(-1)).toBe('cool');
@@ -97,14 +103,72 @@ test('Pedal Strike: allenamento a tempo, + / − cambiano corsia, scudo del boss
   await expect.poll(() => page.evaluate(() => window.__game.state), { timeout: 30_000 }).toBe('cool');
   const stars = await page.evaluate(() => window.__game.result.stars);
   expect(stars).toBeGreaterThanOrEqual(1); expect(stars).toBeLessThanOrEqual(3);
+  // riepilogo comune: a fine defaticamento compare, con − torna all'elenco dei giochi
+  await page.evaluate(() => { const g = window.__game; g.hooks = { ...g.hooks, connected: () => true, stats: () => ({ power: 160, cadence: 85 }), setGrade() {} }; for (let i = 0; i < 30 * 40 && g.state === 'cool'; i++) g.update(1 / 30); g.update(2); });
+  expect(await page.evaluate(() => window.__game.state)).toBe('results');
+  await page.evaluate(() => { window.__game.hooks.close = () => { window.__closed = true; }; window.__game.input(-1); });
+  expect(await page.evaluate(() => window.__closed)).toBe(true);
 });
+
+// Il bot: avanza il gioco a mano (1/30 s) con una potenza fissa (multiplo della FTP), pilota automatico per le corsie, caso con seme.
+// Misure di docs/giochi-design.md §5: stelle, tempo al primo evento, intervallo più lungo senza eventi.
+function strikeBot({ mult, ftp }) {
+  const g = window.__game; g.seed = 7; g.auto = true; g.minutes = 5; g.diff = 1;
+  g.hooks = { ...g.hooks, connected: () => true, ftp: () => ftp, stats: () => ({ power: ftp * mult, cadence: 85 }), speedKmh: () => 30, setGrade() {}, runStart() {}, runEnd() {} };
+  g.begin();
+  let n = 0;
+  while (g.state !== 'results' && n < 400 * 30) { g.update(1 / 30); n++; }
+  const skip = new Set(['start', 'cool', 'star', 'firework']);
+  const ts = g.ev.filter((e) => !skip.has(e.k) && e.t <= g.blocks.total - 30).map((e) => e.t);
+  let maxGap = 0; for (let i = 1; i < ts.length; i++) maxGap = Math.max(maxGap, ts[i] - ts[i - 1]);
+  return { state: g.state, secs: n / 30, stars: g.result.stars, ok: g.result.ok, n: g.result.n, kills: g.kills, bossDown: g.bossDown, score: Math.round(g.score), first: ts[0] ?? 99, maxGap, nev: ts.length };
+}
+// atteso (docs/giochi-design.md §5): 0,6 × → 1 stella; 0,8 × → 1–2; 1,0 × → 2–3; 1,2 × → 3
+const STRIKE_EXPECT = { 0.6: [1, 1], 0.8: [1, 2], 1.0: [2, 3], 1.2: [3, 3] };
+for (const mult of [0.6, 0.8, 1.0, 1.2]) {
+  test(`Pedal Strike: bot a ${mult} × FTP, 5 minuti, livello Normale`, async ({ page }) => {
+    await page.click('#openGame');
+    await page.click('[data-game=shooter]');
+    await expect.poll(() => page.evaluate(() => window.__game?.state), { timeout: 120_000 }).toBe('menu');
+    const r = await page.evaluate(strikeBot, { mult, ftp: 200 });
+    console.log(`BOT ${mult}× → stelle ${r.stars}, sforzi ${r.ok}/${r.n}, boss ${r.bossDown ? 'giù' : 'no'}, robot ${r.kills}, punti ${r.score}, primo evento ${r.first.toFixed(1)} s, max senza eventi ${r.maxGap.toFixed(1)} s, eventi ${r.nev}`);
+    expect(r.state, 'la partita finisce da sola').toBe('results');
+    expect(r.stars, 'stelle').toBeGreaterThanOrEqual(STRIKE_EXPECT[mult][0]);
+    expect(r.stars, 'stelle').toBeLessThanOrEqual(STRIKE_EXPECT[mult][1]);
+    expect(r.first, 'tempo al primo evento (s)').toBeLessThanOrEqual(8);
+    expect(r.maxGap, 'intervallo più lungo senza eventi (s)').toBeLessThanOrEqual(5);
+  });
+}
 
 for (const kind of ['horde', 'shooter']) {
   test(`${kind}: il gioco 3D si carica con la nuova base`, async ({ page }) => {
     await page.click('#openGame');
     await page.evaluate(() => document.body.classList.add('dev'));
     await page.click(`[data-game=${kind}]`);
-    await expect.poll(() => page.evaluate(() => window.__game?.state), { timeout: 120_000 }).toMatch(/menu|select|play|intro|hero/);
+    await expect.poll(() => page.evaluate(() => window.__game?.state), { timeout: 120_000 }).toMatch(/menu|play|intro|hero/);
     await page.waitForTimeout(1500);
+  });
+}
+
+// Bot di Breakaway: la tappa breve si fa avanzare a mano (1/30 s), con la potenza fissa a una frazione della FTP; il caso è con seme.
+for (const mult of [0.6, 0.8, 1.0, 1.2]) {
+  test(`Breakaway: bot a ${mult}× FTP finisce la tappa, stelle e criteri coerenti`, async ({ page }) => {
+    await page.evaluate(() => { window.__spindroSeed = 4242; });
+    await page.click('#openGame');
+    await page.click('[data-game=racer]');
+    await expect.poll(() => page.evaluate(() => window.__game?.state), { timeout: 120_000 }).toBe('menu');
+    await page.evaluate(() => { const g = window.__game; g.seed = 4242; g.menu.durIdx = 0; g.menu.level = 1; g.menu.age = 1; g.menu.start(); });
+    await expect.poll(() => page.evaluate(() => window.__game.state), { timeout: 60_000 }).toBe('countdown');
+    const r = await page.evaluate((m) => {
+      const g = window.__game; const ftp = 200;
+      g.hooks = { ...g.hooks, connected: () => true, stats: () => ({ power: m * ftp, cadence: 88 }), ftp: () => ftp, setGrade() {} };
+      let n = 0; let events = 0;
+      for (; n < 30 * 60 * 20 && g.state !== 'results'; n++) { g.update(1 / 30, 1 / 30); events = g.race ? g.race.log.length : events; }
+      return { state: g.state, res: g.result, secs: n / 30, events, finishT: g.finishT };
+    }, mult);
+    console.log(`BOT ${mult}× → stelle ${r.res.stars}, obiettivi ${r.res.objDone}/${r.res.objTotal}, posto ${r.res.place}, tempo ${r.finishT.toFixed(1)} s, eventi ${r.events}`);
+    expect(r.state).toBe('results');
+    expect(r.res.stars).toBeGreaterThanOrEqual(1); expect(r.res.stars).toBeLessThanOrEqual(3);
+    expect(r.res.objTotal).toBeGreaterThan(0);
   });
 }
