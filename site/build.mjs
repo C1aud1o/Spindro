@@ -263,7 +263,7 @@ for (const lang of cfg.langs) {
     const contentLang = have(lang) ? lang : 'en';
     const src = read(join(repo, `docs/legal/${p}.${contentLang}.md`));
     const { html, title } = md(src, lang);
-    const placeholders = [...new Set(src.match(/\[[A-ZÀ-Ü][A-ZÀ-Ü0-9 .…\/-]{2,}\]/g) || [])];
+    const placeholders = [...new Set(src.match(/\[[A-ZÀ-Ü][A-ZÀ-Ü0-9 .…\/-]{2,}\](?!\()/g) || [])];
     const draft = placeholders.length > 0 || /DRAFT|BOZZA/.test(src);
     if (draft && lang === cfg.defaultLang) legalWarnings.push(`${p}: ${placeholders.join(' ') || 'bozza'}`);
     writePage({
