@@ -6,7 +6,7 @@
 // Ogni partita è un ALLENAMENTO (horde-plan.js: 5/10/20 minuti, % della FTP, avvio, ondate, finale, defaticamento).
 // + / − fanno UNA cosa: muovono la bici a destra e a sinistra (tenuti premuti = movimento continuo). Chi smette di pedalare va in pausa.
 import * as THREE from 'three';
-import { Stage, loadAll, Effects, fxTexture, Quality } from './kit3d.js';
+import { Stage, loadAll, Effects, fxTexture, glowTexture, Quality } from './kit3d.js';
 import { skyDome, styleLights, styleFog, toonMaterial, toonify, TIMES, PALETTE } from './kit/style.js';
 import { Cyclist, loadMeshyTemplate, loadCyclistTemplate, makeKit, makeMeshyCrowdGeometry, crowdMaterial, CYCLIST_URL } from './kit/cyclist.js';
 import { scatterModel, groundModel, crowdInstances } from './kit/env.js';
@@ -21,7 +21,7 @@ const A = 'assets/3d';
 export const HW = 5.6;             // metà larghezza del campo (m)
 export const TOP = 17;             // fondo del campo
 const PZ = 1.5;                    // linea della bici
-const BR = 0.7;                    // raggio della borraccia
+const BR = 0.8;                    // raggio della borraccia
 const RIDER_S = 1.75;              // il ciclista è più grande del vero: si legge dall'alto
 const GUY_S = 1.7;                 // i soigneur pure
 const TR = 0.78;                   // raggio di un soigneur (urto)
@@ -182,7 +182,7 @@ export class Mattoni {
     const road = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_W, ROAD_L), toonMaterial({ map: roadTexture() }));
     road.rotation.x = -Math.PI / 2; road.position.set(0, 0, (ROAD_Z0 + ROAD_Z1) / 2); road.receiveShadow = true; scene.add(road);
     this.buildScenery();
-    this.glowTex = fxTexture('light_01');
+    this.glowTex = glowTexture('#ffffff'); // gli sprite Kenney 'light' hanno un bordo quasi trasparente ma non nullo: più sprite sommati disegnano un rettangolo. Questo sfuma a zero.
     this.fx = new Effects(scene, 160);
     this.confetti = new Confetti(scene, 160);
     this.buildActors();
@@ -270,7 +270,7 @@ export class Mattoni {
     this.bags.instanceMatrix.setUsage(THREE.DynamicDrawUsage); this.bagTrim.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     // borraccia (la palla): modello Meshy, tinta lime, che gira; alone e ombra
     this.ball = { root: new THREE.Group() };
-    const bot = prop(this.m.bottle, 1.6); const inner = new THREE.Group(); inner.add(bot); bot.position.y = -0.8; this.ball.root.add(inner); this.ball.spin = inner;
+    const bot = prop(this.m.bottle, 1.9); const inner = new THREE.Group(); inner.add(bot); bot.position.y = -0.95; this.ball.root.add(inner); this.ball.spin = inner;
     this.ball.fire = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: '#ff7a2a', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); this.ball.fire.scale.setScalar(3);
     this.ball.glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: '#d9ff3d', transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending })); this.ball.glow.scale.setScalar(3.4);
     this.ball.root.add(this.ball.glow, this.ball.fire); scene.add(this.ball.root);
@@ -280,7 +280,7 @@ export class Mattoni {
     this.strip = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.8), this.stripMat); this.strip.rotation.x = -Math.PI / 2; this.strip.renderOrder = 2; scene.add(this.strip);
     // auto della squadra (mini-boss), vista di fianco mentre scorre lungo la strada
     this.carBox = new THREE.Box3().setFromObject(this.m.car.scene);
-    this.car = prop(this.m.car, 2.5); const car = new THREE.Group(); car.add(this.car); this.carRoot = car; car.visible = false; scene.add(car);
+    this.car = prop(this.m.car, 3.2); const car = new THREE.Group(); car.add(this.car); this.carRoot = car; car.visible = false; scene.add(car);
     this.carMats = []; this.car.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); this.carMats.push(o.material); } });
     // gel che cade
     this.gelProto = gelObject('#ffd34d');
@@ -303,7 +303,7 @@ export class Mattoni {
     this.setTime(['morning', 'golden', 'dusk'][this.lvlIdx] || 'golden');
     this.x = 0; this.tx = 0; this.held = 0; this.heldT = 0; this.pw = 0;
     this.lives = 4; this.score = 0; this.combo = 0; this.bestCombo = 0; this.charge = 0; this.hot = false; this.inTarget = false;
-    this.el = 0; this.segIdx = -1; this.seg = this.plan.segs[0]; this.gels = []; this.pops = []; this.popAcc = 0; this.popT = 0;
+    this.el = 0; this.segIdx = -1; this.seg = this.plan.segs[0]; this.gels = []; this.pop = null;
     this.paused = false; this.pauseT = 0; this.startT = 0; this.finished = false; this.result = null; this.ko = 0;
     this.effortsDone = 0; this.effortsTotal = 0; this.bossKilled = 0; this.bossSpawned = new Set(); this.delivered = 0; this.waveGot = 0; this.waveQuota = Infinity; this.waveClears = 0; this.waveNo = 0;
     this.adapt = new Adapter(); this.evLog = []; this.sprinting = false; this.sentGrade = undefined; this.msgs.clear(); this.boss = null; this.bossAt = null;
@@ -356,7 +356,7 @@ export class Mattoni {
   buildRows(form, wave) {
     this.form = form; this.targets = []; this.rows = [];
     const rand = this.rand;
-    const nRows = form.rows; const z0 = form.id === 'car' ? TOP - 9.4 : TOP - 3.5; const dz = form.id === 'car' ? 0 : 3.0;
+    const nRows = form.rows; const z0 = form.id === 'car' ? TOP - 4.6 : TOP - 3.5; const dz = form.id === 'car' ? 0 : 3.0;
     for (let r = 0; r < nRows; r++) {
       const z = z0 - r * dz; const gap = 2.05; const amp = form.spd > 1.5 ? 0.35 : 0.55;
       const n = form.id === 'car' ? 3 : Math.floor((2 * HW - 2 * amp - 0.9) / gap) + 1;
@@ -401,7 +401,7 @@ export class Mattoni {
   launch() {
     const b = this.ballS; b.stuck = false; const a = (this.rand() - 0.5) * 0.7;
     b.vx = Math.sin(a) * b.sp; b.vz = Math.cos(a) * b.sp; this.audio.sfx('jump');
-    this.fx.spawn(b.x, 0.8, b.z, { tex: 'blue', size: 2.4, life: 0.25, color: '#d9ff3d' });
+    this.fx.spawn(b.x, 0.8, b.z, { tex: 'flash', size: 2.4, life: 0.25, color: '#d9ff3d' });
   }
 
   stepBall(dt) {
@@ -427,7 +427,7 @@ export class Mattoni {
       this.hitBoss(b);
     }
     // mai troppo orizzontale: si rischia un ping-pong lungo
-    const minZ = 0.38 * b.sp; if (Math.abs(b.vz) < minZ) { b.vz = (b.vz < 0 ? -1 : 1) * minZ; const sx = Math.sqrt(Math.max(0, b.sp * b.sp - b.vz * b.vz)); b.vx = Math.sign(b.vx || 1) * sx; }
+    const minZ = 0.6 * b.sp; if (Math.abs(b.vz) < minZ) { b.vz = (b.vz < 0 ? -1 : 1) * minZ; const sx = Math.sqrt(Math.max(0, b.sp * b.sp - b.vz * b.vz)); b.vx = Math.sign(b.vx || 1) * sx; }
   }
 
   wall(b) { this.audio.sfx('clank'); this.fx.spawn(b.x, 1, b.z, { tex: 'spark', size: 0.9, life: 0.15, color: '#ffffff' }); this.shake.add(0.02); }
@@ -448,7 +448,7 @@ export class Mattoni {
     this.ballAlive = false; this.combo = 0; this.charge *= 0.5; this.ev('lose');
     this.audio.sfx('hurt'); this.shake.add(0.35); this.hurtT = 0.8; if (navigator.vibrate) navigator.vibrate(80);
     this.fx.spawn(b.x, 0.6, PZ - 0.5, { tex: 'smoke', size: 2.4, life: 0.6, additive: false });
-    this.fx.spawn(b.x, 0.8, PZ - 0.5, { tex: 'red', size: 3, life: 0.3, grow: 1 });
+    this.fx.spawn(b.x, 0.8, PZ - 0.5, { tex: 'flash', size: 3, life: 0.3, grow: 1, color: '#ff4a4a' });
     this.lives--;
     if (this.lives <= 0 && this.el >= 60) this.knockOut();
     else {
@@ -515,9 +515,10 @@ export class Mattoni {
   }
 
   // punti: si sommano in un solo "+N" sopra la bici (niente pile di scritte)
-  popAdd(n, mult) { if (!n) return; this.popAcc += n; this.popMult = mult || this.popMult; this.popT = 0.5; }
-  flushPop() {
-    if (this.popAcc && this.popT <= 0) { this.pops.push({ text: `+${this.popAcc}${this.popMult ? ' ' + this.popMult : ''}`, color: this.combo > 4 ? '#4de3ff' : '#ffd34d', t: 0.9, t0: 0.9 }); while (this.pops.length > 2) this.pops.shift(); this.popAcc = 0; this.popMult = ''; }
+  popAdd(n, mult) {
+    if (!n) return;
+    const p = this.pop;
+    if (p && p.age < 0.8) { p.sum += n; p.mult = mult || p.mult; p.t = p.t0; } else this.pop = { sum: n, mult, t: 1.0, t0: 1.0, age: 0 };
   }
 
   dropGel(x, z) {
@@ -548,14 +549,14 @@ export class Mattoni {
   }
   spawnBoss(seg) {
     const hp = Math.round(9 + this.lvlIdx * 2 + (seg.wave > 4 ? 2 : 0));
-    this.boss = { wave: seg.wave, hp, maxHp: hp, x: -HW + 3, dir: 1, z: TOP - 3.2, flash: 0, grow: 0, dead: false, deadT: 0, leave: false, sway: 0, bob: 0 };
+    this.boss = { wave: seg.wave, hp, maxHp: hp, x: -HW + 3, dir: 1, z: 7.4, flash: 0, grow: 0, dead: false, deadT: 0, leave: false, sway: 0, bob: 0 };
     this.carRoot.visible = true; this.carRoot.scale.setScalar(0.01);
     this.audio.sfx('alarm'); this.ev('boss');
     this.say(t('games.mattoni.carSay'), '#ff4d4d', 2.4, true, 3, t('games.mattoni.carSub'));
   }
   hitBoss(b) {
     const bs = this.boss; if (!bs || bs.dead || bs.leave || bs.grow < 0.9) return;
-    const hx = 2.5 + BR; const hz = 1.25 + BR;
+    const hx = 2.7 + BR; const hz = 1.2 + BR;
     if (Math.abs(b.x - bs.x) > hx || Math.abs(b.z - bs.z) > hz) return;
     const hot = this.isHot(b);
     if (!hot) { // rimbalza sul lato più vicino
@@ -578,9 +579,9 @@ export class Mattoni {
     bs.cd = Math.max(0, (bs.cd || 0) - dt); bs.flash = Math.max(0, bs.flash - dt * 4);
     if (bs.dead) { bs.deadT += dt; if (bs.deadT > 1.0) { this.boss = null; this.carRoot.visible = false; } return; }
     bs.grow = Math.min(1, bs.grow + dt / 0.8);
-    bs.x += bs.dir * 2.6 * dt; const lim = HW - 2.6; if (bs.x > lim) { bs.x = lim; bs.dir = -1; } if (bs.x < -lim) { bs.x = -lim; bs.dir = 1; }
+    bs.x += bs.dir * 2.6 * dt; const lim = HW - 2.7; if (bs.x > lim) { bs.x = lim; bs.dir = -1; } if (bs.x < -lim) { bs.x = -lim; bs.dir = 1; }
     bs.bob += dt;
-    if (bs.leave) { bs.z += 6 * dt; if (bs.z > TOP + 8) { this.boss = null; this.carRoot.visible = false; } }
+    if (bs.leave) { bs.leaveT = (bs.leaveT || 0) + dt; if (bs.leaveT < dt * 1.5) this.fx.spawn(bs.x, 1.5, bs.z, { tex: 'smoke', size: 4, life: 0.7, additive: false }); if (bs.leaveT > 0.6) { this.boss = null; this.carRoot.visible = false; } }
   }
 
   // ---------- il piano ----------
@@ -596,7 +597,7 @@ export class Mattoni {
       const form = formAt(seg.wave, isBoss);
       this.buildRows(form, seg.wave);
       const L = seg.t1 - seg.t0 + (this.plan.segs[i + 1] ? this.plan.segs[i + 1].t1 - this.plan.segs[i + 1].t0 : 0);
-      this.waveQuota = Math.max(8, Math.round(L * 0.3 * (form.id === 'car' ? 0.7 : 1)));
+      this.waveQuota = Math.max(8, Math.round(L * 0.6 * (form.id === 'car' ? 0.7 : 1)));
       this.say(t('games.mattoni.zoneOf', { n: seg.wave, m: this.plan.N }), '#d9ff3d', 2.6, true, 3, t('games.horde.say.waveSub', { what: t(`games.mattoni.f.${form.id}`), w: W }));
       this.ev('wave');
     } else if (seg.kind === 'effort') { this.say(t('games.horde.say.effort', { w: W }), SEG_COLOR.effort, 2.4, true, 3, t('games.mattoni.say.effortSub')); this.audio.sfx('go'); this.ev('segment'); this.maybeBoss(seg); }
@@ -625,7 +626,7 @@ export class Mattoni {
     this.rowsClosed = true; for (const tg of this.targets) tg.alive = false;
     if (this.boss && !this.boss.dead) this.boss.leave = true;
     this.finishResult();
-    this.say(t('games.horde.say.cool'), SEG_COLOR.cool, 3, true, 3, t('games.horde.say.coolSub', { w: targetW(this.seg, this.ftp, 0, 0) }));
+    this.msgs.clear();
     this.audio.sfx('win');
   }
 
@@ -693,8 +694,8 @@ export class Mattoni {
     this.x = lerp(this.x, this.tx, 1 - Math.exp(-dt * 12));
     this.hurtT = Math.max(0, this.hurtT - dt);
     this.stepRows(dt); this.stepBoss(dt); this.stepBall(dt); this.stepGels(dt);
-    this.popT -= dt; this.flushPop();
-    this.view(dt);
+    if (this.pop) { this.pop.t -= dt; this.pop.age += dt; if (this.pop.t <= 0) this.pop = null; }
+        this.view(dt);
   }
 
   menuTick(dt, connected) {
@@ -729,7 +730,7 @@ export class Mattoni {
       this.ball.fire.visible = hot; this.ball.fire.material.opacity = hot ? 0.55 + Math.sin(T * 30) * 0.1 : 0; this.ball.fire.scale.setScalar(3.1 + Math.sin(T * 24) * 0.25);
       this.ball.glow.material.color.set(hot ? '#ff9f43' : '#d9ff3d');
       this.ball.blob.position.set(b.x, 0.05, b.z);
-      if (!b.stuck && dt > 0) this.fx.spawn(b.x - b.vx * 0.02, 1.0, b.z - b.vz * 0.02, hot ? { tex: 'fire', size: 1.6, life: 0.3, grow: 0.5 } : { tex: 'glow', size: 1.1, life: 0.22, grow: -0.4, color: '#d9ff3d' });
+      if (!b.stuck && dt > 0) this.fx.spawn(b.x - b.vx * 0.02, 1.0, b.z - b.vz * 0.02, hot ? { tex: 'fire', size: 1.6, life: 0.3, grow: 0.5 } : { tex: 'flash', size: 1.0, life: 0.22, grow: -0.4, color: '#d9ff3d' });
     } else { R.visible = false; this.ball.blob.visible = false; }
     this.drawTargets(T);
     this.drawBoss(dt);
@@ -776,10 +777,10 @@ export class Mattoni {
 
   drawBoss(dt) {
     const bs = this.boss; if (!bs) return;
-    const k = bs.grow; const ease = 1 - (1 - k) ** 3; const die = bs.dead ? Math.max(0.01, 1 - bs.deadT * 1.2) : 1;
+    const k = bs.grow; const ease = 1 - (1 - k) ** 3; const die = bs.dead ? Math.max(0.01, 1 - bs.deadT * 1.2) : bs.leave ? Math.max(0.01, 1 - (bs.leaveT || 0) / 0.6) : 1;
     this.carRoot.position.set(bs.x, Math.abs(Math.sin(bs.bob * 7)) * 0.04, bs.z);
     // l'auto va di fianco: muso nella direzione di marcia
-    this.carRoot.rotation.y = lerp(this.carRoot.rotation.y, bs.dir > 0 ? -Math.PI / 2 : Math.PI / 2, Math.min(1, (dt || 0.03) * 6));
+    this.carRoot.rotation.y = lerp(this.carRoot.rotation.y, bs.dir > 0 ? 0 : Math.PI, Math.min(1, (dt || 0.03) * 6));
     this.carRoot.scale.setScalar(Math.max(0.01, ease * die * 1.0));
     for (const m of this.carMats) { if (m.emissive) { m.emissive.set(bs.flash > 0 ? '#ff5533' : '#000000'); m.emissiveIntensity = bs.flash; } }
   }
@@ -876,16 +877,15 @@ export class Mattoni {
     ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.fillRect(t0, barY, Math.max(2, bx + bw2 * clamp(tw * 1.15 / maxW, 0, 1) - t0), bh);
     ctx.fillStyle = '#fff'; ctx.fillRect(bx + bw2 * clamp(tw / maxW, 0, 1) - 1, barY - 4, 3, bh + 8);
 
-    this.msgs.draw(ctx, W, H, { u: W < 500 ? 0.9 : 1.1, y: H * 0.36 });
+    this.msgs.draw(ctx, W, H, { u: W < 500 ? 0.9 : 1.1, y: H * 0.35 });
     // "+N" dei punti: sopra la bici, uno alla volta
-    const rp = this.stage.project(this.x, 4.4, PZ - 0.5);
-    for (const p of this.pops) {
-      p.t -= dt; const k = 1 - p.t / p.t0;
-      ctx.globalAlpha = clamp(p.t / p.t0 * 2, 0, 1);
-      hudText(ctx, p.text, clamp(rp.x, 70, W - 70), clamp(rp.y, 300, H - 160) - k * 30, { size: 26, align: 'center', color: p.color, maxW: 150 });
+    const p = this.pop;
+    if (p) {
+      const k = 1 - p.t / p.t0; const rp = this.stage.project(this.x, 4.6, PZ - 0.5);
+      ctx.globalAlpha = clamp(p.t / p.t0 * 2.5, 0, 1);
+      hudText(ctx, `+${p.sum}${p.mult ? ' ' + p.mult : ''}`, clamp(rp.x, 80, W - 80), clamp(rp.y, 300, H - 160) - k * 24, { size: 26 + Math.min(10, p.sum / 120), align: 'center', color: this.combo > 4 ? '#4de3ff' : '#ffd34d', maxW: 160 });
       ctx.globalAlpha = 1;
     }
-    this.pops = this.pops.filter((p) => p.t > 0);
     if (this.hurtT > 0.5) { ctx.fillStyle = `rgba(255,0,40,${(this.hurtT - 0.5) * 0.4})`; ctx.fillRect(0, 0, W, H); }
     if (this.paused) {
       ctx.fillStyle = 'rgba(8,10,26,.72)'; ctx.fillRect(0, 0, W, H);
@@ -893,7 +893,7 @@ export class Mattoni {
       paragraph(ctx, t('games.horde.pausedSub'), W / 2, H * 0.42 + 36, { size: 20, maxW: W - 40, color: '#f0f0f0' });
     }
     if (this.result && (seg.kind === 'cool' || this.state === 'over')) this.drawResult(ctx, W, H, this.state === 'over');
-    if (!['pace', 'effort', 'sprint'].includes(seg.kind) || this.state === 'over') this.hooks.progress?.drawToasts(ctx, W, dt, this.result && seg.kind === 'cool' ? 400 : 238, true);
+    if (!['pace', 'effort', 'sprint'].includes(seg.kind) || this.state === 'over') this.hooks.progress?.drawToasts(ctx, W, dt, this.result && seg.kind === 'cool' ? 516 : 238, true);
   }
 
   drawMenu(ctx, W, H, dt) {
@@ -931,7 +931,7 @@ export class Mattoni {
     const r = this.result;
     const top = full ? H * 0.2 : 84 + 150;
     if (full) { ctx.fillStyle = 'rgba(8,4,20,.82)'; ctx.fillRect(0, 0, W, H); }
-    else { ctx.fillStyle = 'rgba(8,10,26,.8)'; rrect(ctx, 12, top - 6, W - 24, 210, 14); ctx.fill(); }
+    else { ctx.fillStyle = 'rgba(8,10,26,.86)'; rrect(ctx, 12, top - 6, W - 24, 268, 14); ctx.fill(); }
     const y = top + 38;
     hudText(ctx, t('games.horde.res.title'), W / 2, y - (full ? 0 : 6), { size: full ? 30 : 22, align: 'center', color: '#d9ff3d' });
     drawStars(ctx, W / 2, y + (full ? 44 : 30), full ? 34 : 24, r.stars);
