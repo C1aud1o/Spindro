@@ -37,7 +37,9 @@ export function classify(uuids, name = '', { wahoo = false, remembered = null } 
   const trainer = has(FTMS) || has(FEC_SERVICE) || wahoo || trainerByName;
   if (trainer) roles.push('trainer');
   if (has(HRS)) roles.push('hr');
-  if (ZWIFT_SERVICES.some(has) || /^Zwift/i.test(name)) roles.push('click');
+  // I rulli "Zwift Ready" (D100, Kickr Core, Zwift Hub…) espongono anche il servizio Zwift per il cambio virtuale:
+  // restano rulli e basta. Trattarli da telecomando faceva partire l'handshake dei Click sul rullo e cadere la connessione.
+  if (!trainer && (ZWIFT_SERVICES.some(has) || /^Zwift/i.test(name))) roles.push('click');
   const cps = has(CPS); const csc = has(CSC);
   if (!trainer && cps) {
     if (csc || remembered === 'power') roles.push('power'); // misuratore con cadenza: non può essere un rullo
@@ -112,7 +114,7 @@ export class Devices extends EventTarget {
     try {
       const server = await device.gatt.connect();
       let roles; let ambiguous = false;
-      if (force) roles = force;
+      if (force) roles = force.includes('trainer') ? force.filter((r) => r !== 'click') : force; // ruoli salvati da versioni vecchie
       else {
         const { uuids, wahoo } = await this.readServices(server, device);
         const cls = classify(uuids, device.name || '', { wahoo, remembered: this.rememberedRole(device) });
@@ -131,10 +133,19 @@ export class Devices extends EventTarget {
       const entry = { device, name: device.name || '', roles: [...roles], switchable: ambiguous || !!this.rememberedRole(device), battery: null };
       this.entries = this.entries.filter((e) => e.device.id !== device.id);
       this.entries.push(entry);
-      for (const r of roles) await this.connectRole(r, device, entry);
+      // un rullo che ritrasmette anche il battito non deve togliere il posto alla fascia già collegata
+      if (roles.includes('trainer') && roles.includes('hr') && this.hrm.connected && this.hrm.device !== device) roles = roles.filter((r) => r !== 'hr');
+      entry.roles = [...roles];
+      for (const [i, r] of roles.entries()) {
+        // il primo ruolo è quello che conta: se fallisce un ruolo secondario il dispositivo resta collegato con il primo
+        try { await this.connectRole(r, device, entry); } catch (err) { if (i === 0) throw err; entry.roles = entry.roles.filter((x) => x !== r); }
+      }
       entry.battery = await this.readBattery(server);
       this.remember(entry);
       return entry;
+    } catch (err) {
+      this.entries = this.entries.filter((e) => e.device.id !== device.id || e.device.gatt?.connected);
+      throw err;
     } finally { this.busy = false; this.changed(); }
   }
 

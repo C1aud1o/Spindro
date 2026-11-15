@@ -30,6 +30,12 @@ node tests/serve.mjs          # static server, no dependencies, default port 417
 
 Then open <http://127.0.0.1:4173/index.html>. Bluetooth needs a Chromium-based browser on HTTPS or `localhost`.
 
+### Branches: beta and production
+
+Open pull requests against `beta` (never straight to `main`). `beta` is deployed to https://spindro.fun/beta/ and as the
+"Spindro Beta" Android app; once tested on a real device it is promoted to `main` (production). Details in
+[docs/environments.md](docs/environments.md).
+
 ### Tests (Playwright)
 
 ```bash
