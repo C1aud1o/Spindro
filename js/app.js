@@ -43,11 +43,16 @@ const hub = new Devices({ trainer, click, hrm, ask, meterDbg: pmDbg }); // tutti
 
 const MAX_W = 600; // limite dichiarato del Van Rysel D100
 
+// Modalità di partenza: ERG per chi non ne ha mai scelta un'altra (la scelta fatta a mano si ricorda)
+const MODES = ['erg', 'gears', 'sim', 'resistance'];
+const readStore = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+const writeStore = (k, v) => { try { localStorage.setItem(k, v); } catch { /* niente storage */ } };
+const savedMode = MODES.includes(readStore('mode')) ? readStore('mode') : null;
 const state = {
-  mode: 'gears',
+  mode: savedMode || 'erg',
   gear: 11, // indice (0-based) => marcia 12
   grade: 0,
-  erg: 150,
+  erg: 150, // si calcola subito sotto: 60% della FTP, o l'ultimo valore scelto a mano
   resistance: 30,
   mass: Number(localStorage.getItem('mass')) || 80,
   ftp: Number(localStorage.getItem('ftp')) || 200,
@@ -59,6 +64,11 @@ const state = {
   ride: { running: false, start: 0, elapsed: 0, distance: 0, energy: 0, powerSum: 0, samples: 0, log: [], saved: true },
   hrFromSensor: false,
 };
+// Obiettivo dell'ERG libero: 60% della FTP finché non lo si cambia a mano, poi si ricorda l'ultimo valore
+const ergDefault = () => Math.min(600, Math.max(50, Math.round(state.ftp * 0.6 / 5) * 5));
+let ergTouched = Number(readStore('ergW')) >= 0 && readStore('ergW') != null;
+state.erg = ergTouched ? Math.min(600, Number(readStore('ergW'))) : ergDefault();
+const rememberErg = () => { ergTouched = true; writeStore('ergW', String(state.erg)); };
 
 // ---------- UI helpers ----------
 function log(msg) {
@@ -227,12 +237,7 @@ function refreshDeviceBar() {
 }
 
 // ---------- Modalità e comandi ----------
-document.querySelectorAll('[name=mode]').forEach((r) => r.addEventListener('change', () => {
-  state.mode = r.value;
-  document.body.dataset.mode = state.mode;
-  state.lastSent = null;
-  applyMode(true);
-}));
+document.querySelectorAll('[name=mode]').forEach((r) => r.addEventListener('change', () => { setMode(r.value, true); render(); applyMode(true); }));
 
 function shift(dir) {
   const next = Math.min(GEARS.length - 1, Math.max(0, state.gear + dir));
@@ -250,7 +255,7 @@ function step(dir) {
     toast(t('workout.intensity', { pct: Math.round(workout.bias * 100) })); tickWorkout(0); return;
   }
   if (state.mode === 'gears') return shift(dir);
-  if (state.mode === 'erg') state.erg = Math.min(MAX_W, Math.max(0, state.erg + dir * 5));
+  if (state.mode === 'erg') { state.erg = Math.min(MAX_W, Math.max(0, state.erg + dir * 5)); rememberErg(); }
   if (state.mode === 'sim') state.grade = Math.min(15, Math.max(-10, +(state.grade + dir * 0.5).toFixed(1)));
   if (state.mode === 'resistance') state.resistance = Math.min(100, Math.max(0, state.resistance + dir * 5));
   syncInputs();
@@ -288,12 +293,13 @@ window.addEventListener('keydown', (e) => {
 });
 
 $('grade').addEventListener('input', (e) => { state.grade = +e.target.value; render(); applyMode(true); });
-$('erg').addEventListener('input', (e) => { state.erg = +e.target.value; render(); applyMode(true); });
+$('erg').addEventListener('input', (e) => { state.erg = +e.target.value; rememberErg(); render(); applyMode(true); });
 $('resistance').addEventListener('input', (e) => { state.resistance = +e.target.value; render(); applyMode(true); });
 $('ftp').addEventListener('change', (e) => {
   state.ftp = Math.min(500, Math.max(80, +e.target.value || 200));
   e.target.value = state.ftp;
   localStorage.setItem('ftp', state.ftp);
+  if (!ergTouched) { state.erg = ergDefault(); syncInputs(); applyMode(true); }
   render();
 });
 $('mass').addEventListener('change', (e) => {
@@ -387,17 +393,15 @@ $('startStop').addEventListener('click', () => {
   r.running = !r.running;
   if (r.running) $('reportHint').hidden = true; // niente inviti mentre si pedala
   if (r.running) { r.start = performance.now() - r.elapsed * 1000; requestWakeLock(); }
-  $('startStop').textContent = r.running ? t('home.pause') : t('home.start');
-  $('startStop').classList.toggle('running', r.running);
+  updateView();
 });
 $('reset').addEventListener('click', async () => {
   if (!state.ride.saved && !(await ask(t('finish.confirmReset')))) return;
+  if (workout) finishWorkout(false); // senza uscita non c'è più un allenamento in corso
   Object.assign(state.ride, { running: false, elapsed: 0, distance: 0, energy: 0, powerSum: 0, samples: 0, log: [], saved: true, stravaUrl: null, historySaved: false });
   renderWelcome();
   stravaMsg('');
   persist();
-  $('startStop').textContent = t('home.start');
-  $('startStop').classList.remove('running');
   closeSheet('finishSheet');
   render();
 });
@@ -449,23 +453,29 @@ setInterval(() => {
 }, 1000);
 
 // ---------- Allenamenti strutturati ----------
+let ergBeforeWorkout = null; // obiettivo dell'ERG libero, da rimettere quando l'allenamento finisce
 let workout = null; let wkLast = null; let wkPower = []; let wkLowCad = 0;
-function setMode(m) {
+// cambia modalità; con save=true è una scelta dell'utente e si ricorda (le modalità imposte da allenamenti, percorsi e giochi no)
+function setMode(m, save = false) {
   document.querySelector(`[name=mode][value=${m}]`).checked = true;
   state.mode = m; document.body.dataset.mode = m; state.lastSent = null;
+  if (save) { writeStore('mode', m); if (m !== 'erg') $('moreModes').open = true; }
 }
 function customWorkouts() { try { return JSON.parse(localStorage.getItem('customWorkouts') || '[]'); } catch { return []; } }
 function allWorkouts() { return [...customWorkouts(), ...workouts()]; }
 const escHtml = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function renderWorkoutList() {
   $('wkFtp').textContent = state.ftp;
-  $('workoutList').innerHTML = `<div class="row2 wk-top"><button class="cta-sm" id="wkNew">${t('editor.create')}</button><label class="ghost file-btn"><span>${t('workouts.importZwo')}</span><input id="zwoFile" type="file" accept=".zwo,application/xml,text/xml" hidden></label></div>` + allWorkouts().map((w) => `<div class="wk-wrap"><button class="wk-item" data-wk="${w.id}">
+  $('workoutList').innerHTML = `<div class="row2 wk-top"><button class="cta-sm" id="wkNew">${t('editor.create')}</button><label class="ghost file-btn"><span>${t('workouts.importZwo')}</span><input id="zwoFile" type="file" accept=".zwo,application/xml,text/xml" hidden></label></div>` + allWorkouts().map((w) => `<div class="wk-wrap"><div class="wk-item">
     <span class="row"><b>${escHtml(w.name)}</b><small>${escHtml(w.tag)}${tss(w) ? ` · ${t('workouts.load', { n: tss(w) })}` : ''}</small></span>
-    <canvas data-prof="${w.id}"></canvas><small>${escHtml(w.desc)}</small></button>
+    <canvas data-prof="${w.id}"></canvas><small>${escHtml(w.desc)}</small>
+    <span class="wk-go"><button class="cta-sm" data-wk="${w.id}">${t('workouts.start')}</button><button class="ghost" data-wk-play="${w.id}">${t('workouts.play')}</button></span></div>
     <span class="wk-tools">${w.test ? '' : `<button class="link" data-edit="${w.id}">${w.custom ? t('ui.edit') : t('workouts.copyEdit')}</button><button class="link" data-fit="${w.id}">Garmin (.FIT)</button><button class="link" data-zwo="${w.id}">.zwo</button>`}${w.custom ? `<button class="link" data-del="${w.id}">${t('ui.delete')}</button>` : ''}</span></div>`).join('');
   const all = allWorkouts();
   requestAnimationFrame(() => document.querySelectorAll('[data-prof]').forEach((c) => drawProfile(c, all.find((w) => w.id === c.dataset.prof), state.ftp)));
   document.querySelectorAll('[data-wk]').forEach((b) => b.addEventListener('click', () => startWorkout(all.find((w) => w.id === b.dataset.wk))));
+  // "Gioca": parte l'allenamento (l'ERG segue i suoi watt) e si apre l'elenco dei giochi
+  document.querySelectorAll('[data-wk-play]').forEach((b) => b.addEventListener('click', () => startWorkout(all.find((w) => w.id === b.dataset.wkPlay), { game: true })));
   document.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
     if (!(await ask(t('workouts.confirmDelete')))) return;
     localStorage.setItem('customWorkouts', JSON.stringify(customWorkouts().filter((w) => w.id !== b.dataset.del))); dataChanged('workouts', b.dataset.del, { deleted: true }); renderWorkoutList();
@@ -491,8 +501,13 @@ function renderWorkoutList() {
   });
 }
 // piani di allenamento (js/plans-ui.js): scheda nel pannello, card in home, promemoria
-const plans = initPlans({ allWorkouts, startWorkout: (w) => startWorkout(w), toast: (m) => toast(m), isNative });
+const plans = initPlans({ allWorkouts, startWorkout: (w, o) => startWorkout(w, o), toast: (m) => toast(m), isNative, ftp: () => state.ftp, refresh: () => renderWelcome() });
 $('openWorkouts').addEventListener('click', () => { plans.show('main'); renderWorkoutList(); renderRoutePick(); openSheet('workoutSheet'); });
+$('chooseWorkout').addEventListener('click', () => $('openWorkouts').click());
+// cruscotto: Giochi (l'uscita o l'allenamento continuano sotto) e modalità
+$('rideGames').addEventListener('click', () => openGame());
+$('rideMode').addEventListener('click', () => { document.querySelectorAll('#modeList [data-pick]').forEach((b) => b.classList.toggle('on', b.dataset.pick === state.mode)); openSheet('modeSheet'); });
+document.querySelectorAll('#modeList [data-pick]').forEach((b) => b.addEventListener('click', () => { setMode(b.dataset.pick, true); closeSheet('modeSheet'); syncInputs(); render(); applyMode(true); }));
 
 // ---------- Percorsi GPX ----------
 let route = null; let routeDist = 0; let routeT = 0; let routeTrace = []; let routeGhost = null;
@@ -558,7 +573,7 @@ function stopRoute() { lastRouteName = route?.name || lastRouteName; route = nul
 $('rtStop').addEventListener('click', async () => { if (await ask(t('route.confirmStop'))) stopRoute(); });
 // Prima del primo allenamento: se l'FTP non è mai stata impostata (l'app userebbe 200 W) la si chiede,
 // con una stima semplice da livello e peso, oppure si propone il test a rampa.
-function askFtp(w) {
+function askFtp(w, opts) {
   const box = document.createElement('div'); box.className = 'calib';
   const lv = [['ftpAsk.new', 1.8], ['ftpAsk.mid', 2.5], ['ftpAsk.fit', 3.2], ['ftpAsk.strong', 3.9]];
   box.innerHTML = `<div class="calib-box" role="dialog" aria-modal="true"><h2>${t('ftpAsk.title')}</h2><p>${t('ftpAsk.why')}</p>
@@ -567,14 +582,16 @@ function askFtp(w) {
     <div class="row2"><button class="ghost" data-test>${t('ftpAsk.test')}</button><button class="cta" data-ok>${t('ftpAsk.ok')}</button></div></div>`;
   document.body.appendChild(box);
   const set = (v) => { state.ftp = Math.min(500, Math.max(80, Math.round(v / 5) * 5)); $('ftp').value = state.ftp; localStorage.setItem('ftp', state.ftp); };
-  box.querySelectorAll('[data-ftp]').forEach((b) => b.addEventListener('click', () => { set(+b.dataset.ftp); box.remove(); startWorkout(w); }));
-  box.querySelector('[data-ok]').addEventListener('click', () => { const v = +box.querySelector('input').value; if (v >= 80) set(v); else set(state.ftp); box.remove(); startWorkout(w); });
-  box.querySelector('[data-test]').addEventListener('click', () => { set(state.ftp); box.remove(); startWorkout(workouts().find((x) => x.test) || w); });
+  box.querySelectorAll('[data-ftp]').forEach((b) => b.addEventListener('click', () => { set(+b.dataset.ftp); box.remove(); startWorkout(w, opts); }));
+  box.querySelector('[data-ok]').addEventListener('click', () => { const v = +box.querySelector('input').value; if (v >= 80) set(v); else set(state.ftp); box.remove(); startWorkout(w, opts); });
+  box.querySelector('[data-test]').addEventListener('click', () => { set(state.ftp); box.remove(); startWorkout(workouts().find((x) => x.test) || w); }); // il test non si gioca: niente apertura dei giochi
 }
-async function startWorkout(w) {
-  if (!w.test && !localStorage.getItem('ftp')) { closeSheet('workoutSheet'); askFtp(w); return; }
+// opts.game: dopo l'avvio si apre l'elenco dei giochi; l'allenamento prosegue sotto e comanda il rullo
+async function startWorkout(w, opts = {}) {
+  if (!w.test && !localStorage.getItem('ftp')) { closeSheet('workoutSheet'); askFtp(w, opts); return false; }
   if (route) stopRoute();
-  if (workout && !(await ask(t('workout.confirmInterrupt', { name: workout.w.name })))) return;
+  if (workout && !(await ask(t('workout.confirmInterrupt', { name: workout.w.name })))) return false;
+  if (!workout) ergBeforeWorkout = state.erg;
   workout = new WorkoutRunner(w, state.ftp); wkLast = null;
   if (!w.test) workout.bias = Math.min(1.5, Math.max(0.5, Number(localStorage.getItem('wkBias')) || 1)); wkPower = []; wkLowCad = 0;
   setMode('erg');
@@ -584,6 +601,8 @@ async function startWorkout(w) {
   if (!state.ride.running) $('startStop').click();
   if (!trainer.connected) toast(t('workout.connectHint'));
   tickWorkout(0);
+  if (opts.game && !w.test) { if (activeGame) closeGame(); openGame(); }
+  return true;
 }
 function tickWorkout(dt) {
   if (!workout) return;
@@ -598,6 +617,7 @@ function tickWorkout(dt) {
   if (dt && st.next && st.left <= 3.5 && st.left > 0.5) gameAudio.sfx('beep');
   wkLast = st.i;
   $('wkStep').textContent = st.x.label; $('wkTarget').textContent = st.target; $('wkLeft').textContent = fmtClock(st.left);
+  updateGameStrip(st);
   $('wkNext').textContent = st.next ? t('workout.next', { label: st.next.label, watts: st.nextW }) : t('workout.lastStep');
   $('wkTotal').textContent = `${fmtClock(workout.t)} / ${fmtClock(workout.total)}`;
   $('wkBias').textContent = workout.w.test ? t('workout.testHint') : workout.bias !== 1 ? t('workout.bias', { pct: Math.round(workout.bias * 100) }) : t('workout.biasHint');
@@ -611,7 +631,7 @@ function tickWorkout(dt) {
 }
 async function finishWorkout(completed) {
   const w = workout?.w; if (!w) return;
-  workout = null; $('workoutCard').hidden = true; document.body.classList.remove('in-workout');
+  workout = null; $('workoutCard').hidden = true; document.body.classList.remove('in-workout'); updateGameStrip(null); updateView();
   if (w.test) {
     let best = 0;
     for (let i = 60; i <= wkPower.length; i++) best = Math.max(best, wkPower.slice(i - 60, i).reduce((a, b) => a + b, 0) / 60);
@@ -625,6 +645,7 @@ async function finishWorkout(completed) {
     state.erg = Math.round(state.ftp * 0.5); syncInputs(); applyMode(true);
     return;
   }
+  if (ergBeforeWorkout != null) { state.erg = ergBeforeWorkout; ergBeforeWorkout = null; syncInputs(); applyMode(true); }
   if (completed) { coach.say(t('coach.workoutDone', { name: w.name })); toast(t('workout.done', { name: w.name })); gameAudio.sfx('win'); progress.event('workouts', 1, 50); plans.onWorkoutDone(w.id); }
 }
 $('wkSkip').addEventListener('click', () => { workout?.skip(); tickWorkout(0); });
@@ -650,6 +671,29 @@ document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('cli
 document.querySelectorAll('.sheet').forEach((sh) => sh.addEventListener('click', (e) => { if (e.target === sh) closeSheet(sh.id); }));
 $('openSettings').addEventListener('click', () => openSheet('settingsSheet'));
 $('openDebug').addEventListener('click', () => closeSheet('settingsSheet'));
+// Due stati della stessa pagina: "home" (non si pedala) e "riding" (cruscotto). Lo sceglie la classe sul <body>;
+// Pausa/Riprendi e il quadrante col suo − / + cambiano posto, così restano gli stessi elementi (e gli stessi id) in entrambi.
+const isRiding = () => state.ride.running || state.ride.log.length > 0;
+let viewRiding = null;
+const MODE_NAME = () => ({ erg: 'ERG', gears: t('mode.gears'), sim: t('mode.sim'), resistance: t('mode.resistance') });
+function updateView() {
+  const r = state.ride; const riding = isRiding();
+  document.body.classList.toggle('riding', riding);
+  if (riding !== viewRiding) {
+    viewRiding = riding;
+    (riding ? $('rideStartSlot') : $('startSlot')).append($('startStop'));
+    (riding ? $('targetSlot') : $('dialSlot')).append($('dial'));
+    if (riding) $('moreModes').open = false;
+    renderWelcome?.();
+  }
+  // Pausa/Riprendi: durante l'uscita è il tasto principale; in home "Avvia"
+  $('startStop').textContent = r.running ? t('home.pause') : riding ? t('ride.resume') : t('home.start');
+  $('startStop').classList.toggle('running', r.running);
+  document.body.classList.toggle('paused', riding && !r.running);
+  $('rideModeLabel').textContent = MODE_NAME()[state.mode];
+  document.body.classList.toggle('has-workout', !!workout);
+  $('freeTitle').textContent = state.mode === 'erg' ? t('today.freeErg') : t('today.freeMode', { mode: MODE_NAME()[state.mode] });
+}
 function render() {
   const d = state.data; const r = state.ride;
   $('power').textContent = Math.round($('smooth3').checked && powerBuf.length ? powerBuf.reduce((a, b) => a + b, 0) / powerBuf.length : d.power || 0);
@@ -663,6 +707,7 @@ function render() {
   $('distance').textContent = fmtDec(r.distance / 1000, 2);
   $('avgPower').textContent = r.samples ? Math.round(r.powerSum / r.samples) : 0;
   $('kj').textContent = Math.round(r.energy);
+  updateView();
   $('saveFit').disabled = !r.log.length;
   $('shareFit').disabled = !r.log.length;
   $('garminUp').disabled = !r.log.length;
@@ -787,6 +832,7 @@ $('openFit').hidden = !GarminBridge;
 // ---------- preset (scelta al posto dei cursori) ----------
 document.querySelectorAll('[data-preset]').forEach((b) => b.addEventListener('click', () => {
   state[b.dataset.preset] = Number(b.dataset.v);
+  if (b.dataset.preset === 'erg') rememberErg();
   if (navigator.vibrate) navigator.vibrate(10);
   syncInputs(); render(); applyMode(true);
 }));
@@ -829,31 +875,26 @@ function renderChallenges(hist, riding) {
 function renderWelcome() {
   const el = $('welcome');
   const hist = history();
-  const riding = trainer.connected || state.ride.log.length;
-  plans.renderHome(riding);
-  renderChallenges(hist, riding);
-  if (riding) { el.hidden = true; return; }
+  const riding = isRiding();
+  const plan = plans.renderHome(riding); // la scheda "Oggi" mostra il piano; true se oggi c'è un allenamento
+  $('today').classList.toggle('plan-due', !!plan);
+  renderChallenges(hist, riding || trainer.connected);
+  if (riding || trainer.connected) { el.hidden = true; return; }
   el.hidden = false;
+  el.classList.toggle('compact', !!hist.length);
   if (!hist.length) {
     el.innerHTML = `<h2>${t('welcome.title')}</h2>
       <p>${t('welcome.subtitle')}</p>
       <ol><li>${t('welcome.step1')}</li><li>${t('welcome.step2')}</li><li>${t('welcome.step3')}</li></ol>
-      <button class="cta" id="welcomeConnect">${t('welcome.connect')}</button>`;
+      <button class="ghost" id="welcomeConnect">${t('welcome.connect')}</button>`;
   } else {
+    // utente che torna: una riga sola (ultima uscita) col tasto per collegare il rullo
     const last = hist[hist.length - 1];
-    const week = hist.filter((h) => Date.now() - h.t < 7 * 864e5);
     const days = Math.floor((Date.now() - last.t) / 864e5);
     const when = days === 0 ? t('time.today') : days === 1 ? t('time.yesterday') : t('time.daysAgo', { count: days });
-    el.innerHTML = `<h2>${t('welcome.back')}</h2>
-      <p>${t('welcome.last', { when })}</p>
-      <dl class="stats"><div><dt>${t('welcome.minutes')}</dt><dd>${Math.round(last.dur / 60)}</dd></div><div><dt>${t('home.avgPower')}</dt><dd>${last.avgW}</dd></div><div><dt>km</dt><dd>${fmtNum(last.km)}</dd></div></dl>
-      ${goalHtml(hist)}
-      ${week.length ? `<span class="streak">● ${t('welcome.streak', { count: week.length })}</span>` : ''}
-      <button class="cta" id="welcomeConnect">${t('welcome.connect')}</button>
-      <button class="ghost" id="welcomeHistory">${t('history.open')}</button>`;
+    el.innerHTML = `<p>${t('welcome.last', { when })}</p><button class="ghost" id="welcomeConnect">${t('welcome.connect')}</button>${goalHtml(hist)}`;
   }
-  $('welcomeConnect')?.addEventListener('click', () => addDevice()); // abre direttamente la scelta Bluetooth
-  $('welcomeHistory')?.addEventListener('click', openHistory);
+  $('welcomeConnect')?.addEventListener('click', () => addDevice()); // apre direttamente la scelta Bluetooth
 }
 trainer.addEventListener('connected', () => renderWelcome());
 trainer.addEventListener('disconnected', () => renderWelcome());
@@ -1054,7 +1095,28 @@ if (GarminBridge) {
 }
 
 // ---------- Gioco ----------
-let gradeBeforeGame = 0;
+let gradeBeforeGame = 0; let modeBeforeGame = null;
+function workoutForGames() {
+  if (!workout) return null;
+  const w = workout.w; const k = w.test ? 1 : workout.bias; let t0 = 0;
+  const steps = w.steps.map((x, i) => {
+    const a = workout.wattsOf(x, 0) * k; const b = workout.wattsOf(x, x.d) * k; const watts = Math.round((a + b) / 2);
+    const pct = +(watts / state.ftp).toFixed(3);
+    const kind = i === 0 && b > a && pct < 0.7 ? 'warm' : b < a && pct < 0.65 ? 'cool' : pct >= 1.05 ? (x.d <= 60 ? 'sprint' : 'effort') : pct >= 0.85 ? 'effort' : pct >= 0.6 ? 'pace' : 'rest';
+    const o = { t0, dur: x.d, pct, watts, kind }; t0 += x.d; return o;
+  });
+  return { name: w.name, total: workout.total, elapsed: Math.round(workout.t), steps };
+}
+// striscia in cima al gioco: passo dell'allenamento, watt del rullo e tempo che resta nel passo
+function updateGameStrip(st) {
+  const strip = $('gameStrip'); const on = !!(workout && st && !$('gamePanel').hidden);
+  strip.hidden = !on; $('gamePanel').classList.toggle('has-strip', on);
+  if (!on) return;
+  $('gsName').textContent = workout.w.name;
+  $('gsLine').textContent = t('workoutStrip.line', { label: st.x.label, watts: st.target, left: fmtClock(st.left) });
+  $('gsFill').style.width = `${Math.min(100, (workout.t / workout.total) * 100)}%`;
+}
+const refreshGameStrip = () => { if (workout) updateGameStrip(workout.locate()); else updateGameStrip(null); };
 // Classifiche: durata e potenza della partita si misurano qui (1 campione al secondo mentre un gioco è aperto)
 let gameRunT0 = 0; let gamePower = []; let gameSampler = null;
 function reportGameScore({ game, stage, score }) {
@@ -1077,7 +1139,16 @@ const gameHooks = {
   shift: (d) => shift(d),
   runStart: () => { gameRunT0 = Date.now(); },
   runEnd: (r) => reportGameScore(r),
+  // Allenamento in corso sotto al gioco, oppure null. Serve ai giochi per far seguire alle loro fasi di sforzo i passi dell'allenamento.
+  //   name    nome dell'allenamento
+  //   total   durata totale (s)
+  //   elapsed secondi già fatti
+  //   steps   [{ t0, dur, pct, watts, kind }]: inizio (s), durata (s), media in frazione della FTP (0.75 = 75%, con l'intensità scelta),
+  //           watt medi, e kind come nei piani dei giochi: warm | pace | effort | sprint | rest | cool
+  // Con un allenamento in corso setGrade viene ignorato: il rullo resta in ERG sui watt dell'allenamento.
+  workout: () => workoutForGames(),
   setGrade: (g) => {
+    if (workout) return; // l'ERG dell'allenamento non si tocca
     // stessa regola dei percorsi: la pendenza arriva al rullo scalata dal "realismo salite" (default 50%)
     state.grade = g == null ? gradeBeforeGame : Math.round(Math.max(-10, Math.min(15, g)) * routeRealism * 2) / 2;
     syncInputs(); render(); applyMode(true);
@@ -1152,6 +1223,7 @@ function openGame() {
   $('gameTitle').textContent = t('games.title');
   $('gameHelp').textContent = '';
   document.body.classList.add('game-open');
+  refreshGameStrip();
 }
 let gameLoading = false;
 async function startGame(kind) {
@@ -1163,10 +1235,10 @@ async function startGame(kind) {
   track('game', kind);
   gameAudio.ensure(); // l'audio va sbloccato da un tocco dell'utente
   gradeBeforeGame = state.grade;
-  // il gioco controlla la pendenza: serve la modalità Cambio o Pendenza
-  if (state.mode !== 'gears' && state.mode !== 'sim') {
-    document.querySelector('[name=mode][value=gears]').checked = true;
-    state.mode = 'gears'; document.body.dataset.mode = 'gears'; state.lastSent = null;
+  // il gioco controlla la pendenza: serve la modalità Cambio o Pendenza. Con un allenamento in corso no: l'ERG resta sui suoi watt.
+  if (!workout && state.mode !== 'gears' && state.mode !== 'sim') {
+    modeBeforeGame = state.mode; // a fine gioco si torna a quella
+    setMode('gears');
   }
   if (trainer.connected && !state.ride.running) $('startStop').click();
   $('gameMenu').hidden = true;
@@ -1183,12 +1255,15 @@ function closeGame() {
   if (activeGame) { // dal gioco si torna al menu, dal menu si esce
     activeGame.stop();
     activeGame = null; activeKind = null;
+    if (modeBeforeGame && state.mode === 'gears' && !workout) { setMode(modeBeforeGame); state.grade = gradeBeforeGame; syncInputs(); render(); applyMode(true); }
+    modeBeforeGame = null;
     clearInterval(gameSampler); gameSampler = null; gamePower = []; gameRunT0 = 0;
     openGame();
     return;
   }
   $('gamePanel').hidden = true;
   document.body.classList.remove('game-open');
+  updateGameStrip(null);
 }
 document.querySelectorAll('.game-card').forEach((b) => b.addEventListener('click', () => startGame(b.dataset.game)));
 $('openGame').addEventListener('click', openGame);
@@ -1324,9 +1399,10 @@ strava.handleRedirect().then((res) => {
 renderStrava();
 
 restore();
+setMode(state.mode);
+$('moreModes').open = state.mode !== 'erg'; // chi ha scelto un'altra modalità la ritrova aperta
 renderWelcome();
 syncInputs();
-document.body.dataset.mode = state.mode;
 render();
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
@@ -1512,7 +1588,8 @@ const clickNav = createClickNav({
   playing: () => !!(state.ride.running || workout || (activeGame?.active && $('gameMenu').hidden)),
   undo: () => { if (!activeGame?.active) step(+1); }, // la pressione lunga di − è già stata contata come un −
   back: () => window.rfBack(),
-  prefer: () => (!trainer.connected ? ($('welcomeConnect') && !$('welcome').hidden ? $('welcomeConnect') : $('deviceBar')) : $('startStop')),
+  // il primo tasto del menu è quello principale della scheda "Oggi" (nel cruscotto: Pausa/Riprendi)
+  prefer: () => (!trainer.connected ? ($('welcomeConnect') && !$('welcome').hidden ? $('welcomeConnect') : $('deviceBar')) : ($('today').classList.contains('plan-due') && !isRiding() ? document.querySelector('#planCard [data-pl-start]') || $('startStop') : $('startStop'))),
   isIdle: () => !click.pressed?.size,
   onChange: (on) => document.body.classList.toggle('click-nav', on),
   menuItems: () => {
@@ -1593,7 +1670,6 @@ langSelect.addEventListener('change', () => setLang(langSelect.value));
 // ciò che il codice scrive da solo (stati, elenchi, pannelli aperti) va rifatto; l'HTML statico lo rifà applyI18n
 window.addEventListener('langchange', () => {
   langSelect.value = getLang();
-  $('startStop').textContent = state.ride.running ? t('home.pause') : t('home.start');
   refreshDeviceBar(); devicesUi.update();
   if (!$('garminOn').checked) setStatus('garminStatus', t('status.off'));
   showVersion(); showMute(); renderStrava(); renderWelcome(); render(); checkGarminConflict();
