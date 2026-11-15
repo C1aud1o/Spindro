@@ -136,7 +136,7 @@
         "rows": [
           [
             "Orologio",
-            "Garmin nell'uso di tutti i giorni; gli altri dovrebbero funzionare"
+            "Garmin e altri dovrebbero funzionare, non ancora verificato"
           ],
           [
             "File",
@@ -239,8 +239,8 @@
       [
         "Orologi Garmin",
         "Ponte sensore",
-        "ok",
-        "Nell'uso quotidiano"
+        "maybe",
+        "Dovrebbe funzionare"
       ]
     ],
     "compatBtn": "Lista completa di compatibilità",
@@ -257,7 +257,7 @@
     "legendTitle": "Cosa significano le etichette",
     "status": {
       "verified": "Verificato",
-      "expected": "Dovrebbe funzionare",
+      "expected": "Dovrebbe funzionare, non ancora verificato",
       "reported": "Segnalato dagli utenti"
     },
     "statusDesc": {
@@ -294,7 +294,7 @@
   "footer": {
     "legal": "Note legali",
     "project": "Progetto",
-    "trademark": "Zwift, Garmin, Strava, Tacx, Wahoo, Van Rysel, Decathlon e YouTube sono marchi dei rispettivi proprietari. Spindro non è affiliato a queste aziende.",
+    "trademark": "Zwift, Garmin, Strava, Tacx, Wahoo, Van Rysel, Decathlon, YouTube, Google Play, Android e Bluetooth sono marchi dei rispettivi proprietari. Spindro non è affiliato a queste aziende.",
     "madeBy": "Gratis e open source. Fatto da un ciclista con un rullo economico.",
     "source": "Codice sorgente",
     "issues": "Segnala un problema"

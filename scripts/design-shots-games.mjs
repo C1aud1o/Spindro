@@ -13,7 +13,7 @@ for (const [w, h] of [[390, 780], [1280, 720]]) {
     const ctx = await b.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1 });
     const p = await ctx.newPage(); const errs = [];
     p.on('pageerror', e => errs.push(e.message)); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
-    await p.addInitScript(() => { try { localStorage.setItem('analytics', '0'); localStorage.setItem('ftp', '200'); localStorage.setItem('gameQuality', 'low'); localStorage.setItem('lang', localStorage.getItem('lang') || 'it'); } catch {} });
+    await p.addInitScript(() => { try { localStorage.setItem('analytics', '0'); localStorage.setItem('safetyAck', '1'); localStorage.setItem('ftp', '200'); localStorage.setItem('gameQuality', 'low'); localStorage.setItem('lang', localStorage.getItem('lang') || 'it'); } catch {} });
     await p.addInitScript({ path: process.cwd() + '/tests/fake-ble.js' });
     await p.goto(`http://127.0.0.1:${port}/index.html`);
     await p.click('#connectTrainer'); await p.waitForTimeout(800);

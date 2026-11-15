@@ -15,7 +15,7 @@ const BASE = process.env.BASE_URL || 'http://127.0.0.1:4173';
 const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] });
 const page = await (await browser.newContext({ viewport: { width: 390, height: 780 }, serviceWorkers: 'block' })).newPage();
 const errors = []; page.on('pageerror', (e) => errors.push(e.message));
-await page.addInitScript(({ FTP, MIN, DIFF }) => { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('ftp', String(FTP)); localStorage.setItem('lang', 'it'); localStorage.setItem('gameQuality', 'low'); localStorage.setItem('strikeMin', String(MIN)); localStorage.setItem('strikeDiff', String(DIFF)); }, { FTP, MIN, DIFF });
+await page.addInitScript(({ FTP, MIN, DIFF }) => { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('safetyAck', '1'); localStorage.setItem('ftp', String(FTP)); localStorage.setItem('lang', 'it'); localStorage.setItem('gameQuality', 'low'); localStorage.setItem('strikeMin', String(MIN)); localStorage.setItem('strikeDiff', String(DIFF)); }, { FTP, MIN, DIFF });
 await page.goto(`${BASE}/index.html`);
 await page.click('#openGame'); await page.evaluate(() => document.body.classList.add('dev'));
 await page.click('[data-game=shooter]');

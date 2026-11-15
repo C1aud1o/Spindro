@@ -12,7 +12,7 @@ import { GEARS, virtualSpeed, powerForSpeed } from './gears.js';
 import { HeartRate } from './hr.js';
 import { encodeFit, encodeWorkoutFit, encodeZwo } from './fit.js';
 import { Strava } from './strava.js';
-import { STRAVA_PROXY, GOATCOUNTER_URL, SENTRY_DSN } from './config.js';
+import { STRAVA_PROXY, GOATCOUNTER_URL, SENTRY_DSN, SITE_URL } from './config.js';
 import { initMonitoring, track, consentAsked, consentGiven, setConsent } from './monitor.js';
 import { buildReportUrl } from './report.js';
 import { setupDebug } from './debugview.js';
@@ -391,8 +391,15 @@ function describeTarget(k) {
 }
 
 // ---------- Sessione ----------
+// Avviso di sicurezza: una sola frase, una sola volta, prima della prima uscita (ogni avvio passa da qui).
+function safetyAcknowledged() { try { return localStorage.getItem('safetyAck') === '1'; } catch { return true; } }
+$('safetyOk').addEventListener('click', () => {
+  try { localStorage.setItem('safetyAck', '1'); } catch { /* storage non disponibile */ }
+  closeSheet('safetySheet'); $('startStop').click();
+});
 $('startStop').addEventListener('click', () => {
   const r = state.ride;
+  if (!r.running && !safetyAcknowledged()) { openSheet('safetySheet'); return; }
   r.running = !r.running;
   if (r.running) $('reportHint').hidden = true; // niente inviti mentre si pedala
   if (r.running) { r.start = performance.now() - r.elapsed * 1000; requestWakeLock(); }
@@ -939,6 +946,10 @@ $('reportIssue').addEventListener('click', () => {
 
 // ---------- Monitoraggio e consenso (D1) ----------
 initMonitoring({ release: BUILD, environment: isNative ? 'android' : 'web', lang: getLang() });
+// pagine legali del sito (in italiano sotto /it/) e licenze open source dalle Impostazioni
+function legalHref(slug) { return `${SITE_URL}${getLang() === 'it' ? '/it' : ''}/${slug}/`; }
+function setLegalLinks() { document.querySelectorAll('a[data-legal]').forEach((el) => { el.href = legalHref(el.dataset.legal); }); }
+setLegalLinks(); window.addEventListener('langchange', setLegalLinks);
 $('analyticsOn').checked = consentGiven();
 $('analyticsOn').addEventListener('change', (e) => { setConsent(e.target.checked); if (e.target.checked) { track('app-open'); track('lang', getLang()); } });
 function answerConsent(yes) {
@@ -948,6 +959,8 @@ function answerConsent(yes) {
 $('consentYes').addEventListener('click', () => answerConsent(true));
 $('consentNo').addEventListener('click', () => answerConsent(false));
 // se statistiche o segnalazione errori non sono configurate (fork, build di prova) non si chiede né si mostra nulla
+// la frase sugli errori compare solo se la segnalazione errori è davvero accesa (Sentry spento nel repository)
+document.querySelector('#consentSheet [data-i18n="privacy.errors"]').hidden = !SENTRY_DSN;
 $('analyticsRow').hidden = !GOATCOUNTER_URL; $('errorsNote').hidden = !SENTRY_DSN; $('privacyGroup').hidden = !GOATCOUNTER_URL && !SENTRY_DSN;
 if (GOATCOUNTER_URL && !consentAsked()) openSheet('consentSheet');
 

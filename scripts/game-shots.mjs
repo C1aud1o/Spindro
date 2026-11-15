@@ -22,7 +22,7 @@ const browser = await chromium.launch({
 
 async function openRacer(page, quality = 'high') {
   await page.addInitScript((q) => {
-    localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('ftp', '200'); localStorage.setItem('mass', '75');
+    localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('safetyAck', '1'); localStorage.setItem('ftp', '200'); localStorage.setItem('mass', '75');
     localStorage.setItem('lang', 'it'); localStorage.setItem('gameQuality', q); localStorage.setItem('racer3dStage', '1');
   }, quality);
   await page.addInitScript({ path: FAKE_BLE });

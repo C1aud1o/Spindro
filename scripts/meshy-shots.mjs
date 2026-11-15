@@ -28,7 +28,7 @@ for (const [w, h] of SIZES) for (const sc of SCENES) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, serviceWorkers: 'block' });
   const page = await ctx.newPage();
   const errors = []; page.on('pageerror', (e) => errors.push(e.message)); page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errors.push(m.text().slice(0, 300)); });
-  await page.addInitScript((st) => { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('ftp', '200'); localStorage.setItem('mass', '75'); localStorage.setItem('lang', 'it'); localStorage.setItem('gameQuality', 'high'); localStorage.setItem('racer3dStage', String(st)); }, sc.stage);
+  await page.addInitScript((st) => { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('safetyAck', '1'); localStorage.setItem('ftp', '200'); localStorage.setItem('mass', '75'); localStorage.setItem('lang', 'it'); localStorage.setItem('gameQuality', 'high'); localStorage.setItem('racer3dStage', String(st)); }, sc.stage);
   await page.addInitScript({ path: FAKE_BLE });
   await page.goto(`${BASE}/index.html`);
   await page.click('#connectTrainer');

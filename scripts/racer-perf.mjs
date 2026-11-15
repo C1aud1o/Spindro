@@ -9,7 +9,7 @@ const SEC = Number(opt('sec', 20)); const THR = Number(opt('throttle', 4)); cons
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:4173';
 const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || '/opt/pw-browsers/chromium', args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] });
 const page = await (await browser.newContext({ viewport: { width: 390, height: 780 }, serviceWorkers: 'block' })).newPage();
-await page.addInitScript((Q) => { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('ftp', '200'); localStorage.setItem('lang', 'it'); localStorage.setItem('gameQuality', Q); }, Q);
+await page.addInitScript((Q) => { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('safetyAck', '1'); localStorage.setItem('ftp', '200'); localStorage.setItem('lang', 'it'); localStorage.setItem('gameQuality', Q); }, Q);
 await page.goto(`${BASE}/index.html`);
 await page.click('#openGame'); await page.click('[data-game=racer]');
 await page.waitForFunction(() => window.__game?.state === 'select', null, { timeout: 150000 });

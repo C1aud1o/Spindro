@@ -1,5 +1,5 @@
 // Genera i modelli del catalogo con Meshy (text-to-3d: preview + refine). Uso: node scripts/meshy/generate.mjs [--catalog=file.json] [nome...]
-// Da Node serve: NODE_USE_ENV_PROXY=1 (proxy di rete) e NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt nel cloud.
+// Da Node serve: NODE_USE_ENV_PROXY=1 (proxy di rete) e NODE_EXTRA_CA_CERTS=<bundle CA del proxy> nel cloud.
 // Riprende da dove si era fermato: lo stato sta in catalog.json (campi task_preview, task_refine, credits, status).
 import fs from 'node:fs';
 import path from 'node:path';

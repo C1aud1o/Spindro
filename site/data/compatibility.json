@@ -109,8 +109,8 @@
       "protocol": "Zwift BLE",
       "status": "expected",
       "note": {
-        "en": "Used as a Bluetooth shifter (+ / −). Experimental: built from open-source projects, not yet checked on every firmware.",
-        "it": "Usato come comando del cambio (+ / −) via Bluetooth. Sperimentale: costruito da progetti open source, non ancora verificato su ogni firmware."
+        "en": "Used as a Bluetooth shifter (+ / −). Experimental: the + and − keys of one Click v2 were tested on the real device; the other keys and other firmware are not verified.",
+        "it": "Usato come comando del cambio (+ / −) via Bluetooth. Sperimentale: i tasti + e − di un Click v2 sono stati provati su dispositivo vero; gli altri tasti e gli altri firmware non sono verificati."
       }
     },
     {

@@ -10,13 +10,13 @@ for (const [w, h, n] of [[390, 844, 'mobile'], [1280, 800, 'desktop']]) {
   for (const theme of ['dark', 'light']) {
     const ctx = await b.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, colorScheme: theme });
     const p = await ctx.newPage();
-    await p.addInitScript(() => { try { localStorage.setItem('lang', 'it'); localStorage.setItem('analytics', '0'); localStorage.setItem('onboarded','1'); } catch {} });
+    await p.addInitScript(() => { try { localStorage.setItem('lang', 'it'); localStorage.setItem('analytics', '0'); localStorage.setItem('safetyAck', '1'); localStorage.setItem('onboarded','1'); } catch {} });
     await p.goto(`http://127.0.0.1:${port}/index.html`);
     await p.waitForTimeout(1500);
     await p.screenshot({ path: `docs/design/home-${tag}-${n}-${theme}.png`, fullPage: false });
     if (theme === 'dark') {
       const c2 = await b.newContext({ viewport: { width: w, height: h }, colorScheme: 'dark' }); const q = await c2.newPage();
-      await q.addInitScript(() => { try { localStorage.setItem('lang', 'it'); localStorage.setItem('analytics', '0'); localStorage.setItem('onboarded','1'); } catch {} });
+      await q.addInitScript(() => { try { localStorage.setItem('lang', 'it'); localStorage.setItem('analytics', '0'); localStorage.setItem('safetyAck', '1'); localStorage.setItem('onboarded','1'); } catch {} });
       await q.addInitScript({ path: process.cwd() + '/tests/fake-ble.js' });
       await q.goto(`http://127.0.0.1:${port}/index.html`); await q.click('#connectTrainer'); await q.waitForTimeout(2500);
       await q.screenshot({ path: `docs/design/home-${tag}-${n}-collegato.png` }); await c2.close();
