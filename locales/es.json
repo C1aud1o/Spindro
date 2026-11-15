@@ -1366,5 +1366,21 @@
   "games.planata.climb": "¡Pedalea para subir!",
   "games.planata.combo": "COMBO ×{n}",
   "games.planata.over": "¡ATERRIZAJE!",
-  "games.planata.stats": "{m} m volados · {rings} aros"
+  "games.planata.stats": "{m} m volados · {rings} aros",
+  "games.menu.length": "Duración",
+  "games.menu.level": "Nivel",
+  "games.menu.min": "{n} min",
+  "games.menu.easy": "Fácil",
+  "games.menu.normal": "Normal",
+  "games.menu.hard": "Difícil",
+  "games.menu.best": "Récord {v}",
+  "games.menu.noBest": "sin récord",
+  "games.menu.start": "+  SALIDA",
+  "games.menu.keys": "−  duración    +  nivel    mantén +  salir",
+  "games.menu.pedal": "o empieza a pedalear",
+  "games.res.score": "Puntos",
+  "games.res.best": "Récord personal {v}",
+  "games.res.newBest": "¡NUEVO RÉCORD PERSONAL!",
+  "games.res.again": "+  Otra vez",
+  "games.res.back": "−  A los juegos"
 }

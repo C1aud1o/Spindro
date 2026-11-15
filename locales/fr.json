@@ -1366,5 +1366,21 @@
   "games.planata.climb": "Pédale pour monter !",
   "games.planata.combo": "COMBO ×{n}",
   "games.planata.over": "ATTERRISSAGE !",
-  "games.planata.stats": "{m} m parcourus · {rings} anneaux"
+  "games.planata.stats": "{m} m parcourus · {rings} anneaux",
+  "games.menu.length": "Durée",
+  "games.menu.level": "Niveau",
+  "games.menu.min": "{n} min",
+  "games.menu.easy": "Facile",
+  "games.menu.normal": "Normal",
+  "games.menu.hard": "Difficile",
+  "games.menu.best": "Record {v}",
+  "games.menu.noBest": "pas encore de record",
+  "games.menu.start": "+  DÉPART",
+  "games.menu.keys": "−  durée    +  niveau    maintenir +  départ",
+  "games.menu.pedal": "ou commence à pédaler",
+  "games.res.score": "Points",
+  "games.res.best": "Record personnel {v}",
+  "games.res.newBest": "NOUVEAU RECORD PERSONNEL !",
+  "games.res.again": "+  Rejouer",
+  "games.res.back": "−  Aux jeux"
 }

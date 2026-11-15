@@ -1366,5 +1366,21 @@
   "games.planata.climb": "Pedala per salire!",
   "games.planata.combo": "COMBO ×{n}",
   "games.planata.over": "ATTERRAGGIO!",
-  "games.planata.stats": "{m} m in volo · {rings} anelli"
+  "games.planata.stats": "{m} m in volo · {rings} anelli",
+  "games.menu.length": "Durata",
+  "games.menu.level": "Livello",
+  "games.menu.min": "{n} min",
+  "games.menu.easy": "Facile",
+  "games.menu.normal": "Normale",
+  "games.menu.hard": "Difficile",
+  "games.menu.best": "Record {v}",
+  "games.menu.noBest": "nessun record",
+  "games.menu.start": "+  VIA",
+  "games.menu.keys": "−  durata    +  livello    tieni +  via",
+  "games.menu.pedal": "oppure inizia a pedalare",
+  "games.res.score": "Punti",
+  "games.res.best": "Record personale {v}",
+  "games.res.newBest": "NUOVO RECORD PERSONALE!",
+  "games.res.again": "+  Rigioca",
+  "games.res.back": "−  Ai giochi"
 }

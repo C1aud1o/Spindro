@@ -1366,5 +1366,21 @@
   "games.planata.climb": "Pedal to climb!",
   "games.planata.combo": "COMBO ×{n}",
   "games.planata.over": "LANDING!",
-  "games.planata.stats": "{m} m flown · {rings} rings"
+  "games.planata.stats": "{m} m flown · {rings} rings",
+  "games.menu.length": "Length",
+  "games.menu.level": "Level",
+  "games.menu.min": "{n} min",
+  "games.menu.easy": "Easy",
+  "games.menu.normal": "Normal",
+  "games.menu.hard": "Hard",
+  "games.menu.best": "Best {v}",
+  "games.menu.noBest": "no record yet",
+  "games.menu.start": "+  START",
+  "games.menu.keys": "−  length    +  level    hold +  start",
+  "games.menu.pedal": "or just start pedalling",
+  "games.res.score": "Score",
+  "games.res.best": "Personal best {v}",
+  "games.res.newBest": "NEW PERSONAL BEST!",
+  "games.res.again": "+  Play again",
+  "games.res.back": "−  Back to games"
 }

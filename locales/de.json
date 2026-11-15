@@ -1366,5 +1366,21 @@
   "games.planata.climb": "Tritt, um zu steigen!",
   "games.planata.combo": "COMBO ×{n}",
   "games.planata.over": "LANDUNG!",
-  "games.planata.stats": "{m} m geflogen · {rings} Ringe"
+  "games.planata.stats": "{m} m geflogen · {rings} Ringe",
+  "games.menu.length": "Dauer",
+  "games.menu.level": "Stufe",
+  "games.menu.min": "{n} Min.",
+  "games.menu.easy": "Leicht",
+  "games.menu.normal": "Normal",
+  "games.menu.hard": "Schwer",
+  "games.menu.best": "Rekord {v}",
+  "games.menu.noBest": "noch kein Rekord",
+  "games.menu.start": "+  START",
+  "games.menu.keys": "−  Dauer    +  Stufe    + halten  Start",
+  "games.menu.pedal": "oder einfach losfahren",
+  "games.res.score": "Punkte",
+  "games.res.best": "Persönlicher Rekord {v}",
+  "games.res.newBest": "NEUER PERSÖNLICHER REKORD!",
+  "games.res.again": "+  Nochmal",
+  "games.res.back": "−  Zu den Spielen"
 }
