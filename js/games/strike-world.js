@@ -189,8 +189,8 @@ class Props {
 
 // ----- il mondo -----
 export class World {
-  constructor(scene, models, quality) {
-    this.scene = scene; this.models = models; this.quality = quality;
+  constructor(scene, models, quality, rand = Math.random) {
+    this.scene = scene; this.models = models; this.quality = quality; this.rand = rand; // rand: sorgente di casualità del gioco (con seme nelle prove)
     this.dome = null; this.root = null;
     // luci comuni (cambiano colore a ogni livello)
     this.hemi = new THREE.HemisphereLight('#fff', '#888', 1);
@@ -316,7 +316,7 @@ export class World {
     // mare: toon con riflessi che scorrono
     const waterTex = canvasTex(256, 256, (g) => {
       g.fillStyle = '#2f8fc4'; g.fillRect(0, 0, 256, 256);
-      for (let i = 0; i < 70; i++) { g.fillStyle = i % 3 ? 'rgba(255,255,255,.22)' : 'rgba(10,60,110,.25)'; const y = Math.random() * 256; const x = Math.random() * 256; g.fillRect(x, y, 20 + Math.random() * 40, 3); }
+      for (let i = 0; i < 70; i++) { g.fillStyle = i % 3 ? 'rgba(255,255,255,.22)' : 'rgba(10,60,110,.25)'; const y = this.rand() * 256; const x = this.rand() * 256; g.fillRect(x, y, 20 + this.rand() * 40, 3); }
     });
     waterTex.repeat.set(30, 16);
     const water = new THREE.Mesh(new THREE.PlaneGeometry(900, 520), toonMaterial({ map: waterTex, color: '#7fd0f5' }));
@@ -461,7 +461,7 @@ export class World {
     const RN = 260; const rg = new THREE.PlaneGeometry(0.025, 0.9);
     this.rain = new THREE.InstancedMesh(rg, new THREE.MeshBasicMaterial({ color: '#b9c6ff', transparent: true, opacity: 0.35, depthWrite: false, fog: false }), RN);
     this.rain.frustumCulled = false; this.root.add(this.rain); this.rain.visible = this.rainOn;
-    this.drops = Array.from({ length: RN }, () => ({ x: (Math.random() - 0.5) * 50, y: Math.random() * 16, z: 6 - Math.random() * 18, v: 18 + Math.random() * 8 }));
+    this.drops = Array.from({ length: RN }, () => ({ x: (this.rand() - 0.5) * 50, y: this.rand() * 16, z: 6 - this.rand() * 18, v: 18 + this.rand() * 8 }));
     // primo piano: ringhiera scura davanti
     const fore = [];
     for (let x = -60; x < this.span + 60; x += 2.4) fore.push(paint(new THREE.BoxGeometry(0.08, 1.0, 0.08).translate(x, 0.68, ROAD.front + 2.1), '#1a1726'));
@@ -538,7 +538,7 @@ export class World {
     this.pools.count = n; this.pools.instanceMatrix.needsUpdate = true; if (this.pools.instanceColor) this.pools.instanceColor.needsUpdate = true;
     if (this.rain.visible) {
       for (let i = 0; i < this.drops.length; i++) {
-        const d = this.drops[i]; d.y -= d.v * dt; if (d.y < 0) { d.y = 14 + Math.random() * 3; d.x = (Math.random() - 0.3) * 50; }
+        const d = this.drops[i]; d.y -= d.v * dt; if (d.y < 0) { d.y = 14 + this.rand() * 3; d.x = (this.rand() - 0.3) * 50; }
         this.rain.setMatrixAt(i, _m.compose(_p.set(px + d.x, d.y, d.z), _q.identity(), _s.set(1, 1, 1)));
       }
       this.rain.instanceMatrix.needsUpdate = true;
