@@ -13,4 +13,5 @@ Left / to redo at the end
 - Re-run `node scripts/site-shots.mjs` once the app UI is final, then `node site/make-og.mjs`.
 - Check `docs/games/CREATE-A-GAME.md` and `js/games/kit/workout-plan.js` after merging `origin/beta`; rebuild.
 - Links to docs on GitHub point at `main`: they work after `beta` is promoted.
-- Not done: axe-core run (no dependency allowed; contrast and structure are checked by `tests/site.spec.mjs`).
+- axe-core runs through `tests/a11y.spec.mjs` (added on beta); the site passes.
+- Merged beta (CSP, fonts, legal): conflicts resolved; screenshots regenerated against the merged build. Known: Horde Run captures look washed out under the software renderer; check on a real device and re-run the script.
