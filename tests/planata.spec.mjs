@@ -11,8 +11,7 @@ test.beforeEach(async ({ page }) => {
   page.on('pageerror', (e) => page.errors.push(e.message));
   await page.addInitScript(() => {
     try { if (!localStorage.getItem('__seeded')) { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('ftp', '200'); localStorage.setItem('gameQuality', 'low'); } localStorage.setItem('lang', 'en'); } catch { /* niente storage */ }
-    // caso fisso: stessi numeri a ogni prova
-    let s = 12345; Math.random = () => { s = (s + 0x6d2b79f5) >>> 0; let x = s; x = Math.imul(x ^ (x >>> 15), x | 1); x ^= x + Math.imul(x ^ (x >>> 7), x | 61); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
+    window.__spindroSeed = 12345; // caso fisso: stessi numeri a ogni prova
   });
   await page.addInitScript({ path: FAKE_BLE });
   await page.goto('/index.html');
@@ -32,7 +31,7 @@ async function openGame(page) {
 
 // Il bot tiene una potenza fissa (multiplo della FTP) e lascia fare al pilota automatico.
 function botRun({ mult, durIdx, lvl, ftp }) {
-  const g = window.__game; g.active = false; g.durIdx = durIdx; g.lvlIdx = lvl; g.reset(); g.begin();
+  const g = window.__game; g.active = false; g.durIdx = durIdx; g.lvlIdx = lvl; g.reset(); g.t = 0; g.power = ftp * mult; g.begin(); // t e potenza fissati: il menu girava in tempo reale
   g.hooks = { ...g.hooks, connected: () => true, ftp: () => ftp, stats: () => ({ power: ftp * mult, cadence: 85 }), speedKmh: () => 30, setGrade() {} };
   let n = 0; let minute1Over = false; const dt = 1 / 30;
   while (g.state === 'play' && n < 1500 * 30) { g.update(dt); n++; if (n === 60 * 30 && g.state !== 'play') minute1Over = true; }
@@ -91,10 +90,10 @@ test('Updraft: livelli, durate, profilo dolce e quota = % FTP', async ({ page })
 test('Updraft: comandi del menu (− durata, + livello, + lungo avvia) e + / − cambiano corsia in volo', async ({ page }) => {
   await openGame(page);
   const r = await page.evaluate(() => {
-    const g = window.__game; g.active = false; g.durIdx = 0; g.lvlIdx = 1; g.reset(); g.stateT = 1;
-    const o = {};
-    g.input(-1); o.dur = g.durIdx; g.input(1); o.lvl = g.lvlIdx;
-    g.hold(1); g.heldT = 0; for (let i = 0; i < 40; i++) g.update(1 / 30); o.state = g.state;
+    const g = window.__game; g.active = false; g.durIdx = 0; g.lvlIdx = 1; g.reset(); g.menu.reset();
+    const o = {}; const step = (n) => { for (let i = 0; i < n; i++) g.update(1 / 30); };
+    step(15); g.input(-1); g.hold(-1); g.hold(0); step(3); o.dur = g.menu.durIdx; g.input(1); g.hold(1); g.hold(0); step(3); o.lvl = g.menu.level;
+    g.hold(1); for (let i = 0; i < 40; i++) g.update(1 / 30); o.state = g.state;
     g.hooks = { ...g.hooks, connected: () => true, ftp: () => 200, stats: () => ({ power: 160, cadence: 85 }), speedKmh: () => 30, setGrade() {} };
     for (let i = 0; i < 5 * 30; i++) g.update(1 / 30);
     o.x0 = g.x; g.input(1); for (let i = 0; i < 20; i++) g.update(1 / 30); o.xRight = g.x; g.input(-1); g.input(-1); for (let i = 0; i < 20; i++) g.update(1 / 30); o.xLeft = g.x;
@@ -159,7 +158,7 @@ test('Updraft: prendere il pallone in corsia e restare lì costa solo la combo (
     const dt = 1 / 30; let pressed = false; let podX = null; let sawStorm = false; let comboBefore = 0;
     for (let i = 0; i < 120 * 30 && g.state === 'play'; i++) {
       g.update(dt);
-      const pod = g.items.find((it) => it.kind === 'pod' && !it.done);
+      const pod = g.items.find((it) => it.kind === 'pod' && !it.done && g.items.some((st) => st.kind === 'storm' && st.x === it.x && st.z > it.z)); // un pallone con la tempesta dietro (la tempesta c'è nel 65 % dei casi)
       if (pod && !pressed && pod.z - g.z < 12 && pod.z - g.z > 8) { podX = pod.x; g.input(pod.x < 0 ? 1 : -1); pressed = true; comboBefore = g.combo; }
       if (pressed && g.hits > 0) { sawStorm = true; break; }
     }

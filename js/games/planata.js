@@ -11,6 +11,8 @@ import { txt as hudText, hudView, paragraph, wrapLines, MessageQueue, loadHudFon
 import { clamp, lerp } from './engine.js';
 import { t } from '../i18n.js';
 import { SONGS } from './audio.js';
+import { GameMenu, ResultsView, LENGTHS } from './kit/menu.js';
+import { makeRandom } from './kit/rng.js';
 import { DURATIONS, LEVELS, COOL_S, SPEED, RING_EVERY, FIRST_RING, Y_LO, Y_HI, PCT_LO, PCT_HI, buildPlan, segAt, targetW, targetPct, profilePct, altOf, pctOf, Adapter, starsFor, nextStarHint } from './planata-plan.js';
 
 const PLANE_SPAN = 8;       // apertura alare (m)
@@ -148,7 +150,8 @@ function makePropeller() {
 
 // linee di vento intorno all'aereo (si vedono soprattutto spingendo forte): un solo draw call
 class SpeedStreaks {
-  constructor(scene, count = 56) {
+  constructor(scene, count = 56, rnd = Math.random) {
+    this.rnd = rnd;
     const geo = new THREE.PlaneGeometry(0.05, 1).rotateX(-Math.PI / 2);
     const mat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
     this.mesh = new THREE.InstancedMesh(geo, mat, count); this.mesh.frustumCulled = false; this.mesh.renderOrder = 5; scene.add(this.mesh);
@@ -156,8 +159,8 @@ class SpeedStreaks {
     this.m = new THREE.Matrix4(); this.p = new THREE.Vector3(); this.q = new THREE.Quaternion(); this.s = new THREE.Vector3(); this.k = 0;
   }
   fresh(it, any) {
-    const a = Math.random() * Math.PI * 2; const r = 4 + Math.random() * 11;
-    it.x = Math.cos(a) * r; it.y = Math.sin(a) * r * 0.6; it.z = any ? -4 + Math.random() * 40 : 36 + Math.random() * 6; it.len = 2 + Math.random() * 4;
+    const rn = this.rnd; const a = rn() * Math.PI * 2; const r = 4 + rn() * 11;
+    it.x = Math.cos(a) * r; it.y = Math.sin(a) * r * 0.6; it.z = any ? -4 + rn() * 40 : 36 + rn() * 6; it.len = 2 + rn() * 4;
     if (Math.hypot(it.x, it.y) < 3.5) { it.x *= 2; it.y *= 2; }
     return it;
   }
@@ -194,18 +197,32 @@ export class Planata {
     this.hudCanvas = hudCanvas; this.hooks = hooks; this.audio = audio;
     this.active = false;
     const ls = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
-    this.durIdx = clamp(Number(ls('planataDur', 0)) || 0, 0, DURATIONS.length - 1);
-    this.lvlIdx = clamp(Number(ls('planataLvl', 1)) || 0, 0, LEVELS.length - 1);
+    this.seed = null; this.rnd = makeRandom(this.seed);
+    this.menu = new GameMenu({
+      id: 'planata', title: () => t('games.planata.hud.title'), pitch: () => t('games.planata.hud.tagline'),
+      howto: () => [t('games.planata.rule1'), t('games.planata.rule4'), t('games.planata.rule5')],
+      load: () => ({ durIdx: clamp(Number(ls('planataDur', 0)) || 0, 0, DURATIONS.length - 1), level: clamp(Number(ls('planataLvl', 1)) || 0, 0, LEVELS.length - 1) }),
+      save: ({ durIdx, level }) => { try { localStorage.setItem('planataDur', durIdx); localStorage.setItem('planataLvl', level); } catch { /* niente storage */ } },
+      best: (d, l) => { const r = this.record(DURATIONS[d], LEVELS[l].id); return { stars: r.stars || 0, text: r.score ? String(r.score) : null }; },
+      sfx: (n) => this.audio.sfx(n), ready: () => this.state === 'menu',
+      onStart: (d, l) => { this.configure(d, l); this.reset(); this.begin(); },
+    });
+    this.results = new ResultsView({ sfx: (n) => this.audio.sfx(n), onAgain: () => { this.reset(); this.begin(); }, onBack: () => this.hooks.close?.() });
     this.loop = this.loop.bind(this);
   }
 
+  get durIdx() { return this.menu.durIdx; }
+  set durIdx(v) { this.menu.durIdx = v; }
+  get lvlIdx() { return this.menu.level; }
+  set lvlIdx(v) { this.menu.level = v; }
+
   async start() {
     this.active = true;
+    this.detach = [this.menu.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'menu'), this.results.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'over')];
     this.quality = new Quality();
     this.stage = new Stage(this.hudCanvas, { quality: this.quality });
     this.stage.onQuality = (cfg) => this.applyQuality(cfg);
-    this.state = 'loading'; this.t = 0; this.msgs = new MessageQueue(); this.power = 0; this.pw = 0; this.cadence = 0; this.held = 0; this.heldT = 0;
-    this.last = performance.now();
+    this.state = 'loading'; this.t = 0; this.msgs = new MessageQueue(); this.power = 0; this.pw = 0; this.cadence = 0; this.last = performance.now();
     requestAnimationFrame(this.loop);
     this.audio.playSong(SONGS.menu);
     try {
@@ -220,11 +237,11 @@ export class Planata {
       await loadHudFonts();
       if (!this.active) return;
       this.build();
-      this.state = 'menu'; this.stateT = 0;
+      this.state = 'menu'; this.stateT = 0; this.menu.reset();
     } catch (err) { console.error(err); this.state = 'error'; this.error = err.message; }
   }
 
-  stop() { this.active = false; this.audio.stopSong(); this.hooks.setGrade(null); this.stage?.dispose(); }
+  stop() { this.active = false; (this.detach || []).forEach((f) => f()); this.audio.stopSong(); this.hooks.setGrade(null); this.stage?.dispose(); }
 
   // ---------- scena ----------
   build() {
@@ -240,7 +257,7 @@ export class Planata {
     this.buildScenery();
     this.buildPlane();
     this.buildProps();
-    this.fx = new Effects(scene, 80); this.streaks = new SpeedStreaks(scene); this.shake = new Shake();
+    this.fx = new Effects(scene, 80); this.streaks = new SpeedStreaks(scene, 56, (...a) => this.rnd(...a)); this.shake = new Shake();
     this.applyQuality(this.quality.cfg);
     this.reset();
   }
@@ -375,7 +392,7 @@ export class Planata {
   // ---------- partita ----------
   get ftp() { return Math.max(80, this.hooks.ftp?.() || Number(localStorage.getItem('ftp')) || 200); }
   recordKey() { return `planataBest2:${this.total}:${this.level.id}`; }
-  record() { try { return JSON.parse(localStorage.getItem(this.recordKey()) || '{}'); } catch { return {}; } }
+  record(total = this.total, lvl = this.level?.id) { try { return JSON.parse(localStorage.getItem(`planataBest2:${total}:${lvl}`) || '{}'); } catch { return {}; } }
 
   configure(durIdx, lvlIdx) {
     this.durIdx = durIdx; this.lvlIdx = lvlIdx;
@@ -394,14 +411,14 @@ export class Planata {
     this.paused = false; this.pauseT = 0; this.startT = 0; this.result = null; this.recStart = null; this.finished = false; this.landing = 0; this.rollV = 0;
     this.hurtT = 0; this.boostT = 0; this.gustK = 0; this.sentGrade = undefined; this.pops = []; this.msgs.clear();
     this.nextRingT = FIRST_RING; this.cn = 0; this.prev = { t: FIRST_RING - RING_EVERY, z: 0, x: 0, lane: 0 }; this.lastRing = this.prev; this.courseDone = false;
-    this.rnd = rng(Math.floor(Math.random() * 1e9));
+    this.rnd = makeRandom(this.seed);
     this.camInit = false; this.runway.visible = false; this.stateT = 0; setRunway(null); this.landMsg = false;
     for (const c of this.chunks) c.index = null;
     this.lastChunk = -1e9; this.updateWorld(true);
   }
 
   begin() {
-    this.state = 'play'; this.stateT = 0; this.held = 0;
+    this.state = 'play'; this.stateT = 0;
     this.zBase = this.z; this.el = 0; this.hurtT = 0;
     this.pw = this.power; this.y = altOf(clamp(this.pw / this.ftp, 0.5, 1.3)); this.x = 0;
     this.prev = { t: FIRST_RING - RING_EVERY, z: this.zBase + (FIRST_RING - RING_EVERY) * SPEED, x: 0, lane: 0 }; this.lastRing = { ...this.prev, z: this.z };
@@ -437,25 +454,17 @@ export class Planata {
   // ---------- comandi ----------
   input(dir) {
     this.audio.ensure();
-    if (this.state === 'menu') {
-      if (this.stateT < 0.3) return;
-      // − cambia la durata, + cambia il livello; + tenuto premuto avvia (hold)
-      if (dir < 0) this.configure((this.durIdx + 1) % DURATIONS.length, this.lvlIdx); else this.configure(this.durIdx, (this.lvlIdx + 1) % LEVELS.length);
-      try { localStorage.setItem('planataDur', this.durIdx); localStorage.setItem('planataLvl', this.lvlIdx); } catch { /* niente storage */ }
-      this.audio.sfx('select'); return;
-    }
-    if (this.state === 'over') { if (this.stateT > 1.4) { this.reset(); this.state = 'menu'; this.stateT = 0; this.audio.playSong(SONGS.menu); } return; }
+    if (this.state === 'menu') { this.menu.input(dir); return; } // − durata, + livello, + lungo avvia
+    if (this.state === 'over') { this.results.input(dir); return; }
     if (this.state !== 'play' || this.paused || this.landing > 0) return;
     // + = destra, − = sinistra: una corsia per volta; il pilota automatico riprende dopo qualche secondo
     const now = this.manualT > 0 ? this.lane : clamp(Math.round(-this.x / LANE_W), -1, 1);
     this.lane = clamp(now + dir, -1, 1); this.manualT = MANUAL_S; this.audio.sfx('select');
   }
-  hold(dir) { this.held = dir; this.heldT = 0; }
+  hold(dir) { if (this.state === 'menu') this.menu.hold(dir); }
 
   menuTick(dt, connected) {
-    if (this.stateT > 1 && ((connected && this.power > 30) || (this.held && this.heldT > 0.8))) this.startT += dt; else this.startT = Math.max(0, this.startT - dt * 2);
-    if (this.held) this.heldT += dt;
-    if (this.startT > 1.6 || (this.held && this.heldT > 0.8 && this.stateT > 1)) { this.held = 0; this.begin(); }
+    this.menu.update(dt, { connected, power: this.power });
   }
 
   // ---------- il percorso: anelli sul profilo dell'allenamento, stelle sulla linea, palloni e tempeste ai lati ----------
@@ -609,7 +618,7 @@ export class Planata {
     this.fx.update(dt);
     this.stateT += dt;
     if (this.state === 'menu') { this.menuTick(dt, connected); this.cruise(dt); this.view(dt); return; }
-    if (this.state === 'over') { this.rollOut(dt); this.view(dt); return; }
+    if (this.state === 'over') { this.results.update(dt); this.rollOut(dt); this.view(dt); return; }
     // pausa: chi smette di pedalare non perde, il tempo si ferma
     if (connected) {
       if (this.power < 12) { this.pauseT += dt; if (this.pauseT > 2.5 && !this.paused) { this.paused = true; this.audio.sfx('beep'); } } else if (this.power > 25) { this.pauseT = 0; this.paused = false; }
@@ -771,13 +780,27 @@ export class Planata {
     const target = new THREE.Vector3(this.x * 0.85, this.y + up, this.z - back);
     if (!this.camInit) { cam.position.copy(target); this.camInit = true; }
     cam.position.lerp(target, Math.min(1, dt * 3.5));
-    const lift = this.state === 'menu' ? (tall ? 6.4 : 2) : (this.state === 'over' || this.seg?.kind === 'cool') ? (tall ? 3.2 : 1.2) : 0; this.lift = lerp(this.lift ?? 0, lift, Math.min(1, dt * 3));
-    cam.lookAt(this.x * 0.9, this.y - 0.2 + this.lift, this.z + 22);
+    const mf = this.state === 'menu' ? this.menuFrame(cam, tall, back, up) : null;
+    const lift = mf ? mf.lift : (this.state === 'over' || this.seg?.kind === 'cool') ? (tall ? 3.2 : 1.2) : 0; this.lift = lerp(this.lift ?? 0, lift, Math.min(1, dt * 3));
+    this.lookX = lerp(this.lookX ?? 0, mf ? mf.sx : 0, Math.min(1, dt * 3));
+    cam.lookAt(this.x * 0.9 + this.lookX, this.y - 0.2 + this.lift, this.z + 22);
     this.shake.apply(cam);
     const fov = (tall ? 64 : 58) + strength * 6; cam.fov += (fov - cam.fov) * Math.min(1, dt * 2.5); cam.updateProjectionMatrix();
     this.light.follow(this.x, 0, this.z);
     const cx = cam.position.x; const cz = cam.position.z;
     for (const l of this.layers) l.inst.cull(cx, cz, 0, 1, 330, 20);
+  }
+
+  // menu: l'aereo sta nella fascia libera (verticale: fra il testo e il tasto; orizzontale: a destra della colonna di testo)
+  menuFrame(cam, tall, back, up) {
+    const W = this.stage.W; const H = this.stage.H; const m = this.menu; const half = Math.tan(cam.fov * Math.PI / 360); const D = back + 22;
+    if (tall) {
+      const cb = m.contentBottom ?? H * 0.55; const st = m.startTop ?? H * 0.85; const ny = 1 - 2 * ((cb + (st - cb) * 0.8) / H); // il ciclista sta sopra l'aereo: centro un po' sotto metà fascia
+      const down = Math.atan(up / back) + Math.atan(ny * half); // angolo sotto l'orizzontale dell'asse della camera
+      return { lift: up - Math.tan(down) * D + 0.2, sx: 0 };
+    }
+    const colR = 24 + Math.min(W * 0.38, 440) + 40; const nx = 2 * ((colR + W) / 2 / W) - 1;
+    return { lift: 2, sx: nx * half * (W / H) * D };
   }
 
   loop(now) {
@@ -799,8 +822,8 @@ export class Planata {
     ctx.clearRect(0, 0, W, H); hudView(ctx, W, H);
     if (this.state === 'loading') { ctx.fillStyle = '#0f0e0c'; ctx.fillRect(0, 0, W, H); hudText(ctx, t('games.common.loading'), W / 2, H / 2, { size: 22, align: 'center', color: '#d9ff3d' }); hudText(ctx, `${Math.round((this.loadPct || 0) * 100)}%`, W / 2, H / 2 + 28, { size: 14, align: 'center' }); return; }
     if (this.state === 'error') { hudText(ctx, t('ui.error', { error: this.error }), W / 2, H / 2, { size: 14, align: 'center', color: '#ff6b6b' }); return; }
-    if (this.state === 'menu') { this.drawMenu(ctx, W, H, dt); return; }
-    if (this.state === 'over') { if (this.result) this.drawResult(ctx, W, H, true); this.hooks.progress?.drawToasts(ctx, W, dt, 330, true); return; }
+    if (this.state === 'menu') { this.menu.draw(ctx, W, H, { connected: this.hooks.connected() }); this.hooks.progress?.drawToasts(ctx, W, dt); return; }
+    if (this.state === 'over') { if (this.result) this.drawResult(ctx, W, H, true); this.hooks.progress?.drawToasts(ctx, W, dt, W > H * 1.15 ? Math.round(H * 0.78) : 330, true); return; }
     const seg = this.seg; const pad = 12; const y0 = 84; const ftp = this.ftp;
     const col = SEG_COLOR[seg.kind]; const tw = this.tgtW || targetW(seg, ftp, this.level.k, this.adapt.value);
     // riga in alto
@@ -887,37 +910,6 @@ export class Planata {
 
   }
 
-  drawMenu(ctx, W, H, dt) {
-    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, 'rgba(8,10,28,.8)'); g.addColorStop(0.5, 'rgba(8,10,28,.1)'); g.addColorStop(1, 'rgba(8,10,28,.9)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    hudText(ctx, t('games.planata.hud.title'), W / 2, 124, { size: 56, align: 'center', color: '#d9ff3d' });
-    hudText(ctx, t('games.planata.hud.tagline'), W / 2, 154, { size: 17, align: 'center', font: 'text' });
-    const rowW = Math.min(W - 28, 440); const x0 = (W - rowW) / 2; let y = 184;
-    const chip = (label, opts, idx, key) => {
-      hudText(ctx, label, x0, y + 20, { size: 16, color: '#c8c8c8', font: 'text', maxW: rowW * 0.25 });
-      const cw = (rowW * 0.74) / opts.length; const cx0 = x0 + rowW * 0.26;
-      opts.forEach((o, i) => {
-        ctx.fillStyle = i === idx ? '#d9ff3d' : 'rgba(255,255,255,.14)'; rrect(ctx, cx0 + i * cw + 2, y, cw - 4, 30, 9); ctx.fill();
-        hudText(ctx, o, cx0 + i * cw + cw / 2, y + 22, { size: 17, align: 'center', color: i === idx ? '#15141b' : '#f0f0f0', stroke: i === idx ? null : 'rgba(0,0,0,.85)', maxW: cw - 8 });
-      });
-      hudText(ctx, key, x0 + rowW, y + 48, { size: 13, align: 'right', color: '#9aa', font: 'text' });
-      y += 62;
-    };
-    chip(t('games.planata.dur'), DURATIONS.map((d) => t('games.planata.durMin', { n: d / 60 })), this.durIdx, t('games.planata.keyDur'));
-    chip(t('games.planata.level'), LEVELS.map((l) => t(`games.planata.lv.${l.id}`)), this.lvlIdx, t('games.planata.keyLvl'));
-    const mw = Math.min(W - 28, 460); let fs = W < 500 ? 16 : 18; const rules = [1, 2, 3, 4, 5].map((i) => t(`games.planata.rule${i}`));
-    const bottom = H * 0.6;
-    const count = () => rules.reduce((a, r) => a + wrapLines(ctx, '· ' + r, mw, fs, { font: 'text' }).length, 0);
-    while (fs > 11 && count() * 1.28 * fs + rules.length * 5 > bottom - y) fs -= 0.5;
-    y += fs; for (const r of rules) { const o = paragraph(ctx, '· ' + r, W / 2, y, { size: fs, maxW: mw, lineK: 1.28, color: '#f0f0f0' }); y = o.bottom + 5; }
-    const rec = this.record();
-    if (rec.score) hudText(ctx, `${t('games.common.best', { n: rec.score })} · ${'★'.repeat(rec.stars || 0)}`, W / 2, H - 92, { size: 16, align: 'center', color: '#c8c8c8', font: 'text' });
-    hudText(ctx, t(this.hooks.connected() ? 'games.planata.startPedal' : 'games.planata.startHold'), W / 2, H - 56, { size: 22, align: 'center', color: '#d9ff3d' });
-    ctx.fillStyle = 'rgba(255,255,255,.2)'; rrect(ctx, W / 2 - 80, H - 40, 160, 8, 4); ctx.fill();
-    ctx.fillStyle = '#d9ff3d'; rrect(ctx, W / 2 - 80, H - 40, Math.max(0, 160 * clamp(Math.max(this.startT / 1.6, this.held ? this.heldT / 0.8 : 0), 0, 1)), 8, 4); ctx.fill();
-    this.hooks.progress?.drawToasts(ctx, W, dt);
-  }
-
   // riepilogo: stelle, sforzi tenuti, anelli, tempeste, record e cosa manca alla prossima stella
   drawResult(ctx, W, H, full) {
     const r = this.result;
@@ -930,17 +922,13 @@ export class Planata {
       hudText(ctx, `${t('games.common.score', { n: r.score })}${r.newBest ? t('games.common.newBest') : ''}`, W / 2, top + 112, { size: 15, align: 'center', color: r.newBest ? '#7dff6a' : '#f0f0f0', font: 'text', maxW: W - 40 });
       return;
     }
-    ctx.fillStyle = 'rgba(8,4,20,.82)'; ctx.fillRect(0, 0, W, H);
-    const y = H * 0.2 + 38;
-    hudText(ctx, t('games.planata.res.title'), W / 2, y, { size: 30, align: 'center', color: '#d9ff3d' });
-    drawStars(ctx, W / 2, y + 44, 34, r.stars);
-    let yy = y + 100;
-    const line = (s, c = '#f0f0f0') => { const o = paragraph(ctx, s, W / 2, yy, { size: 17, maxW: W - 40, color: c, maxLines: 2 }); yy = o.bottom + 4; };
-    line(t('games.planata.res.efforts', { a: r.done, b: r.total }));
-    line(t('games.planata.res.rings', { a: r.rings, b: r.ringsTotal }) + ' · ' + t('games.planata.res.storms', { n: r.hits }));
-    line(`${t('games.common.score', { n: r.score })}${r.newBest ? t('games.common.newBest') : ''}`, r.newBest ? '#7dff6a' : '#f0f0f0');
-    if (r.hint) line(t(r.hint.key, { n: r.hint.n }), '#ffd34d');
-    if (this.stateT > 1.4) hudText(ctx, t('games.common.retry'), W / 2, H - 70, { size: 22, align: 'center', color: '#d9ff3d' });
+    const r2 = this.result; const done = r2.total ? r2.done / r2.total : 0;
+    this.results.draw(ctx, W, H, {
+      title: t('games.planata.res.title'), subtitle: `${t('games.menu.min', { n: this.total / 60 })} · ${t(`games.menu.${this.level.id}`)}`, stars: r2.stars,
+      criteria: [{ ok: true, label: t('games.planata.res.cLand') }, { ok: done >= 0.5, label: t('games.planata.res.cHalf', { a: r2.done, b: r2.total }) }, { ok: done >= 0.8 && r2.hits <= 3, label: t('games.planata.res.cFull', { a: r2.done, b: r2.total, n: r2.hits }) }],
+      score: r2.score, best: (this.record().score || 0) ? String(this.record().score) : null, newBest: r2.newBest,
+      lines: [`${t('games.planata.res.rings', { a: r2.rings, b: r2.ringsTotal })} · ${t('games.planata.res.storms', { n: r2.hits })}`],
+    });
   }
 }
 
