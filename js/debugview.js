@@ -135,7 +135,7 @@ function buildClickView(click) {
   );
 
   const root = el('div', { class: 'dbg-click' },
-    el('p', { class: 'hint' }, 'Press the Click buttons: the matching circle should light up. If nothing happens, check "Latest packets received" and the log.'),
+    el('p', { class: 'hint' }, 'Press the Click buttons: the matching circle should light up and the raw id appears with its role. If nothing happens, check "Latest packets received" and the log. Use the key check (Devices panel) to learn all keys.'),
     el('div', { class: 'btn-row' }, minus, plus),
     el('h4', {}, 'Buttons pressed now'), pressedList,
     last, assignRow,
@@ -146,13 +146,14 @@ function buildClickView(click) {
     root,
     update() {
       const pressed = d.extra.pressed || [];
-      const dirs = pressed.map((id) => click.map[id]);
-      plus.classList.toggle('on', dirs.includes(1));
-      minus.classList.toggle('on', dirs.includes(-1));
-      pressedList.replaceChildren(...(pressed.length ? pressed.map((id) => el('span', { class: 'chip ok' }, buttonLabel(id))) : [el('span', { class: 'chip' }, 'nessuno')]));
+      const roles = pressed.map((id) => click.roleOf(id));
+      plus.classList.toggle('on', roles.includes('plus'));
+      minus.classList.toggle('on', roles.includes('minus'));
+      // ogni id grezzo con il suo ruolo accanto: "Click v2 + (…) (bit 12) [ride:12] → plus"
+      pressedList.replaceChildren(...(pressed.length ? pressed.map((id) => el('span', { class: 'chip ok' }, `${buttonLabel(id)} [${id}] → ${click.roleOf(id) || 'no role'}`)) : [el('span', { class: 'chip' }, 'none')]));
       const lp = d.extra.lastPressed;
       last.textContent = lp
-        ? `Last button: ${buttonLabel(lp)} → ${click.map[lp] > 0 ? 'shifts +' : click.map[lp] < 0 ? 'shifts −' : 'no action'}`
+        ? `Last button: ${buttonLabel(lp)} [${lp}] → role: ${click.roleOf(lp) || 'none'}`
         : 'Last button: none detected';
     },
   };

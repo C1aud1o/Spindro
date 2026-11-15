@@ -475,3 +475,24 @@ test.describe('ruoli e Ride', () => {
     expect(roles.ride.roles['ride:1'], 'ride:1 era un predefinito di allora: ora è "su"').toBeUndefined();
   });
 });
+
+test.describe('pagina di debug', () => {
+  test('mostra il ruolo accanto all\'id grezzo e "Usa come +" lavora sui ruoli', async ({ page }) => {
+    await page.addInitScript(() => { try { localStorage.setItem('devMode', '1'); } catch { /* */ } }); // la pagina di debug è per sviluppatori
+    await boot(page);
+    await page.evaluate(() => document.getElementById('openDebug').click());
+    await expect(page.locator('#debugPanel')).toBeVisible();
+    await bit(page, 12, 700);
+    await expect(page.locator('.dbg-last')).toContainText('[ride:12] → role: plus');
+    await bit(page, 15, 700);
+    await expect(page.locator('.dbg-last')).toContainText('[ride:15] → role: none');
+    // assegnazione manuale: l'ultimo tasto (bit 15) diventa "+"
+    await page.locator('.dbg-click button', { hasText: 'Use as +' }).click();
+    await expect(page.locator('.dbg-last')).toContainText('[ride:15] → role: plus');
+    const roles = await page.evaluate(() => JSON.parse(localStorage.getItem('clickRoles')).ride.roles);
+    expect(roles['ride:15']).toBe('plus');
+    expect(roles['ride:12'], 'il vecchio "+" non è più "+"').toBeNull();
+    await page.locator('.dbg-click button', { hasText: 'Reset' }).click();
+    await expect(page.locator('.dbg-last')).toContainText('[ride:15] → role: none');
+  });
+});

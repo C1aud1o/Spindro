@@ -107,7 +107,7 @@ export function createClickNav({ enabled = () => true, playing = () => false, in
   }
 
   // ---- legenda ----
-  const kk = (...keys) => keys.map((k) => `<kbd class="kk">${k}</kbd>`).join('');
+  const kk = (...keys) => (keys.length > 1 && keys.every((k) => k.length === 1) ? `<kbd class="kk">${keys.join(' ')}</kbd>` : keys.map((k) => `<kbd class="kk">${k}</kbd>`).join('')); // varie icone di fila = un solo riquadro
   const hold = (k) => `${t('legend.hold')} ${kk(k)}`;
   function legendContext() {
     if (nav.active) return nav.grab ? 'grab' : 'menu';
