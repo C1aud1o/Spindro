@@ -127,7 +127,7 @@ class Layer {
     for (let i = 0; i < this.cap; i++) {
       if (i >= this.n) { L[i].keep = 9; continue; }
       const p = items[i]; const sc = p.h / this.info.height;
-      L[i].x = p.x; L[i].z = p.z; L[i].keep = hash2(i, 3.7);
+      L[i].x = p.x; L[i].z = p.z; L[i].keep = hash2(Math.round(p.x * 7), Math.round(p.z * 7) + 3.7); // dalla posizione: non cambia quando il pezzo scorre, niente alberi che compaiono e spariscono
       M[i].compose(this.v.set(p.x, p.y, p.z), this.q.setFromAxisAngle(this.up, p.rot || 0), this.s.setScalar(sc));
     }
   }
@@ -415,7 +415,7 @@ export class Planata {
 
   finish() {
     this.finishResult(true); // numeri definitivi: anelli e punti arrivati dopo l'inizio del defaticamento
-    this.state = 'over'; this.stateT = 0; this.finished = true;
+    this.state = 'over'; this.stateT = 0; this.finished = true; this.rollV = SPEED * 0.55;
     this.audio.stopSong(); this.audio.sfx('win');
     this.hooks.runEnd?.({ game: 'planata', score: Math.round(this.score) });
     this.hooks.setGrade(0);
@@ -431,7 +431,7 @@ export class Planata {
 
   say(text, color = '#ffd34d', dur = 1.6, big = false, prio = big ? 2 : 1, sub = null) { this.msgs.say(text, { color, dur, big, prio, sub }); }
   // testo che sale dall'aereo (feedback immediato); uno solo alla volta, il nuovo prende il posto del vecchio
-  pop(text, color, dur = 0.9) { this.pops = [{ text, color, t: dur, t0: dur }]; }
+  pop(text, color, dur = 0.9) { if (this.seg?.kind === 'cool') return; this.pops = [{ text, color, t: dur, t0: dur }]; } // nella discesa c'è il riquadro del risultato
   prog(stat, n = 1, xp = 0) { this.hooks.progress?.event(stat, n, xp); }
 
   // ---------- comandi ----------
@@ -693,7 +693,7 @@ export class Planata {
           this.pop(this.y > it.y ? t('games.planata.tooHigh') : t('games.planata.tooLow'), '#ffb84d');
         }
       } else if (it.kind === 'coin') {
-        if (d < 1.9) { this.coins++; this.score += 5 * mult; this.ev('coin'); this.audio.sfx('pickup'); this.fx.spawn(it.x, it.y, it.z, { tex: 'spark', size: 2.4, life: 0.25 }); it.group.visible = false; }
+        if (d < 1.9) { this.coins++; this.score += 5 * mult; this.ev('coin'); this.audio.sfx('pickup'); this.fx.spawn(it.x, it.y, it.z, { tex: 'spark', size: 1.6, life: 0.22 }); it.group.visible = false; }
       } else if (it.kind === 'pod') {
         if (d < 2.2) { this.pods++; this.score += 60 * mult; this.ev('pod'); this.audio.sfx('rescue'); this.pop(`+${60 * mult}`, '#ff8cc4'); this.fx.spawn(it.x, it.y, it.z, { tex: 'spark', size: 5, life: 0.4, color: '#ff8cc4' }); this.shake.add(0.1); it.group.visible = false; this.say(t('games.planata.podSay'), '#ff8cc4', 1.2, false, 1); }
       } else if (it.kind === 'storm') {
@@ -751,7 +751,7 @@ export class Planata {
     for (const it of this.items) {
       const gk = it.group;
       if (it.kind === 'ring') {
-        const k = it.flash > 0 ? (it.flash = Math.max(0, it.flash - dt * 2.2)) : 0;
+        const k = it.flash > 0 ? (it.flash = Math.max(0, it.flash - dt * 3.4)) : 0;
         if (!it.done) { it.ring.rotation.z = this.t * 0.8; it.filmMat.opacity = 0.14 + 0.06 * Math.sin(this.t * 4 + it.z); } else {
           const s = it.hit ? 1 + (1 - k) * 0.35 : 1; it.ring.scale.setScalar(s); it.film.scale.setScalar(s);
           it.filmMat.opacity = (it.hit ? 0.4 : 0.25) * k; it.ringMat.opacity = clamp(k * 1.4, 0, 1); if (it.hit) it.ringMat.color.setScalar(0.4 + k * 0.6);
@@ -771,7 +771,7 @@ export class Planata {
     const target = new THREE.Vector3(this.x * 0.85, this.y + up, this.z - back);
     if (!this.camInit) { cam.position.copy(target); this.camInit = true; }
     cam.position.lerp(target, Math.min(1, dt * 3.5));
-    const lift = this.state === 'menu' ? (tall ? 5.2 : 2) : (this.state === 'over' || this.seg?.kind === 'cool') ? (tall ? 3.2 : 1.2) : 0; this.lift = lerp(this.lift ?? 0, lift, Math.min(1, dt * 3));
+    const lift = this.state === 'menu' ? (tall ? 6.4 : 2) : (this.state === 'over' || this.seg?.kind === 'cool') ? (tall ? 3.2 : 1.2) : 0; this.lift = lerp(this.lift ?? 0, lift, Math.min(1, dt * 3));
     cam.lookAt(this.x * 0.9, this.y - 0.2 + this.lift, this.z + 22);
     this.shake.apply(cam);
     const fov = (tall ? 64 : 58) + strength * 6; cam.fov += (fov - cam.fov) * Math.min(1, dt * 2.5); cam.updateProjectionMatrix();
@@ -800,6 +800,7 @@ export class Planata {
     if (this.state === 'loading') { ctx.fillStyle = '#0f0e0c'; ctx.fillRect(0, 0, W, H); hudText(ctx, t('games.common.loading'), W / 2, H / 2, { size: 22, align: 'center', color: '#d9ff3d' }); hudText(ctx, `${Math.round((this.loadPct || 0) * 100)}%`, W / 2, H / 2 + 28, { size: 14, align: 'center' }); return; }
     if (this.state === 'error') { hudText(ctx, t('ui.error', { error: this.error }), W / 2, H / 2, { size: 14, align: 'center', color: '#ff6b6b' }); return; }
     if (this.state === 'menu') { this.drawMenu(ctx, W, H, dt); return; }
+    if (this.state === 'over') { if (this.result) this.drawResult(ctx, W, H, true); this.hooks.progress?.drawToasts(ctx, W, dt, 330, true); return; }
     const seg = this.seg; const pad = 12; const y0 = 84; const ftp = this.ftp;
     const col = SEG_COLOR[seg.kind]; const tw = this.tgtW || targetW(seg, ftp, this.level.k, this.adapt.value);
     // riga in alto
@@ -866,9 +867,7 @@ export class Planata {
       hudText(ctx, t('games.planata.paused'), W / 2, H * 0.42, { size: 42, align: 'center', color: '#ffd34d' });
       paragraph(ctx, t('games.planata.pausedSub'), W / 2, H * 0.42 + 36, { size: 20, maxW: W - 40, color: '#f0f0f0' });
     }
-    if (this.result && (seg.kind === 'cool' || this.state === 'over')) this.drawResult(ctx, W, H, this.state === 'over');
-    // i riquadri dei traguardi non coprono l'azione: aspettano la fine del volo
-    if (this.state === 'over') this.hooks.progress?.drawToasts(ctx, W, dt, 330, true);
+    if (this.result && seg.kind === 'cool') this.drawResult(ctx, W, H, false); // i riquadri dei traguardi non coprono l'azione: aspettano la fine del volo
   }
 
   drawAltimeter(ctx, W, H, ftp, pad) {
@@ -907,10 +906,10 @@ export class Planata {
     chip(t('games.planata.dur'), DURATIONS.map((d) => t('games.planata.durMin', { n: d / 60 })), this.durIdx, t('games.planata.keyDur'));
     chip(t('games.planata.level'), LEVELS.map((l) => t(`games.planata.lv.${l.id}`)), this.lvlIdx, t('games.planata.keyLvl'));
     const mw = Math.min(W - 28, 460); let fs = W < 500 ? 16 : 18; const rules = [1, 2, 3, 4, 5].map((i) => t(`games.planata.rule${i}`));
-    const bottom = H * 0.66;
+    const bottom = H * 0.6;
     const count = () => rules.reduce((a, r) => a + wrapLines(ctx, '· ' + r, mw, fs, { font: 'text' }).length, 0);
     while (fs > 11 && count() * 1.28 * fs + rules.length * 5 > bottom - y) fs -= 0.5;
-    for (const r of rules) { const o = paragraph(ctx, '· ' + r, W / 2, y + fs, { size: fs, maxW: mw, lineK: 1.28, color: '#f0f0f0' }); y = o.bottom + 5; }
+    y += fs; for (const r of rules) { const o = paragraph(ctx, '· ' + r, W / 2, y, { size: fs, maxW: mw, lineK: 1.28, color: '#f0f0f0' }); y = o.bottom + 5; }
     const rec = this.record();
     if (rec.score) hudText(ctx, `${t('games.common.best', { n: rec.score })} · ${'★'.repeat(rec.stars || 0)}`, W / 2, H - 92, { size: 16, align: 'center', color: '#c8c8c8', font: 'text' });
     hudText(ctx, t(this.hooks.connected() ? 'games.planata.startPedal' : 'games.planata.startHold'), W / 2, H - 56, { size: 22, align: 'center', color: '#d9ff3d' });

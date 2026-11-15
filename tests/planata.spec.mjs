@@ -119,18 +119,17 @@ test('Updraft: chi smette di pedalare va in pausa e non perde; il ciclista è �
     const rb = new g.plane.position.constructor().setFromMatrixPosition(g.rider.root.matrixWorld);
     const ys = [proj(rb), proj(rb.clone().add(new V(0, 1.75 * 1.4, 0)))];
     const riderFrac = Math.abs(ys[1] - ys[0]) / H;
-    // anello: diametro a schermo alla distanza di 30 m dalla camera, e il più vicino davanti
-    const ring = g.items.find((it) => it.kind === 'ring' && !it.done);
-    const d = ring.z - cam.position.z; const ringTop = proj(new V(ring.x, ring.y + 3.7, ring.z)); const ringBot = proj(new V(ring.x, ring.y - 3.7, ring.z));
-    const ringFrac = Math.abs(ringBot - ringTop) / H;
-    const ringDist = d;
+    // anello (diametro 7,4 m) e tempesta (altezza 4,8 m): quanto è alto a schermo quando è a 40 m dalla camera (distanza in cui si decide di sterzare)
+    const fovT = 2 * Math.tan(cam.fov * Math.PI / 360);
+    const ringFrac = 7.4 / (fovT * 40); const stormFrac = 4.8 / (fovT * 40); const ringDist = 40; const stormDist = 40;
     const t0 = g.el; p = 0; for (let i = 0; i < 8 * 30; i++) g.update(1 / 30);
     const paused = g.paused; const t1 = g.el; const st = g.state;
     p = 150; for (let i = 0; i < 2 * 30; i++) g.update(1 / 30);
-    return { riderFrac, ringFrac, ringDist, paused, still: Math.abs(t1 - t0) < 3, st, resumed: !g.paused && g.el > t1 };
+    return { riderFrac, ringFrac, ringDist, stormFrac, stormDist, paused, still: Math.abs(t1 - t0) < 3, st, resumed: !g.paused && g.el > t1 };
   });
   expect(r.riderFrac, 'ciclista / altezza schermo').toBeGreaterThanOrEqual(0.14);
   expect(r.ringFrac * 1, `anello / altezza schermo a ${r.ringDist.toFixed(0)} m`).toBeGreaterThanOrEqual(0.08);
+  expect(r.stormFrac, `tempesta / altezza schermo a ${r.stormDist.toFixed(0)} m`).toBeGreaterThanOrEqual(0.08);
   expect(r.paused).toBe(true); expect(r.still, 'il tempo di gioco si ferma').toBe(true);
   expect(r.st).toBe('play'); expect(r.resumed, 'riprende appena si pedala').toBe(true);
 });
@@ -150,4 +149,31 @@ test('Updraft: i messaggi stanno nello schermo a 390×780 (menu, gioco, risultat
     return { bad: [...new Set(bad)], state: g.state };
   });
   expect(r.bad, 'testo fuori schermo').toEqual([]);
+});
+
+test('Updraft: prendere il pallone in corsia e restare lì costa solo la combo (tempesta), mai la partita', async ({ page }) => {
+  await openGame(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game; g.active = false; g.durIdx = 0; g.lvlIdx = 1; g.reset(); g.begin();
+    g.hooks = { ...g.hooks, connected: () => true, ftp: () => 200, stats: () => ({ power: 170, cadence: 85 }), speedKmh: () => 30, setGrade() {} };
+    const dt = 1 / 30; let pressed = false; let podX = null; let sawStorm = false; let comboBefore = 0;
+    for (let i = 0; i < 120 * 30 && g.state === 'play'; i++) {
+      g.update(dt);
+      const pod = g.items.find((it) => it.kind === 'pod' && !it.done);
+      if (pod && !pressed && pod.z - g.z < 12 && pod.z - g.z > 8) { podX = pod.x; g.input(pod.x < 0 ? 1 : -1); pressed = true; comboBefore = g.combo; }
+      if (pressed && g.hits > 0) { sawStorm = true; break; }
+    }
+    return { pressed, podX, sawStorm, hits: g.hits, combo: g.combo, state: g.state, pods: g.pods, hurtT: g.hurtT, comboBefore };
+  });
+  expect(r.pressed, 'c’è un pallone nei primi 2 minuti').toBe(true);
+  expect(r.pods, 'il pallone è stato preso').toBeGreaterThanOrEqual(1);
+  expect(r.sawStorm, 'la tempesta dietro al pallone colpisce chi resta in corsia').toBe(true);
+  expect(r.combo).toBe(0); expect(r.state).toBe('play');
+});
+
+test('Updraft: 20 minuti a livello Facile arrivano in fondo con l’atterraggio, 3 livelli cambiano le quote', async ({ page }) => {
+  const r = await runBot(page, 0.8, 2, 0);
+  expect(r.state).toBe('over'); expect(r.secs).toBeGreaterThanOrEqual(1199); expect(r.N).toBe(12);
+  expect(r.res.stars).toBeGreaterThanOrEqual(1); expect(r.es.maxGap).toBeLessThanOrEqual(5);
+  console.log(`20 min Facile 0.8× → stelle ${r.res.stars}, sforzi ${r.res.done}/${r.res.total}, anelli ${r.rings}/${r.ringsTotal}, eventi/min ${Math.round(r.es.perMin)}`);
 });
