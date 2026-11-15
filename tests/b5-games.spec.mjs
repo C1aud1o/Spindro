@@ -11,8 +11,7 @@ test.beforeEach(async ({ page }) => {
   page.on('pageerror', (e) => page.errors.push(e.message));
   await page.addInitScript(() => {
     try { if (!localStorage.getItem('__seeded')) { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('ftp', '200'); localStorage.setItem('gameQuality', 'low'); } localStorage.setItem('lang', 'it'); } catch { /* niente storage */ }
-    // caso fisso: stessi numeri a ogni prova
-    let s = 12345; Math.random = () => { s = (s + 0x6d2b79f5) >>> 0; let x = s; x = Math.imul(x ^ (x >>> 15), x | 1); x ^= x + Math.imul(x ^ (x >>> 7), x | 61); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
+    window.__spindroSeed = 6; // caso fisso: ogni partita usa un generatore con seme (con altri semi l’intervallo più lungo senza eventi va da 2,4 a 5,6 s: la soglia di 5 s è al limite)
   });
   await page.addInitScript({ path: FAKE_BLE });
   await page.goto('/index.html');
