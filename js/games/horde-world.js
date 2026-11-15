@@ -4,19 +4,19 @@
 import { THREE, fxTexture, skyDome, styleLights, styleFog, toonMaterial, prepareModel } from './kit3d.js';
 import { hash } from './engine.js';
 
-export const ROAD_W = 17;
+export const ROAD_W = 13;
 const CELL = 6;       // m: una cellula di scenografia
 const BEHIND = 25; const AHEAD = 140;
 
 export const NIGHT = {
-  top: '#0c1330', horizon: '#34406e', bottom: '#1a2140', glow: '#bcd0ff', sunDir: [-0.35, 0.42, 0.83],
-  sun: '#b4c4ff', sunI: 2.3, hemiSky: '#9db0f0', hemiGround: '#3a4668', hemiI: 1.8, fog: '#222c50',
+  top: '#1b2a66', horizon: '#7488cc', bottom: '#33427a', glow: '#cfdcff', sunDir: [-0.35, 0.42, 0.83],
+  sun: '#c4d2ff', sunI: 2.9, hemiSky: '#b6c6ff', hemiGround: '#586690', hemiI: 2.9, fog: '#5c70b4',
 };
 
 // ----- cielo, luna, stelle, nebbia, luci -----
 export function buildSky(scene, quality) {
   scene.add(skyDome(NIGHT));
-  styleFog(scene, NIGHT, 40, 150);
+  styleFog(scene, NIGHT, 30, 92);
   const L = styleLights(scene, NIGHT, { shadows: quality.cfg.shadows, mapSize: quality.cfg.shadowMap, extent: 30 });
   const dir = new THREE.Vector3(...NIGHT.sunDir).normalize();
   const moon = new THREE.Group();
@@ -53,15 +53,15 @@ function tex(c, rx, ry) {
 }
 const SNAP = 32;
 export function buildGround(scene) {
-  const grass = noiseCanvas(128, 128, '#36463a', 700, (i) => (i % 3 ? 'rgba(20,40,30,.35)' : 'rgba(110,140,110,.18)'));
+  const grass = noiseCanvas(128, 128, '#4a6a56', 700, (i) => (i % 3 ? 'rgba(25,55,40,.35)' : 'rgba(140,180,140,.22)'));
   const gt = tex(grass, 26, 26);
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(520, 416), new THREE.MeshLambertMaterial({ map: gt }));
   ground.rotation.x = -Math.PI / 2; ground.position.y = -0.03; ground.receiveShadow = true; scene.add(ground);
   const rc = document.createElement('canvas'); rc.width = 256; rc.height = 256; const g = rc.getContext('2d');
-  g.fillStyle = '#5a6070'; g.fillRect(0, 0, 256, 256);
+  g.fillStyle = '#7b839a'; g.fillRect(0, 0, 256, 256);
   for (let i = 0; i < 2600; i++) { g.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.12)'; g.fillRect(Math.random() * 256, Math.random() * 256, 2, 2); }
   // bordi chiari, due corsie tratteggiate: la strada si legge anche al buio
-  const e = 256 * 0.025; g.fillStyle = '#c9cfdc'; g.fillRect(e, 0, 6, 256); g.fillRect(256 - e - 6, 0, 6, 256);
+  const e = 256 * 0.025; g.fillStyle = '#e6eaf5'; g.fillRect(e, 0, 6, 256); g.fillRect(256 - e - 6, 0, 6, 256);
   g.fillStyle = 'rgba(230,226,205,.85)'; for (const x of [256 / 3, 512 / 3]) for (let y = 0; y < 256; y += 128) g.fillRect(x - 3, y + 8, 6, 62);
   const rt = tex(rc, 1, 416 / SNAP); // la tessitura copre SNAP metri
   const road = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_W, 416), new THREE.MeshLambertMaterial({ map: rt }));
@@ -163,7 +163,7 @@ export class LampLights {
   }
   update(lamps, z) {
     const near = lamps.filter((l) => l.z > z - 8).sort((a, b) => a.z - b.z);
-    this.pts.forEach((l, i) => { const lm = near[i]; if (lm) { l.visible = true; l.position.set(lm.x * 0.8, this.h, lm.z); } else l.visible = false; });
+    this.pts.forEach((l, i) => { const lm = near[i]; if (lm && !l.userData.off) { l.intensity = 70; l.position.set(lm.x * 0.8, this.h, lm.z); } else l.intensity = 0; });
     const n = Math.min(this.N, near.length);
     for (let i = 0; i < n; i++) {
       const lm = near[i]; this.pos[i * 3] = lm.x - lm.side * 0.0; this.pos[i * 3 + 1] = this.h + 0.1; this.pos[i * 3 + 2] = lm.z;

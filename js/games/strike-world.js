@@ -172,12 +172,13 @@ class Props {
     });
     this.lastX = -1e9;
   }
-  update(cx, force = false) {
+  update(cx, force = false, ahead = 0) {
     if (!force && Math.abs(cx - this.lastX) < 3) return;
     this.lastX = cx; let n = 0;
     for (const p of this.list) {
       const reach = 34 + Math.max(0, -p.z) * 1.15; // più è lontano, più è largo il campo visivo
-      if (p.x < cx - reach || p.x > cx + reach * 1.15) continue;
+      // con la camera alle spalle si vede lontano in avanti: gli oggetti entrano già nella nebbia (ahead)
+      if (p.x < cx - reach || p.x > cx + Math.max(reach * 1.15, ahead)) continue;
       for (const m of this.meshes) m.setMatrixAt(n, p.m);
       n++;
     }
@@ -214,7 +215,7 @@ export class World {
   }
 
   // costruisce il livello i (e smonta il precedente)
-  setLevel(i) {
+  setLevel(i, span = 0) {
     const L = LEVELS[i]; this.L = L; this.level = i;
     if (this.root) { this.scene.remove(this.root); this.root.traverse((o) => { if (o.isMesh || o.isPoints) { o.geometry?.dispose(); } }); }
     if (this.dome) { this.scene.remove(this.dome); this.dome.geometry.dispose(); }
@@ -227,7 +228,7 @@ export class World {
     this.rim.color.set(L.rim); this.rim.intensity = L.rimI;
     this.sunDir = new THREE.Vector3(...L.sky.sunDir).normalize();
     this.chunks = new Map(); this.props = []; this.anim = []; this.lamps = [];
-    this.span = L.len + 1400; // il paesaggio copre il livello e il combattimento col boss
+    this.span = Math.max(L.len + 1400, span); // il paesaggio copre il livello e il combattimento col boss
     this.buildRoad(L);
     this.buildSkyExtras(L);
     if (L.id === 'harbor') this.buildHarbor(L);
@@ -500,10 +501,10 @@ export class World {
   update(px, cam, dt, force = false) {
     const L = this.L; if (!L) return;
     // blocchi visibili: da 2 dietro a 4 avanti (la camera vede più lontano in profondità)
-    const k0 = Math.floor((px - 70) / CHUNK); const k1 = Math.floor((px + 130) / CHUNK);
+    const k0 = Math.floor((px - 70) / CHUNK); const k1 = Math.floor((px + Math.max(130, this.ahead || 0)) / CHUNK);
     for (let k = k0; k <= k1; k++) this.chunkAt(k);
     for (const k of [...this.chunks.keys()]) if (k < k0 - 1 || k > k1 + 1) this.dropChunk(k);
-    for (const p of this.props) p.update(px, force);
+    for (const p of this.props) p.update(px, force, this.ahead || 0);
     // la strada scorre: il piano segue il giocatore a passi di 16 m, la tessitura resta ferma nel mondo
     const snap = Math.floor(px / 16) * 16;
     this.road.position.x = snap + 60;

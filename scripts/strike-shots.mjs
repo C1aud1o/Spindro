@@ -50,52 +50,53 @@ for (const [w, h] of sizes) {
   await page.evaluate(() => { window.__game.active = false; }); // ferma il ciclo del gioco: i passi li diamo noi
   taken = 0;
   const shot = async (name) => { if (want.length && !want.includes(name)) return; taken++; await frame(page); await page.screenshot({ path: `${OUT}${prefix}-${name}-${w}x${h}.png` }); console.log(`✓ ${name} ${w}x${h}`); };
+  const go = (lv) => page.evaluate((lv) => { const g = window.__game; g.worldIx = lv; g.setupWorld(lv, true); g.row = 0; g.stateT = 1; g.input(1); g.auto = true; }, lv);
   if (opt('level', '')) {
-    // prova veloce di un livello: --level=0|1|2
+    // prova veloce di un mondo: --level=0|1|2
     const lv = Number(opt('level', '0'));
-    await page.evaluate((lv) => { const g = window.__game; g.startLevel(lv); g.god = true; g.auto = true; }, lv);
+    await go(lv); await page.evaluate(() => { window.__game.god = true; });
     await sim(page, 1.5); await shot(`q${lv}-inizio`);
     await sim(page, 12); await shot(`q${lv}-gioco`);
-    await sim(page, 8); await shot(`q${lv}-gioco2`);
-    await page.evaluate(() => { const g = window.__game; g.px = g.L.len - 2; });
+    await page.evaluate(() => window.__game.skip('effort'));
+    await sim(page, 8); await shot(`q${lv}-sforzo`);
+    await page.evaluate(() => window.__game.skip('boss'));
     await sim(page, 9); await shot(`q${lv}-boss`);
   } else if (!args.includes('--fps')) {
     await sim(page, 1.5); await shot('menu');
-    await page.evaluate(() => { const g = window.__game; g.stateT = 1; g.input(1); g.auto = true; });
+    await go(0);
     await sim(page, 1.2); await shot('inizio');
-    await sim(page, 14); await shot('gioco');
-    await sim(page, 10); await shot('combattimento');
-    // overdrive
+    await sim(page, 10); await shot('gioco');
+    await page.evaluate(() => window.__game.skip('effort'));
+    await sim(page, 7); await shot('sforzo');
     await page.evaluate(() => { const g = window.__game; g.odMeter = 1; });
-    await sim(page, 0.8); await shot('overdrive');
-    await sim(page, 6);
-    // boss del livello 1
-    await page.evaluate(() => { const g = window.__game; g.god = true; g.px = g.L.len - 2; });
-    await sim(page, 1.2); await shot('boss-arrivo');
-    await sim(page, 5); await shot('boss');
-    await sim(page, 4); await shot('boss2');
-    await page.evaluate(() => { const g = window.__game; if (g.boss) g.damageBoss(g.boss.hp - 0.5); });
-    await sim(page, 1); await page.evaluate(() => { const g = window.__game; if (g.boss) g.damageBoss(5); });
+    await sim(page, 0.5); await shot('overdrive');
+    await page.evaluate(() => { const g = window.__game; g.god = true; g.skip('mini'); });
+    await sim(page, 5); await shot('miniboss');
+    await page.evaluate(() => window.__game.skip('boss'));
+    await sim(page, 1.5); await shot('boss-arrivo');
+    await sim(page, 6); await shot('boss');
+    await page.evaluate(() => { const g = window.__game; if (g.boss?.ready) { g.breakShield(g.boss); g.damageBoss(g.boss.hp * 0.6); } });
+    await sim(page, 3); await shot('boss2');
+    await page.evaluate(() => { const g = window.__game; if (g.boss) g.damageBoss(g.boss.hp + 1); });
     await sim(page, 1.2); await shot('boss-esplode');
-    await sim(page, 5); await shot('missione');
-    // livello 2 e 3
+    await page.evaluate(() => window.__game.skip('cool'));
+    await sim(page, 5); await shot('fine');
     for (const lv of [1, 2]) {
-      await page.evaluate((lv) => { const g = window.__game; g.startLevel(lv); g.god = true; }, lv);
+      await go(lv); await page.evaluate(() => { window.__game.god = true; });
       await sim(page, 1.5); await shot(`livello${lv + 1}`);
-      await sim(page, 22); await shot(`livello${lv + 1}-gioco`);
-      await page.evaluate(() => { const g = window.__game; g.px = g.L.len - 2; });
+      await page.evaluate(() => window.__game.skip('effort'));
+      await sim(page, 8); await shot(`livello${lv + 1}-gioco`);
+      await page.evaluate(() => window.__game.skip('boss'));
       await sim(page, 9); await shot(`livello${lv + 1}-boss`);
     }
-    await page.evaluate(() => { const g = window.__game; if (g.boss) g.damageBoss(g.boss.hp + 1); });
-    await sim(page, 6); await shot('vittoria');
     console.log('stato', await page.evaluate(() => { const g = window.__game; return { state: g.state, score: g.score, kills: g.kills, rescued: g.rescued, q: g.quality.level }; }));
   } else {
     const cdp = await ctx.newCDPSession(page);
-    await page.evaluate(() => { const g = window.__game; g.active = true; g.last = performance.now(); requestAnimationFrame(g.loop); g.stateT = 1; g.input(1); g.auto = true; });
+    await page.evaluate(() => { const g = window.__game; g.active = true; g.last = performance.now(); requestAnimationFrame(g.loop); });
     for (const level of (opt('levels', 'high,medium,low')).split(',')) {
-      await page.evaluate((level) => { const g = window.__game; const q = g.quality; q.auto = false; q.decided = true; q.set(level); g.startLevel(2); g.god = true; g.stateT = 99; }, level);
+      await page.evaluate((level) => { const g = window.__game; const q = g.quality; q.auto = false; q.decided = true; q.set(level); g.worldIx = 2; g.setupWorld(2, true); g.row = 0; g.stateT = 1; g.input(1); g.auto = true; g.god = true; g.skip('effort'); }, level);
       await page.waitForTimeout(6000); // shader compilati e blocchi di scenografia già creati
-      await page.evaluate(() => { const g = window.__game; g.spawnPattern({ kind: 'squad', lane: 1, hard: 1 }); g.spawnPattern({ kind: 'mix', lane: 0, hard: 1 }); g.spawnCage(g.px + 14, 2); });
+      await page.evaluate(() => { const g = window.__game; g.spawnPattern('squad'); g.spawnPattern('mix'); g.spawnPattern('shieldPair'); g.spawnCage(g.px + 30, 2); });
       await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
       const m = await page.evaluate(() => new Promise((res) => {
         const g = window.__game; const st = g.stage; const r = st.renderer;

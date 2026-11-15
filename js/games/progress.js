@@ -109,17 +109,19 @@ export class Progress {
   toast(title, sub, color) { this.toasts.push({ title, sub, color, t: 3.2 }); }
 
   // da chiamare nel disegno dell'interfaccia di ogni gioco
-  drawToasts(ctx, W, dt) {
+  drawToasts(ctx, W, dt, y0 = 48, still = false) { // y0: dove si ferma il riquadro (di default sotto la barra del gioco); still: compare in posto con una dissolvenza, senza scorrere sopra l'interfaccia
     const tt = this.toasts[0];
     if (!tt) return;
     tt.t -= dt;
     if (tt.t <= 0) { this.toasts.shift(); return; }
     const k = Math.min(1, (3.2 - tt.t) * 4, tt.t * 4);
-    const y = -60 + k * 108;
+    const y = still ? y0 : -60 + k * (60 + y0);
+    if (still) ctx.globalAlpha = k;
     ctx.fillStyle = 'rgba(12,10,24,.92)'; ctx.fillRect(12, y, W - 24, 50);
     ctx.fillStyle = tt.color; ctx.fillRect(12, y, 4, 50);
     hudText(ctx, tt.title, 26, y + 21, { size: 15, color: tt.color });
     hudText(ctx, tt.sub, 26, y + 40, { size: 11, color: '#e8e8e8' });
+    ctx.globalAlpha = 1;
   }
 
   // pannello nel menu dei giochi (HTML)

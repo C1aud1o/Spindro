@@ -1065,6 +1065,7 @@ const progress = new Progress();
 const gameHooks = {
   progress,
   connected: () => trainer.connected,
+  ftp: () => state.ftp, // i giochi chiedono sforzi in % della FTP
   speedKmh: () => (state.mode === 'gears' ? currentVirtualSpeed() * 3.6 : state.data.speed || 0),
   stats: () => ({ power: Math.round(state.data.power || 0), cadence: Math.round(currentCadence()), gear: state.mode === 'gears' ? state.gear + 1 : null }),
   shift: (d) => shift(d),

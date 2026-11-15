@@ -86,7 +86,8 @@ function matFor(m) {
 
 // Istanze con finestra: placements = [{ x, y, z, rot, scale, d }] dove d è la distanza lungo il percorso
 export class Instanced {
-  constructor(scene, parts, placements, { shadows = false, receive = true, lodGeo = null, lodDist = 220, window = [-40, 520], colors = null, material = null } = {}) {
+  constructor(scene, parts, placements, { shadows = false, receive = true, lodGeo = null, lodDist = 220, window = [-40, 520], colors = null, material = null, grow = 0 } = {}) {
+    this.grow = grow; // m: le istanze al bordo lontano della finestra crescono da 0 a 1 (niente comparsa di colpo)
     this.list = placements.map((p, i) => ({ ...p, keep: hash01(i * 7.13 + (p.d || 0)) }));
     this.window = window; this.lodDist = lodDist; this.density = 1; this.colors = colors;
     const cap = this.list.length;
@@ -121,7 +122,7 @@ export class Instanced {
   setShadows(on) { for (const m of this.meshes) m.castShadow = on; }
   // d: distanza del giocatore lungo il percorso
   update(d, force = false) {
-    if (!force && Math.abs(d - this.lastD) < 6) return;
+    if (!force && Math.abs(d - this.lastD) < (this.grow ? 1.5 : 6)) return;
     this.lastD = d;
     let n = 0; let nl = 0;
     for (let i = 0; i < this.list.length; i++) {
@@ -129,14 +130,17 @@ export class Instanced {
       if (p.keep > this.density && !p.always) continue;
       const rel = (p.d ?? 0) - d;
       if (rel < this.window[0] || rel > this.window[1]) continue;
-      if (this.lod && rel > this.lodDist) { this.lod.setMatrixAt(nl++, this.mats[i]); continue; }
-      for (const m of this.meshes) { m.setMatrixAt(n, this.mats[i]); if (this.cols) m.setColorAt(n, this.cols[i]); }
+      let M = this.mats[i];
+      if (this.grow && rel > this.window[1] - this.grow) { const k = clamp01((this.window[1] - rel) / this.grow); M = _gm.copy(M).multiply(_gs.makeScale(k, k, k)); }
+      if (this.lod && rel > this.lodDist) { this.lod.setMatrixAt(nl++, M); continue; }
+      for (const m of this.meshes) { m.setMatrixAt(n, M); if (this.cols) m.setColorAt(n, this.cols[i]); }
       n++;
     }
     for (const m of this.meshes) { m.count = n; m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }
     if (this.lod) { this.lod.count = nl; this.lod.instanceMatrix.needsUpdate = true; }
   }
 }
+const _gm = new THREE.Matrix4(); const _gs = new THREE.Matrix4(); const clamp01 = (v) => Math.max(0.02, Math.min(1, v));
 function hash01(n) { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
 
 // Comodità: istanze di un modello glTF (altezza in metri)

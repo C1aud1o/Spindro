@@ -161,25 +161,32 @@ Gameplay invariato (rimbalzi, cadenza = velocità della palla, + / − muovono l
 - Foto e misure: `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/mattoni-shots.mjs [--fps] [--levels]` (foto in `docs/giochi-shots/mattoni-*.png`, 390×780 e 1280×720).
 
 Misure di Mattoni (CPU 4x, 390×780; prima → dopo): alta 6,5 → 10,1 ms · 128 → 140 draw call · 4k → 284k triangoli; media 7,6 → 9,5 ms · 114 → 121 · 4k → 200k; bassa 3,9 → 8,5 ms · 60 → 78 · 2k → 103k. A 1280×720 dopo: 9,2 / 11,9 / 6,4 ms. Sempre sotto i 16 ms di CPU (60 fps); i triangoli di media e bassa superano gli obiettivi, da riprovare su un telefono vero. Il vecchio Mattoni, al primo power-up, andava in errore (`power()` copriva la potenza letta dal rullo): corretto.
-## 12. Pedal Strike (2026-11-15)
-Rifatto da zero (`js/games/strike3d.js` + `js/games/strike-world.js`). Sparatutto a scorrimento laterale in 3D.
-- **Tema**: la Resistenza a pedali contro l'Impero dei Motori, che ha vietato le bici. Tre eroi (Rocco: 6 cuori; Vale: spara il 25% più veloce; Nonno Gino: OVERDRIVE più rapido).
-- **Tre livelli, tre luci**: *Il Porto* (giorno: container, gru Meshy, mare con le navi, città lontana), *Il Passo* (tramonto: la strada sul ciglio, valle con i pini, catene di monti a strati dipinte con la prospettiva aerea), *Motor City* (notte: insegne al neon disegnate con l'alone già nella texture, lampioni con luci colorate, riflessi sull'asfalto bagnato, pioggia, grattacieli Meshy).
-- **Comandi**: + / − cambiano corsia (3 corsie in profondità: + verso il fondo, − verso la camera). Si spara da soli verso il nemico più vicino; i watt decidono la cadenza (colpi/s nell'HUD). Lo sprint sopra la soglia carica l'OVERDRIVE (8 s: colpi su tutte e tre le corsie, invulnerabile, travolge i robot). Si libera chi è in gabbia passandoci sopra: diventa un compagno che spara per 30 s. Le casse cambiano arma (mitraglia, ventaglio, razzi, laser) finché durano le munizioni.
-- **Attacchi telegrafati**: prima di ogni colpo la corsia si colora di frecce rosse che scorrono (robot che sparano, bestioni che caricano, boss) o compare un mirino rosso a terra (bombe dei droni e mortai). Si schiva cambiando corsia.
-- **Boss** con 3 fasi (a 2/3 e 1/3 di vita: rallentatore, avviso, attacchi più rapidi e su due corsie): la Ruspa di Ferro, il Dirigibile Nero, il Motore Supremo (mech Meshy animato sulle ossa). Ingresso con rallentatore, morte con catena di esplosioni, onda d'urto, detriti e lampo bianco.
-- **Senza toccare lo schermo**: in demo o se non si tocca nulla per 5 s guida il pilota automatico; dopo una missione si passa da soli alla successiva, dopo un game over si riparte da soli.
-- Foto: `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/strike-shots.mjs [--fps] [--level=0|1|2]` → `docs/giochi-shots/strike-*.png`.
+## 12. Pedal Strike (2026-11-15, gameplay rifatto il 2026-11-15 sera)
+Sparatutto in corsa in 3D (`js/games/strike3d.js`, mondo in `js/games/strike-world.js`, forma dell'allenamento in `js/games/strike-plan.js`).
+La grafica (porto, passo, Motor City, gru, boss) è quella di prima; sono cambiati inquadratura, ritmo, nemici e difficoltà.
+- **La partita è un allenamento** (regole di `docs/giochi-design.md`): 5, 10 o 20 minuti scelti nel menu, livello Facile/Normale/Difficile (−10 % / 0 / +10 %).
+  Avvio facile 45–60 s al 60 % FTP, ondate di sforzo (95–110 %) e recupero (58 %), scatti di 10 s al 135 % (sempre seguiti da 40 s facili),
+  **mini-boss a metà** e **boss finale** al 105 %, 30 s di defaticamento con il riepilogo. Difficoltà che si adatta: 2 sforzi falliti di fila −5 %, 3 riusciti +5 % (±15 %).
+  Uno sforzo è riuscito se la media del blocco è almeno il 95 % della richiesta. In alto: tempo che manca, profilo dell'allenamento con il segno «sei qui» e gli esiti (✓), scheda del blocco con i watt richiesti e la barra della potenza.
+- **Camera alle spalle, di tre quarti** (non più di lato): il ciclista occupa circa il 30 % dell'altezza a 390×780, la strada e i nemici davanti. La nebbia è più vicina e il paesaggio viene preparato 170 m avanti: gli oggetti nuovi nascono dentro la foschia.
+- **Comandi**: + corsia a destra, − corsia a sinistra (una sola funzione in partita). Nel menu − passa alla riga dopo, + cambia la riga (Parti, Durata, Livello, Mondo, Eroe).
+  Si spara da soli; i watt in % della FTP decidono la cadenza; **in zona** durante uno sforzo i colpi sono pieni (×1,5, scia verde).
+- **Nemici diversi**: soldato a piedi (spara un colpo annunciato), cecchino sul disco volante (tiene la distanza e spara da lontano: si schiva cambiando corsia), bestione (la corsia diventa rossa, poi carica), **robot con lo scudo** (cede solo sopra i watt scritti sopra la sua testa), drone (bombe sul cerchio rosso), sciami di piccoli robot, transenne. Ogni attacco si vede almeno 0,6 s prima.
+- **Boss con fasi legate allo sforzo**: scudo a esagoni che cede solo tenendo i watt richiesti per 10 s (mini-boss) o 15–20 s (boss), poi si spara; sotto metà vita «SCATTO: colpo finale» (l'overdrive si carica più in fretta). Vita tarata sulla FTP: a quella potenza cade in ~9 s (mini) / ~16 s (boss) di fuoco. Se il blocco finisce prima, si ritira (niente stella, nessuna punizione).
+- **Serie di colpi** con traguardi (×5, ×10, ×20…: punti e overdrive), **potenziamenti a tempo** che cadono dai robot (mitraglia, ventaglio, razzi, laser 10–12 s; scudo 8 s; punti ×2 10 s; cuore), gabbie da liberare (compagno che spara per 30 s).
+- **OVERDRIVE** (scatto sopra il 135 %): rallentatore 0,22× per un istante, lampo bianco, onda d'urto, campo visivo che si allarga, tutti i robot vicini saltano in aria a catena, poi 7 s di colpi su tre corsie, invulnerabile.
+- **Fine partita**: 1–3 stelle (★ finita · ★★ almeno il 60 % degli sforzi · ★★★ almeno l'85 % e boss abbattuto), record per durata, eroi sbloccati con le stelle (Vale a 3, Nonno Gino a 6). Niente game over: finiti i cuori ci si rialza dopo 2 s. Chi smette di pedalare va in pausa.
+- **Demo senza rullo**: 0,8 × FTP, segue gli sforzi e fa gli scatti, pilota automatico.
+- Strumenti: `scripts/strike-bot.mjs` (bot a 4 livelli di potenza), `scripts/strike-film.mjs` (fotogrammi a 10 al secondo e strisce `docs/giochi-shots/strike-striscia-*.png`), `scripts/strike-shots.mjs [--fps] [--level=0|1|2]` (foto e misure).
 
-Misure (Motor City, 7 nemici, gabbia, pioggia; CPU 4x; come sopra gli fps del browser di prova non contano):
+Misure di Pedal Strike dopo il nuovo gameplay (Motor City, sforzo con 11–13 nemici, scudi e gabbia; CPU 4x; come sopra gli fps del browser di prova non contano):
 
-| Schermo | Qualità | CPU ms/fotogramma (4x) | fps massimi dalla CPU | Draw call | Triangoli |
-|---|---|---|---|---|---|
-| 390×780 | alta | 30,3 | ~33 | 62 | 128k |
-| 390×780 | media | 18,1 | ~55 | 50 | 130k |
-| 390×780 | bassa | 13,6 | 60 | 37 | 83k |
-| 1280×720 | alta | 18,6 | ~54 | 64 | 128k |
-| 1280×720 | media | 14,4 | 60 | 50 | 128k |
-| 1280×720 | bassa | 16,1 | 60 | 39 | 80k |
+| Schermo | Qualità | CPU ms/fotogramma (4x) | Draw call | Triangoli |
+|---|---|---|---|---|
+| 390×780 | alta | 20,6 | 89 | 177k |
+| 390×780 | media | 17,5 | 77 | 165k |
+| 390×780 | bassa | 20,6 (16,1 in un'altra prova) | 93 | 114k |
+| 1280×720 | media | 20,2 | 73 | 175k |
+| 1280×720 | bassa | 20,9 | 58 | 123k |
 
-La qualità automatica parte da alta e scende a media se nei primi secondi si va sotto 48 fps.
+Bot (`scripts/strike-bot.mjs`, 5 min, Normale, FTP 200): 0,6 × → ★, 0,8 × → ★, 1,0 × → ★★★, 1,2 × → ★★★; primo evento a 2,4 s, mai più di 4 s senza eventi, 92–119 eventi al minuto.
