@@ -316,7 +316,7 @@
   "games.gruppetto.gotAwaySub": "Viene el siguiente",
   "games.gruppetto.groupLbl": "GRUPO",
   "games.gruppetto.groupOf": "GRUPO DE {n}",
-  "games.gruppetto.help": "+ / − cambian de carril · los vatios cierran la distancia",
+  "games.gruppetto.help": "+ / − cambian de carril",
   "games.gruppetto.holdBad": "Más vatios o se descuelgan",
   "games.gruppetto.holdOk": "Mantienes · grupo de {n}",
   "games.gruppetto.hud.tagline": "Alcánzalos. Mételos en tu estela.",

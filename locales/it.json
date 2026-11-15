@@ -316,7 +316,7 @@
   "games.gruppetto.gotAwaySub": "Ne arriva un altro",
   "games.gruppetto.groupLbl": "GRUPPO",
   "games.gruppetto.groupOf": "GRUPPO DA {n}",
-  "games.gruppetto.help": "+ / − cambiano corsia · i watt chiudono la distanza",
+  "games.gruppetto.help": "+ / − cambiano corsia",
   "games.gruppetto.holdBad": "Più watt o si staccano",
   "games.gruppetto.holdOk": "Tieni · gruppo da {n}",
   "games.gruppetto.hud.tagline": "Raggiungili. Portali nella tua scia.",

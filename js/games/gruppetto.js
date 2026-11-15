@@ -24,11 +24,13 @@ const RIDER_S = 1.3;          // il ciclista è più grande del vero: si legge d
 const V_BASE = 8;             // m/s di scorrimento: quasi costante, così i tempi degli eventi non dipendono dal rullo
 const V_SPRINT = 9.5;
 const APPROACH_GAP = 105;     // il prossimo corridore nasce dentro la nebbia (che finisce a 120 m) e si avvicina
-const CATCH_GAP = 1.6;        // sotto questa distanza (nella stessa corsia) è preso
-const PACK_DZ = 2.7;          // distanza tra i corridori di un drappello
+const CATCH_GAP = 3.0;        // sotto questa distanza (nella stessa corsia) è preso
+const PACK_DZ = 3.3;          // distanza tra i corridori di un drappello
+const TARGET_K = 1.22;        // chi scatta davanti è un po' più grande: si legge da 30 m (si rimpicciolisce quando entra in scia)
 const SLOT_X = 1.05;          // il gruppo sta ai due lati, dietro di te
 const ROW_DZ = 2.5;           // e in file da due
-const ROW_Z0 = 2.4;           // prima fila dietro di te
+const ROW_Z0 = 2.8;           // prima fila dietro di te
+const CAM_H = 4.8; const CAM_BACK = 12.5; const CAM_LOOK = 11; // camera: dietro e un po' sopra, l'orizzonte resta sotto le barre
 const HIDE_REL = -7;          // oltre questa distanza dietro il giocatore sono dietro la camera: non si disegnano
 const TICK = 2.8;             // un controllo del ritmo ogni 2,8 s
 const SEG_COLOR = { warm: '#7fd1ff', pace: '#9ad64b', effort: '#ffb020', sprint: '#ff4d6d', rest: '#4de3b0', cool: '#7fd1ff' };
@@ -141,11 +143,11 @@ export class Gruppetto {
     return cy;
   }
   release(cy) { cy.root.visible = false; (this.free[cy.poolKey] = this.free[cy.poolKey] || []).push(cy); }
-  newR(x, z, idx, born = false) {
+  newR(x, z, idx, born = false, big = false) {
     const color = JERSEYS[(this.jerseyN = (this.jerseyN || 0) + 1) % JERSEYS.length];
     const cy = this.rider(color, 1 + (idx % 5)); cy.root.position.set(x, 0, z); cy.root.rotation.set(0, 0, 0);
     if (born) cy.root.scale.setScalar(0.01);
-    return { cy, x, z, born: born ? 0 : 1, vx: 0 };
+    return { cy, x, z, born: born ? 0 : 1, vx: 0, sc: RIDER_S * (big ? TARGET_K : 1) };
   }
 
   // ---------- partita ----------
@@ -194,7 +196,8 @@ export class Gruppetto {
 
   say(text, color = '#ffd34d', dur = 1.6, big = false, prio = big ? 2 : 1, sub = null) { this.msgs.say(text, { color, dur, big, prio, sub }); }
   prog(stat, n = 1, xp = 0) { this.hooks.progress?.event(stat, n, xp); }
-  pop(text, color, x, y, z, dur = 0.9) { this.popN = (this.popN || 0) + 1; this.pops.push({ text, color, x, y, z, t: dur, t0: dur, slot: this.popN % 2 }); while (this.pops.length > 3) this.pops.shift(); }
+  // testo che sale dal giocatore e lo segue (slot: −1 a sinistra, 0 al centro, +1 a destra: i numeri non si sovrappongono)
+  pop(text, color, x, y, z, dur = 0.9, slot = 0) { this.pops.push({ text, color, dx: x - this.x, dz: z - this.z, y, t: dur, t0: dur, slot }); while (this.pops.length > 4) this.pops.shift(); }
 
   // ---------- comandi ----------
   input(dir) {
@@ -215,7 +218,7 @@ export class Gruppetto {
   hold(dir) { this.held = dir; this.heldT = 0; }
 
   begin() {
-    this.state = 'play'; this.stateT = 0; this.hooks.runStart?.();
+    this.state = 'play'; this.stateT = 0; this.pwInit = true; this.hooks.runStart?.();
     this.audio.playSong(SONGS.city); this.audio.sfx('go');
   }
 
@@ -228,7 +231,7 @@ export class Gruppetto {
     const n = seg.bridge.riders; const busy = this.escapees.filter((e) => e.gap < 70).map((e) => e.lane);
     const lane = this.pickLane(busy);
     const riders = [];
-    for (let k = 0; k < n; k++) riders.push(this.newR(laneX(lane), this.z + gap + k * PACK_DZ, k + this.caught, born));
+    for (let k = 0; k < n; k++) riders.push(this.newR(laneX(lane), this.z + gap + k * PACK_DZ, k + this.caught, born, true));
     this.bridge = { riders, n, gap, gap0: seg.bridge.gap, nominalGap: seg.bridge.gap, lane, x: laneX(lane), state: 'approach', seg, dur: seg.t1 - seg.t0, t0: seg.t0, swerved: false, startGap: gap, close: 0 };
     this.ev('spawn');
   }
@@ -237,8 +240,9 @@ export class Gruppetto {
 
   enterSeg(idx) {
     // un ponte ancora aperto alla fine del tratto precedente è fallito
-    if (this.bridge && this.bridge.state === 'attack') this.failBridge(false);
-    const seg = this.plan.segs[idx]; this.segIdx = idx; this.seg = seg; seg.inT = 0;
+    const seg = this.plan.segs[idx];
+    if (this.bridge && this.bridge.state === 'attack' && this.bridge.seg !== seg) this.failBridge(false);
+    this.segIdx = idx; this.seg = seg; seg.inT = 0;
     const w = this.tgtNow(); this.ev('seg');
     const col = SEG_COLOR[seg.kind]; const b = this.bridge;
     this.deficit = 0; this.lostThisSeg = 0;
@@ -298,7 +302,7 @@ export class Gruppetto {
     this.score += pts; this.ev('catch');
     this.audio.sfx('rescue'); this.shake.add(0.35); this.prog('rescued', n, 3 * n);
     for (const R of b.riders) { this.fx.spawn(R.x, 1.4, R.z, { tex: 'green', size: 3.2, life: 0.45 }); this.fx.spawn(R.x, 1.2, R.z, { tex: 'spark', size: 1.4, life: 0.5, grow: 1.5 }); }
-    this.pop(`+${pts}`, '#ffd166', this.x, 3.1, this.z, 1.1);
+    this.pop(`+${pts}`, '#ffd166', this.x, 4.0, this.z, 1.2, 0);
     if (navigator.vibrate) navigator.vibrate(30);
     if (seg.kind === 'effort' || seg.kind === 'sprint') {
       this.bridgesDone++; if (seg.kind === 'sprint' && seg.line === 'finish') this.finalWon = true;
@@ -349,7 +353,7 @@ export class Gruppetto {
     const demoP = !connected ? ftp * (this.state === 'play' && this.seg?.kind === 'rest' ? 0.58 : 0.8) * (((this.t % 40) > 31 && this.seg?.kind !== 'rest') ? 1.6 : 1) : 0;
     this.power = connected ? st.power || 0 : demoP;
     this.cadence = connected ? st.cadence || 0 : 88;
-    this.pw += (this.power - this.pw) * Math.min(1, dt / 1.2);
+    if (this.pwInit) { this.pw = this.power; this.pwInit = false; } else this.pw += (this.power - this.pw) * Math.min(1, dt / 1.2);
     this.connected = connected;
     if (this.audio.song) this.audio.setTempo(this.audio.song.bpm * clamp((this.cadence || 85) / 88, 0.85, 1.25));
     this.msgs.update(dt);
@@ -452,7 +456,7 @@ export class Gruppetto {
         g.relx = lerp(g.sx, g.side * SLOT_X, smooth(u * 2.2)); g.relz = lerp(g.sz, slotZ, smooth((u - 0.18) / 0.82));
         if (u > 0.85 && !g.said) g.said = true;
       } else { g.relz += (slotZ - g.relz) * Math.min(1, dt * 6); g.relx += (g.side * SLOT_X - g.relx) * Math.min(1, dt * 8); }
-      const R = g.R; R.z = this.z + g.relz;
+      const R = g.R; R.z = this.z + g.relz; R.sc += (RIDER_S - R.sc) * Math.min(1, dt * 2.5);
       R.vx = 0; const wantX = this.x + g.relx; const px = R.x; R.x = g.u < 1 ? wantX : lerp(R.x, wantX, 1 - Math.exp(-dt * 7)); R.vx = (R.x - px) / Math.max(dt, 1e-3);
     }
     // chi si stacca scivola di lato e indietro, fuori dall'inquadratura
@@ -472,11 +476,18 @@ export class Gruppetto {
       const dz = g.z - this.z; g.mesh.position.set(laneX(g.lane), 0.05 + Math.sin(this.t * 4 + g.z) * 0.06, g.z); g.mesh.rotation.y = this.t * 2.5 + g.z;
       if (!g.done && dz < 0.8 && dz > -1.8 && Math.abs(this.x - laneX(g.lane)) < 1.25) {
         g.done = true; this.bottles++; const pts = 10 + Math.min(20, this.group.length * 2); this.score += pts;
-        this.ev('gem'); this.audio.sfx('coin'); this.pop(`+${pts}`, '#ffd34d', laneX(g.lane), 2.2, this.z + 0.5, 0.8);
+        this.ev('gem'); this.audio.sfx('coin'); this.gemPoints(pts);
         this.fx.spawn(laneX(g.lane), 1, this.z + 0.5, { tex: 'spark', size: 1.6, life: 0.35, grow: 1.6 }); this.prog('coins', 1);
       }
     }
     this.gems = this.gems.filter((g) => { if (g.done || g.z < this.z - 6) { g.mesh.visible = false; this.gemPool.push(g.mesh); return false; } return true; });
+  }
+
+  // i bidoni di una fila si sommano in un solo numero sopra il giocatore (niente pioggia di "+12")
+  gemPoints(pts) {
+    const p = this.gemPop;
+    if (p && this.pops.includes(p) && p.t > 0.15) { p.sum += pts; p.text = `+${p.sum}`; p.t = p.t0 = 1.0; return; }
+    this.pop(`+${pts}`, '#ffd34d', this.x, 3.0, this.z, 1.0, 1); this.gemPop = this.pops[this.pops.length - 1]; this.gemPop.sum = pts;
   }
 
   updateLine(dt) {
@@ -485,7 +496,7 @@ export class Gruppetto {
     if (!L.passed && this.z >= L.z) {
       L.passed = true; this.ev('line'); this.audio.sfx('cheer'); this.shake.add(0.4);
       const won = this.bridge == null && (this.finalWon || L.kind !== 'finish'); void won;
-      const bonus = 150 + this.group.length * 25; this.score += bonus; this.pop(`+${bonus}`, '#ffd34d', this.x, 3.4, this.z, 1.3);
+      const bonus = 150 + this.group.length * 25; this.score += bonus; this.pop(`+${bonus}`, '#ffd34d', this.x, 4.0, this.z, 1.3, 0);
       this.say(t(L.kind === 'finish' ? 'games.gruppetto.finish' : 'games.gruppetto.prime'), '#ffd34d', 2, true, 3, t('games.gruppetto.lineSub', { n: this.group.length }));
       for (let i = 0; i < 6; i++) this.fx.spawn(this.x + (this.rnd() - 0.5) * 6, 2 + this.rnd() * 3, this.z + 2, { tex: 'spark', size: 1.2, life: 0.8, vy: 2, grow: 0.4 });
     }
@@ -499,8 +510,8 @@ export class Gruppetto {
     const n = this.group.length;
     if (zone) {
       const pts = 6 + n * 3; this.score += pts; if (n) this.prog('draftSec', TICK);
-      this.pop(`+${pts}`, '#ffffff', this.x + (this.popN % 2 ? 1 : -1) * 0.9, 3.2, this.z, 0.7);
-      this.fx.spawn(this.x, 1.3, this.z - 1.2, { tex: 'glow', size: 1.8, life: 0.3, grow: 1.2, color: '#d9ff3d' });
+      this.pop(`+${pts}`, '#ffffff', this.x, 3.0, this.z, 0.8, -1);
+      this.fx.spawn(this.x - 0.5, 1.6, this.z + 0.3, { tex: 'spark', size: 0.9, life: 0.3, grow: 1.2, color: '#d9ff3d' });
       this.audio.sfx('pass');
     } else {
       this.hint = { text: t('games.gruppetto.push', { w: Math.max(5, Math.round((tgt * HOLD_PCT - this.pw) / 5) * 5) }), t: 1.8 }; this.audio.sfx('beep');
@@ -542,15 +553,16 @@ export class Gruppetto {
     pl.pose(dt, cad, speed, { stand });
     // camera: dietro e sopra, guarda avanti; segue la corsia con un po' di ritardo
     const sprint = this.sprinting ? 1 : 0;
-    const cx = this.x * 0.8; const tx = cx; const ty = 6.3; const tz = this.z - 12.2;
+    const cx = this.x * 0.8; const tx = cx; const ty = CAM_H; const tz = this.z - CAM_BACK;
     if (!this.camInit) { cam.position.set(tx, ty, tz); this.camInit = true; this.camX = cx; }
     this.camX += (cx - this.camX) * Math.min(1, dt * 4); cam.position.set(this.camX, ty, tz);
-    cam.lookAt(this.camX * 0.9, 0.9, this.z + 7);
+    cam.lookAt(this.camX * 0.9, 0.9, this.z + CAM_LOOK);
     this.shake.apply(cam);
     const fov = 46 + sprint * 5 + (this.seg?.kind === 'effort' ? 1.5 : 0); cam.fov += (fov - cam.fov) * Math.min(1, dt * 3); cam.updateProjectionMatrix();
     // gli altri ciclisti: si animano solo quelli che si vedono
     const pose = (R, rel) => { const cy = R.cy; const p = cy.root.position; p.x = R.x; p.z = R.z; p.y = 0;
-      if (R.born < 1) { R.born = Math.min(1, R.born + dt * 2.2); cy.root.scale.setScalar(RIDER_S * Math.max(0.01, smooth(R.born))); }
+      if (R.born < 1) R.born = Math.min(1, R.born + dt * 2.2);
+      cy.root.scale.setScalar(R.sc * Math.max(0.01, smooth(R.born)));
       const vis = rel > HIDE_REL; cy.root.visible = vis; if (!vis) return;
       cy.lean.rotation.z = clamp((R.vx || 0) * 0.05, -0.3, 0.3);
       cy.pose(dt, moving ? cad * 0.97 + 4 : 0, speed, { stand: this.sprinting ? 1 : 0 }); };
@@ -558,7 +570,7 @@ export class Gruppetto {
     for (const e of this.escapees) for (const R of e.riders) pose(R, R.z - this.z);
     for (const g of this.group) pose(g.R, g.relz);
     for (const d of this.drops) pose(d.R, d.rel);
-    this.wind.update(dt, pl.root, this.state === 'play' && !this.paused ? (this.seg?.kind === 'pace' ? 0.9 : this.sprinting ? 1 : 0.35) : 0);
+    this.wind.update(dt, pl.root, this.state === 'play' && !this.paused ? (this.seg?.kind === 'pace' ? 0.55 : this.sprinting ? 0.9 : 0.25) : 0);
     this.road.update(this.z); for (const i of this.inst) i.update(this.z);
     this.light.follow(this.x, 0, this.z);
   }
@@ -596,7 +608,7 @@ export class Gruppetto {
     ctx.fillStyle = '#d9ff3d'; rrect(ctx, pad, ty, Math.max(5, (W - 2 * pad) * tk), 5, 2.5); ctx.fill();
     ctx.fillStyle = 'rgba(8,10,26,.9)';
     for (const s of this.plan.segs) if (s.kind === 'pace') ctx.fillRect(pad + (W - 2 * pad) * (s.t0 / this.total) - 1, ty - 1, 2, 7);
-    this.drawGoal(ctx, W, H, ty + 14, col);
+    const goalBottom = ty + 14 + 46; this.drawGoal(ctx, W, H, ty + 14, col);
     if (!this.connected) hudText(ctx, t('games.common.demo'), W / 2, H - 6, { size: 13, align: 'center', color: '#ffd34d' });
 
     // in basso: potenza (numero grande + barra con il bersaglio) e il gruppo
@@ -616,19 +628,31 @@ export class Gruppetto {
     ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.fillRect(t0, barY, Math.max(2, bx + bw2 * clamp(tw * 1.15 / maxW, 0, 1) - t0), bh);
     ctx.fillStyle = '#fff'; ctx.fillRect(bx + bw2 * clamp(tw / maxW, 0, 1) - 1, barY - 4, 3, bh + 8);
 
+    // freccia sopra il corridore da prendere (si legge anche da lontano)
+    const tb = this.bridge;
+    if (tb && (tb.state === 'attack' || tb.gap < 75)) {
+      const R0 = tb.riders[0]; const q = new THREE.Vector3(R0.x, 3.0, R0.z).project(this.stage.camera);
+      if (q.z < 1) {
+        const sx = clamp((q.x + 1) / 2 * W, 22, W - 22); const sy = Math.max(goalBottom + 16, (1 - q.y) / 2 * H - 8); const k = 1 + 0.12 * Math.sin(this.t * 8);
+        ctx.save(); ctx.translate(sx, sy); ctx.scale(k, k); ctx.beginPath(); ctx.moveTo(-11, -9); ctx.lineTo(11, -9); ctx.lineTo(0, 9); ctx.closePath();
+        ctx.lineJoin = 'round'; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,.85)'; ctx.stroke(); ctx.fillStyle = this.blocked ? '#4de3ff' : '#ffd34d'; ctx.fill(); ctx.restore();
+      }
+    }
     // flecce di corsia: compaiono quando devi spostarti verso il corridore
     const b = this.bridge;
     if (b && b.state === 'attack' && Math.abs(this.x - b.riders[0].x) > 1.35 && b.gap < 14) {
       const dir = b.lane > this.lane ? 1 : -1; const k = 0.7 + 0.3 * Math.sin(this.t * 10);
       ctx.save(); ctx.globalAlpha = k; hudText(ctx, dir > 0 ? '▶' : '◀', dir > 0 ? W - 34 : 34, H * 0.5, { size: 64, align: 'center', color: '#4de3ff' }); ctx.restore();
     }
+    // richiesta di più watt: sotto la barra dell'obiettivo, solo se non c'è un messaggio al centro
+    if (this.hint && !this.msgs.cur) hudText(ctx, this.hint.text, W / 2, goalBottom + 30, { size: 22, align: 'center', color: '#ffd34d', maxW: W - 40 });
     this.msgs.draw(ctx, W, H, { u: W < 500 ? 0.9 : 1.1, y: H * 0.36 });
     const v3 = new THREE.Vector3();
     for (const p of this.pops) {
       p.t -= dt; const k = 1 - p.t / p.t0;
-      v3.set(p.x, p.y + k * 1.6, p.z).project(this.stage.camera);
+      v3.set(this.x + p.dx, p.y + k * 1.2, this.z + p.dz).project(this.stage.camera);
       ctx.globalAlpha = clamp(p.t / p.t0 * 2, 0, 1);
-      hudText(ctx, p.text, clamp((v3.x + 1) / 2 * W + (p.slot ? 30 : -30), 40, W - 40), (1 - v3.y) / 2 * H, { size: 24, align: 'center', color: p.color });
+      hudText(ctx, p.text, clamp((v3.x + 1) / 2 * W + p.slot * 34, 40, W - 40), (1 - v3.y) / 2 * H, { size: 24, align: 'center', color: p.color });
       ctx.globalAlpha = 1;
     }
     this.pops = this.pops.filter((p) => p.t > 0 && this.state !== 'over');
@@ -655,8 +679,6 @@ export class Gruppetto {
     } else if (s.kind === 'rest' || s.kind === 'pace') {
       const n = this.group.length; label = this.holdOk ? t('games.gruppetto.holdOk', { n }) : t('games.gruppetto.holdBad'); frac = clamp(1 - this.deficit / DROP_AFTER, 0, 1); c = this.holdOk ? '#9ad64b' : '#ff8d8d';
     } else { label = t('games.gruppetto.groupOf', { n: this.group.length }); frac = 1; }
-    const hintOn = this.hint && !(b && b.state === 'attack' && this.blocked);
-    if (hintOn) { label = this.hint.text; c = '#ffd34d'; }
     hudText(ctx, label, pad + 8, y + 22, { size: 22, color: c, maxW: w * 0.62 });
     if (right) hudText(ctx, right, W - pad - 4, y + 22, { size: 22, align: 'right', color: '#e8e8f4', maxW: w * 0.3 });
     ctx.fillStyle = 'rgba(255,255,255,.2)'; rrect(ctx, pad + 4, y + 30, w - 8, 9, 4.5); ctx.fill();

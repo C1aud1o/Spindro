@@ -316,7 +316,7 @@
   "games.gruppetto.gotAwaySub": "The next one is coming",
   "games.gruppetto.groupLbl": "GROUP",
   "games.gruppetto.groupOf": "GROUP OF {n}",
-  "games.gruppetto.help": "+ / − change lane · watts close the gap",
+  "games.gruppetto.help": "+ / − change lane",
   "games.gruppetto.holdBad": "More watts or they drop off",
   "games.gruppetto.holdOk": "Holding · group of {n}",
   "games.gruppetto.hud.tagline": "Catch them. Bring them into your slipstream.",

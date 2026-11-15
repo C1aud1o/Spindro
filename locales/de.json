@@ -316,7 +316,7 @@
   "games.gruppetto.gotAwaySub": "Der nächste kommt",
   "games.gruppetto.groupLbl": "GRUPPE",
   "games.gruppetto.groupOf": "GRUPPE VON {n}",
-  "games.gruppetto.help": "+ / − wechseln die Spur · die Watt schließen die Lücke",
+  "games.gruppetto.help": "+ / − wechseln die Spur",
   "games.gruppetto.holdBad": "Mehr Watt, sonst fallen sie ab",
   "games.gruppetto.holdOk": "Du hältst · Gruppe von {n}",
   "games.gruppetto.hud.tagline": "Hol sie ein. Nimm sie in den Windschatten.",

@@ -27,10 +27,11 @@ export function buildPlan(total) {
     const k = N > 1 ? (w - 1) / (N - 1) : 1; // 0 → 1 lungo la partita
     const sprint = w % 4 === 0 || w === N; const last = w === N;
     if (sprint) primes.push(w);
-    const pace = L * 0.26; const rest = last ? 0 : L * 0.34; const effort = L - pace - rest;
+    const pace = L * 0.26; const effort = L * 0.4 - (sprint && !last ? SPRINT_S : 0); // l'ultima ondata ha lo sforzo intero e poi la volata
+    const rest = L - pace - effort - (sprint ? SPRINT_S : 0);
     const riders = 1 + Math.floor(k * 2.2); // 1 → 3 corridori per ponte
     push(pace, 'pace', lerp(0.76, 0.88, k), w);
-    push(sprint ? effort - SPRINT_S : effort, 'effort', lerp(0.95, 1.06, k), w, { bridge: { riders, gap: 20, lead: 80 } });
+    push(effort, 'effort', lerp(0.95, 1.06, k), w, { bridge: { riders, gap: 20, lead: 80 } });
     if (sprint) push(SPRINT_S, 'sprint', 1.3, w, { bridge: { riders: Math.min(3, riders + 1), gap: 20, lead: 80 }, line: last ? 'finish' : 'prime' });
     push(rest, 'rest', 0.56, w);
   }

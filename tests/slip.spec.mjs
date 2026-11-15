@@ -111,8 +111,8 @@ test('Slipstream: il corridore davanti si prende solo nella sua corsia; + / − 
     let k = 0; while (g.bridge && k < 200) { g.update(1 / 30); k++; }
     return { blocked, gapStuck, caught0, caught1: g.caught, lane: g.lane, want, group: g.group.length };
   });
-  expect(r.blocked, 'in un’altra corsia il gap si ferma a 1,6 m').toBe(true);
-  expect(r.gapStuck).toBeCloseTo(1.6, 1); expect(r.caught0).toBe(0);
+  expect(r.blocked, 'in un’altra corsia il gap si ferma a 3 m').toBe(true);
+  expect(r.gapStuck).toBeCloseTo(3.0, 1); expect(r.caught0).toBe(0);
   expect(r.lane).toBe(r.want); expect(r.caught1, 'cambiata la corsia, lo prende').toBeGreaterThanOrEqual(1); expect(r.group).toBeGreaterThanOrEqual(1);
 });
 

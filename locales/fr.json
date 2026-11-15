@@ -316,7 +316,7 @@
   "games.gruppetto.gotAwaySub": "Le prochain arrive",
   "games.gruppetto.groupLbl": "GROUPE",
   "games.gruppetto.groupOf": "GROUPE DE {n}",
-  "games.gruppetto.help": "+ / − changent de voie · les watts comblent l'écart",
+  "games.gruppetto.help": "+ / − changent de voie",
   "games.gruppetto.holdBad": "Plus de watts ou ils décrochent",
   "games.gruppetto.holdOk": "Tu tiens · groupe de {n}",
   "games.gruppetto.hud.tagline": "Rattrape-les. Mets-les dans ta bulle.",

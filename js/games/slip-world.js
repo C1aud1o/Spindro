@@ -65,7 +65,7 @@ export class Road {
   }
 
   place(i, key) {
-    const r = this.rand; const side = key ? 1 : -1; const len = 40 + r() * 70; const wid = 26 + r() * 50; const gap = 11 + r() * 5;
+    const r = this.rand; const side = key ? 1 : -1; const len = 40 + r() * 70; const wid = 26 + r() * 50; const gap = 9 + r() * 3;
     const z0 = this.nextZ[key] + 1.6; this.nextZ[key] = z0 + len;
     this.fields[i] = { z1: z0 + len, key };
     this.m4.compose(new THREE.Vector3(side * (gap + wid / 2), 0, z0 + len / 2), new THREE.Quaternion(), new THREE.Vector3(wid, 1, len));
@@ -110,15 +110,15 @@ export function buildScenery(scene, m, opt, zMax, quality) {
   };
   const at = (x, z, h, rot = 0) => ({ x, y: 0, z, d: z, rot, h });
   const trees = [[], [], []]; const cyp = []; const bush1 = []; const bush2 = [];
-  for (let z = 6; z < zMax; z += 9 + rand() * 3) {
+  for (let z = 6; z < zMax; z += 6.5 + rand() * 2.5) {
     for (const side of [-1, 1]) {
-      const x = side * (6.2 + rand() * 1.4);
-      if (rand() < 0.62) cyp.push(at(x, z, 7 + rand() * 2.6, rand() * 6.28));
+      const x = side * (6.0 + rand() * 1.3);
+      if (rand() < 0.7) cyp.push(at(x, z, 7 + rand() * 2.6, rand() * 6.28));
       else (rand() < 0.5 ? bush1 : bush2).push(at(x, z, 1.0 + rand() * 0.7, rand() * 6.28));
     }
   }
-  for (let z = 0; z < zMax; z += 22 + rand() * 12) { for (const side of [-1, 1]) trees[Math.floor(rand() * 3)].push(at(side * (13 + rand() * 18), z + rand() * 10, 5 + rand() * 3.5, rand() * 6.28)); }
-  for (let z = 0; z < zMax; z += 40 + rand() * 20) { for (const side of [-1, 1]) { const o = 9 + rand() * 20; bush1.push(at(side * o, z + rand() * 14, 1 + rand() * 0.7, rand() * 6.28)); bush2.push(at(side * (o + 2.5), z + rand() * 14, 0.9 + rand() * 0.6, rand() * 6.28)); } }
+  for (let z = 0; z < zMax; z += 22 + rand() * 12) { for (const side of [-1, 1]) trees[Math.floor(rand() * 3)].push(at(side * (10 + rand() * 12), z + rand() * 10, 5 + rand() * 3.5, rand() * 6.28)); }
+  for (let z = 0; z < zMax; z += 40 + rand() * 20) { for (const side of [-1, 1]) { const o = 7.8 + rand() * 8; bush1.push(at(side * o, z + rand() * 14, 1 + rand() * 0.7, rand() * 6.28)); bush2.push(at(side * (o + 2.5), z + rand() * 14, 0.9 + rand() * 0.6, rand() * 6.28)); } }
   add(m.cypress, cyp, { kind: 'tree', lodDist: 45 });
   add(m.tree1, trees[0], { kind: 'tree', lodDist: 55 }); add(m.tree2, trees[1], { kind: 'tree', lodDist: 55 }); add(m.tree3, trees[2], { kind: 'tree', lodDist: 55 });
   add(m.bush1, bush1, { kind: 'tree', lodDist: 40 }); add(m.bush2, bush2, { kind: 'tree', lodDist: 40 });
@@ -126,17 +126,17 @@ export function buildScenery(scene, m, opt, zMax, quality) {
   const farms = []; const barns = []; const silos = []; const mills = []; const hay = []; const herdsS = []; const herdsC = []; const tractors = []; const church = [];
   let k = 0;
   for (let z = 50; z < zMax; z += 75 + rand() * 70) {
-    const side = k++ % 2 ? 1 : -1; const x = side * (24 + rand() * 20); const face = Math.atan2(-side, 0);
+    const side = k++ % 2 ? 1 : -1; const x = side * (15 + rand() * 12); const face = Math.atan2(-side, 0);
     const r = rand();
     if (r < 0.4) { farms.push(at(x, z, 8, face + (side > 0 ? -Math.PI / 2 : Math.PI / 2) * 0 + Math.PI / 2 * -side)); }
-    else if (r < 0.62) { barns.push(at(x, z, 6.5, rand() * 0.6 - 0.3)); silos.push(at(x + side * 9, z + 3, 9, 0)); }
-    else if (r < 0.78) mills.push(at(side * (34 + rand() * 14), z, 10, rand() * 6));
-    else if (r < 0.86) church.push(at(side * 40, z, 14, Math.PI / 2 * -side));
-    else tractors.push(at(side * (11 + rand() * 3), z, 2.1, Math.PI / 2 + rand() * 0.4));
-    for (let j = 0; j < 2 + Math.floor(rand() * 3); j++) hay.push(at(side * (15 + rand() * 12), z + 16 + j * 3.4, 1.5, rand() * 6.28));
+    else if (r < 0.62) { barns.push(at(x, z, 6.5, rand() * 0.6 - 0.3)); silos.push(at(x + side * 8, z + 3, 9, 0)); }
+    else if (r < 0.78) mills.push(at(side * (22 + rand() * 12), z, 10, rand() * 6));
+    else if (r < 0.86) church.push(at(side * 26, z, 14, Math.PI / 2 * -side));
+    else tractors.push(at(side * (9 + rand() * 2), z, 2.1, Math.PI / 2 + rand() * 0.4));
+    for (let j = 0; j < 2 + Math.floor(rand() * 3); j++) hay.push(at(side * (8.5 + rand() * 6), z + 16 + j * 3.4, 1.5, rand() * 6.28));
   }
   for (let z = 25; z < zMax; z += 55 + rand() * 40) {
-    const side = rand() > 0.5 ? 1 : -1; const cx = side * (14 + rand() * 8); const sheep = rand() > 0.4;
+    const side = rand() > 0.5 ? 1 : -1; const cx = side * (10.5 + rand() * 5); const sheep = rand() > 0.4;
     for (let j = 0; j < 4 + Math.floor(rand() * 4); j++) (sheep ? herdsS : herdsC).push(at(cx + (rand() - 0.5) * 12, z + (rand() - 0.5) * 12, sheep ? 0.95 : 1.45, rand() * 6.28));
   }
   add(m.farm, farms, { kind: 'house', lodDist: 150 }); add(m.barn, barns, { kind: 'house', lodDist: 150 }); add(m.silo, silos, { kind: 'house', lodDist: 150 });
