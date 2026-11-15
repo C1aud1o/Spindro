@@ -1,4 +1,4 @@
-// Monitoraggio rispettoso della privacy (docs/PIANO-LANCIO.md §6).
+// Monitoraggio rispettoso della privacy.
 //  - Sentry: errori JavaScript, solo se SENTRY_DSN è impostato. Senza consenso (legittimo interesse), ma senza dati personali.
 //  - GoatCounter: statistiche anonime senza cookie, SOLO con consenso dell'utente e se GOATCOUNTER_URL è impostato.
 // Con le costanti vuote (default nel repo) non viene caricato né inviato nulla.

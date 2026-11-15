@@ -16,8 +16,11 @@ for (const lang of ['en', 'it']) {
     // 1) apertura: benvenuto con tre passi e un solo pulsante grande
     await expect(page.locator('#welcome')).toBeVisible();
     await expect(page.locator('#welcome li')).toHaveCount(3);
-    // senza GoatCounter configurato (repo e build di prova) il consenso non viene chiesto: è coperto da monitoring.spec
+    // 2) le statistiche anonime si chiedono una volta sola, alla prima apertura: qui la persona dice di no
+    await expect(page.locator('#consentSheet')).toBeVisible();
+    await page.click('#consentNo');
     await expect(page.locator('#consentSheet')).toBeHidden();
+    expect(await page.evaluate(() => !!window.goatcounter), 'senza consenso il contatore non si carica').toBe(false);
 
     // 3) il rullo non si trova: compare l'aiuto con soluzioni concrete e il link "Segnala il tuo rullo"
     await page.evaluate(() => { navigator.bluetooth.__real = navigator.bluetooth.requestDevice; navigator.bluetooth.requestDevice = () => Promise.reject(new DOMException('User cancelled', 'NotFoundError')); });

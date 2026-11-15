@@ -7,8 +7,9 @@ Spindro is a free, open source app for smart trainers. It runs in the browser an
 ## In short
 
 - **Spindro has no accounts and no servers of its own.** We do not collect, receive or store any personal data.
+- We count visits **anonymously**, with no cookies. In the app, only if you say yes.
 - Your rides, settings and trainer data stay **on your device**.
-- The website has **no cookies and no tracking**.
+- The website has **no cookies** and does not follow you from one site to another.
 - The only connections to other companies start from **you**, and they are listed below.
 
 ## What stays on your device
@@ -26,6 +27,15 @@ The app talks to your trainer, power meter, heart-rate strap and Zwift controlle
 - **Fonts from Google Fonts.** The app loads the Barlow fonts from Google (`fonts.googleapis.com`, `fonts.gstatic.com`). Google receives your IP address and the technical data of the request.
 - **The website itself** is hosted on GitHub Pages. GitHub may log standard technical data of a request, such as the IP address.
 - **Updates.** The app code is loaded from the same site.
+
+## Anonymous statistics
+
+To understand how many people use Spindro we count visits with **GoatCounter** (`goatcounter.com`), an open-source service that uses no cookies and stores nothing on your device.
+
+- **On the website** the opened page is counted, with generic technical data: referring page, browser and system type, screen size, country. The IP address is not stored.
+- **In the app** counting starts **only if you agree** when you first open it. You can change your mind in Settings → Privacy. These are counted: app opening, language, trainer protocol type (for example FTMS), game opened, ride completed. Never power, heart rate, location or device names.
+
+We cannot trace this data back to you.
 
 ## Services you choose to use
 

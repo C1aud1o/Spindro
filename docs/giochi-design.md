@@ -1,7 +1,7 @@
 # Giochi: regole di design (valgono per tutti)
 
-Scritto dopo due giri di prove sul telefono del proprietario: "i giochi sono glitchati, il gameplay non ingaggia, la
-difficoltà non è tarata". La grafica nuova non basta. Queste regole si misurano: un gioco è finito solo se le rispetta
+Scritto dopo due giri di prove su telefono: i giochi avevano difetti grafici, il gameplay non coinvolgeva e la
+difficoltà non era tarata. La grafica nuova non basta. Queste regole si misurano: un gioco è finito solo se le rispetta
 tutte, con i numeri nel riepilogo.
 
 ## Nomi (uguali in tutte le lingue)

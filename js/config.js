@@ -8,11 +8,11 @@ export const STRAVA_PROXY = '';
 // Il DSN è pubblico per natura (compare in ogni app che usa Sentry), non è un segreto.
 export const SENTRY_DSN = '';
 // GoatCounter (statistiche anonime, senza cookie, solo con consenso). Esempio: 'https://spindro.goatcounter.com/count'
-export const GOATCOUNTER_URL = '';
+export const GOATCOUNTER_URL = 'https://c1laud1o.goatcounter.com/count';
 
 // ---- Account facoltativo (E3/E4, docs/account-architettura.md). ----
 // FIREBASE_CONFIG = null → nessun login, nessuna richiesta di rete verso Google: è il comportamento di fork e build foss.
-// Per attivarlo incolla qui l'oggetto `firebaseConfig` dell'app web (valori pubblici): vedi docs/firebase-setup.md sez. 10.
+// Per attivarlo incolla qui l'oggetto `firebaseConfig` dell'app web (valori pubblici).
 // Esempio: { apiKey: '…', authDomain: 'spindro-app.firebaseapp.com', projectId: 'spindro-app', appId: '…', messagingSenderId: '…' }
 export const FIREBASE_CONFIG = null;
 // true = usa gli emulatori locali (Auth 9099, Firestore 8080, Functions 5001): solo per i test.
