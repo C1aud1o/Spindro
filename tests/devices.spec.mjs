@@ -72,6 +72,24 @@ test('rullo, Click, cardio e sensore di cadenza: ognuno prende da solo il suo ru
   await expect(page.locator('#hrStatus')).toHaveText('—');
 });
 
+test('rullo "Zwift Ready" (FTMS + servizio Zwift): è solo un rullo, non parte l\'handshake dei telecomandi', async ({ page }) => {
+  await page.goto('/index.html');
+  await addVia(page, 'trainer-zwift');
+  await expect(cards(page)).toHaveCount(1);
+  await expect(cards(page).nth(0).locator('.pill')).toHaveCount(1);
+  await expect(cards(page).nth(0).locator('.pill')).toContainText('Rullo');
+  expect(await page.evaluate(() => window.__fakeBle.state.rideOn || 0), 'nessun "RideOn" scritto sul rullo').toBe(0);
+  await page.click('#devicesSheet .close');
+  await expect(page.locator('#trainerStatus')).toContainText('Van Rysel');
+  await expect(page.locator('#clickStatus')).toHaveText('—');
+  // ruoli salvati da una versione vecchia (rullo + comandi): al riavvio si ricollega come solo rullo
+  await page.evaluate(() => { localStorage.setItem('devKnown', JSON.stringify([{ id: 'fake-trainer-z', name: 'x', roles: ['trainer', 'click'] }])); window.__fakeBle.known = []; });
+  await page.addInitScript(() => { window.__fakeBle.known = [window.__fakeBle.make('trainer-zwift')]; });
+  await page.reload();
+  await expect(page.locator('#trainerStatus')).toContainText('Van Rysel');
+  await expect(page.locator('#clickStatus')).toHaveText('—');
+});
+
 test('solo Cycling Power: se non c\'è un rullo chiede una volta "rullo o misuratore?" e lo ricorda', async ({ page }) => {
   await page.goto('/index.html');
   await addVia(page, 'cps');

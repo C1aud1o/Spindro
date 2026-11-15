@@ -52,6 +52,13 @@ const DEFAULT_MAP = {
   'zr:9': +1, 'zr:10': -1, 'zr:13': +1, 'zr:14': -1,
   'zr:1': +1, 'zr:3': -1, 'zr:2': +1, 'zr:0': -1, 'zr:4': +1, 'zr:5': -1, 'zr:6': +1, 'zr:7': -1,
 };
+// Nei menu le frecce verticali seguono lo schermo: Su = elemento precedente, Giù = successivo (il contrario del cambio,
+// dove Su = marcia più dura). Vale anche per Y (in alto) e B (in basso) dei Play.
+const NAV_FLIP = new Set(['ride:1', 'ride:3', 'zr:1', 'zr:3', 'play:2', 'play:5']);
+// Click v2, solo nei menu: frecce Sinistra/Destra = precedente/successivo, A = scegli, B = indietro.
+// Nomi dei bit dalla tabella di SwiftControl: DA VERIFICARE su un Click v2 vero.
+const NAV_ONLY = { 'ride:0': -1, 'ride:2': +1 };
+const NAV_KEYS = { 'ride:4': 'select', 'ride:5': 'back' };
 // Tasti "Zwift"/menu: aprono il menu Click (evento 'combo'), come premere + e − insieme.
 const DEFAULT_MENU = new Set(['play:6', 'zr:12', 'zr:17']);
 
@@ -211,6 +218,7 @@ export class ZwiftClick extends EventTarget {
           } else {
             this.dbg.log(`Pressed ${buttonLabel(id)}${dir ? ` → shifted ${dir > 0 ? '+' : '−'}` : ' (unassigned)'}`);
             if (dir) this.emit('shift', dir);
+            else if (NAV_KEYS[id]) this.emit('navkey', NAV_KEYS[id]);
           }
         }
       }
@@ -229,7 +237,10 @@ export class ZwiftClick extends EventTarget {
     // direzione tenuta premuta (per sterzare in continuo nei giochi)
     let held = 0; for (const id of all) held += this.map[id] || 0;
     held = Math.sign(held);
-    if (held !== this.held) { this.held = held; this.emit('hold', held); }
+    // direzione per i menu: come sopra, ma con le frecce verticali girate e le frecce orizzontali del Click v2
+    let nav = 0; for (const id of all) { const d = this.map[id] || 0; nav += d ? (NAV_FLIP.has(id) ? -d : d) : (NAV_ONLY[id] || 0); }
+    nav = Math.sign(nav);
+    if (held !== this.held || nav !== this.navHeld) { this.held = held; this.navHeld = nav; this.emit('hold', held); }
     // + e − insieme: apre il menu di navigazione
     const dirs = new Set([...all].map((id) => this.map[id]).filter(Boolean));
     const both = dirs.has(1) && dirs.has(-1);

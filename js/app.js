@@ -137,9 +137,12 @@ trainer.addEventListener('data', (e) => {
 click.addEventListener('connected', () => refreshDeviceBar());
 click.addEventListener('disconnected', () => refreshDeviceBar());
 click.addEventListener('shift', (e) => { clickNav.sync(); if (clickNav.active) return; if (activeGame?.active) activeGame.input(e.detail); else step(e.detail); });
+click.addEventListener('navkey', (e) => { clickNav.sync(); if (!clickNav.active) return; if (e.detail === 'select') clickNav.select(); else clickNav.back(); }); // Click v2: A = scegli, B = indietro
 click.addEventListener('combo', () => { clearTimeout(mediaTimer); clickNav.toggle(); }); // scorciatoia: + e − insieme aprono/chiudono il menu
 click.addEventListener('hold', (e) => {
-  if (clickNav.hold(e.detail)) return; // in modalità navigazione i tasti muovono la selezione
+  // nei menu i tasti muovono la selezione, con le frecce Su/Giù come sullo schermo; pedalando o giocando vale la direzione del cambio
+  clickNav.sync();
+  if (clickNav.hold(clickNav.active ? (click.navHeld ?? e.detail) : e.detail)) return;
   if (activeGame?.active) activeGame.hold?.(e.detail);
   // pressione lunga = comandi musica (solo app Android): annulla il cambio fatto dalla pressione breve
   clearTimeout(mediaTimer);
@@ -260,6 +263,8 @@ $('down').addEventListener('click', () => step(-1));
 
 // Tastiera / telecomandi Bluetooth che inviano frecce o pagina su/giù
 const keyDir = (k) => (['ArrowRight', 'ArrowUp', 'PageUp', '+', '=', ' ', 'd', 'D'].includes(k) ? 1 : ['ArrowLeft', 'ArrowDown', 'PageDown', '-', 'a', 'A'].includes(k) ? -1 : 0);
+// nei menu le frecce verticali seguono lo schermo: Su = elemento precedente, Giù = successivo
+const navKeyDir = (k) => (['ArrowUp', 'PageUp'].includes(k) ? -1 : ['ArrowDown', 'PageDown'].includes(k) ? 1 : keyDir(k));
 window.addEventListener('keyup', (e) => { clickNav.sync(); if (clickNav.active && keyDir(e.key)) { clickNav.hold(0); return; } if (activeGame?.active && keyDir(e.key)) activeGame.hold?.(0); });
 window.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') { if (e.key === 'Escape') e.target.blur(); return; }
@@ -267,7 +272,7 @@ window.addEventListener('keydown', (e) => {
   // stesse regole del Click: frecce = + / −, Invio = tieni +, Esc = tieni − (indietro, o menu Click se si pedala)
   if (clickNav.active && e.key === 'Enter') { e.preventDefault(); if (!e.repeat) clickNav.select(); return; }
   if (e.key === 'Escape' && (clickNav.active || (playingNow() && !activeGame?.active))) { e.preventDefault(); clickNav.back(); return; }
-  if (clickNav.active && keyDir(e.key) && e.key !== ' ') { e.preventDefault(); if (!e.repeat) clickNav.hold(keyDir(e.key)); return; }
+  if (clickNav.active && keyDir(e.key) && e.key !== ' ') { e.preventDefault(); if (!e.repeat) clickNav.hold(navKeyDir(e.key)); return; }
   if (activeGame?.active) {
     const d = keyDir(e.key);
     if (d) { e.preventDefault(); if (!e.repeat) { activeGame.input(d); activeGame.hold?.(d); } }

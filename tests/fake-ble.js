@@ -99,6 +99,7 @@
   const zAsync = new Char(Z_ASYNC, { notify: true });
   const zTx = new Char(Z_TX, { notify: true });
   const zRx = new Char(Z_RX, {}, (bytes) => {
+    state.rideOn = (state.rideOn || 0) + 1;
     if (String.fromCharCode(...bytes.slice(0, 6)) === 'RideOn') setTimeout(() => zTx.push(Array.from(bytes)), 5);
   });
   const zwift = new Service(ZWIFT, [zAsync, zTx, zRx]);
@@ -113,7 +114,8 @@
     if (kind === 'csc') return mk('fake-csc', 'Fake RPM Sensor', [cscSvc]);
     if (kind === 'cps') return mk('fake-cps', 'Fake Power Pedals', [cpsSvc]);
     if (kind === 'cps-csc') return mk('fake-cpsc', 'Fake Power Meter', [cpsSvc, cscSvc]);
-    state.trainer = mk('fake-trainer', 'Van Rysel D100 (finto)', [ftms]);
+    // rullo "Zwift Ready": oltre a FTMS espone il servizio Zwift (cambio virtuale); resta un rullo, non un telecomando
+    state.trainer = kind === 'trainer-zwift' ? mk('fake-trainer-z', 'Van Rysel D100 Zwift (finto)', [ftms, zwift]) : mk('fake-trainer', 'Van Rysel D100 (finto)', [ftms]);
     if (!state.timer) state.timer = setInterval(() => { if (state.trainer?.gatt.connected) { state.power += 0; sendBikeData(); } }, 250);
     return state.trainer;
   };
@@ -125,6 +127,12 @@
     /** Preme e rilascia il pulsante "+" (bit 12) o "−" (bit 8) del Click v2. */
     async press(dir) {
       const bit = dir > 0 ? 12 : 8;
+      zAsync.push(rideMsg(RELEASED));
+      zAsync.push(rideMsg(RELEASED & ~(1 << bit)));
+      zAsync.push(rideMsg(RELEASED));
+    },
+    /** Preme e rilascia un tasto qualsiasi del Click v2 per numero di bit (1 = Su, 3 = Giù, 0 = Sinistra, 2 = Destra, 4 = A, 5 = B). */
+    async pressBit(bit) {
       zAsync.push(rideMsg(RELEASED));
       zAsync.push(rideMsg(RELEASED & ~(1 << bit)));
       zAsync.push(rideMsg(RELEASED));

@@ -135,6 +135,29 @@ test('tastiera: frecce, Invio ed Esc seguono le stesse regole', async ({ page })
   await expect(page.locator('#settingsSheet')).toBeHidden();
 });
 
+test('frecce del Click v2 e della tastiera: Giù va avanti, Su torna indietro; A sceglie, B torna', async ({ page }) => {
+  await expect(page.locator('.cn-focus')).toBeVisible();
+  const idx = () => page.evaluate(() => { const all = [...document.querySelectorAll('button, a[href], input, select, summary, label')]; return all.indexOf(document.querySelector('.cn-focus')); });
+  const bit = async (b) => { await page.evaluate((x) => window.__fakeBle.pressBit(x), b); await page.waitForTimeout(80); };
+  const start = await idx();
+  await bit(3); const down = await idx(); // Giù
+  expect(down, 'Giù = elemento successivo').toBeGreaterThan(start);
+  await bit(1); expect(await idx(), 'Su = elemento precedente').toBe(start); // Su
+  await bit(2); expect(await idx(), 'Destra = successivo').toBe(down);
+  await bit(0); expect(await idx(), 'Sinistra = precedente').toBe(start);
+  await page.keyboard.press('ArrowDown'); expect(await idx(), 'tastiera: freccia giù = successivo').toBe(down);
+  await page.keyboard.press('ArrowUp'); expect(await idx(), 'tastiera: freccia su = precedente').toBe(start);
+  // + e − restano come prima: + avanti, − indietro
+  await press(page, +1); expect(await idx()).toBe(down);
+  await press(page, -1); expect(await idx()).toBe(start);
+  // A sceglie subito, B torna indietro
+  await goTo(page, '#openSettings');
+  await bit(4);
+  await expect(page.locator('#settingsSheet')).toBeVisible();
+  await bit(5);
+  await expect(page.locator('#settingsSheet')).toBeHidden();
+});
+
 test('dispositivi: il pannello si apre e "Aggiungi dispositivo" si raggiunge solo col Click', async ({ page }) => {
   await goTo(page, '#deviceBar');
   await hold(page, +1);
