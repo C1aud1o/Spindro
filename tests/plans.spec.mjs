@@ -93,7 +93,7 @@ test.describe('interfaccia', () => {
     await page.click('[data-close="workoutSheet"]');
     const card = page.locator('#planCard');
     await expect(card).toBeVisible();
-    await expect(card).toContainText('Oggi: Giro facile');
+    await expect(card).toContainText('Giro facile');
     await expect(card).toContainText('Settimana 1 di 3');
     await expect(card.locator('.pl-week li')).toHaveCount(3);
     await card.locator('[data-pl-start]').click();

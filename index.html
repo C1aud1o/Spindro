@@ -13,7 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,700;1,800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body data-mode="gears">
+<body data-mode="erg">
   <header class="top">
     <h1 class="wordmark">Spin<b>dro</b><span id="betaBadge" class="beta-badge" hidden>BETA</span></h1>
     <span class="top-actions">
@@ -26,16 +26,13 @@
   <main>
     <!-- stato dei dispositivi: una riga sola che apre il pannello "Dispositivi" -->
     <button id="deviceBar" class="device-bar" data-i18n-attr="aria-label:devices.open">
-      <span class="dv" id="dvTrainer"><i></i><span class="dv-l" data-i18n="home.trainer"></span><span id="trainerStatus" class="dv-s s-state" data-i18n="home.status.none"></span></span>
-      <span class="dv" id="dvClick"><i></i><span class="dv-l">Click</span><span id="clickStatus" class="dv-s s-state" data-i18n="home.status.none"></span></span>
-      <span class="dv" id="dvHr"><i></i><span class="dv-l" data-i18n="home.hr"></span><span id="hrStatus" class="dv-s s-state" data-i18n="home.status.none"></span></span>
-      <span class="dv dv-extra" id="dvExtra" hidden><i></i><span class="dv-l" data-i18n="devices.sensors"></span><span id="extraStatus" class="dv-s s-state"></span></span>
+      <span class="dv" id="dvTrainer"><svg class="dv-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="2.2" /><path d="M12 3.5v4M12 16.5v4" /></svg><span class="dv-l" data-i18n="home.trainer"></span><span id="trainerStatus" class="dv-s s-state" data-i18n="home.status.none"></span></span>
+      <!-- Zwift Click: corpo tondo con i due tasti, − a sinistra e + a destra (nessun marchio) -->
+      <span class="dv" id="dvClick"><svg class="dv-ico dv-click" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" /><path class="seam" d="M12 4.5v15" /><path d="M5.8 12h3.9" /><path d="M14.3 12h3.9M16.25 10v4" /></svg><span class="dv-l">Click</span><span id="clickStatus" class="dv-s s-state" data-i18n="home.status.none"></span></span>
+      <span class="dv" id="dvHr"><svg class="dv-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5S3.5 15.4 3.5 9.2A4.7 4.7 0 0 1 12 6.6a4.7 4.7 0 0 1 8.5 2.6c0 6.2-8.5 11.3-8.5 11.3z" /></svg><span class="dv-l" data-i18n="home.hr"></span><span id="hrStatus" class="dv-s s-state" data-i18n="home.status.none"></span></span>
+      <span class="dv dv-extra" id="dvExtra" hidden><svg class="dv-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M6.5 6.5a8 8 0 0 0 0 11M17.5 6.5a8 8 0 0 1 0 11" /></svg><span class="dv-l" data-i18n="devices.sensors"></span><span id="extraStatus" class="dv-s s-state"></span></span>
       <svg class="dv-go" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
     </button>
-    <div id="reportHint" class="hint-box" hidden>
-      <p id="reportHintText"></p>
-      <div class="row2"><button id="reportHintGo" class="ghost" data-i18n="trainerReport.button"></button><button id="reportHintLater" class="ghost" data-i18n="trainerReport.later"></button></div>
-    </div>
     <p id="unsupported" class="warn" hidden data-i18n-html="home.unsupported"></p>
     <div id="connectHelp" class="hint-box connect-help" hidden role="alert">
       <b data-i18n="connectHelp.title"></b>
@@ -48,29 +45,103 @@
       <div class="row2"><button id="connectHelpRetry" class="ghost" data-i18n="connectHelp.retry"></button><button id="connectHelpReport" class="ghost" data-i18n="trainerReport.button"></button></div>
     </div>
 
-    <!-- stato vuoto: benvenuto (utente nuovo) o ultimo allenamento (utente che torna) -->
+    <!-- stato vuoto: benvenuto (utente nuovo) o riga "bentornato" (utente che torna, rullo non collegato) -->
     <section id="welcome" class="card welcome" hidden></section>
-    <nav id="quickPick" class="quick-pick" data-i18n-attr="aria-label:quick.label">
-      <button id="openWorkouts" class="qp qp-train"><img class="ico" src="assets/icons/workouts.webp" width="256" height="256" alt="" decoding="async" aria-hidden="true"><span class="qp-text"><b data-i18n="quick.workouts"></b><small data-i18n="quick.workoutsSub"></small></span><svg class="qp-go" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg></button>
-      <button id="openGame" class="qp qp-play"><img class="ico" src="assets/icons/games.webp" width="256" height="256" alt="" decoding="async" aria-hidden="true"><span class="qp-text"><b data-i18n="nav.games"></b><small data-i18n="quick.gamesSub"></small></span><svg class="qp-go" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg></button>
-      <button id="openHistoryCard" class="qp qp-hist" data-open="history"><img class="ico" src="assets/icons/trophy.webp" width="256" height="256" alt="" decoding="async" aria-hidden="true"><span class="qp-text"><b data-i18n="quick.history"></b><small data-i18n="quick.historySub"></small></span><svg class="qp-go" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg></button>
-    </nav>
-    <section id="planCard" class="card plan-card" hidden></section>
-    <section id="challengeCard" class="card challenges" hidden></section>
-    <section id="garminBanner" class="card banner" hidden></section>
 
-    <section class="card readout" data-i18n-attr="aria-label:home.live">
+    <div class="stage">
+    <!-- UNA scheda principale: l'allenamento del piano di oggi oppure il giro libero. Durante l'uscita diventa il cruscotto. -->
+    <section id="today" class="card today" data-i18n-attr="aria-label:today.title">
+      <h2 class="label today-label"><span data-i18n="today.title"></span></h2>
+      <div id="planCard" class="today-plan" hidden></div>
+      <div id="freeRide" class="today-free">
+        <h3 id="freeTitle" class="today-title"></h3>
+        <!-- il quadrante (valore + − / +) cambia posto: qui in home, accanto alla potenza nel cruscotto -->
+        <div id="dialSlot" class="dial-slot">
+          <div id="dial" class="dial">
+            <span id="controlUnit" class="label"></span>
+            <div class="dial-row">
+              <button id="down" class="step" data-i18n-attr="aria-label:ui.decrease"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /></svg></button>
+              <span id="controlValue" class="dial-value">12</span>
+              <button id="up" class="step" data-i18n-attr="aria-label:ui.increase"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14" /></svg></button>
+            </div>
+            <div id="cassette" class="cassette only-gears" aria-hidden="true"></div>
+            <span class="dial-target"><span data-i18n="home.toTrainer"></span> <b id="target">—</b></span>
+          </div>
+        </div>
+        <div id="startSlot" class="start-slot"><button id="startStop" class="cta" data-i18n="home.start"></button></div>
+        <button id="chooseWorkout" class="link-btn" data-i18n="today.choose"></button>
+      </div>
+    </section>
+
+    <nav id="quickPick" class="quick-pick" data-i18n-attr="aria-label:quick.label">
+      <button id="openWorkouts" class="qp qp-train"><img class="ico" src="assets/icons/workouts.webp" width="256" height="256" alt="" decoding="async" aria-hidden="true"><b data-i18n="quick.workouts"></b></button>
+      <button id="openGame" class="qp qp-play"><img class="ico" src="assets/icons/games.webp" width="256" height="256" alt="" decoding="async" aria-hidden="true"><b data-i18n="nav.games"></b></button>
+      <button id="openHistoryCard" class="qp qp-hist" data-open="history"><img class="ico" src="assets/icons/trophy.webp" width="256" height="256" alt="" decoding="async" aria-hidden="true"><b data-i18n="quick.history"></b></button>
+    </nav>
+
+    <!-- le altre modalità di pedalata: chiuse finché non servono (ERG è quella di partenza) -->
+    <details id="moreModes" class="card more-modes">
+      <summary><span data-i18n="modes.more"></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg></summary>
+      <div class="more-body">
+        <div class="modes" role="radiogroup" data-i18n-attr="aria-label:home.modes">
+          <label><input type="radio" name="mode" value="erg" checked><span>ERG</span></label>
+          <label><input type="radio" name="mode" value="gears"><span data-i18n="mode.gears"></span></label>
+          <label><input type="radio" name="mode" value="sim"><span data-i18n="mode.sim"></span></label>
+          <label><input type="radio" name="mode" value="resistance"><span data-i18n="mode.resistance"></span></label>
+        </div>
+        <div class="presets only-gears only-sim" role="group" data-i18n-attr="aria-label:home.grade">
+          <span class="label"><span data-i18n="home.grade"></span> <output id="gradeVal">0.0 %</output></span>
+          <div class="chips">
+            <button data-preset="grade" data-v="0"><span data-i18n="preset.grade.flat"></span><small>0%</small></button>
+            <button data-preset="grade" data-v="2"><span data-i18n="preset.grade.rolling"></span><small>2%</small></button>
+            <button data-preset="grade" data-v="4"><span data-i18n="preset.grade.climb"></span><small>4%</small></button>
+            <button data-preset="grade" data-v="6"><span data-i18n="preset.grade.wall"></span><small>6%</small></button>
+          </div>
+        </div>
+        <div class="presets only-erg" role="group" data-i18n-attr="aria-label:home.power">
+          <span class="label"><span data-i18n="home.power"></span> <output id="ergVal">150 W</output></span>
+          <div class="chips">
+            <button data-preset="erg" data-v="100"><span data-i18n="preset.erg.easy"></span><small>100 W</small></button>
+            <button data-preset="erg" data-v="150"><span data-i18n="preset.erg.medium"></span><small>150 W</small></button>
+            <button data-preset="erg" data-v="200"><span data-i18n="preset.erg.tempo"></span><small>200 W</small></button>
+            <button data-preset="erg" data-v="260"><span data-i18n="preset.erg.hard"></span><small>260 W</small></button>
+          </div>
+        </div>
+        <div class="presets only-resistance" role="group" data-i18n-attr="aria-label:home.resistance">
+          <span class="label"><span data-i18n="home.resistance"></span> <output id="resVal">30 %</output></span>
+          <div class="chips">
+            <button data-preset="resistance" data-v="15"><span data-i18n="preset.res.light"></span><small>15%</small></button>
+            <button data-preset="resistance" data-v="30"><span data-i18n="preset.res.medium"></span><small>30%</small></button>
+            <button data-preset="resistance" data-v="50"><span data-i18n="preset.res.hard"></span><small>50%</small></button>
+            <button data-preset="resistance" data-v="75"><span data-i18n="preset.res.max"></span><small>75%</small></button>
+          </div>
+        </div>
+        <input id="grade" type="hidden" value="0"><input id="erg" type="hidden" value="150"><input id="resistance" type="hidden" value="30">
+        <div class="only-gears autoshift">
+          <label class="switch"><input type="checkbox" id="autoShift"><span data-i18n="home.autoShift"></span></label>
+          <div class="chips" id="cadChips" hidden><button data-c="80">80 rpm</button><button data-c="85">85</button><button data-c="90">90</button><button data-c="95">95</button></div>
+        </div>
+        <p class="note only-gears" data-i18n-html="home.gearNote"></p>
+      </div>
+    </details>
+
+    <!-- lettura dal vivo: piccola in home, grande nel cruscotto -->
+    <section id="readout" class="card readout" data-i18n-attr="aria-label:home.live">
       <div class="power">
         <span class="label" data-i18n="home.power"></span>
         <span id="zone" class="zone">—</span>
         <span class="power-value"><span id="power">0</span><small>W</small></span>
+        <div id="targetSlot" class="target-slot"></div>
         <div class="zonebar" aria-hidden="true"><i id="zoneFill"></i></div>
       </div>
       <dl class="metrics">
-        <div><dt data-i18n="home.cadence"></dt><dd><span id="cadence">0</span><small>rpm</small></dd></div>
-        <div><dt data-i18n="home.speed"></dt><dd><span id="speed">0.0</span><small>km/h</small></dd></div>
-        <div><dt><span data-i18n="home.heartRate"></span> <span id="hrZone" class="hr-zone"></span></dt><dd><span id="hr">--</span><small>bpm</small></dd></div>
+        <div class="m-cad"><dt data-i18n="home.cadence"></dt><dd><span id="cadence">0</span><small>rpm</small></dd></div>
+        <div class="m-speed"><dt data-i18n="home.speed"></dt><dd><span id="speed">0.0</span><small>km/h</small></dd></div>
+        <div class="m-hr"><dt><span data-i18n="home.heartRate"></span> <span id="hrZone" class="hr-zone"></span></dt><dd><span id="hr">--</span><small>bpm</small></dd></div>
+        <div class="m-time"><dt data-i18n="home.time"></dt><dd id="time">0:00</dd></div>
       </dl>
+      <!-- altri numeri dell'uscita: restano aggiornati per il riepilogo finale, ma non si mostrano -->
+      <dl class="session-dl" hidden><div><dt>km</dt><dd id="distance">0.00</dd></div><div><dt data-i18n="home.avgPower"></dt><dd id="avgPower">0</dd></div><div><dt>kJ</dt><dd id="kj">0</dd></div></dl>
     </section>
 
     <section id="routeCard" class="card workout" hidden aria-live="polite">
@@ -85,82 +156,47 @@
     <section id="workoutCard" class="card workout" hidden aria-live="polite">
       <div class="wk-head"><span id="wkName" class="wk-name"></span><span id="wkTotal" class="wk-total"></span></div>
       <div class="wk-main">
-        <div><span class="wk-label" id="wkStep"></span><span class="wk-target"><b id="wkTarget">0</b> W</span></div>
+        <div><span class="wk-target"><b id="wkStep" class="wk-step"></b></span></div>
         <div class="wk-left"><span class="wk-label" data-i18n="workout.left"></span><b id="wkLeft">0:00</b></div>
       </div>
+      <b id="wkTarget" hidden>0</b>
       <canvas id="wkProfile" class="wk-profile"></canvas>
-      <p class="fine" id="wkNext"></p>
+      <p class="fine wk-next" id="wkNext"></p>
       <div class="wk-actions"><span class="fine" id="wkBias"></span><button id="wkSkip" class="ghost" data-i18n="workout.skip"></button><button id="wkStop" class="ghost" data-i18n="workout.end"></button></div>
     </section>
-    <div class="modes" role="radiogroup" data-i18n-attr="aria-label:home.modes">
-      <label><input type="radio" name="mode" value="gears" checked><span data-i18n="mode.gears"></span></label>
-      <label><input type="radio" name="mode" value="erg"><span>ERG</span></label>
-      <label><input type="radio" name="mode" value="sim"><span data-i18n="mode.sim"></span></label>
-      <label><input type="radio" name="mode" value="resistance"><span data-i18n="mode.resistance"></span></label>
+
+    <!-- tasti del cruscotto (solo durante l'uscita): Pausa/Riprendi cambia posto con la scheda "Oggi" -->
+    <div id="rideActions" class="ride-actions" role="group" data-i18n-attr="aria-label:home.controls">
+      <div id="rideStartSlot" class="ride-start-slot"></div>
+      <button id="finishRide" class="act" disabled data-i18n="ride.end"></button>
+      <button id="rideGames" class="act" data-i18n="nav.games"></button>
+      <button id="rideMode" class="act act-mode" data-i18n-attr="aria-label:home.modes"><span id="rideModeLabel"></span></button>
+    </div>
     </div>
 
-    <section class="card control">
-      <div class="dial">
-        <span id="controlUnit" class="label"></span>
-        <span id="controlValue" class="dial-value">12</span>
-        <div id="cassette" class="cassette only-gears" aria-hidden="true"></div>
-        <span class="dial-target"><span data-i18n="home.toTrainer"></span> <b id="target">—</b></span>
-      </div>
-      <div class="presets only-gears only-sim" role="group" data-i18n-attr="aria-label:home.grade">
-        <span class="label"><span data-i18n="home.grade"></span> <output id="gradeVal">0.0 %</output></span>
-        <div class="chips">
-          <button data-preset="grade" data-v="0"><span data-i18n="preset.grade.flat"></span><small>0%</small></button>
-          <button data-preset="grade" data-v="2"><span data-i18n="preset.grade.rolling"></span><small>2%</small></button>
-          <button data-preset="grade" data-v="4"><span data-i18n="preset.grade.climb"></span><small>4%</small></button>
-          <button data-preset="grade" data-v="6"><span data-i18n="preset.grade.wall"></span><small>6%</small></button>
-        </div>
-      </div>
-      <div class="presets only-erg" role="group" data-i18n-attr="aria-label:home.power">
-        <span class="label"><span data-i18n="home.power"></span> <output id="ergVal">150 W</output></span>
-        <div class="chips">
-          <button data-preset="erg" data-v="100"><span data-i18n="preset.erg.easy"></span><small>100 W</small></button>
-          <button data-preset="erg" data-v="150"><span data-i18n="preset.erg.medium"></span><small>150 W</small></button>
-          <button data-preset="erg" data-v="200"><span data-i18n="preset.erg.tempo"></span><small>200 W</small></button>
-          <button data-preset="erg" data-v="260"><span data-i18n="preset.erg.hard"></span><small>260 W</small></button>
-        </div>
-      </div>
-      <div class="presets only-resistance" role="group" data-i18n-attr="aria-label:home.resistance">
-        <span class="label"><span data-i18n="home.resistance"></span> <output id="resVal">30 %</output></span>
-        <div class="chips">
-          <button data-preset="resistance" data-v="15"><span data-i18n="preset.res.light"></span><small>15%</small></button>
-          <button data-preset="resistance" data-v="30"><span data-i18n="preset.res.medium"></span><small>30%</small></button>
-          <button data-preset="resistance" data-v="50"><span data-i18n="preset.res.hard"></span><small>50%</small></button>
-          <button data-preset="resistance" data-v="75"><span data-i18n="preset.res.max"></span><small>75%</small></button>
-        </div>
-      </div>
-      <input id="grade" type="hidden" value="0"><input id="erg" type="hidden" value="150"><input id="resistance" type="hidden" value="30">
-      <div class="only-gears autoshift">
-        <label class="switch"><input type="checkbox" id="autoShift"><span data-i18n="home.autoShift"></span></label>
-        <div class="chips" id="cadChips" hidden><button data-c="80">80 rpm</button><button data-c="85">85</button><button data-c="90">90</button><button data-c="95">95</button></div>
-      </div>
-      <p class="note only-gears" data-i18n-html="home.gearNote"></p>
-    </section>
-
-    <section class="card session" data-i18n-attr="aria-label:home.session">
-      <dl class="session-dl">
-      <div><dt class="label" data-i18n="home.time"></dt><dd id="time">0:00</dd></div>
-      <div><dt class="label">km</dt><dd id="distance">0.00</dd></div>
-      <div><dt class="label" data-i18n="home.avgPower"></dt><dd id="avgPower">0</dd></div>
-      <div><dt class="label">kJ</dt><dd id="kj">0</dd></div>
-      </dl>
-      <button id="finishRide" class="finish-link" disabled data-i18n="home.finish"></button>
-    </section>
+    <section id="challengeCard" class="card challenges" hidden></section>
+    <section id="garminBanner" class="card banner" hidden></section>
+    <div id="reportHint" class="hint-box" hidden>
+      <p id="reportHintText"></p>
+      <div class="row2"><button id="reportHintGo" class="ghost" data-i18n="trainerReport.button"></button><button id="reportHintLater" class="ghost" data-i18n="trainerReport.later"></button></div>
+    </div>
     <p class="fine desk-only" data-i18n-html="home.keyboard"></p>
   </main>
 
-  <!-- barra nella zona del pollice -->
-  <nav class="thumbbar" data-i18n-attr="aria-label:home.controls">
-    <button id="down" class="key" data-i18n-attr="aria-label:ui.decrease"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /></svg></button>
-    <button id="startStop" class="cta" data-i18n="home.start"></button>
-    <button id="up" class="key" data-i18n-attr="aria-label:ui.increase"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14" /></svg></button>
-  </nav>
-
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- Modalità di pedalata durante l'uscita -->
+  <div id="modeSheet" class="sheet" hidden>
+    <div class="sheet-body" role="dialog" aria-modal="true" aria-labelledby="modeTitle">
+      <div class="sheet-head"><h2 id="modeTitle" data-i18n="home.modes"></h2><button class="close" data-close="modeSheet" data-i18n-attr="aria-label:ui.close">×</button></div>
+      <div id="modeList" class="mode-list">
+        <button class="ghost" data-pick="erg">ERG</button>
+        <button class="ghost" data-pick="gears" data-i18n="mode.gears"></button>
+        <button class="ghost" data-pick="sim" data-i18n="mode.sim"></button>
+        <button class="ghost" data-pick="resistance" data-i18n="mode.resistance"></button>
+      </div>
+    </div>
+  </div>
 
   <!-- Fine allenamento: il momento da ricordare -->
   <div id="finishSheet" class="sheet" hidden>
@@ -195,6 +231,9 @@
       <div class="sheet-head"><h2 id="workoutTitle" data-i18n="workouts.title"></h2><button class="close" data-close="workoutSheet" data-i18n-attr="aria-label:ui.close">×</button></div>
       <div class="chips wk-tabs" role="tablist"><button id="tabWk" class="on" role="tab" aria-selected="true" data-i18n="workouts.tab"></button><button id="tabPlans" role="tab" aria-selected="false" data-i18n="plans.tab"></button></div>
       <div id="wkPaneMain">
+      <h3 class="wk-h3" data-i18n="workouts.heading"></h3>
+      <p class="fine wk-intro" data-i18n-html="workouts.intro"></p>
+      <div id="workoutList" class="wk-list"></div>
       <section class="rt-pick">
         <h3 data-i18n="routes.title"></h3>
         <p class="fine" data-i18n="routes.intro"></p>
@@ -203,9 +242,6 @@
         <p class="fine" data-i18n="routes.realism"></p>
         <div class="chips rt-real" id="routeReal"><button data-r="0.5">50%</button><button data-r="0.75">75%</button><button data-r="1">100%</button></div>
       </section>
-      <h3 class="wk-h3" data-i18n="workouts.heading"></h3>
-      <p class="fine wk-intro" data-i18n-html="workouts.intro"></p>
-      <div id="workoutList" class="wk-list"></div>
       </div>
       <div id="wkPanePlans" class="pl-pane" hidden></div>
     </div>
@@ -385,6 +421,8 @@
     <div class="game-bar">
       <strong id="gameTitle" data-i18n="games.title"></strong>
       <span id="gameHelp" class="game-help"></span>
+      <!-- allenamento in corso sotto al gioco: passo, watt e tempo che restano (prende il posto della guida) -->
+      <div id="gameStrip" class="game-strip" hidden><span id="gsLabel"></span><b id="gsTail"></b><i class="gs-bar" aria-hidden="true"><u id="gsFill"></u></i></div>
       <button id="muteGame" class="small" data-i18n-attr="aria-label:games.audio"></button>
       <button id="closeGame" class="small" data-i18n="games.exit"></button>
     </div>

@@ -4,6 +4,7 @@ import { t, fmtDate } from './i18n.js';
 import { ask } from './dialog.js';
 import { LocalNotifications } from './native.js';
 import * as P from './plans.js';
+import { drawProfile, duration } from './workouts.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -24,36 +25,42 @@ const dayLabel = (day) => fmtDate(P.dayDate(day), { weekday: 'short', day: 'nume
 const when = (s) => (s.status === 'today' ? t('plans.today') : s.status === 'late' ? t('plans.late', { day: dayLabel(s.day) }) : dayLabel(s.day));
 
 function setPlan(state) {
-  P.savePlan(state); ctx.onChange?.(); syncReminders(); renderHome(); if (!$('wkPanePlans').hidden) renderPane();
+  P.savePlan(state); ctx.onChange?.(); syncReminders(); ctx.refresh?.(); if (!$('wkPanePlans').hidden) renderPane();
 }
 
-// ---------- card nella home ----------
+// ---------- scheda "Oggi" nella home ----------
+// Il piano abita nella scheda principale della home: se oggi c'è un allenamento, nome, durata, profilo e due tasti
+// (Avvia / Gioca); altrimenti solo una riga di stato e la scheda mostra il giro libero. Ritorna true se c'è un allenamento da fare.
 const ICON = { done: '✓', skipped: '⏭', missed: '✗', today: '●', late: '●', future: '○' };
 export function renderHome(riding = false) {
-  const el = $('planCard'); if (!el) return;
+  const el = $('planCard'); if (!el) return false;
   const state = P.loadPlan();
-  if (!state || riding) { el.hidden = true; return; }
+  if (!state || riding) { el.hidden = true; return false; }
   const pr = P.progress(state, today()); const plan = P.planById(state.id);
   el.hidden = false;
   const due = P.due(state, today());
+  const s = pr.started && !pr.finished ? due[0] : null; const w = s ? wkOf(s.wk) : null;
   let body;
   if (!pr.started) body = `<p class="pl-today">${t('plans.startsOn', { day: dayLabel(state.start) })}</p>`;
   else if (pr.finished) body = `<p class="pl-today">${t('plans.finished')}</p><button class="ghost" id="plDrop">${t('plans.close')}</button>`;
-  else if (!due.length) {
+  else if (!w) {
     const n = P.nextSession(state, today());
     body = `<p class="pl-today">${t('plans.rest')}${n ? ` ${t('plans.next', { name: esc(wkName(n.wk)), day: dayLabel(n.day) })}` : ''}</p>`;
   } else {
-    body = `<ul class="pl-due">${due.map((s, k) => `<li data-key="${s.key}">
-      <span class="pl-when">${k === 0 && s.status === 'today' ? t('plans.todayIs', { name: `<b>${esc(wkName(s.wk))}</b>` }) : `${when(s)}: <b>${esc(wkName(s.wk))}</b>`}</span>
-      <small>${esc(wkOf(s.wk)?.tag || '')}</small>
-      <span class="pl-act"><button class="cta-sm" data-pl-start="${s.wk}" data-key="${s.key}">${t('plans.start')}</button><button class="link" data-pl-move="${s.key}">${t('plans.moveTomorrow')}</button><button class="link" data-pl-skip="${s.key}">${t('plans.skip')}</button></span></li>`).join('')}</ul>`;
+    const mins = Math.round(duration(w) / 60);
+    body = `<h3 class="today-title" data-key="${s.key}">${esc(w.name)}</h3>
+      <p class="today-meta">${s.status === 'today' ? '' : `<b>${esc(when(s))}</b> · `}${w.tag ? esc(w.tag) : t('today.minutes', { n: mins })}</p>
+      <canvas class="today-profile" data-prof="${w.id}" aria-hidden="true"></canvas>
+      <div class="today-actions"><button class="cta" data-pl-start="${w.id}" data-key="${s.key}">${t('today.startWorkout')}</button><button class="ghost" data-pl-game="${w.id}" data-key="${s.key}">${t('today.playGame')}</button></div>
+      <span class="pl-act"><button class="link" data-pl-move="${s.key}">${t('plans.moveTomorrow')}</button><button class="link" data-pl-skip="${s.key}">${t('plans.skip')}</button></span>`;
   }
   const label = { done: t('plans.st.done'), skipped: t('plans.st.skipped'), missed: t('plans.st.missed'), today: t('plans.st.today'), late: t('plans.st.late'), future: t('plans.st.future') };
-  el.innerHTML = `<h2>${t('plans.homeTitle', { name: esc(t(`plans.${plan.id}.name`)) })}</h2>
-    <small class="pl-sub">${pr.started ? t('plans.progress', { week: pr.week, weeks: pr.weeks, done: pr.done, total: pr.total }) : ''}${pr.deload ? ` · ${t('plans.deload')}` : ''}</small>
+  el.innerHTML = `<small class="pl-sub">${esc(t(`plans.${plan.id}.name`))}${pr.started ? ` · ${t('plans.progress', { week: pr.week, weeks: pr.weeks, done: pr.done, total: pr.total })}` : ''}${pr.deload ? ` · ${t('plans.deload')}` : ''}</small>
     ${body}
-    ${pr.started ? `<ul class="pl-week" aria-label="${t('plans.thisWeek')}">${pr.inWeek.map((s) => `<li class="${s.status}" aria-label="${esc(`${wkName(s.wk)}, ${dayLabel(s.day)}: ${label[s.status]}`)}"><span class="pl-ico" aria-hidden="true">${ICON[s.status]}</span><span>${dayLabel(s.day)}</span><small>${esc(wkName(s.wk))}</small></li>`).join('')}</ul>` : ''}`;
-  el.querySelectorAll('[data-pl-start]').forEach((b) => b.addEventListener('click', () => { const w = wkOf(b.dataset.plStart); if (w) ctx.startWorkout(w); }));
+    ${pr.started ? `<ul class="pl-week" aria-label="${t('plans.thisWeek')}">${pr.inWeek.map((x) => `<li class="${x.status}" aria-label="${esc(`${wkName(x.wk)}, ${dayLabel(x.day)}: ${label[x.status]}`)}"><span class="pl-ico" aria-hidden="true">${ICON[x.status]}</span><span>${dayLabel(x.day)}</span><small>${esc(wkName(x.wk))}</small></li>`).join('')}</ul>` : ''}`;
+  if (w) requestAnimationFrame(() => { const c = el.querySelector('.today-profile'); if (c && w.steps) drawProfile(c, w, ctx.ftp ? ctx.ftp() : 200); });
+  el.querySelectorAll('[data-pl-start]').forEach((b) => b.addEventListener('click', () => { const x = wkOf(b.dataset.plStart); if (x) ctx.startWorkout(x); }));
+  el.querySelectorAll('[data-pl-game]').forEach((b) => b.addEventListener('click', () => { const x = wkOf(b.dataset.plGame); if (x) ctx.startWorkout(x, { game: true }); }));
   el.querySelectorAll('[data-pl-move]').forEach((b) => b.addEventListener('click', () => {
     const st = P.loadPlan(); setPlan(P.move(st, b.dataset.plMove, today() + 1, today())); ctx.toast(t('plans.moved'));
   }));
@@ -62,6 +69,7 @@ export function renderHome(riding = false) {
     setPlan(P.skip(P.loadPlan(), b.dataset.plSkip)); ctx.toast(t('plans.skipped'));
   }));
   $('plDrop')?.addEventListener('click', () => setPlan(null));
+  return !!w;
 }
 
 // ---------- fine di un allenamento ----------
@@ -69,7 +77,7 @@ export function renderHome(riding = false) {
 export function onWorkoutDone(workoutId) {
   const state = P.loadPlan(); if (!state) return null;
   const r = P.complete(state, workoutId, today()); if (!r) return null;
-  P.savePlan(r.state); ctx.onChange?.(); syncReminders(); renderHome(); if (!$('wkPanePlans').hidden) renderPane();
+  P.savePlan(r.state); ctx.onChange?.(); syncReminders(); ctx.refresh?.(); if (!$('wkPanePlans').hidden) renderPane();
   const pr = P.progress(r.state, today());
   ctx.toast(pr.finished ? t('plans.doneAll') : pr.weekDone === pr.weekTotal ? t('plans.doneWeek', { week: pr.week, weeks: pr.weeks }) : t('plans.doneOne', { done: pr.done, total: pr.total, week: pr.week, weeks: pr.weeks }));
   return r.session;

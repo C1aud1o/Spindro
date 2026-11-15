@@ -8,12 +8,12 @@ const FAKE_BLE = fileURLToPath(new URL('./fake-ble.js', import.meta.url));
 test('in ERG la potenza richiesta viene rinviata periodicamente', async ({ page }) => {
   const errors = []; page.on('pageerror', (e) => errors.push(e.message));
   await page.clock.install();
-  await page.addInitScript(() => { localStorage.setItem('lang', 'it'); localStorage.setItem('analytics', '0'); localStorage.setItem('ftp', '200'); });
+  await page.addInitScript(() => { localStorage.setItem('lang', 'it'); localStorage.setItem('analytics', '0'); localStorage.setItem('ftp', '200'); localStorage.setItem('ergW', '150'); });
   await page.addInitScript({ path: FAKE_BLE });
   await page.goto('/index.html');
   await page.evaluate(async () => { while (!window.rfDevices) await new Promise((r) => setTimeout(r, 50)); return window.rfDevices.add(); });
   await expect(page.locator('#trainerStatus')).toContainText('FTMS');
-  await page.locator('label:has(input[name=mode][value=erg])').click();
+  // ERG è la modalità di partenza
   await page.clock.runFor(2000);
   const before = await page.evaluate(() => window.__fakeBle.state.controlLog.filter((b) => b[0] === 0x05).length);
   await page.clock.runFor(10000); // 10 s con la stessa potenza
