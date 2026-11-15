@@ -16,7 +16,7 @@ test.afterEach(async ({ page }) => { expect(page.errors, 'errori JavaScript non 
 async function boot(page, { model = 'click', proto = null, seen = true, lang = 'it', wake = proto !== 'v1' } = {}) {
   await page.addInitScript(([sn, lg]) => {
     try {
-      if (!localStorage.getItem('__seeded')) { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('ftp', '200'); localStorage.setItem('mass', '80'); localStorage.setItem('gameQuality', 'low'); localStorage.setItem('autoPause', '0'); if (!sn) localStorage.setItem('clickCheckSeen', ''); }
+      if (!localStorage.getItem('__seeded')) { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('ftp', '200'); localStorage.setItem('mass', '80'); localStorage.setItem('gameQuality', 'low'); localStorage.setItem('mode', 'gears'); localStorage.setItem('autoPause', '0'); if (!sn) localStorage.setItem('clickCheckSeen', ''); }
       localStorage.setItem('lang', localStorage.getItem('lang') || lg);
     } catch { /* niente storage */ }
   }, [seen, lang]);
@@ -187,7 +187,7 @@ test.describe('navigazione spaziale', () => {
     await page.keyboard.press('ArrowUp');
     const f2 = await focus(page); expect(f2.cy).toBeLessThanOrEqual(f1.cy);
     let f = await focus(page);
-    for (let i = 0; i < 60 && f.id !== 'openSettings'; i++) { await page.keyboard.press(i % 3 === 2 ? 'ArrowRight' : 'ArrowDown'); f = await focus(page); }
+    for (let i = 0; i < 60 && f.id !== 'openSettings'; i++) { await page.keyboard.press(i % 3 === 2 ? 'ArrowRight' : 'ArrowUp'); f = await focus(page); } // le impostazioni stanno in alto a destra
     expect(f.id).toBe('openSettings');
     await page.keyboard.press('Enter');
     await expect(page.locator('#settingsSheet')).toBeVisible();
@@ -240,7 +240,7 @@ test.describe('pedalando e giochi (controller con le frecce)', () => {
     await A(page);
     await expect(page.locator('#gameMenu')).toBeVisible();
     await A(page); // primo gioco
-    await expect.poll(() => page.evaluate(() => window.__game?.state), { timeout: 120_000 }).toBe('select');
+    await expect.poll(() => page.evaluate(() => window.__game?.state), { timeout: 120_000 }).toBe('menu');
     await expect(page.locator('.cn-focus')).toHaveCount(0);
     const l = await legend(page);
     expect(l).toContain('gioca'); expect(l).toContain('B'); expect(l).not.toContain('tieni −');

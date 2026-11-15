@@ -4,7 +4,7 @@
 //   pressione breve −  → cambia la durata (5 / 10 / 20 min)
 //   pressione breve +  → cambia il livello (Facile / Normale / Difficile)
 //   pressione lunga +  → parte (≈0,6 s, barra che si riempie)
-//   rullo collegato: oltre 30 W per 2 s → parte
+//   rullo collegato: oltre 30 W per 6 s → parte (il conto riparte a ogni scelta)
 //   tocco: pillole e tasto VIA
 // Il gioco inoltra i suoi punti d'ingresso: input(dir) → menu.input(dir), hold(dir) → menu.hold(dir), e ogni fotogramma
 // menu.update(dt, { connected, power }) + menu.draw(ctx, W, H). Il menu non conosce il gioco: chiama `onStart(durIdx, level)`.
@@ -14,7 +14,7 @@ import { txt, panel, HUD, uiScale, fitText } from './hud.js';
 export const LENGTHS = [5, 10, 20]; // minuti
 export const LEVEL_KEYS = ['easy', 'normal', 'hard'];
 export const HOLD_START = 0.6; // s di + premuto per partire
-export const PEDAL_WATTS = 30; export const PEDAL_SECS = 2; // pedalare oltre 30 W per 2 s parte
+export const PEDAL_WATTS = 30; export const PEDAL_SECS = 6; // pedalare oltre 30 W per 6 s parte: c'è il tempo di scegliere, e ogni scelta fa ripartire il conto
 const SETTLE = 0.4; // s dall'apertura in cui i tasti non fanno nulla (evita avvii involontari)
 const clampI = (v, lo, hi) => Math.max(lo, Math.min(hi, v | 0));
 
@@ -62,8 +62,8 @@ export class GameMenu {
   reset() { this.age = 0; this.pend = null; this.hd = 0; this.ht = 0; this.fired = false; this.pedT = 0; this.started = false; }
   get fill() { return Math.max(this.hd > 0 && !this.fired ? Math.min(1, this.ht / HOLD_START) : 0, Math.min(1, this.pedT / PEDAL_SECS)); }
 
-  cycleLength() { this.durIdx = (this.durIdx + 1) % LENGTHS.length; this.sfx('select'); this.save(); }
-  cycleLevel() { this.level = (this.level + 1) % 3; this.sfx('select'); this.save(); }
+  cycleLength() { this.durIdx = (this.durIdx + 1) % LENGTHS.length; this.pedT = 0; this.sfx('select'); this.save(); }
+  cycleLevel() { this.level = (this.level + 1) % 3; this.pedT = 0; this.sfx('select'); this.save(); }
   start() { if (this.started || this.age < SETTLE || !this.ready()) return; this.started = true; this.save(); this.sfx('pickup'); this.onStart(this.durIdx, this.level); }
 
   // + / − (pressione, subito): la pressione breve agisce al rilascio; se hold() non arriva (prove, tastiere senza rilascio) agisce dopo 60 ms
@@ -86,7 +86,7 @@ export class GameMenu {
   tap(x, y) {
     if (this.age < SETTLE) return false;
     for (const z of this.zones) if (x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h) {
-      if (z.kind === 'len') { this.durIdx = z.i; this.sfx('select'); this.save(); } else if (z.kind === 'lvl') { this.level = z.i; this.sfx('select'); this.save(); } else if (z.kind === 'start') this.start();
+      if (z.kind === 'len') { this.durIdx = z.i; this.pedT = 0; this.sfx('select'); this.save(); } else if (z.kind === 'lvl') { this.level = z.i; this.pedT = 0; this.sfx('select'); this.save(); } else if (z.kind === 'start') this.start();
       return true;
     }
     return false;
