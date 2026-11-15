@@ -60,7 +60,7 @@ function history() {
 }
 const HISTORY = history();
 const seed = (lang, extra = {}) => ({
-  lang, analytics: '0', ftp: '220', mass: '72', hrMax: '188', weekGoal: '150', gameQuality: 'high', mode: 'erg',
+  lang, analytics: '0', safetyAck: '1', autoPause: '0', ftp: '220', mass: '72', hrMax: '188', weekGoal: '150', gameQuality: 'high', mode: 'erg',
   rideHistory: JSON.stringify(HISTORY), seenTrainers: JSON.stringify(['Van Rysel D100']), ...extra,
 });
 
@@ -175,7 +175,7 @@ const GAMES = {
     for (let i = 0; i < 40 && (await page.evaluate(() => window.__game.state)) !== 'race'; i++) await run(page, 0.5);
     await run(page, 150);
   } },
-  horde: { card: 'horde', async scene(page) { await startGame(page); await run(page, 70); } },
+  horde: { card: 'horde', async scene(page) { await startGame(page); await run(page, 25); } },
   gruppetto: { card: 'gruppetto', async scene(page) { await startGame(page); await run(page, 60); } },
   planata: { card: 'planata', async scene(page) { await startGame(page); await run(page, 40); } },
   mattoni: { card: 'mattoni', async scene(page) { await startGame(page); await run(page, 45); } },
@@ -184,7 +184,7 @@ const GAMES = {
 };
 for (const [id, G] of Object.entries(GAMES)) {
   SCREENS[id === 'menu' ? 'gamemenu' : `game-${id}`] = async (browser, lang) => {
-    const page = await connectedPage(browser, lang);
+    const page = await connectedPage(browser, lang, { extra: G.extra || {} });
     await ride(page, 252, 90, 32); await page.evaluate(() => { document.getElementById('openGame').click(); }); await sleep(500);
     await page.evaluate((c) => document.querySelector(`[data-game="${c}"]`).click(), G.card);
     await page.waitForFunction(() => window.__game?.state === 'menu', null, { timeout: 120000 });
@@ -202,6 +202,7 @@ try {
     let page;
     try {
       page = await SCREENS[name](browser, lang);
+      await page.evaluate(() => document.getElementById('toast')?.classList.remove('show')); await sleep(400); // no transient toasts in a screenshot
       const png = join(tmp, `${name}-${lang}.png`);
       await page.screenshot({ path: png });
       if (page.errors.length) console.warn(`  ! ${name}/${lang} JS errors: ${page.errors.join(' | ')}`);
