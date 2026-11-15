@@ -1,4 +1,4 @@
-// Horde Run (partita a piano di allenamento, bot a 4 livelli di potenza) e Gruppetto (nessuna sconfitta a 5 senza colpa).
+// Horde Run (partita a piano di allenamento, bot a 4 livelli di potenza). Slipstream ha il suo file: slip.spec.mjs.
 // I giochi si fanno avanzare a mano, a passi da 1/30 s, con un bot: così i test sono rapidi e ripetibili.
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
@@ -112,31 +112,4 @@ test('Horde Run: chi smette di pedalare va in pausa e non perde; il ciclista è 
   expect(r.frac, 'ciclista / altezza schermo').toBeGreaterThanOrEqual(0.14);
   expect(r.paused).toBe(true); expect(r.still, 'il tempo di gioco si ferma').toBe(true);
   expect(r.st).toBe('play'); expect(r.hp).toBeGreaterThan(0); expect(r.resumed, 'riprende appena si pedala').toBe(true);
-});
-
-test('Gruppetto: 10 ciclisti raccolti in linea retta e con curve dolci, senza perdere', async ({ page }) => {
-  await openGame(page, 'gruppetto');
-  const r = await page.evaluate(() => {
-    const g = window.__game; g.active = false; // si avanza a mano
-    g.reset?.(); g.begin();
-    g.kmh = 28; g.sprinting = false; g.held = 0;
-    const log = [];
-    for (let i = 0; i < 60 * 30 && g.state === 'play' && g.train.length < 10; i++) {
-      // se non c'è nessun ciclista da prendere vicino, ne mette uno 4 m davanti, nella direzione di marcia
-      if (!g.strays.some((s) => Math.hypot(s.x - g.x, s.z - g.z) < 6)) {
-        const x = g.x + Math.sin(g.h) * 4; const z = g.z + Math.cos(g.h) * 4;
-        const keep = g.strays.length; g.addStray(); const s = g.strays[keep];
-        s.x = x; s.z = z; s.cy.root.position.set(x, 0, z); s.flag.position.set(x, 0, z);
-      }
-      // curve dolci: zig-zag lento; vicino ai bordi torna verso il centro
-      const edge = g.half - 9;
-      if (Math.abs(g.x) > edge || Math.abs(g.z) > edge) g.hT = Math.atan2(-g.x, -g.z);
-      else g.hT = 0.5 * Math.sin(i / 90);
-      g.step(1 / 30);
-      if (i % 30 === 0) log.push(g.train.length);
-    }
-    return { state: g.state, n: g.train.length, why: g.why };
-  });
-  expect(r.state, `perso: ${r.why}`).toBe('play');
-  expect(r.n).toBe(10);
 });

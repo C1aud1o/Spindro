@@ -1,458 +1,737 @@
-// GRUPPETTO — raccogli i ciclisti rimasti indietro: si accodano alla tua scia e il gruppo si allunga.
-// Non urtare la staccionata né la coda del tuo gruppo. Più è lungo il gruppo, più sale la pendenza (tiri tu!).
-// + / − girano a destra / sinistra (tenuti premuti: curva continua). Sprint = punti doppi.
-// Grafica come Turbo Pedali (docs/giochi-stile.md): ciclisti Meshy con bici (Cyclist), campagna italiana con modelli Meshy a istanze.
-import * as THREE from 'three';
-import { Effects } from './kit3d.js';
+// SLIPSTREAM — in bici su una strada di campagna: raggiungi i corridori che scattano davanti a te e portali nella tua scia.
+// Il gruppo dietro di te è il punteggio. Ogni partita è un ALLENAMENTO (slip-plan.js): 5, 10 o 20 minuti in % della FTP.
+//  · TIENI (vento contro): chi è in scia resta solo se tieni i watt; intanto il prossimo corridore si avvicina davanti a te;
+//  · PONTE (sforzo): il corridore scatta, lo raggiungi entro N secondi; i watt chiudono la distanza (metri sulla barra);
+//  · VOLATA: un drappello davanti a te e il traguardo; a fine blocco e in finale;
+//  · RECUPERO: il gruppo resta unito a watt facili, bidoni da raccogliere.
+// + / − cambiano corsia (una cosa sola): per prendere un corridore devi essere nella sua corsia, e i bidoni stanno in corsia.
+// Nessuna sconfitta: se non chiudi un ponte quello se ne va e ne arriva un altro; chi smette di pedalare va in pausa.
+// Grafica: ciclisti Meshy con scheletro automatico, campagna con modelli Meshy/Quaternius a istanze, kit/hud per i testi.
+import { THREE, Stage, loadAll, Effects, Quality, Cyclist, makeKit, loadCyclistTemplate, toonMaterial, prepareModel, skyDome, styleLights, styleFog, PALETTE, WindLines, Shake } from './kit3d.js';
 import { loadGLTF } from './kit/loader.js';
-import { skyDome, styleLights, styleFog, toonMaterial, PALETTE } from './kit/style.js';
-import { Cyclist, loadMeshyTemplate, loadCyclistTemplate, makeKit, CYCLIST_URL, MESHY_FAN_URL } from './kit/cyclist.js';
-import { scatterModel, groundModel, prepareModel } from './kit/env.js';
-import { txt, panel, uiScale, powerColor, gradeColor, HUD } from './kit/hud.js';
-import { clamp, lerp, pick } from './engine.js';
-import { Base3D } from './base3d.js';
+import { loadMeshyTemplate, CYCLIST_URL, MESHY_FAN_URL } from './kit/cyclist.js';
+import { Road, buildScenery, buildArch, rng, LANE_W } from './slip-world.js';
+import { clamp, lerp } from './engine.js';
+import { txt as hudText, hudView, paragraph, wrapLines, MessageQueue, loadHudFonts } from './kit/hud.js';
 import { t } from '../i18n.js';
+import { SONGS } from './audio.js';
+import { DURATIONS, LEVELS, COOL_S, buildPlan, segAt, targetW, closingSpeed, HOLD_PCT, DROP_AFTER, Adapter, starsFor, nextStarHint } from './slip-plan.js';
 
 const A = 'assets/3d';
-const HALF = 22;            // metà lato dell'arena
-const GAP = 1.7;            // distanza tra i corridori in fila
-const TURN = 2.3;           // rad/s con il tasto tenuto
-const TAP = Math.PI / 6;    // un tocco = 30°
-const WORLD = 340;          // lato del terreno (m)
 const PLAYER_COLOR = '#d9ff3d';
 const JERSEYS = PALETTE.jerseys.filter((c) => c !== PLAYER_COLOR);
-const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+const RIDER_S = 1.3;          // il ciclista è più grande del vero: si legge da lontano (come in Horde Run)
+const V_BASE = 8;             // m/s di scorrimento: quasi costante, così i tempi degli eventi non dipendono dal rullo
+const V_SPRINT = 9.5;
+const APPROACH_GAP = 105;     // il prossimo corridore nasce dentro la nebbia (che finisce a 120 m) e si avvicina
+const CATCH_GAP = 1.6;        // sotto questa distanza (nella stessa corsia) è preso
+const PACK_DZ = 2.7;          // distanza tra i corridori di un drappello
+const SLOT_X = 1.05;          // il gruppo sta ai due lati, dietro di te
+const ROW_DZ = 2.5;           // e in file da due
+const ROW_Z0 = 2.4;           // prima fila dietro di te
+const HIDE_REL = -7;          // oltre questa distanza dietro il giocatore sono dietro la camera: non si disegnano
+const TICK = 2.8;             // un controllo del ritmo ogni 2,8 s
+const SEG_COLOR = { warm: '#7fd1ff', pace: '#9ad64b', effort: '#ffb020', sprint: '#ff4d6d', rest: '#4de3b0', cool: '#7fd1ff' };
+const GRADE = { warm: 1, pace: 3, effort: 2, sprint: 4, rest: 0, cool: 0 };
+const smooth = (x) => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
+const laneX = (l) => -l * LANE_W; // la destra dello schermo è −X (la camera guarda verso +Z)
 
-// piccola funzione casuale con seme: il paesaggio è sempre lo stesso
-function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6d2b79f5) >>> 0; let x = s; x = Math.imul(x ^ (x >>> 15), x | 1); x ^= x + Math.imul(x ^ (x >>> 7), x | 61); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; }; }
+const OPTIONAL = { sheep: `${A}/meshy/sheep.glb`, cow: `${A}/meshy/cow.glb`, tractor: `${A}/meshy/tractor.glb`, windmill: `${A}/meshy/windmill.glb`, bottle: `${A}/meshy/bottle.glb`, arch: `${A}/meshy/finish_arch.glb` };
 
-// ---------- terreno ----------
-// Campi a strisce (grano, prato, arato, filari), siepi, strade sterrate con file di cipressi.
-// Le celle della griglia sono fra i bordi EDGES; il centro (arena) è prato.
-const EDGES = [-160, -118, -78, -34, 34, 78, 118, 160];
-function worldTexture() {
-  const S = 1024; const k = S / WORLD; const rand = rng(11);
-  const c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d');
-  const P = (m) => (m + WORLD / 2) * k;
-  g.fillStyle = '#86b84f'; g.fillRect(0, 0, S, S);
-  const kinds = [['#e0bd63', '#cfa650'], ['#8fc05a', '#7fb04c'], ['#b0794c', '#9a6840'], ['#72a642', '#62973a'], ['#e0bd63', '#d3ac55'], ['#a9c45a', '#98b44c']];
-  for (let i = 0; i < EDGES.length - 1; i++) for (let j = 0; j < EDGES.length - 1; j++) {
-    if (i === 3 && j === 3) continue; // il centro (arena e strada intorno) non è un campo
-    if (EDGES[i] === -34 && EDGES[j] === -34) continue;
-    const x0 = EDGES[i] + 3.5; const x1 = EDGES[i + 1] - 3.5; const z0 = EDGES[j] + 3.5; const z1 = EDGES[j + 1] - 3.5;
-    if (x1 <= x0 || z1 <= z0) continue;
-    const cols = kinds[Math.floor(rand() * kinds.length)]; const vert = rand() > 0.5; const w = 2 + rand() * 1.6;
-    g.save(); g.beginPath(); g.rect(P(x0), P(z0), (x1 - x0) * k, (z1 - z0) * k); g.clip();
-    g.fillStyle = cols[0]; g.fillRect(P(x0), P(z0), (x1 - x0) * k, (z1 - z0) * k);
-    g.fillStyle = cols[1];
-    const len = vert ? z1 - z0 : x1 - x0; const wid = vert ? x1 - x0 : z1 - z0;
-    for (let a = 0; a < wid; a += w * 2) { if (vert) g.fillRect(P(x0 + a), P(z0), w * k, len * k); else g.fillRect(P(x0), P(z0 + a), len * k, w * k); }
-    g.restore();
-    g.strokeStyle = '#4f8a3a'; g.lineWidth = 2.2 * k; g.lineJoin = 'round'; g.strokeRect(P(x0), P(z0), (x1 - x0) * k, (z1 - z0) * k);
-  }
-  // strade sterrate: anello intorno all'arena e quattro strade verso l'orizzonte
-  const dirt = (x0, z0, x1, z1, w) => {
-    g.lineCap = 'butt'; g.strokeStyle = '#bd9a64'; g.lineWidth = (w + 1.2) * k; g.beginPath(); g.moveTo(P(x0), P(z0)); g.lineTo(P(x1), P(z1)); g.stroke();
-    g.strokeStyle = '#d9c08e'; g.lineWidth = w * k; g.stroke();
-  };
-  const R = 31;
-  dirt(-R, -R, R, -R, 4); dirt(R, -R, R, R, 4); dirt(R, R, -R, R, 4); dirt(-R, R, -R, -R, 4);
-  dirt(0, R, 0, WORLD / 2, 4.4); dirt(0, -R, 0, -WORLD / 2, 4.4); dirt(R, 0, WORLD / 2, 0, 4.4); dirt(-R, 0, -WORLD / 2, 0, 4.4);
-  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4; tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
-  return tex;
-}
-
-// prato dell'arena: falciatura a strisce e due sentieri sterrati che si incrociano; bordi sfumati nel campo
-function arenaTexture() {
-  const S = 512; const L = (HALF + 3) * 2; const k = S / L; const rand = rng(5);
-  const c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d');
-  g.fillStyle = '#8cc055'; g.fillRect(0, 0, S, S);
-  g.fillStyle = '#7bb04a'; for (let a = 0; a < L; a += 8) g.fillRect(a * k, 0, 4 * k, S);
-  const path = (horiz) => {
-    g.fillStyle = '#c9a56e'; g.globalAlpha = 0.9;
-    if (horiz) g.fillRect(0, S / 2 - 1.6 * k, S, 3.2 * k); else g.fillRect(S / 2 - 1.6 * k, 0, 3.2 * k, S);
-    g.globalAlpha = 1;
-  };
-  path(true); path(false);
-  for (let i = 0; i < 700; i++) { g.fillStyle = rand() > 0.5 ? 'rgba(255,255,255,.07)' : 'rgba(40,70,20,.08)'; g.fillRect(rand() * S, rand() * S, 3, 3); }
-  const cols = ['#fff3c0', '#ffffff', '#ffb0c8', '#ffd34d']; // fiorellini
-  for (let i = 0; i < 90; i++) { g.fillStyle = cols[i % 4]; const x = rand() * S; const y = rand() * S; g.fillRect(x, y, 3, 3); }
-  g.globalCompositeOperation = 'destination-out'; const e = 3 * k;
-  for (const [x0, y0, x1, y1, gx, gy] of [[0, 0, S, e, 0, 1], [0, S - e, S, S, 0, -1], [0, 0, e, S, 1, 0], [S - e, 0, S, S, -1, 0]]) {
-    const gr = g.createLinearGradient(gx > 0 ? x0 : gx < 0 ? x1 : 0, gy > 0 ? y0 : gy < 0 ? y1 : 0, gx > 0 ? x1 : gx < 0 ? x0 : 0, gy > 0 ? y1 : gy < 0 ? y0 : 0);
-    gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(x0, y0, x1 - x0, y1 - y0);
-  }
-  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
-  return tex;
-}
-
-// bandierina sopra il ciclista da raccogliere: asta chiara + triangolo oro (una mesh, un draw call)
-function flagGeometry() {
-  const pole = new THREE.CylinderGeometry(0.035, 0.035, 2.5, 5); pole.translate(0, 1.25, 0);
-  const flag = new THREE.BufferGeometry();
-  flag.setAttribute('position', new THREE.Float32BufferAttribute([0, 2.45, 0, 0.9, 2.2, 0, 0, 1.95, 0, 0, 2.45, 0, 0, 1.95, 0, 0.9, 2.2, 0], 3));
-  const col = (g, c) => { const n = g.attributes.position.count; const a = new Float32Array(n * 3); const cc = new THREE.Color(c); for (let i = 0; i < n; i++) cc.toArray(a, i * 3); g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; };
-  const p = pole.toNonIndexed(); p.deleteAttribute('uv'); p.deleteAttribute('normal');
-  const merged = new THREE.BufferGeometry();
-  const a = col(p, '#f4f1e8'); const b = col(flag, '#ffd34d');
-  for (const key of ['position', 'color']) {
-    const A1 = a.attributes[key]; const B1 = b.attributes[key]; const arr = new Float32Array(A1.array.length + B1.array.length); arr.set(A1.array); arr.set(B1.array, A1.array.length);
-    merged.setAttribute(key, new THREE.BufferAttribute(arr, 3));
-  }
-  return merged;
-}
-
-// colore medio di un modello con texture (per la sagoma lontana: senza, prenderebbe un grigio)
-function textureAvg(map) {
-  try {
-    const c = document.createElement('canvas'); c.width = c.height = 16; const g = c.getContext('2d'); g.drawImage(map.image, 0, 0, 16, 16);
-    const d = g.getImageData(0, 0, 16, 16).data; let r = 0; let gr = 0; let b = 0; let n = 0;
-    for (let i = 0; i < d.length; i += 4) { if (d[i + 3] < 8) continue; r += d[i]; gr += d[i + 1]; b += d[i + 2]; n++; }
-    return n ? new THREE.Color().setRGB(r / n / 255, gr / n / 255, b / n / 255, THREE.SRGBColorSpace) : null;
-  } catch { return null; }
-}
-
-// sagoma lontana della staccionata: due paletti e due traverse (il blocco pieno sembrerebbe un muro)
-function fenceProxy() {
-  const col = new THREE.Color('#b8733a'); const parts = [];
-  const box = (w, h, d, x, y) => { const g = new THREE.BoxGeometry(w, h, d).toNonIndexed(); g.translate(x, y, 0); g.deleteAttribute('uv'); const n = g.attributes.position.count; const a = new Float32Array(n * 3); for (let i = 0; i < n; i++) col.toArray(a, i * 3); g.setAttribute('color', new THREE.BufferAttribute(a, 3)); parts.push(g); };
-  box(0.07, 0.57, 0.07, -0.44, 0.285); box(0.07, 0.57, 0.07, 0.44, 0.285); box(0.96, 0.06, 0.05, 0, 0.2); box(0.96, 0.06, 0.05, 0, 0.42);
-  const pos = []; const colr = []; const nor = [];
-  for (const g of parts) { pos.push(...g.attributes.position.array); colr.push(...g.attributes.color.array); nor.push(...g.attributes.normal.array); }
-  const out = new THREE.BufferGeometry();
-  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); out.setAttribute('color', new THREE.Float32BufferAttribute(colr, 3)); out.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-  return out;
-}
-
-const OPTIONAL = { sheep: `${A}/meshy/sheep.glb`, cow: `${A}/meshy/cow.glb`, tractor: `${A}/meshy/tractor.glb`, windmill: `${A}/meshy/windmill.glb`, fence: `${A}/meshy/fence.glb` };
-
-export class Gruppetto extends Base3D {
-  constructor(hud, hooks, audio) {
-    super(hud, hooks, audio, {
-      key: 'gruppetto', title: 'games.gruppetto.hud.title', tagline: 'games.gruppetto.hud.tagline', song: 'city',
-      rules: ['games.gruppetto.rule1', 'games.gruppetto.rule2', 'games.gruppetto.rule3', 'games.gruppetto.rule4', 'games.gruppetto.rule5'],
-    });
-    this.half = HALF; this.free = {};
+export class Gruppetto {
+  constructor(hudCanvas, hooks, audio) {
+    this.hudCanvas = hudCanvas; this.hooks = hooks; this.audio = audio; this.active = false;
+    const ls = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
+    this.durIdx = clamp(Number(ls('slipDur', 0)) || 0, 0, DURATIONS.length - 1);
+    this.lvlIdx = clamp(Number(ls('slipLvl', 1)) || 0, 0, LEVELS.length - 1);
+    this.free = {}; this.loop = this.loop.bind(this);
   }
 
-  assets() {
-    const Q = `${A}/quaternius`;
-    return {
-      cypress: `${A}/meshy/cypress.glb`, hay: `${A}/meshy/hay_bale.glb`, farm: `${A}/meshy/farmhouse.glb`, church: `${A}/meshy/church.glb`,
-      tree1: `${Q}/nature/tree1.glb`, tree2: `${Q}/nature/tree2.glb`, tree3: `${Q}/nature/tree3.glb`, bush1: `${Q}/nature/bush1.glb`, bush2: `${Q}/nature/bush2.glb`,
-      barn: `${Q}/farm/barn.glb`, silo: `${Q}/farm/silo.glb`,
-    };
-  }
-
-  // ciclista Meshy con scheletro automatico (se non si carica: il ciclista Quaternius) e modelli facoltativi del paesaggio
-  async preload() {
-    this.tpl = await loadMeshyTemplate().catch((err) => { console.warn('Meshy cyclist:', err); return loadCyclistTemplate(CYCLIST_URL); });
-    // il giocatore ha il modello completo (15k triangoli); gli altri ciclisti la versione leggera (3,5k): il gruppo costa poco
-    this.tplLo = await loadMeshyTemplate(MESHY_FAN_URL).catch(() => this.tpl);
-    this.opt = {};
-    await Promise.all(Object.entries(OPTIONAL).map(async ([k, u]) => { this.opt[k] = await loadGLTF(u).catch(() => null); }));
-  }
-
-  build() {
-    const { scene } = this.stage; const q = this.stage.quality;
-    this.scene = scene; this.free = {}; this.player = null; this.train = []; this.strays = [];
-    this.stage.camera.far = 600; this.stage.camera.updateProjectionMatrix();
-    scene.add(skyDome('golden'));
-    styleFog(scene, 'golden', 70, 240);
-    this.light = styleLights(scene, 'golden', { shadows: q.cfg.shadows, mapSize: q.cfg.shadowMap, extent: 30 });
-    // terreno: campi e strade; sopra, il prato dell'arena
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD, WORLD), toonMaterial({ map: worldTexture() }));
-    ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
-    const arena = new THREE.Mesh(new THREE.PlaneGeometry((HALF + 3) * 2, (HALF + 3) * 2), toonMaterial({ map: arenaTexture(), transparent: true, depthWrite: false }));
-    arena.rotation.x = -Math.PI / 2; arena.position.y = 0.03; arena.receiveShadow = true; arena.renderOrder = 1; scene.add(arena);
-    this.buildScenery();
-    this.fx = new Effects(scene, 60);
-    // bandierina dei ciclisti da raccogliere
-    this.flagGeo = flagGeometry(); this.flagMat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide });
-    // freccia sopra il giocatore
-    this.marker = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.32, 4), new THREE.MeshBasicMaterial({ color: PLAYER_COLOR }));
-    this.marker.rotation.x = Math.PI;
+  async start() {
+    this.active = true;
+    this.quality = new Quality();
+    this.stage = new Stage(this.hudCanvas, { quality: this.quality });
     this.stage.onQuality = (cfg) => this.applyQuality(cfg);
+    this.state = 'loading'; this.t = 0; this.msgs = new MessageQueue(); this.power = 0; this.pw = 0; this.cadence = 0; this.pops = [];
+    this.last = performance.now();
+    requestAnimationFrame(this.loop);
+    this.audio.playSong(SONGS.menu);
+    try {
+      const Q = `${A}/quaternius`;
+      this.m = await loadAll({
+        cypress: `${A}/meshy/cypress.glb`, hay: `${A}/meshy/hay_bale.glb`, farm: `${A}/meshy/farmhouse.glb`, church: `${A}/meshy/church.glb`,
+        tree1: `${Q}/nature/tree1.glb`, tree2: `${Q}/nature/tree2.glb`, tree3: `${Q}/nature/tree3.glb`, bush1: `${Q}/nature/bush1.glb`, bush2: `${Q}/nature/bush2.glb`,
+        barn: `${Q}/farm/barn.glb`, silo: `${Q}/farm/silo.glb`,
+      }, (p) => { this.loadPct = p * 0.5; });
+      this.tpl = await loadMeshyTemplate().catch((err) => { console.warn('Meshy cyclist:', err); return loadCyclistTemplate(CYCLIST_URL); });
+      this.tplLo = await loadMeshyTemplate(MESHY_FAN_URL).catch(() => this.tpl); // gli altri ciclisti: modello leggero (3.500 triangoli)
+      this.loadPct = 0.75;
+      this.opt = {};
+      await Promise.all(Object.entries(OPTIONAL).map(async ([k, u]) => { this.opt[k] = await loadGLTF(u).catch(() => null); }));
+      await loadHudFonts();
+      if (!this.active) return;
+      this.build();
+      this.state = 'menu'; this.stateT = 0;
+    } catch (err) { console.error(err); this.state = 'error'; this.error = err.message; }
+  }
+
+  stop() { this.active = false; this.audio.stopSong(); this.hooks.setGrade(null); this.stage?.dispose(); }
+
+  // ---------- scena ----------
+  build() {
+    const { scene } = this.stage; const q = this.quality;
+    this.scene = scene; this.free = {};
+    this.stage.camera.far = 400; this.stage.camera.fov = 46; this.stage.camera.updateProjectionMatrix();
+    scene.add(skyDome('golden'));
+    styleFog(scene, 'golden', 45, 125);
+    this.light = styleLights(scene, 'golden', { shadows: q.cfg.shadows, mapSize: q.cfg.shadowMap, extent: 24 });
+    this.road = new Road(scene, q);
+    this.inst = buildScenery(scene, this.m, this.opt, 1200 * V_SPRINT + 400, q);
+    this.fx = new Effects(scene, 80); this.shake = new Shake(); this.wind = new WindLines(scene, 36);
+    // bidoni: pochi oggetti riutilizzati (il modello Meshy della borraccia; senza, un cilindro)
+    this.gems = []; this.gemPool = [];
+    for (let i = 0; i < 12; i++) this.gemPool.push(this.makeGem());
+    // arco del traguardo (volata finale) o del traguardo volante (a fine blocco)
+    if (this.opt.arch) { this.arch = buildArch(this.opt.arch, 9.6); this.arch.visible = false; scene.add(this.arch); }
     this.applyQuality(q.cfg);
+    this.reset();
+  }
+
+  makeGem() {
+    const g = new THREE.Group(); const b = this.opt.bottle;
+    if (b) {
+      const info = prepareModel(b); const bx = info.box; const cx = (bx.min.x + bx.max.x) / 2; const cz = (bx.min.z + bx.max.z) / 2;
+      if (!info.dressed) { for (const p of info.parts) p.geo.translate(-cx, -bx.min.y, -cz); info.dressed = true; }
+      const s = 1.05 / info.height; const inner = new THREE.Group(); inner.scale.setScalar(s);
+      for (const p of info.parts) inner.add(new THREE.Mesh(p.geo, toonMaterial({ map: p.mat === 'vc' ? null : p.mat, vertexColors: p.mat === 'vc' })));
+      g.add(inner);
+    } else g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.7, 8), toonMaterial({ color: '#ffd34d' })));
+    // alone dorato a terra: si legge anche da lontano
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.8, 20), new THREE.MeshBasicMaterial({ color: '#ffd34d', transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide, fog: true }));
+    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04; g.add(ring);
+    g.visible = false; g.userData.ring = ring; this.scene.add(g);
+    return g;
   }
 
   applyQuality(cfg) {
     if (this.stage.bloom) { this.stage.bloom.threshold = 0.93; this.stage.bloom.strength = 0.45; this.stage.bloom.radius = 0.35; }
     if (this.stage.composer && this.scene) this.stage.composer.passes[0].scene = this.scene;
-    for (const i of this.inst || []) { i.setDensity(cfg.density); i.lodDist = i.baseLod * (0.5 + 0.5 * cfg.density); } // meno qualità: meno oggetti, sagome più vicine
+    for (const i of this.inst || []) { i.setDensity(cfg.density); i.lodDist = i.baseLod * (0.5 + 0.5 * cfg.density); }
     if (this.light) this.light.sun.castShadow = cfg.shadows;
-    for (const c of [this.player, ...(this.train || []).map((r) => r.cy), ...(this.strays || []).map((s) => s.cy)]) c?.setShadows(cfg.shadows);
     this.shadowsOn = cfg.shadows;
+    for (const c of this.allRiders()) c.setShadows(cfg.shadows);
   }
 
-  // ---------- paesaggio ----------
-  buildScenery() {
-    const { scene } = this.stage; const m = this.m; const o = this.opt; const rand = rng(3);
-    this.inst = [];
-    const add = (gltf, list, { kind = 'house', lodDist = 60, shadows = false, avg = null, lodGeo = null } = {}) => {
-      if (!gltf || !list.length) return;
-      groundModel(gltf);
-      const info = prepareModel(gltf); const tp = info.parts.find((p) => p.mat !== 'vc');
-      if (tp) { const c = textureAvg(tp.mat); if (c) { info.avg = avg ? new THREE.Color(avg) : c; if (kind === 'tree') info.trunkCol = info.trunkCol || new THREE.Color('#6b4a2b'); } }
-      const inst = scatterModel(scene, gltf, list, { kind, lodDist, shadows, lodGeo });
-      inst.baseLod = lodDist; this.inst.push(inst); return inst;
-    };
-    const at = (x, z, h, rot = 0, always = false) => ({ x, y: 0, z, rot, h, always });
-    // staccionata Meshy intorno all'arena
-    if (o.fence) {
-      const fh = 1.15; const info = { w: 0.96 / 0.57 * fh }; const step = info.w * 0.97; const list = [];
-      const edge = HALF + 0.2;
-      for (let a = -edge + step / 2; a < edge; a += step) {
-        list.push(at(a, -edge, fh, 0, true), at(a, edge, fh, 0, true), at(-edge, a, fh, Math.PI / 2, true), at(edge, a, fh, Math.PI / 2, true));
-      }
-      this.fence = add(o.fence, list, { kind: 'house', lodDist: 28, lodGeo: fenceProxy() }); if (this.fence) this.fence.cullR = 46;
-    }
-    // strade con filari di cipressi
-    const cyp = [];
-    for (const [ax, az] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
-      for (let d = 42; d < 150; d += 7 + rand() * 1.5) for (const side of [-1, 1]) {
-        const off = side * (5.2 + rand() * 0.5);
-        cyp.push(at(ax ? d * ax : off, az ? d * az : off, 7.5 + rand() * 2.5, rand() * 6.28));
-      }
-    }
-    // cipressi dietro la staccionata, a gruppetti
-    for (let i = 0; i < 14; i++) { const a = rand() * 6.28; const r = 28 + rand() * 4; cyp.push(at(Math.cos(a) * r, Math.sin(a) * r, 7 + rand() * 2.5, rand() * 6.28)); }
-    add(m.cypress, cyp, { kind: 'tree', lodDist: 34 });
-    // case coloniche, chiesa in fondo alla strada, fienili
-    const face = (x, z) => Math.atan2(-x, -z);
-    const houses = [[11, 62], [-11, -88], [74, -11], [-96, 12], [58, 64], [-60, 52], [66, -70]];
-    add(m.farm, houses.map(([x, z]) => at(x, z, 8, face(x, z) + Math.PI / 2 * (x === 11 || x === -11 ? (x > 0 ? 1 : -1) : 0), true)), { kind: 'house', lodDist: 150 });
-    add(m.church, [at(0, 128, 14, Math.PI, true), at(-4, -138, 14, 0, true)], { kind: 'house', lodDist: 150 });
-    add(m.barn, [at(-52, -44, 6.5, 0.4, true), at(50, 40, 6.5, -2.6, true)], { kind: 'house', lodDist: 150 });
-    add(m.silo, [at(-60, -44, 9, 0, true), at(58, 44, 9, 0, true)], { kind: 'house', lodDist: 150 });
-    if (o.windmill) add(o.windmill, [at(-40, 88, 10, 0.6, true), at(92, 38, 10, 2, true)], { kind: 'house', lodDist: 150 });
-    // balle di fieno nei campi, a file
-    const hay = [];
-    for (let i = 0; i < 26; i++) {
-      const a = rand() * 6.28; const r = 38 + rand() * 80; const x = Math.cos(a) * r; const z = Math.sin(a) * r;
-      if (Math.abs(x) < 8 || Math.abs(z) < 8) continue;
-      for (let k = 0; k < 2 + Math.floor(rand() * 3); k++) hay.push(at(x + k * 3.6, z, 1.5, rand() * 6.28));
-    }
-    for (const [x, z] of [[27, 12], [-27, -9], [12, -28], [-6, 27]]) hay.push(at(x, z, 1.5, rand() * 6.28, true));
-    add(m.hay, hay, { kind: 'house', lodDist: 36 });
-    // alberi lungo le siepi dei campi + cespugli
-    const trees = []; const bushes = [];
-    for (const e of [-118, -78, 78, 118]) {
-      for (let d = -150; d < 150; d += 9 + rand() * 6) { if (Math.abs(d) < 36 && Math.abs(e) < 80) continue; trees.push(at(e + (rand() - 0.5) * 2, d, 5 + rand() * 3.5, rand() * 6.28)); trees.push(at(d, e + (rand() - 0.5) * 2, 5 + rand() * 3.5, rand() * 6.28)); }
-    }
-    add(m.tree1, trees.filter((_, i) => i % 3 === 0), { kind: 'tree', lodDist: 50 });
-    add(m.tree2, trees.filter((_, i) => i % 3 === 1), { kind: 'tree', lodDist: 50 });
-    add(m.tree3, trees.filter((_, i) => i % 3 === 2), { kind: 'tree', lodDist: 50 });
-    for (let i = 0; i < 60; i++) { const a = rand() * 6.28; const r = 27 + rand() * 90; bushes.push(at(Math.cos(a) * r, Math.sin(a) * r, 0.9 + rand() * 0.8, rand() * 6.28)); }
-    add(m.bush1, bushes.filter((_, i) => i % 2), { kind: 'tree', lodDist: 40 });
-    add(m.bush2, bushes.filter((_, i) => !(i % 2)), { kind: 'tree', lodDist: 40 });
-    // animali: gregge di pecore e mucche al pascolo, trattore sulla strada
-    const herd = (cx, cz, n, spread, h) => Array.from({ length: n }, () => at(cx + (rand() - 0.5) * spread, cz + (rand() - 0.5) * spread, h, rand() * 6.28));
-    add(o.sheep, [...herd(-42, 52, 8, 14, 0.95), ...herd(52, -45, 7, 12, 0.95), ...herd(-30, 18, 4, 5, 0.95)], { kind: 'house', lodDist: 55, avg: '#e9e9e2' });
-    add(o.cow, [...herd(42, 58, 5, 14, 1.45), ...herd(-62, -50, 5, 14, 1.45), ...herd(36, 22, 2, 4, 1.45)], { kind: 'house', lodDist: 55, avg: '#d6d6d6' });
-    add(o.tractor, [at(31, -14, 2.1, Math.PI / 2, true), at(-88, -30, 2.1, 0.8, true)], { kind: 'house', lodDist: 60 });
+  allRiders() {
+    const out = [];
+    if (this.player) out.push(this.player);
+    for (const l of Object.values(this.free)) out.push(...l);
+    for (const g of this.group || []) out.push(g.R.cy);
+    for (const b of [this.bridge]) if (b) for (const r of b.riders) out.push(r.cy);
+    for (const e of this.escapees || []) for (const r of e.riders) out.push(r.cy);
+    for (const d of this.drops || []) out.push(d.R.cy);
+    return out;
   }
 
-  // ---------- ciclisti ----------
+  // ---------- ciclisti (riuso: la creazione di un ciclista costa) ----------
   rider(color, idx, lo = true) {
-    const key = color + (lo ? 'l' : 'h'); const free = this.free[key];
-    let cy = free?.pop();
-    if (!cy) { cy = new Cyclist(lo ? this.tplLo : this.tpl, makeKit(color, idx), { shadows: this.shadowsOn }); cy.poolKey = key; cy.rigX0 = cy.rig.position.x; this.scene.add(cy.root); }
-    cy.root.visible = true; cy.sitDown(); cy.rig.position.x = cy.rigX0; cy.stand = 0; cy.lean.rotation.set(0, 0, 0);
+    const key = color + (lo ? 'l' : 'h'); let cy = this.free[key]?.pop();
+    if (!cy) { cy = new Cyclist(lo ? this.tplLo : this.tpl, makeKit(color, idx), { shadows: this.shadowsOn }); cy.poolKey = key; cy.root.scale.setScalar(RIDER_S); this.scene.add(cy.root); }
+    cy.root.visible = true; cy.sitDown(); cy.lean.rotation.set(0, 0, 0); cy.root.scale.setScalar(RIDER_S);
     return cy;
   }
-  release(cy) { cy.root.visible = false; cy.root.remove(this.marker); (this.free[cy.poolKey] = this.free[cy.poolKey] || []).push(cy); }
+  release(cy) { cy.root.visible = false; (this.free[cy.poolKey] = this.free[cy.poolKey] || []).push(cy); }
+  newR(x, z, idx, born = false) {
+    const color = JERSEYS[(this.jerseyN = (this.jerseyN || 0) + 1) % JERSEYS.length];
+    const cy = this.rider(color, 1 + (idx % 5)); cy.root.position.set(x, 0, z); cy.root.rotation.set(0, 0, 0);
+    if (born) cy.root.scale.setScalar(0.01);
+    return { cy, x, z, born: born ? 0 : 1, vx: 0 };
+  }
 
+  // ---------- partita ----------
   reset() {
-    for (const r of this.train || []) this.release(r.cy);
-    for (const s of this.strays || []) { this.release(s.cy); this.scene.remove(s.flag); }
+    for (const g of this.group || []) this.release(g.R.cy);
+    for (const d of this.drops || []) this.release(d.R.cy);
+    for (const e of this.escapees || []) for (const r of e.riders) this.release(r.cy);
+    if (this.bridge) for (const r of this.bridge.riders) this.release(r.cy);
+    for (const g of this.gems || []) { g.mesh.visible = false; this.gemPool.push(g.mesh); }
     if (this.player) this.release(this.player);
+    if (this.arch) this.arch.visible = false;
+    this.configure(this.durIdx, this.lvlIdx);
+    this.rnd = rng(9001 + this.durIdx * 7 + this.lvlIdx);
+    this.group = []; this.drops = []; this.escapees = []; this.gems = []; this.bridge = null; this.line = null;
+    this.z = 0; this.x = 0; this.lane = 0; this.pops = []; this.el = 0; this.segIdx = -1; this.seg = this.plan.segs[0];
+    this.score = 0; this.caught = 0; this.dropped = 0; this.bridgesDone = 0; this.bridgesTotal = 0; this.finalWon = false; this.finalTried = false;
+    this.paused = false; this.pauseT = 0; this.startT = 0; this.finished = false; this.result = null; this.v = V_BASE;
+    this.adapt = new Adapter(); this.evLog = []; this.sprinting = false; this.sentGrade = undefined; this.msgs.clear();
+    this.tickT = TICK; this.deficit = 0; this.gemT = 4; this.gemLane = 0; this.hint = null; this.hintT = 0; this.blocked = false; this.holdOk = true; this.assistT = 0;
+    this.bottles = 0; this.lostThisSeg = 0; this.camInit = false; this.laneInput = 0;
     this.player = this.rider(PLAYER_COLOR, 0, false);
-    this.player.root.add(this.marker); this.marker.position.set(0, 2.15, -0.1);
-    this.x = 0; this.z = -HALF + 6; this.h = 0; this.hT = 0; this.camH = 0; this.lean = 0; this.train = []; this.strays = [];
-    // traccia del giocatore: punti (x, z) con la distanza percorsa; i seguaci la leggono per distanza (interpolata: nessuno scatto)
-    this.dist = 0; this.PX = []; this.PZ = []; this.PD = [];
-    for (let d = -80; d <= 0; d += 0.25) { this.PX.push(this.x); this.PZ.push(this.z + d); this.PD.push(d); }
-    this.score = 0; this.sprintT = 0; this.camInit = false;
-    for (let i = 0; i < 3; i++) this.addStray();
-    this.hooks.setGrade?.(0); this.sentGrade = 0;
+    this.player.root.position.set(0, 0, 0);
+    // il primo corridore è già lì davanti, nel menu: si parte con qualcosa da prendere
+    this.spawnBridge(this.plan.segs[0], { gap: this.plan.segs[0].bridge.gap, born: false });
+    this.bridge.state = 'attack'; this.bridge.kind = 'warm'; this.bridge.dur = 30; this.bridge.t0 = 0;
+    this.road.update(0); for (const i of this.inst) i.update(0, true);
+    this.view(0);
   }
 
-  onBegin() { this.say(t('games.gruppetto.go'), '#d9ff3d', 1.8, true); }
-
-  addStray() {
-    let x; let z; let guard = 0;
-    do { x = (Math.random() * 2 - 1) * (HALF - 4); z = (Math.random() * 2 - 1) * (HALF - 4); } while (guard++ < 30 && (Math.hypot(x - this.x, z - this.z) < 9 || this.hitsTrain(x, z, 2.5, 0)));
-    const cy = this.rider(pick(JERSEYS), 1 + Math.floor(Math.random() * 5));
-    cy.standUp(); cy.bike.visible = true; cy.standX = 0.8; cy.setShadows(this.shadowsOn); // fermo accanto alla bici, saluta
-    cy.root.position.set(x, 0, z); cy.root.rotation.y = Math.random() * 6; cy.t = Math.random() * 6;
-    const flag = new THREE.Mesh(this.flagGeo, this.flagMat); flag.position.set(x, 0, z); flag.frustumCulled = false; this.scene.add(flag);
-    this.strays.push({ cy, x, z, flag, yaw: cy.root.rotation.y });
+  configure(durIdx, lvlIdx) {
+    this.durIdx = durIdx; this.lvlIdx = lvlIdx;
+    this.total = DURATIONS[durIdx]; this.level = LEVELS[lvlIdx]; this.plan = buildPlan(this.total);
   }
 
-  // un tocco imposta la nuova direzione: la bici ci arriva con una curva morbida
-  press(dir) { this.hT -= dir * TAP; }
+  get ftp() { return Math.max(80, this.hooks.ftp?.() || Number(localStorage.getItem('ftp')) || 200); }
+  recordKey() { return `slipBest:${this.total}:${this.level.id}`; }
+  record() { try { return JSON.parse(localStorage.getItem(this.recordKey()) || '{}'); } catch { return {}; } }
 
-  // joining: se vero, anche chi si sta ancora unendo conta (serve a non far comparire un ciclista sulla fila);
-  // per gli urti con la propria coda no: il nuovo arrivato scivola in fila partendo da dove l'hai raccolto, cioè vicino a te
-  hitsTrain(x, z, rad, skip, joining = true) {
-    for (let i = skip; i < this.train.length; i++) { if (!joining && this.train[i].blend > 0) continue; const p = this.train[i].cy.root.position; if (Math.hypot(p.x - x, p.z - z) < rad) return true; }
-    return false;
+  // ---------- eventi: tutto ciò che chiede o premia qualcosa (si misura nel test) ----------
+  ev(kind) { if (this.evLog.length < 20000) this.evLog.push({ t: this.el, k: kind }); }
+  eventStats() {
+    const end = this.total - COOL_S; const ts = this.evLog.filter((e) => e.t <= end).map((e) => e.t).sort((a, b) => a - b);
+    let maxGap = 0; let prev = 0; for (const x of ts) { maxGap = Math.max(maxGap, x - prev); prev = x; } maxGap = Math.max(maxGap, end - prev);
+    return { first: ts[0] ?? Infinity, maxGap, perMin: ts.length / (end / 60), n: ts.length };
   }
 
-  // punto della traccia alla distanza d (interpolazione lineare)
-  trackAt(d, out) {
-    const D = this.PD; let lo = 0; let hi = D.length - 1;
-    if (d <= D[0]) { out.x = this.PX[0]; out.z = this.PZ[0]; return out; }
-    if (d >= D[hi]) { out.x = this.PX[hi]; out.z = this.PZ[hi]; return out; }
-    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (D[mid] <= d) lo = mid; else hi = mid; }
-    const k = (d - D[lo]) / Math.max(1e-6, D[hi] - D[lo]);
-    out.x = lerp(this.PX[lo], this.PX[hi], k); out.z = lerp(this.PZ[lo], this.PZ[hi], k); return out;
+  say(text, color = '#ffd34d', dur = 1.6, big = false, prio = big ? 2 : 1, sub = null) { this.msgs.say(text, { color, dur, big, prio, sub }); }
+  prog(stat, n = 1, xp = 0) { this.hooks.progress?.event(stat, n, xp); }
+  pop(text, color, x, y, z, dur = 0.9) { this.popN = (this.popN || 0) + 1; this.pops.push({ text, color, x, y, z, t: dur, t0: dur, slot: this.popN % 2 }); while (this.pops.length > 3) this.pops.shift(); }
+
+  // ---------- comandi ----------
+  input(dir) {
+    this.audio.ensure();
+    if (this.state === 'menu') {
+      if (this.stateT < 0.3) return;
+      // − cambia la durata, + cambia il livello; tenuti premuti iniziano (hold)
+      if (dir < 0) this.configure((this.durIdx + 1) % DURATIONS.length, this.lvlIdx); else this.configure(this.durIdx, (this.lvlIdx + 1) % LEVELS.length);
+      try { localStorage.setItem('slipDur', this.durIdx); localStorage.setItem('slipLvl', this.lvlIdx); } catch { /* niente storage */ }
+      this.reset(); this.audio.sfx('select'); return;
+    }
+    if (this.state === 'over') { if (this.stateT > 1.4) { this.reset(); this.state = 'menu'; this.stateT = 0; this.audio.playSong(SONGS.menu); } return; }
+    if (this.state !== 'play' || this.paused) return;
+    // una sola cosa: cambia corsia (+ destra, − sinistra)
+    const l = clamp(this.lane + (dir > 0 ? 1 : -1), -1, 1);
+    if (l !== this.lane) { this.lane = l; this.audio.sfx('shiftUp'); }
+  }
+  hold(dir) { this.held = dir; this.heldT = 0; }
+
+  begin() {
+    this.state = 'play'; this.stateT = 0; this.hooks.runStart?.();
+    this.audio.playSong(SONGS.city); this.audio.sfx('go');
   }
 
-  step(dt) {
-    const v = clamp((this.kmh / 3.6) * 0.42, 2.2, 7) * (this.sprinting ? 1.15 : 1);
-    this.v = v;
-    this.hT -= this.steer(dt, TURN);
-    // curva fluida verso la direzione voluta (velocità di sterzo limitata) e piega in curva
-    const dh = this.hT - this.h; const turn = Math.sign(dh) * Math.min(Math.abs(dh), 3.2 * dt);
-    this.h += turn; this.lean += ((turn / Math.max(dt, 1e-3)) * 0.12 - this.lean) * Math.min(1, dt * 8);
-    this.x += Math.sin(this.h) * v * dt; this.z += Math.cos(this.h) * v * dt;
-    this.dist += v * dt;
-    this.PX.push(this.x); this.PZ.push(this.z); this.PD.push(this.dist);
-    if (this.PD.length > 6000) { this.PX.splice(0, 2000); this.PZ.splice(0, 2000); this.PD.splice(0, 2000); }
-    if (this.sprinting) this.sprintT += dt;
-    this.followTrain(dt);
-    // raccolta
-    for (const s of this.strays) {
-      if (Math.hypot(s.x - this.x, s.z - this.z) < 1.5) {
-        s.done = true; this.scene.remove(s.flag);
-        const cy = s.cy; cy.sitDown(); cy.rig.position.x = cy.rigX0;
-        const p = cy.root.position;
-        this.train.push({ cy, blend: 1, ox: p.x, oz: p.z, yaw: cy.root.rotation.y, fresh: true });
-        const pts = (this.sprinting ? 2 : 1) * (10 + this.train.length * 2);
-        this.score += pts; this.prog('rescues', 1, 3);
-        this.audio.sfx('rescue'); this.pop(`+${pts}`, this.sprinting ? '#4de3ff' : '#ffd166', this.x, 2.4, this.z);
-        this.fx.spawn(s.x, 1, s.z, { tex: 'green', size: 3, life: 0.4 });
-        if (this.train.length % 5 === 0) this.say(t('games.gruppetto.groupOf', { n: this.train.length + 1 }), '#d9ff3d', 1.6, true);
+  // ---------- ponti ----------
+  pickLane(avoid = []) {
+    const free = [-1, 0, 1].filter((l) => !avoid.includes(l));
+    return free[Math.floor(this.rnd() * free.length)];
+  }
+  spawnBridge(seg, { gap = APPROACH_GAP, born = true } = {}) {
+    const n = seg.bridge.riders; const busy = this.escapees.filter((e) => e.gap < 70).map((e) => e.lane);
+    const lane = this.pickLane(busy);
+    const riders = [];
+    for (let k = 0; k < n; k++) riders.push(this.newR(laneX(lane), this.z + gap + k * PACK_DZ, k + this.caught, born));
+    this.bridge = { riders, n, gap, gap0: seg.bridge.gap, nominalGap: seg.bridge.gap, lane, x: laneX(lane), state: 'approach', seg, dur: seg.t1 - seg.t0, t0: seg.t0, swerved: false, startGap: gap, close: 0 };
+    this.ev('spawn');
+  }
+
+  tgtNow() { return targetW(this.seg, this.ftp, this.level.k, this.adapt.value); }
+
+  enterSeg(idx) {
+    // un ponte ancora aperto alla fine del tratto precedente è fallito
+    if (this.bridge && this.bridge.state === 'attack') this.failBridge(false);
+    const seg = this.plan.segs[idx]; this.segIdx = idx; this.seg = seg; seg.inT = 0;
+    const w = this.tgtNow(); this.ev('seg');
+    const col = SEG_COLOR[seg.kind]; const b = this.bridge;
+    this.deficit = 0; this.lostThisSeg = 0;
+    if (seg.kind === 'warm') {
+      this.say(t('games.gruppetto.say.warm'), col, 3, true, 3, t('games.gruppetto.say.warmSub', { w }));
+    } else if (seg.kind === 'pace') {
+      this.say(t('games.gruppetto.say.pace'), col, 2.4, true, 2, t('games.gruppetto.say.paceSub', { w }));
+      // il prossimo corridore nasce lontano e si avvicina durante il tratto: arriva a 20 m proprio all'inizio dello sforzo
+      const next = this.plan.segs[idx + 1];
+      if (next?.bridge && !b) this.spawnBridge(next);
+    } else if (seg.kind === 'effort') {
+      if (!this.bridge) this.spawnBridge(seg, { gap: seg.bridge.gap });
+      this.startAttack(seg, 'effort');
+      this.say(t('games.gruppetto.say.effort', { w }), col, 3, true, 3, t('games.gruppetto.say.effortSub', { s: Math.round(seg.t1 - seg.t0) }));
+    } else if (seg.kind === 'sprint') {
+      // volata: il drappello davanti e il traguardo; se qualcuno è ancora in fuga davanti a noi, sparisce nella polvere
+      if (this.bridge) this.failBridge(true);
+      this.spawnBridge(seg, { gap: seg.bridge.gap, born: true });
+      this.startAttack(seg, 'sprint');
+      this.startLine(seg);
+      this.say(t('games.gruppetto.say.sprint', { w }), col, 3, true, 3, t(seg.line === 'finish' ? 'games.gruppetto.say.sprintFinish' : 'games.gruppetto.say.sprintPrime', { s: Math.round(seg.t1 - seg.t0) }));
+      this.audio.sfx('alarm');
+    } else if (seg.kind === 'rest') {
+      this.say(t('games.gruppetto.say.rest'), col, 2.4, true, 2, t('games.gruppetto.say.restSub', { w }));
+    } else if (seg.kind === 'cool') {
+      if (this.bridge) this.failBridge(true);
+      this.finishResult();
+      this.say(t('games.gruppetto.say.cool'), col, 3, true, 3, t('games.gruppetto.say.coolSub', { w }));
+      this.audio.sfx('win');
+    }
+  }
+
+  startAttack(seg, kind) {
+    const b = this.bridge; b.state = 'attack'; b.gap = b.gap0; b.dur = seg.t1 - seg.t0; b.seg = seg; b.kind = kind; b.swerved = false;
+    this.bridgesTotal++; b.t0 = seg.t0;
+    this.ev('attack'); this.audio.sfx('whoosh');
+  }
+
+  startLine(seg) {
+    if (!this.arch) return;
+    // il traguardo è fermo nel mondo: arriva esattamente alla fine dello sprint
+    const left = seg.t1 - this.el; this.line = { z: this.z + V_SPRINT * left - 1.5, kind: seg.line, passed: false };
+    this.arch.visible = true; this.arch.position.set(0, 0, this.line.z); this.arch.userData.s = 0;
+    this.arch.traverse((o) => { if (o.material?.color) o.material.color.set(seg.line === 'finish' ? '#ffffff' : '#ffd34d'); });
+  }
+
+  // ponte riuscito: tutti si mettono in scia
+  catchBridge() {
+    const b = this.bridge; this.bridge = null; const seg = b.seg; const n = b.riders.length;
+    b.riders.forEach((R, k) => {
+      const side = this.group.filter((g) => g.side < 0).length <= this.group.filter((g) => g.side > 0).length ? -1 : 1;
+      const entry = { R, side, relz: R.z - this.z, relx: R.x - this.x, sx: R.x - this.x, sz: R.z - this.z, u: -k * 0.12, dur: 1.15, row: 0 };
+      this.group.unshift(entry); // l'ultimo arrivato sta davanti: gli altri scorrono indietro nella loro colonna
+    });
+    this.caught += n;
+    const pts = n * (100 + this.group.length * 8) * (seg.kind === 'sprint' ? 2 : 1);
+    this.score += pts; this.ev('catch');
+    this.audio.sfx('rescue'); this.shake.add(0.35); this.prog('rescued', n, 3 * n);
+    for (const R of b.riders) { this.fx.spawn(R.x, 1.4, R.z, { tex: 'green', size: 3.2, life: 0.45 }); this.fx.spawn(R.x, 1.2, R.z, { tex: 'spark', size: 1.4, life: 0.5, grow: 1.5 }); }
+    this.pop(`+${pts}`, '#ffd166', this.x, 3.1, this.z, 1.1);
+    if (navigator.vibrate) navigator.vibrate(30);
+    if (seg.kind === 'effort' || seg.kind === 'sprint') {
+      this.bridgesDone++; if (seg.kind === 'sprint' && seg.line === 'finish') this.finalWon = true;
+      if (seg.kind === 'sprint') this.prog('sprintsWon', 1, 10);
+      const d = this.adapt.report(true); if (d > 0) this.say(t('games.gruppetto.adaptUp'), '#7dff6a', 2.2);
+      this.say(t('games.gruppetto.caught'), '#7dff6a', 1.6, true, 2, t('games.gruppetto.caughtSub', { n: this.group.length }));
+    } else this.say(t('games.gruppetto.caught'), '#7dff6a', 1.6, true, 2, t('games.gruppetto.caughtSub', { n: this.group.length }));
+  }
+
+  // il ponte non è riuscito: i corridori se ne vanno (non è una sconfitta: arriva il prossimo)
+  failBridge(silent = false) {
+    const b = this.bridge; if (!b) return; this.bridge = null;
+    this.escapees.push({ riders: b.riders, gap: Math.max(b.gap, 3), lane: b.lane, v: 4 });
+    this.ev('escape'); this.blocked = false;
+    const seg = b.seg;
+    if (!silent && (seg.kind === 'effort' || seg.kind === 'sprint') && b.state === 'attack') {
+      const d = this.adapt.report(false); if (d < 0) this.say(t('games.gruppetto.adaptDown'), '#ffd34d', 2.4);
+      else this.say(t('games.gruppetto.gotAway'), '#ff8d8d', 1.8, false, 1, t('games.gruppetto.gotAwaySub'));
+    }
+    if (seg.kind === 'sprint' && seg.line === 'finish') this.finalTried = true;
+  }
+
+  dropOne() {
+    if (!this.group.length) return;
+    const entry = this.group.pop(); // l'ultimo della fila: si stacca
+    this.drops.push({ R: entry.R, side: entry.side, rel: entry.relz, relx: entry.relx, t: 0 });
+    this.dropped++; this.lostThisSeg++; this.ev('drop'); this.audio.sfx('hurt'); this.shake.add(0.15);
+    if (this.lostThisSeg === 1) this.say(t('games.gruppetto.dropped'), '#ff8d8d', 1.8, true, 2, t('games.gruppetto.droppedSub', { w: this.tgtNow() }));
+  }
+
+  // ---------- bidoni ----------
+  spawnGems() {
+    // una fila di tre bidoni in una corsia (la corsia cambia di uno alla volta: si prendono con un tocco di + o −)
+    this.gemLane = clamp(this.gemLane + (this.rnd() < 0.5 ? -1 : 1) * (this.rnd() < 0.8 ? 1 : 0), -1, 1);
+    for (let i = 0; i < 3; i++) {
+      const mesh = this.gemPool.pop(); if (!mesh) return;
+      mesh.visible = true; mesh.scale.setScalar(0.01);
+      this.gems.push({ mesh, lane: this.gemLane, z: this.z + 58 + i * 3.6, born: 0 });
+    }
+    this.ev('gemrow');
+  }
+
+  // ---------- aggiornamento ----------
+  update(dt) {
+    this.t += dt;
+    const connected = this.hooks.connected(); const st = this.hooks.stats(); const ftp = this.ftp;
+    // senza rullo la demo simula 0,8 × FTP con scatti (e un po' meno nel recupero)
+    const demoP = !connected ? ftp * (this.state === 'play' && this.seg?.kind === 'rest' ? 0.58 : 0.8) * (((this.t % 40) > 31 && this.seg?.kind !== 'rest') ? 1.6 : 1) : 0;
+    this.power = connected ? st.power || 0 : demoP;
+    this.cadence = connected ? st.cadence || 0 : 88;
+    this.pw += (this.power - this.pw) * Math.min(1, dt / 1.2);
+    this.connected = connected;
+    if (this.audio.song) this.audio.setTempo(this.audio.song.bpm * clamp((this.cadence || 85) / 88, 0.85, 1.25));
+    this.msgs.update(dt);
+    if (this.state === 'loading' || this.state === 'error') return;
+    this.fx.update(dt); this.shake.update(dt);
+    this.stateT += dt;
+    if (this.state === 'menu') { this.menuTick(dt, connected); this.view(dt); return; }
+    if (this.state === 'over') { this.view(dt, true); return; }
+
+    // pausa: chi smette di pedalare non perde, il tempo si ferma
+    if (connected) {
+      if (this.power < 12) { this.pauseT += dt; if (this.pauseT > 2.5 && !this.paused) { this.paused = true; this.audio.sfx('beep'); } } else if (this.power > 25) { this.pauseT = 0; this.paused = false; }
+    }
+    if (this.paused) { this.view(dt, true); return; }
+
+    this.el += dt;
+    let seg = segAt(this.plan, this.el); const idx = this.plan.segs.indexOf(seg);
+    if (idx !== this.segIdx) { this.enterSeg(idx); seg = this.seg; }
+    if (this.el >= this.total) return this.finish();
+    const tgt = this.tgtNow(); this.tgtW = tgt; seg.inT += dt;
+    const zone = this.pw >= HOLD_PCT * tgt; this.inTarget = this.pw >= 0.92 * tgt; this.holdOk = zone;
+    this.sprinting = seg.kind === 'sprint' && zone;
+    const vT = seg.kind === 'sprint' ? V_SPRINT : V_BASE; this.v += (vT - this.v) * Math.min(1, dt * 2);
+    this.z += this.v * dt;
+    const g = GRADE[seg.kind] ?? 0; if (g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade(g); }
+
+    // corsia: il giocatore scivola verso quella scelta; senza rullo (demo) la scelta giusta è automatica
+    this.updateAssist(dt);
+    const tx = laneX(this.lane); const px0 = this.x; this.x = lerp(this.x, tx, 1 - Math.exp(-dt * 9)); this.vx = (this.x - px0) / Math.max(dt, 1e-3);
+
+    this.updateBridge(dt, seg, tgt);
+    this.updateEscapees(dt);
+    this.updateGroup(dt, seg, tgt);
+    this.updateGems(dt, seg);
+    this.updateLine(dt);
+    this.updateTicks(dt, seg, tgt, zone);
+    if (this.hint) { this.hint.t -= dt; if (this.hint.t <= 0) this.hint = null; }
+    this.view(dt);
+  }
+
+  // in demo (nessun rullo collegato) il gioco guida da solo la corsia verso il corridore da prendere
+  updateAssist(dt) {
+    if (this.connected) return;
+    const b = this.bridge; if (!b || b.state !== 'attack' || this.lane === b.lane) { this.assistT = 0; return; }
+    this.assistT += dt; if (this.assistT > 0.7) { this.lane += Math.sign(b.lane - this.lane); this.assistT = 0; }
+  }
+
+  updateBridge(dt, seg, tgt) {
+    const b = this.bridge; if (!b) return;
+    const ftp = this.ftp;
+    if (b.state === 'approach') {
+      // arriva a 20 m esattamente alla fine del tratto (potenza ininfluente: è l'avvicinamento)
+      const left = Math.max(0.4, seg.t1 - this.el); b.gap = Math.max(b.gap0, b.gap - ((b.gap - b.gap0) / left) * dt);
+      if (!b.nearEv && b.gap < 60) { b.nearEv = true; this.ev('near'); this.say(t('games.gruppetto.ahead'), '#ffd34d', 1.4, false, 1); this.audio.sfx('beep'); }
+    } else {
+      // l'attacco: i watt chiudono la distanza; con più di un corridore la fila davanti è più lunga ma conta il primo
+      b.close = closingSpeed(this.pw, tgt, ftp, b.gap0, b.dur);
+      const left = b.t0 + b.dur - this.el;
+      b.gap = Math.min(b.gap0 * 1.6, b.gap - b.close * dt);
+      // scarto laterale a metà ponte: devi spostarti nella sua corsia
+      if (!b.swerved && b.kind !== 'warm' && this.el - b.t0 > b.dur * 0.42 && b.gap > 5) {
+        b.swerved = true; const opts = [-1, 0, 1].filter((l) => Math.abs(l - b.lane) === 1);
+        b.lane = opts[Math.floor(this.rnd() * opts.length)]; this.ev('swerve'); this.say(t('games.gruppetto.swerve'), '#4de3ff', 1.3, false, 1); this.audio.sfx('shiftDown');
+      }
+      const mism = Math.abs(this.x - b.riders[0].x) > 1.35;
+      this.blocked = false;
+      if (b.gap <= CATCH_GAP) {
+        if (mism) { b.gap = CATCH_GAP; this.blocked = true; if (!b.blockEv || this.el - b.blockEv > 2.2) { b.blockEv = this.el; this.ev('block'); this.audio.sfx('beep'); } } else return this.catchBridge();
+      }
+      if (left <= 0) this.failBridge(b.kind === 'warm'); // l'avvio: se non lo prendi, si lascia andare senza rimproveri
+    }
+    // posizioni: la fila davanti a te
+    if (this.bridge) {
+      const bb = this.bridge;
+      bb.riders.forEach((R, k) => {
+        const tx = bb.x = laneX(bb.lane); const px = R.x; R.x = lerp(R.x, tx, 1 - Math.exp(-dt * 5)); R.vx = (R.x - px) / Math.max(dt, 1e-3); R.z = this.z + bb.gap + k * PACK_DZ;
+      });
+    }
+  }
+
+  updateEscapees(dt) {
+    for (const e of this.escapees) {
+      e.v = Math.min(11, e.v + dt * 5); e.gap += e.v * dt;
+      e.riders.forEach((R, k) => { R.z = this.z + e.gap + k * PACK_DZ; });
+    }
+    const keep = [];
+    for (const e of this.escapees) { if (e.gap > 112) for (const R of e.riders) this.release(R.cy); else keep.push(e); }
+    this.escapees = keep;
+  }
+
+  updateGroup(dt, seg, tgt) {
+    // righe per colonna: ognuno si sposta indietro quando ne arriva un altro davanti
+    const rows = { '-1': 0, '1': 0 };
+    for (const g of this.group) {
+      g.row = rows[g.side]++;
+      const slotZ = -(ROW_Z0 + g.row * ROW_DZ);
+      if (g.u < 1) {
+        g.u += dt / g.dur; const u = Math.max(0, g.u);
+        // prima si sposta di lato (supera il giocatore a distanza), poi scivola indietro
+        g.relx = lerp(g.sx, g.side * SLOT_X, smooth(u * 2.2)); g.relz = lerp(g.sz, slotZ, smooth((u - 0.18) / 0.82));
+        if (u > 0.85 && !g.said) g.said = true;
+      } else { g.relz += (slotZ - g.relz) * Math.min(1, dt * 6); g.relx += (g.side * SLOT_X - g.relx) * Math.min(1, dt * 8); }
+      const R = g.R; R.z = this.z + g.relz;
+      R.vx = 0; const wantX = this.x + g.relx; const px = R.x; R.x = g.u < 1 ? wantX : lerp(R.x, wantX, 1 - Math.exp(-dt * 7)); R.vx = (R.x - px) / Math.max(dt, 1e-3);
+    }
+    // chi si stacca scivola di lato e indietro, fuori dall'inquadratura
+    for (const d of this.drops) { d.t += dt; d.rel -= (3 + d.t * 4) * dt; d.relx += d.side * dt * 2.6; d.R.z = this.z + d.rel; d.R.x = this.x + d.relx; d.R.vx = d.side * 2.6; }
+    this.drops = this.drops.filter((d) => { if (d.rel < HIDE_REL - 6) { this.release(d.R.cy); return false; } return true; });
+    // tieni il gruppo: nel vento contro (e nel recupero) chi è in scia resta solo se tieni i watt
+    if ((seg.kind === 'pace' || seg.kind === 'rest') && this.group.length) {
+      if (this.pw < HOLD_PCT * tgt) { this.deficit += dt; if (this.deficit > DROP_AFTER) { this.dropOne(); this.deficit = DROP_AFTER - 1.3; } } else this.deficit = Math.max(0, this.deficit - dt * 2);
+    } else this.deficit = 0;
+  }
+
+  updateGems(dt, seg) {
+    const ok = seg.kind === 'pace' || seg.kind === 'rest' || (seg.kind === 'warm' && this.el > 5);
+    if (ok) { this.gemT -= dt; if (this.gemT <= 0) { this.spawnGems(); this.gemT = 3.0 + this.rnd() * 0.6; } }
+    for (const g of this.gems) {
+      g.born = Math.min(1, g.born + dt * 3); g.mesh.scale.setScalar(smooth(g.born));
+      const dz = g.z - this.z; g.mesh.position.set(laneX(g.lane), 0.05 + Math.sin(this.t * 4 + g.z) * 0.06, g.z); g.mesh.rotation.y = this.t * 2.5 + g.z;
+      if (!g.done && dz < 0.8 && dz > -1.8 && Math.abs(this.x - laneX(g.lane)) < 1.25) {
+        g.done = true; this.bottles++; const pts = 10 + Math.min(20, this.group.length * 2); this.score += pts;
+        this.ev('gem'); this.audio.sfx('coin'); this.pop(`+${pts}`, '#ffd34d', laneX(g.lane), 2.2, this.z + 0.5, 0.8);
+        this.fx.spawn(laneX(g.lane), 1, this.z + 0.5, { tex: 'spark', size: 1.6, life: 0.35, grow: 1.6 }); this.prog('coins', 1);
       }
     }
-    this.strays = this.strays.filter((s) => !s.done);
-    const want = 2 + Math.min(4, Math.floor(this.train.length / 6));
-    while (this.strays.length < want) this.addStray();
-    // la pendenza sale con la lunghezza del gruppo
-    const grade = Math.min(7, Math.round(this.train.length * 0.25 * 2) / 2);
-    if (grade !== this.sentGrade) { this.sentGrade = grade; this.hooks.setGrade(grade); }
-    this.score += dt * (this.sprinting ? 2 : 1) * (1 + this.train.length * 0.1);
-    // urti
-    if (Math.abs(this.x) > HALF - 0.4 || Math.abs(this.z) > HALF - 0.4) return this.crash(t('games.gruppetto.fence'));
-    if (this.hitsTrain(this.x, this.z, 0.9, 3, false)) return this.crash(t('games.gruppetto.rearEnded'));
+    this.gems = this.gems.filter((g) => { if (g.done || g.z < this.z - 6) { g.mesh.visible = false; this.gemPool.push(g.mesh); return false; } return true; });
   }
 
-  // la fila segue la traccia esatta: posizione e direzione sono interpolate, chi si è appena unito scivola in fila
-  followTrain(dt) {
-    const a = this._a || (this._a = { x: 0, z: 0 }); const b = this._b || (this._b = { x: 0, z: 0 });
-    for (let i = 0; i < this.train.length; i++) {
-      const r = this.train[i]; const want = this.dist - (i + 1) * GAP;
-      this.trackAt(want, a); this.trackAt(want + 0.9, b);
-      const yawT = Math.atan2(b.x - a.x, b.z - a.z);
-      if (r.blend > 0) r.blend = Math.max(0, r.blend - dt / 0.9);
-      const e = r.blend * r.blend * (3 - 2 * r.blend); // morbido
-      const p = r.cy.root.position;
-      p.x = lerp(a.x, r.ox, e); p.z = lerp(a.z, r.oz, e);
-      const dy = wrapAngle(yawT - r.yaw); r.yaw += dy * Math.min(1, dt * 9);
-      r.cy.root.rotation.y = r.yaw;
-      r.cy.lean.rotation.z = lerp(r.cy.lean.rotation.z, clamp(-dy * 1.4, -0.3, 0.3), Math.min(1, dt * 6));
+  updateLine(dt) {
+    const L = this.line; if (!L || !this.arch) return;
+    this.arch.userData.s = Math.min(1, this.arch.userData.s + dt * 1.2); this.arch.scale.setScalar(smooth(this.arch.userData.s));
+    if (!L.passed && this.z >= L.z) {
+      L.passed = true; this.ev('line'); this.audio.sfx('cheer'); this.shake.add(0.4);
+      const won = this.bridge == null && (this.finalWon || L.kind !== 'finish'); void won;
+      const bonus = 150 + this.group.length * 25; this.score += bonus; this.pop(`+${bonus}`, '#ffd34d', this.x, 3.4, this.z, 1.3);
+      this.say(t(L.kind === 'finish' ? 'games.gruppetto.finish' : 'games.gruppetto.prime'), '#ffd34d', 2, true, 3, t('games.gruppetto.lineSub', { n: this.group.length }));
+      for (let i = 0; i < 6; i++) this.fx.spawn(this.x + (this.rnd() - 0.5) * 6, 2 + this.rnd() * 3, this.z + 2, { tex: 'spark', size: 1.2, life: 0.8, vy: 2, grow: 0.4 });
+    }
+    if (L.passed && this.z > L.z + 14) { this.arch.visible = false; this.line = null; }
+  }
+
+  // controllo del ritmo: premia chi tiene i watt (o chiede più watt): è l'evento che non lascia mai passare più di 3 secondi
+  updateTicks(dt, seg, tgt, zone) {
+    this.tickT -= dt; if (this.tickT > 0) return; this.tickT = TICK;
+    this.ev('tick');
+    const n = this.group.length;
+    if (zone) {
+      const pts = 6 + n * 3; this.score += pts; if (n) this.prog('draftSec', TICK);
+      this.pop(`+${pts}`, '#ffffff', this.x + (this.popN % 2 ? 1 : -1) * 0.9, 3.2, this.z, 0.7);
+      this.fx.spawn(this.x, 1.3, this.z - 1.2, { tex: 'glow', size: 1.8, life: 0.3, grow: 1.2, color: '#d9ff3d' });
+      this.audio.sfx('pass');
+    } else {
+      this.hint = { text: t('games.gruppetto.push', { w: Math.max(5, Math.round((tgt * HOLD_PCT - this.pw) / 5) * 5) }), t: 1.8 }; this.audio.sfx('beep');
     }
   }
 
-  crash(why) {
-    this.fx.explode(this.x, 1, this.z, 1); this.audio.sfx('hurt'); this.why = why;
-    if (navigator.vibrate) navigator.vibrate(120);
+  menuTick(dt, connected) {
+    // si parte pedalando (o tenendo premuto + / −)
+    if (this.stateT > 1 && ((connected && this.power > 30) || (this.held && this.heldT > 0.8))) this.startT += dt; else this.startT = Math.max(0, this.startT - dt * 2);
+    if (this.held) this.heldT += dt;
+    if (this.startT > 1.6 || (this.held && this.heldT > 0.8 && this.stateT > 1)) { this.held = 0; this.begin(); }
+  }
+
+  finishResult() {
+    const s = starsFor({ done: this.bridgesDone, total: this.bridgesTotal, finalWon: this.finalWon, dropped: this.dropped });
+    const rec = this.record(); const prevBest = rec.score || 0; const newBest = this.score > prevBest;
+    if (newBest || s.stars > (rec.stars || 0)) { try { localStorage.setItem(this.recordKey(), JSON.stringify({ score: Math.max(prevBest, this.score), stars: Math.max(rec.stars || 0, s.stars) })); } catch { /* niente storage */ } }
     this.score = Math.round(this.score);
-    this.hooks.progress?.setMax('gruppettoMax', this.train.length + 1);
-    this.end(this.train.length * 2);
+    this.result = { ...s, done: this.bridgesDone, total: this.bridgesTotal, caught: this.caught, riders: this.plan.riders, dropped: this.dropped, finalWon: this.finalWon, group: this.group.length, score: this.score, newBest, prevStars: rec.stars || 0 };
+    this.result.hint = nextStarHint(this.result);
+    this.prog('races', 0, 40 + s.stars * 40 + this.bridgesDone * 10);
+    this.hooks.progress?.setMax('slipStars', s.stars);
   }
 
-  view(dt) {
-    const cad = this.cadence || 80; const cam = this.stage.camera;
-    const pl = this.player; pl.root.position.set(this.x, 0, this.z); pl.root.rotation.set(0, this.h, 0);
-    pl.lean.rotation.z = -clamp(this.lean, -0.35, 0.35); // piega verso l'interno della curva
-    const wheel = this.state === 'play' ? (this.v || 0) : 0;
-    pl.pose(dt, this.state === 'play' ? cad : cad * 0.5, wheel, { stand: this.sprinting ? 1 : 0 });
-    // camera: dietro e sopra, guarda avanti (si vede l'orizzonte della campagna)
-    const tall = this.stage.H > this.stage.W; // telefono in verticale: più indietro e più in alto
-    const back = 11 + (tall ? 3 : 0) + Math.min(7, this.train.length * 0.22);
-    this.camH += wrapAngle(this.h - this.camH) * Math.min(1, dt * 3.5);
-    const tx = this.x - Math.sin(this.camH) * back; const tz = this.z - Math.cos(this.camH) * back;
-    const ty = 6.8 + back * 0.28 + (tall ? 1.5 : 0);
-    if (!this.camInit) { cam.position.set(tx, ty, tz); this.camInit = true; }
-    cam.position.x += (tx - cam.position.x) * Math.min(1, dt * 3); cam.position.y += (ty - cam.position.y) * Math.min(1, dt * 3); cam.position.z += (tz - cam.position.z) * Math.min(1, dt * 3);
-    const ahead = tall ? 12 : 9; const lx = this.x + Math.sin(this.camH) * ahead; const lz = this.z + Math.cos(this.camH) * ahead;
-    cam.lookAt(lx, 0.6, lz);
-    const fov = this.sprinting ? 66 : 60; cam.fov += (fov - cam.fov) * Math.min(1, dt * 3); cam.updateProjectionMatrix();
-    const cx = cam.position.x; const cz = cam.position.z; const dl = Math.hypot(lx - cx, lz - cz) || 1;
-    // chi è lontano dalla camera non si anima (e le code lunghe restano economiche)
-    const near = (cy) => { const p = cy.root.position; return Math.hypot(p.x - cx, p.z - cz) < 30; };
-    for (const r of this.train) { const on = near(r.cy); r.cy.body.visible = on; if (on) r.cy.pose(dt, cad, this.v || 0, { stand: this.sprinting ? 1 : 0 }); }
-    for (const s of this.strays) {
-      const cy = s.cy; const p = cy.root.position;
-      const dxp = this.x - p.x; const dzp = this.z - p.z; const dist = Math.hypot(dxp, dzp);
-      if (dist < 16) { s.yaw += wrapAngle(Math.atan2(dxp, dzp) - s.yaw) * Math.min(1, dt * 3); cy.root.rotation.y = s.yaw; } // si gira a salutare
-      s.flag.rotation.y = Math.sin(this.t * 4 + s.x) * 0.4; s.flag.position.y = Math.sin(this.t * 3 + s.z) * 0.08;
-      cy.body.visible = Math.hypot(p.x - cx, p.z - cz) < 45;
-      if (cy.body.visible) cy.pose(dt, 0, 0, { wave: true });
-    }
-    this.fx.update(dt);
+  finish() {
+    if (!this.result) this.finishResult();
+    this.state = 'over'; this.stateT = 0; this.finished = true;
+    this.audio.stopSong(); this.audio.sfx('win');
+    this.hooks.runEnd?.({ game: 'gruppetto', score: this.score });
+    this.hooks.setGrade(0);
+  }
+
+  // ---------- vista ----------
+  view(dt, still = false) {
+    const cam = this.stage.camera; const speed = this.state === 'play' && !still ? this.v : 0;
+    const moving = this.state === 'play' && !still; const cad = moving ? (this.cadence || 80) : 0; const stand = this.sprinting ? 1 : 0;
+    const pl = this.player; pl.root.position.set(this.x, 0, this.z); pl.root.rotation.y = 0;
+    pl.lean.rotation.z = clamp((this.vx || 0) * 0.04, -0.3, 0.3);
+    pl.pose(dt, cad, speed, { stand });
+    // camera: dietro e sopra, guarda avanti; segue la corsia con un po' di ritardo
+    const sprint = this.sprinting ? 1 : 0;
+    const cx = this.x * 0.8; const tx = cx; const ty = 6.3; const tz = this.z - 12.2;
+    if (!this.camInit) { cam.position.set(tx, ty, tz); this.camInit = true; this.camX = cx; }
+    this.camX += (cx - this.camX) * Math.min(1, dt * 4); cam.position.set(this.camX, ty, tz);
+    cam.lookAt(this.camX * 0.9, 0.9, this.z + 7);
+    this.shake.apply(cam);
+    const fov = 46 + sprint * 5 + (this.seg?.kind === 'effort' ? 1.5 : 0); cam.fov += (fov - cam.fov) * Math.min(1, dt * 3); cam.updateProjectionMatrix();
+    // gli altri ciclisti: si animano solo quelli che si vedono
+    const pose = (R, rel) => { const cy = R.cy; const p = cy.root.position; p.x = R.x; p.z = R.z; p.y = 0;
+      if (R.born < 1) { R.born = Math.min(1, R.born + dt * 2.2); cy.root.scale.setScalar(RIDER_S * Math.max(0.01, smooth(R.born))); }
+      const vis = rel > HIDE_REL; cy.root.visible = vis; if (!vis) return;
+      cy.lean.rotation.z = clamp((R.vx || 0) * 0.05, -0.3, 0.3);
+      cy.pose(dt, moving ? cad * 0.97 + 4 : 0, speed, { stand: this.sprinting ? 1 : 0 }); };
+    const b = this.bridge; if (b) for (const R of b.riders) pose(R, R.z - this.z);
+    for (const e of this.escapees) for (const R of e.riders) pose(R, R.z - this.z);
+    for (const g of this.group) pose(g.R, g.relz);
+    for (const d of this.drops) pose(d.R, d.rel);
+    this.wind.update(dt, pl.root, this.state === 'play' && !this.paused ? (this.seg?.kind === 'pace' ? 0.9 : this.sprinting ? 1 : 0.35) : 0);
+    this.road.update(this.z); for (const i of this.inst) i.update(this.z);
     this.light.follow(this.x, 0, this.z);
-    for (const i of this.inst) i.cull(cx, cz, (lx - cx) / dl, (lz - cz) / dl, i.cullR || 175);
   }
 
-  hud(ctx, W, H) {
-    const s = uiScale(W, H); const top = 54; const gap = 8; const m = 12;
-    const pw = Math.min((W - m * 2 - gap * 2) / 3, 150 * s); const ph = 62 * s;
-    const box = (i, label, value, color) => {
-      const x = i === 0 ? m : i === 1 ? (W - pw) / 2 : W - m - pw;
-      panel(ctx, x, top, pw, ph, {});
-      txt(ctx, label, x + pw / 2, top + 16 * s, { size: 14 * s, align: 'center', color: HUD.dim, maxW: pw - 8 });
-      txt(ctx, value, x + pw / 2, top + ph - 8 * s, { size: 44 * s, align: 'center', color, maxW: pw - 8 });
+  // ---------- interfaccia ----------
+  // in alto: punti · ponte n/N · corridori presi; sotto la richiesta del momento e le barre; poi l'obiettivo (metri al prossimo corridore).
+  // in basso la potenza con il numero grande e il bersaglio, a destra il gruppo (il tuo punteggio vero).
+  drawHud(dt) {
+    const { ctx, W, H } = this.stage;
+    ctx.clearRect(0, 0, W, H); hudView(ctx, W, H);
+    if (this.state === 'loading') { ctx.fillStyle = '#0f0e0c'; ctx.fillRect(0, 0, W, H); hudText(ctx, t('games.common.loading'), W / 2, H / 2, { size: 22, align: 'center', color: '#d9ff3d' }); hudText(ctx, `${Math.round((this.loadPct || 0) * 100)}%`, W / 2, H / 2 + 28, { size: 14, align: 'center' }); return; }
+    if (this.state === 'error') { hudText(ctx, t('ui.error', { error: this.error }), W / 2, H / 2, { size: 14, align: 'center', color: '#ff6b6b' }); return; }
+    if (this.state === 'menu') { this.drawMenu(ctx, W, H, dt); return; }
+    const seg = this.seg; const pad = 12; const y0 = 84;
+    // riga in alto: punti · ponte · presi x/y
+    ctx.fillStyle = 'rgba(8,10,26,.62)'; rrect(ctx, pad - 4, y0 - 22, W - 2 * pad + 8, 36, 10); ctx.fill();
+    hudText(ctx, String(Math.round(this.score)), pad + 6, y0 + 5, { size: 26, maxW: 96 });
+    const wn = seg.kind === 'warm' ? t('games.gruppetto.seg.warm') : seg.kind === 'cool' ? t('games.gruppetto.seg.cool') : t('games.gruppetto.waveOf', { n: seg.wave, m: this.plan.N });
+    hudText(ctx, wn, W / 2 - 10, y0 + 3, { size: W < 400 ? 18 : 21, align: 'center', color: '#d9ff3d', maxW: W * 0.3 });
+    hudText(ctx, t('games.gruppetto.caughtHud', { a: this.caught, b: this.plan.riders }), W - pad - 4, y0 + 3, { size: W < 400 ? 19 : 22, align: 'right', color: '#ffffff', maxW: W * 0.34 });
+    // la richiesta del momento: tratto, watt, tempo che manca
+    const col = SEG_COLOR[seg.kind]; const by = y0 + 22; const bh2 = 44;
+    ctx.fillStyle = 'rgba(8,10,26,.72)'; rrect(ctx, pad - 4, by, W - 2 * pad + 8, bh2, 12); ctx.fill();
+    ctx.fillStyle = col; rrect(ctx, pad - 4, by, 7, bh2, 3); ctx.fill();
+    const tw = this.tgtW || this.tgtNow(); const left = Math.max(0, Math.ceil(seg.t1 - this.el));
+    const easy = seg.kind === 'rest' || seg.kind === 'cool' || seg.kind === 'warm';
+    hudText(ctx, t(`games.gruppetto.seg.${seg.kind}`), pad + 12, by + 29, { size: 21, color: col, maxW: W * 0.34 });
+    hudText(ctx, `${tw} W`, W / 2 + 8, by + 32, { size: 32, align: 'center', color: this.inTarget || easy ? '#ffffff' : '#ffd34d', maxW: W * 0.34 });
+    hudText(ctx, `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`, W - pad - 4, by + 29, { size: 21, align: 'right', color: '#e8e8f4', maxW: 70 });
+    const segK = clamp((seg.t1 - this.el) / (seg.t1 - seg.t0), 0, 1);
+    ctx.fillStyle = 'rgba(255,255,255,.18)'; rrect(ctx, pad, by + bh2 + 4, W - 2 * pad, 6, 3); ctx.fill();
+    ctx.fillStyle = col; rrect(ctx, pad, by + bh2 + 4, Math.max(6, (W - 2 * pad) * segK), 6, 3); ctx.fill();
+    const ty = by + bh2 + 15; const tk = clamp(this.el / this.total, 0, 1);
+    ctx.fillStyle = 'rgba(255,255,255,.14)'; rrect(ctx, pad, ty, W - 2 * pad, 5, 2.5); ctx.fill();
+    ctx.fillStyle = '#d9ff3d'; rrect(ctx, pad, ty, Math.max(5, (W - 2 * pad) * tk), 5, 2.5); ctx.fill();
+    ctx.fillStyle = 'rgba(8,10,26,.9)';
+    for (const s of this.plan.segs) if (s.kind === 'pace') ctx.fillRect(pad + (W - 2 * pad) * (s.t0 / this.total) - 1, ty - 1, 2, 7);
+    this.drawGoal(ctx, W, H, ty + 14, col);
+    if (!this.connected) hudText(ctx, t('games.common.demo'), W / 2, H - 6, { size: 13, align: 'center', color: '#ffd34d' });
+
+    // in basso: potenza (numero grande + barra con il bersaglio) e il gruppo
+    const bh = 22; const barY = H - 22 - bh; const bx = pad + 2; const bw2 = W - 2 * pad - 4;
+    const gr = ctx.createLinearGradient(0, H - 128, 0, H); gr.addColorStop(0, 'rgba(6,8,22,0)'); gr.addColorStop(0.35, 'rgba(6,8,22,.55)'); gr.addColorStop(1, 'rgba(6,8,22,.82)');
+    ctx.fillStyle = gr; ctx.fillRect(0, H - 128, W, 128);
+    const big = W < 500 ? 56 : 64; const pc = this.sprinting ? '#4de3ff' : this.inTarget ? '#d9ff3d' : '#ffffff';
+    const numW = hudText(ctx, String(Math.round(this.power)), pad + 4, barY - 10, { size: big, color: pc, maxW: 150 });
+    hudText(ctx, 'W', pad + 8 + numW, barY - 10, { size: 22, color: '#e8e8f4' });
+    const rx = W - pad - 4; const gw = Math.max(90, W - 2 * pad - numW - 60);
+    hudText(ctx, String(this.group.length), rx, barY - 10, { size: big, align: 'right', color: '#d9ff3d', maxW: 110 });
+    hudText(ctx, t('games.gruppetto.groupLbl'), rx, barY - 10 - big * 0.78, { size: 16, align: 'right', color: '#e8e8f4', maxW: gw });
+    ctx.fillStyle = 'rgba(8,10,26,.75)'; rrect(ctx, bx, barY, bw2, bh, 8); ctx.fill();
+    const maxW = Math.max(this.ftp * 1.7, tw * 1.25);
+    ctx.fillStyle = pc; rrect(ctx, bx, barY, Math.max(8, bw2 * clamp(this.power / maxW, 0, 1)), bh, 8); ctx.fill();
+    const t0 = bx + bw2 * clamp(HOLD_PCT * tw / maxW, 0, 1);
+    ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.fillRect(t0, barY, Math.max(2, bx + bw2 * clamp(tw * 1.15 / maxW, 0, 1) - t0), bh);
+    ctx.fillStyle = '#fff'; ctx.fillRect(bx + bw2 * clamp(tw / maxW, 0, 1) - 1, barY - 4, 3, bh + 8);
+
+    // flecce di corsia: compaiono quando devi spostarti verso il corridore
+    const b = this.bridge;
+    if (b && b.state === 'attack' && Math.abs(this.x - b.riders[0].x) > 1.35 && b.gap < 14) {
+      const dir = b.lane > this.lane ? 1 : -1; const k = 0.7 + 0.3 * Math.sin(this.t * 10);
+      ctx.save(); ctx.globalAlpha = k; hudText(ctx, dir > 0 ? '▶' : '◀', dir > 0 ? W - 34 : 34, H * 0.5, { size: 64, align: 'center', color: '#4de3ff' }); ctx.restore();
+    }
+    this.msgs.draw(ctx, W, H, { u: W < 500 ? 0.9 : 1.1, y: H * 0.36 });
+    const v3 = new THREE.Vector3();
+    for (const p of this.pops) {
+      p.t -= dt; const k = 1 - p.t / p.t0;
+      v3.set(p.x, p.y + k * 1.6, p.z).project(this.stage.camera);
+      ctx.globalAlpha = clamp(p.t / p.t0 * 2, 0, 1);
+      hudText(ctx, p.text, clamp((v3.x + 1) / 2 * W + (p.slot ? 30 : -30), 40, W - 40), (1 - v3.y) / 2 * H, { size: 24, align: 'center', color: p.color });
+      ctx.globalAlpha = 1;
+    }
+    this.pops = this.pops.filter((p) => p.t > 0 && this.state !== 'over');
+    if (this.paused) {
+      ctx.fillStyle = 'rgba(8,10,26,.72)'; ctx.fillRect(0, 0, W, H);
+      hudText(ctx, t('games.gruppetto.paused'), W / 2, H * 0.42, { size: 42, align: 'center', color: '#ffd34d' });
+      paragraph(ctx, t('games.gruppetto.pausedSub'), W / 2, H * 0.42 + 36, { size: 20, maxW: W - 40, color: '#f0f0f0' });
+    }
+    if (this.result && (seg.kind === 'cool' || this.state === 'over')) this.drawResult(ctx, W, H, this.state === 'over');
+    if (!['pace', 'effort', 'sprint'].includes(seg.kind) || this.state === 'over') this.hooks.progress?.drawToasts(ctx, W, dt, this.result && seg.kind === 'cool' ? 400 : 224, true);
+  }
+
+  // obiettivo sempre visibile: metri al prossimo corridore (o al traguardo), con barra
+  drawGoal(ctx, W, H, y, col) {
+    const pad = 12; const b = this.bridge; const w = W - 2 * pad; const h = 46; const s = this.seg;
+    ctx.fillStyle = 'rgba(8,10,26,.72)'; rrect(ctx, pad - 4, y, w + 8, h, 12); ctx.fill();
+    let label; let frac; let right = ''; let c = '#ffffff';
+    if (b && b.state === 'attack') {
+      const m = Math.max(0, Math.round(b.gap)); label = t('games.gruppetto.gapTo', { m }); frac = 1 - clamp((b.gap - CATCH_GAP) / Math.max(1, b.gap0 - CATCH_GAP), 0, 1);
+      right = `${Math.max(0, Math.ceil(b.t0 + b.dur - this.el))} s`; c = this.blocked ? '#4de3ff' : b.close > 0.05 ? '#d9ff3d' : '#ffd34d';
+      if (this.blocked) label = t('games.gruppetto.lane');
+    } else if (b) {
+      label = t('games.gruppetto.nextIn', { m: Math.max(0, Math.round(b.gap)) }); frac = 1 - clamp((b.gap - b.gap0) / Math.max(1, b.startGap - b.gap0), 0, 1); c = '#ffd34d';
+    } else if (s.kind === 'rest' || s.kind === 'pace') {
+      const n = this.group.length; label = this.holdOk ? t('games.gruppetto.holdOk', { n }) : t('games.gruppetto.holdBad'); frac = clamp(1 - this.deficit / DROP_AFTER, 0, 1); c = this.holdOk ? '#9ad64b' : '#ff8d8d';
+    } else { label = t('games.gruppetto.groupOf', { n: this.group.length }); frac = 1; }
+    const hintOn = this.hint && !(b && b.state === 'attack' && this.blocked);
+    if (hintOn) { label = this.hint.text; c = '#ffd34d'; }
+    hudText(ctx, label, pad + 8, y + 22, { size: 22, color: c, maxW: w * 0.62 });
+    if (right) hudText(ctx, right, W - pad - 4, y + 22, { size: 22, align: 'right', color: '#e8e8f4', maxW: w * 0.3 });
+    ctx.fillStyle = 'rgba(255,255,255,.2)'; rrect(ctx, pad + 4, y + 30, w - 8, 9, 4.5); ctx.fill();
+    ctx.fillStyle = c; rrect(ctx, pad + 4, y + 30, Math.max(9, (w - 8) * clamp(frac, 0, 1)), 9, 4.5); ctx.fill();
+  }
+
+  drawMenu(ctx, W, H, dt) {
+    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, 'rgba(8,10,28,.8)'); g.addColorStop(0.5, 'rgba(8,10,28,.1)'); g.addColorStop(1, 'rgba(8,10,28,.9)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    hudText(ctx, t('games.gruppetto.hud.title'), W / 2, 124, { size: 56, align: 'center', color: '#d9ff3d' });
+    hudText(ctx, t('games.gruppetto.hud.tagline'), W / 2, 154, { size: 17, align: 'center', font: 'text', maxW: W - 24 });
+    const rowW = Math.min(W - 28, 440); const x0 = (W - rowW) / 2; let y = 184;
+    const chip = (label, opts, idx, key) => {
+      hudText(ctx, label, x0, y + 20, { size: 16, color: '#c8c8c8', font: 'text', maxW: rowW * 0.25 });
+      const cw = (rowW * 0.74) / opts.length; const cx0 = x0 + rowW * 0.26;
+      opts.forEach((o, i) => {
+        ctx.fillStyle = i === idx ? '#d9ff3d' : 'rgba(255,255,255,.14)'; rrect(ctx, cx0 + i * cw + 2, y, cw - 4, 30, 9); ctx.fill();
+        hudText(ctx, o, cx0 + i * cw + cw / 2, y + 22, { size: 17, align: 'center', color: i === idx ? '#15141b' : '#f0f0f0', stroke: i === idx ? null : 'rgba(0,0,0,.85)', maxW: cw - 8 });
+      });
+      hudText(ctx, key, x0 + rowW, y + 48, { size: 13, align: 'right', color: '#9aa', font: 'text' });
+      y += 62;
     };
-    box(0, t('games.gruppetto.lblGroup'), String(this.train.length + 1), HUD.lime);
-    box(1, t('games.gruppetto.lblScore'), String(Math.round(this.score)), this.sprinting ? HUD.cyan : HUD.white);
-    box(2, 'WATT', String(Math.round(this.power)), powerColor(this.power, this.effort.threshold));
-    // barra potenza sottile con soglia sprint
-    const by = top + ph + 6; const bw = W - m * 2; const maxW = Math.max(400, (this.effort.threshold || 200) * 1.6);
-    ctx.fillStyle = 'rgba(12,12,18,.55)'; ctx.fillRect(m, by, bw, 7 * s);
-    ctx.fillStyle = this.sprinting ? HUD.cyan : HUD.lime; ctx.fillRect(m, by, bw * clamp(this.power / maxW, 0, 1), 7 * s);
-    if (this.effort.threshold) { ctx.fillStyle = '#fff'; ctx.fillRect(m + bw * clamp(this.effort.threshold / maxW, 0, 1) - 1, by - 2, 2, 11 * s); }
-    // pendenza (colorata) e punti doppi
-    const gy = by + 10 * s; const g = this.sentGrade || 0;
-    panel(ctx, m, gy, 118 * s, 26 * s, { r: 8, fill: 'rgba(12,12,18,.55)' });
-    txt(ctx, t('games.gruppetto.grade', { n: g }), m + 59 * s, gy + 19 * s, { size: 16 * s, align: 'center', color: gradeColor(g), maxW: 108 * s });
-    if (this.sprinting) { panel(ctx, W - m - 118 * s, gy, 118 * s, 26 * s, { r: 8, fill: 'rgba(12,12,18,.55)' }); txt(ctx, t('games.gruppetto.double'), W - m - 59 * s, gy + 19 * s, { size: 16 * s, align: 'center', color: HUD.cyan, maxW: 108 * s }); }
-    this.edgeArrow(ctx, W, H, s, gy + 40 * s);
+    chip(t('games.gruppetto.dur'), DURATIONS.map((d) => t('games.gruppetto.durMin', { n: d / 60 })), this.durIdx, t('games.gruppetto.keyDur'));
+    chip(t('games.gruppetto.level'), LEVELS.map((l) => t(`games.gruppetto.lv.${l.id}`)), this.lvlIdx, t('games.gruppetto.keyLvl'));
+    const mw = Math.min(W - 28, 460); let fs = W < 500 ? 16 : 18; const rules = [1, 2, 3, 4, 5].map((i) => t(`games.gruppetto.rule${i}`));
+    const bottom = H * 0.64;
+    const count = () => rules.reduce((a, r) => a + wrapLines(ctx, '· ' + r, mw, fs, { font: 'text' }).length, 0);
+    while (fs > 11 && count() * 1.28 * fs + rules.length * 5 > bottom - y) fs -= 0.5;
+    for (const r of rules) { const o = paragraph(ctx, '· ' + r, W / 2, y + fs, { size: fs, maxW: mw, lineK: 1.28, color: '#f0f0f0' }); y = o.bottom + 5; }
+    const rec = this.record();
+    if (rec.score) hudText(ctx, `${t('games.common.best', { n: rec.score })} · ${'★'.repeat(rec.stars || 0)}`, W / 2, H - 92, { size: 16, align: 'center', color: '#c8c8c8', font: 'text' });
+    hudText(ctx, t(this.hooks.connected() ? 'games.gruppetto.startPedal' : 'games.gruppetto.startHold'), W / 2, H - 56, { size: 22, align: 'center', color: '#d9ff3d' });
+    ctx.fillStyle = 'rgba(255,255,255,.2)'; rrect(ctx, W / 2 - 80, H - 40, 160, 8, 4); ctx.fill();
+    ctx.fillStyle = '#d9ff3d'; rrect(ctx, W / 2 - 80, H - 40, Math.max(0, 160 * clamp(Math.max(this.startT / 1.6, this.held ? this.heldT / 0.8 : 0), 0, 1)), 8, 4); ctx.fill();
+    this.hooks.progress?.drawToasts(ctx, W, dt);
   }
 
-  // freccia sul bordo dello schermo verso il ciclista da raccogliere più vicino, se è fuori dall'inquadratura
-  edgeArrow(ctx, W, H, s, minY) {
-    let best = null; let bd = 1e9;
-    for (const st of this.strays) { const d = Math.hypot(st.x - this.x, st.z - this.z); if (d < bd) { bd = d; best = st; } }
-    if (!best) return;
-    const cam = this.stage.camera; const v = new THREE.Vector3(best.x, 1.5, best.z).project(cam);
-    let sx = v.x; let sy = v.y; if (v.z > 1) { sx = -sx; sy = -sy; }
-    const pad = 30 * s;
-    if (v.z <= 1 && Math.abs(sx) < 0.88 && sy > -0.85 && (1 - sy) / 2 * H > minY) return; // si vede già (bandierina)
-    const k = Math.max(Math.abs(sx) / 0.88, Math.abs(sy) / 0.85, 1e-3);
-    const px = clamp((sx / k + 1) / 2 * W, pad, W - pad); const py = clamp((1 - sy / k) / 2 * H, minY + pad * 0.6, H - pad - 20);
-    const ang = Math.atan2(-(py - H / 2), px - W / 2);
-    ctx.save(); ctx.translate(px, py); ctx.rotate(-ang);
-    ctx.fillStyle = HUD.gold; ctx.strokeStyle = 'rgba(0,0,0,.8)'; ctx.lineWidth = 3; ctx.lineJoin = 'round';
-    ctx.beginPath(); ctx.moveTo(16 * s, 0); ctx.lineTo(-10 * s, -13 * s); ctx.lineTo(-4 * s, 0); ctx.lineTo(-10 * s, 13 * s); ctx.closePath(); ctx.stroke(); ctx.fill();
-    ctx.restore();
-    txt(ctx, `${Math.round(bd)} m`, px, py + (py > H / 2 ? -20 : 30) * s, { size: 14 * s, align: 'center', color: HUD.gold });
+  // riepilogo: stelle, ponti, corridori presi, persi, record e cosa manca alla stella dopo
+  drawResult(ctx, W, H, full) {
+    const r = this.result; const top = full ? H * 0.2 : 84 + 134;
+    if (full) { ctx.fillStyle = 'rgba(8,4,20,.82)'; ctx.fillRect(0, 0, W, H); } else { ctx.fillStyle = 'rgba(8,10,26,.78)'; rrect(ctx, 12, top - 6, W - 24, 176, 14); ctx.fill(); }
+    const y = top + 38;
+    hudText(ctx, t('games.gruppetto.res.title'), W / 2, y - (full ? 0 : 6), { size: full ? 30 : 22, align: 'center', color: '#d9ff3d' });
+    drawStars(ctx, W / 2, y + (full ? 44 : 30), full ? 34 : 24, r.stars);
+    let yy = y + (full ? 100 : 74);
+    const line = (s, c = '#f0f0f0') => { const o = paragraph(ctx, s, W / 2, yy, { size: 17, maxW: W - 40, color: c, maxLines: 2 }); yy = o.bottom + 4; };
+    line(t('games.gruppetto.res.bridges', { a: r.done, b: r.total }));
+    line(t('games.gruppetto.res.riders', { a: r.caught, b: r.riders }) + ' · ' + t('games.gruppetto.res.lost', { n: r.dropped }));
+    line(`${t('games.common.score', { n: r.score })}${r.newBest ? t('games.common.newBest') : ''}`, r.newBest ? '#7dff6a' : '#f0f0f0');
+    if (r.hint) line(t(r.hint.key, { n: r.hint.n }), '#ffd34d');
+    if (full && this.stateT > 1.4) hudText(ctx, t('games.common.retry'), W / 2, H - 70, { size: 22, align: 'center', color: '#d9ff3d' });
   }
 
-  summary() {
-    return [this.why || t('games.gruppetto.over'), t('games.gruppetto.size', { n: this.train.length + 1 }), t('games.gruppetto.stats', { m: Math.round(this.dist), s: Math.round(this.sprintT) })];
+  loop(now) {
+    if (!this.active) return;
+    const dt = clamp((now - this.last) / 1000, 0, 0.05);
+    this.last = now;
+    this.update(dt);
+    if (this.player) this.stage.render();
+    this.drawHud(dt);
+    requestAnimationFrame(this.loop);
   }
+}
+
+function drawStars(ctx, cx, cy, r, n) {
+  for (let i = 0; i < 3; i++) {
+    const x = cx + (i - 1) * r * 2.5; ctx.beginPath();
+    for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5; const rr = k % 2 ? r * 0.45 : r; ctx.lineTo(x + Math.cos(a) * rr, cy + Math.sin(a) * rr); }
+    ctx.closePath(); ctx.lineJoin = 'round';
+    ctx.fillStyle = i < n ? '#ffd34d' : 'rgba(255,255,255,.14)'; ctx.fill();
+    ctx.lineWidth = 3; ctx.strokeStyle = i < n ? '#a8741a' : 'rgba(255,255,255,.4)'; ctx.stroke();
+  }
+}
+
+function rrect(ctx, x, y, w, h, r) {
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath(); ctx.moveTo(x + rr, y); ctx.arcTo(x + w, y, x + w, y + h, rr); ctx.arcTo(x + w, y + h, x, y + h, rr); ctx.arcTo(x, y + h, x, y, rr); ctx.arcTo(x, y, x + w, y, rr); ctx.closePath();
 }
