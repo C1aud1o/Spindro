@@ -39,6 +39,10 @@ Tutti i giochi condividono lo stesso menu e la stessa schermata dei risultati, q
 
 ![Il menu comune: durata, livello e un avvio che funziona con un tasto, un tocco o pedalando.](shot:gamemenu)
 
+## Porta il tuo allenamento
+
+Un gioco non deve per forza inventarsi la sua sessione. Quando avvii uno degli allenamenti di Spindro e da lì apri un gioco, il gioco segue l'allenamento: ogni passo diventa parte del gioco, e i tratti costanti più lunghi di tre minuti vengono divisi in ondate da uno o due minuti allo stesso obiettivo, così restano eventi e un contatore. In questa modalità i watt li decide l'allenamento, quindi livello e difficoltà adattiva non li toccano. Anche le stelle cambiano: una per aver finito, due per essere rimasti entro il 7% dall'obiettivo per almeno il 60% del tempo, tre per almeno l'85%.
+
 ## I sei giochi
 
 Breakaway è una tappa a tempo con una fuga, una volata e una salita che carica il tuo rullo. Horde Run tiene una strada contro ondate di zombie. Pedal Strike è uno sparatutto a corsa i cui scudi si rompono solo ai watt giusti. Slipstream ti chiede di raggiungere i corridori che attaccano e di portarli nella tua scia. Updraft è un aereo la cui quota è la tua potenza. Feed Zone fa rimbalzare una borraccia sui massaggiatori, con la cadenza che ne decide la velocità.

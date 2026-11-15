@@ -26,7 +26,7 @@ Spindro connects to your trainer over Bluetooth and gives you ERG, virtual gears
 - **One "Add device"** for a trainer, a Zwift controller, a heart rate strap, a power meter or a cadence sensor.
 - **Zwift Click, Play and Ride** as shifter and remote, with a key check that shows which key the app receives and lets you map it.
 - **Workouts:** 34 structured workouts (24 to 90 minutes), 4 multi-week plans, a ramp FTP test, a block editor, `.zwo` import, export to `.zwo` and Garmin `.fit`, a spoken coach in 5 languages.
-- **Six games that are workouts:** Breakaway, Horde Run, Pedal Strike, Slipstream, Updraft, Feed Zone. 5, 10 or 20 minutes in % of FTP, three levels, one shared menu. Plus any YouTube ride video at your speed.
+- **Six games that are workouts:** Breakaway, Horde Run, Pedal Strike, Slipstream, Updraft, Feed Zone. 5, 10 or 20 minutes in % of FTP, three levels, one shared menu. A game can also follow the workout you are riding. Plus any YouTube ride video at your speed.
 - **Routes:** load a GPX and the slope follows the course.
 - **Your watch as the head unit** (Android app): the phone broadcasts power, cadence and speed as a Bluetooth sensor.
 - **History and records,** a share card, `.fit` export with GPS, optional Strava upload.

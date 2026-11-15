@@ -255,7 +255,7 @@
     "faqTitle": "Domande",
     "finalTitle": "Aggancia i pedali.",
     "finalText": "Apri la web app, collega il rullo, pedala. Ci vuole circa un minuto.",
-    "gamesFollow": "Un gioco può anche seguire l'allenamento che stai facendo.",
+    "gamesFollow": "Un gioco può anche seguire l'allenamento che stai facendo: i suoi sforzi diventano le ondate del gioco e le stelle misurano quanto resti entro il 7% dei watt richiesti.",
     "devTitle": "Crea un gioco",
     "devLead": "Ogni gioco di Spindro è un piccolo modulo JavaScript su un kit comune: scena 3D, potenza e cadenza, un menu, i risultati, audio e progressi. Niente bundler, niente compilazione. Se sai scrivere un gioco con canvas o three.js, ne puoi aggiungere uno.",
     "devPoints": [
@@ -266,7 +266,8 @@
     "devBtn": "Inizia a creare",
     "blogTitle": "Dal blog",
     "blogLead": "Perché l'abbiamo fatta, come funziona e cosa abbiamo imparato.",
-    "blogAll": "Tutti gli articoli"
+    "blogAll": "Tutti gli articoli",
+    "gamesAria": "Schermate dei sei giochi"
   },
   "compat": {
     "title": "Rulli e orologi compatibili | Spindro",

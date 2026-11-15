@@ -39,6 +39,10 @@ Every game shares the same menu and the same results screen, so what you learn i
 
 ![The shared menu: length, level and a start that works by key, touch or pedalling.](shot:gamemenu)
 
+## Bring your own workout
+
+A game does not have to invent its own session. When you start one of Spindro's workouts and open a game from it, the game follows the workout: each step becomes part of the game, and steady stretches longer than three minutes are split into waves of one to two minutes at the same target, so there are still events and a counter. In this mode the watts are set by the workout, so the level and the adaptive difficulty do not touch them. The stars are different too: one for finishing, two for staying within 7% of the target for at least 60% of the time, three for at least 85%.
+
 ## The six games
 
 Breakaway is a timed stage with a breakaway, a sprint and a climb that loads your trainer. Horde Run holds a road against waves of zombies. Pedal Strike is a runner shooter whose shields break only at the right watts. Slipstream asks you to bridge to attacking riders and tow them. Updraft is a plane whose altitude is your power. Feed Zone bounces a bottle off the soigneurs, with cadence setting its speed.

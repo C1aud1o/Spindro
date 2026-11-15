@@ -255,7 +255,7 @@
     "faqTitle": "Questions",
     "finalTitle": "Clip in.",
     "finalText": "Open the web app, connect the trainer, ride. It takes about a minute.",
-    "gamesFollow": "A game can also follow the workout you are riding.",
+    "gamesFollow": "A game can also follow the workout you are riding: its efforts become the waves of the game, and the stars measure how long you stay within 7% of the target watts.",
     "devTitle": "Build a game",
     "devLead": "Every Spindro game is a small JavaScript module on a shared kit: 3D scene, power and cadence, one menu, results, audio and progress. No bundler, no build step. If you can write a canvas or three.js game, you can add one.",
     "devPoints": [
@@ -266,7 +266,8 @@
     "devBtn": "Start building",
     "blogTitle": "From the blog",
     "blogLead": "Why we built it, how it works, and what we learned.",
-    "blogAll": "All articles"
+    "blogAll": "All articles",
+    "gamesAria": "Screenshots of the six games"
   },
   "compat": {
     "title": "Compatible trainers and watches | Spindro",
