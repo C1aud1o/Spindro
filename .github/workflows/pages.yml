@@ -3,9 +3,11 @@ name: Pubblica su GitHub Pages
 # Un solo deploy contiene sempre entrambi gli ambienti (vedi docs/environments.md):
 #   produzione (ramo main): sito alla radice, app in /app/, APK in /app/spindro.apk
 #   beta (ramo beta):       solo l'app in /beta/, APK in /beta/spindro-beta.apk (noindex)
+# Il deploy parte sempre dal ramo main (l'ambiente "github-pages" accetta solo il ramo predefinito):
+# un push su beta lo avvia tramite pages-beta.yml.
 on:
   push:
-    branches: [main, beta]
+    branches: [main]
   workflow_dispatch:
   # quando è pronto un nuovo APK, ripubblica con il file aggiornato
   workflow_run:
