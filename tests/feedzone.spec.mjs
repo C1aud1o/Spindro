@@ -126,7 +126,7 @@ test('Feed Zone: chi smette di pedalare va in pausa; ciclista ≥ 14 %, soigneur
     const rider = frac([new V(g.x - 0.3, 0, 0.35), new V(g.x + 0.3, 3.0, 0.35)]);
     const far = g.targets.filter((x) => x.alive).sort((a, b) => b.z - a.z)[0];
     const guy = frac([new V(far.x, 0, far.z), new V(far.x, 3.0, far.z)]);
-    const ball = g.ballS ? frac([new V(g.ballS.x, 0.3, g.ballS.z), new V(g.ballS.x, 1.9, g.ballS.z)]) : 0;
+    const ball = g.ballS ? frac([new V(g.ballS.x, -0.05, g.ballS.z), new V(g.ballS.x, 2.05, g.ballS.z)]) : 0;
     const wTop = (() => { const a = new V(-5.6, 0, 17).project(g.stage.camera); const b = new V(5.6, 0, 17).project(g.stage.camera); return (b.x - a.x) / 2 * Wd; })();
     const t0 = g.el; p = 0;
     for (let i = 0; i < 8 * 30; i++) g.update(1 / 30);
@@ -137,6 +137,7 @@ test('Feed Zone: chi smette di pedalare va in pausa; ciclista ≥ 14 %, soigneur
   console.log(`SCHERMO ciclista ${(r.rider * 100).toFixed(1)} %, soigneur lontano ${(r.guy * 100).toFixed(1)} %, borraccia ${(r.ball * 100).toFixed(1)} %, campo in fondo ${(r.fieldFar * 100).toFixed(0)} % della larghezza`);
   expect(r.rider, 'ciclista / altezza schermo').toBeGreaterThanOrEqual(0.14);
   expect(r.guy, 'soigneur più lontano / altezza schermo').toBeGreaterThanOrEqual(0.08);
+  expect(r.ball, 'borraccia / altezza schermo').toBeGreaterThanOrEqual(0.08);
   expect(r.fieldFar, 'il campo riempie la larghezza').toBeGreaterThanOrEqual(0.7);
   expect(r.paused).toBe(true); expect(r.still, 'il tempo di gioco si ferma').toBe(true);
   expect(r.st).toBe('play'); expect(r.lives).toBeGreaterThan(0); expect(r.resumed, 'riprende appena si pedala').toBe(true);

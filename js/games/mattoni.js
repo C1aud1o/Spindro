@@ -21,7 +21,7 @@ const A = 'assets/3d';
 export const HW = 5.6;             // metà larghezza del campo (m)
 export const TOP = 15.5;             // fondo del campo
 const PZ = 1.5;                    // linea della bici
-const BR = 0.8;                    // raggio della borraccia
+const BR = 0.85;                    // raggio della borraccia
 const RIDER_S = 1.75;              // il ciclista è più grande del vero: si legge dall'alto
 const GUY_S = 1.7;                 // i soigneur pure
 const TR = 0.78;                   // raggio di un soigneur (urto)
@@ -270,7 +270,7 @@ export class Mattoni {
     this.bags.instanceMatrix.setUsage(THREE.DynamicDrawUsage); this.bagTrim.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     // borraccia (la palla): modello Meshy, tinta lime, che gira; alone e ombra
     this.ball = { root: new THREE.Group() };
-    const bot = prop(this.m.bottle, 1.9); const inner = new THREE.Group(); inner.add(bot); bot.position.y = -0.95; this.ball.root.add(inner); this.ball.spin = inner;
+    const bot = prop(this.m.bottle, 2.1); const inner = new THREE.Group(); inner.add(bot); bot.position.y = -1.05; this.ball.root.add(inner); this.ball.spin = inner;
     this.ball.fire = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: '#ff7a2a', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); this.ball.fire.scale.setScalar(3);
     this.ball.glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: '#d9ff3d', transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending })); this.ball.glow.scale.setScalar(3.4);
     this.ball.glow.material.depthTest = false; this.ball.glow.renderOrder = 5; this.ball.fire.material.depthTest = false; this.ball.fire.renderOrder = 5;
@@ -490,7 +490,7 @@ export class Mattoni {
   }
 
   deliver(tg, hot) {
-    tg.alive = false; tg.wait = 3.6 + this.rand() * 2.4; tg.flyT = 0.7; tg.flyX = tg.x; tg.flyZ = tg.z; tg.flyCol = tg.jersey; tg.flyKind = tg.kind;
+    tg.alive = false; tg.wait = 2.0 + this.rand() * 1.6; tg.flyT = 0.7; tg.flyX = tg.x; tg.flyZ = tg.z; tg.flyCol = tg.jersey; tg.flyKind = tg.kind;
     this.combo++; this.bestCombo = Math.max(this.bestCombo, this.combo);
     const rush = hot && (this.seg.kind === 'effort' || this.seg.kind === 'sprint');
     const val = (tg.kind === 'crate' ? 2 : 1) * (rush ? 2 : 1);
@@ -640,6 +640,9 @@ export class Mattoni {
     this.prog('races', 0, 40 + s.stars * 40 + this.effortsDone * 10);
     this.hooks.progress?.setMax('feedStars', s.stars);
   }
+
+  // chiusura anticipata (come negli altri giochi: la usano i test e l'app): calcola il riepilogo e termina
+  end() { if (this.state !== 'play') return; if (!this.result) this.finishResult(); this.finish(); }
 
   finish() {
     this.state = 'over'; this.stateT = 0; this.finished = true;

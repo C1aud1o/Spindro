@@ -161,6 +161,16 @@ Gameplay invariato (rimbalzi, cadenza = velocità della palla, + / − muovono l
 - Foto e misure: `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/mattoni-shots.mjs [--fps] [--levels]` (foto in `docs/giochi-shots/mattoni-*.png`, 390×780 e 1280×720).
 
 Misure di Mattoni (CPU 4x, 390×780; prima → dopo): alta 6,5 → 10,1 ms · 128 → 140 draw call · 4k → 284k triangoli; media 7,6 → 9,5 ms · 114 → 121 · 4k → 200k; bassa 3,9 → 8,5 ms · 60 → 78 · 2k → 103k. A 1280×720 dopo: 9,2 / 11,9 / 6,4 ms. Sempre sotto i 16 ms di CPU (60 fps); i triangoli di media e bassa superano gli obiettivi, da riprovare su un telefono vero. Il vecchio Mattoni, al primo power-up, andava in errore (`power()` copriva la potenza letta dal rullo): corretto.
+### Feed Zone: gameplay rifatto (le righe sopra descrivono la versione precedente)
+`js/games/mattoni.js` (id `mattoni`, nome **Feed Zone** in tutte le lingue); il piano dell'allenamento è quello di Horde Run (`horde-plan.js`).
+- **Idea**: sei il ciclista e la bici fa da racchetta; la borraccia rimbalza sui soigneur che scorrono in tre file e consegna le musette. Obiettivo sempre visibile: «FEED ZONE 3/4» e «MUSETTE 12/22».
+- **Cadenza = velocità della borraccia** (8,6 m/s a 85 giri, da 0,8 a 1,35 volte). **Watt in zona (≥ 92 % della richiesta)** = turbo che si carica (×1…×4 sui punti); con il turbo a metà il colpo successivo è un «SMASH» (borraccia infuocata). Nei **rush** (sforzo e scatto) tenendo il bersaglio la borraccia è infuocata di continuo: trapassa le file e ogni consegna vale doppio.
+- **Soigneur**: musette normali (1 colpo), casse (2 colpi), soigneur col gel (cade un gel: turbo +50 % e una vita). Le file sono catene rigide che vanno avanti e indietro; chi è consegnato torna dopo 4–6 s crescendo da zero (niente comparse di colpo).
+- **Zone**: ogni ondata cambia formazione (file di musette, stazione gel, vento laterale, auto di squadra); la 4ª e l'ultima chiudono con l'**auto della squadra** (mini-boss con barra vita, modello Meshy `team_car.glb`) che si batte con i colpi infuocati. Se il blocco finisce prima se ne va.
+- **Perdere la borraccia** costa il combo, il 50 % del turbo e una vita; a zero vite (mai nel primo minuto) c'è una «foratura» e si riparte con 3 vite. Mai game over. Chi smette di pedalare va in pausa.
+- **Stelle** come Horde Run: 1 = finita; 2 = metà degli sforzi; 3 = 80 % degli sforzi, tutte le auto, al massimo 3 forature. Record e stelle in `localStorage` (`feedBest:<durata>:<livello>`).
+- **Prove**: `tests/feedzone.spec.mjs` (bot deterministico a 0,6/0,8/1,0/1,2 × FTP, bot distratto, pausa, misure dello schermo, comandi). Il caso del gioco viene da `game.seed`.
+
 ## 12. Pedal Strike (2026-11-15, gameplay rifatto il 2026-11-15 sera)
 Sparatutto in corsa in 3D (`js/games/strike3d.js`, mondo in `js/games/strike-world.js`, forma dell'allenamento in `js/games/strike-plan.js`).
 La grafica (porto, passo, Motor City, gru, boss) è quella di prima; sono cambiati inquadratura, ritmo, nemici e difficoltà.
