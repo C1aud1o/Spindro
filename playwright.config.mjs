@@ -1,6 +1,6 @@
 import { defineConfig } from '@playwright/test';
 
-const port = 4173;
+const port = Number(process.env.PORT) || 4173; // PORT=xxxx permette più copie del repo in parallelo
 // In locale, se la versione di Chromium non coincide, si può puntare a un binario già installato:
 //   PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npm test
 const executablePath = process.env.PW_CHROMIUM_PATH || undefined;
