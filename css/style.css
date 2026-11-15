@@ -720,7 +720,6 @@ body.riding.in-workout #workoutCard { padding: 16px; gap: 8px; }
 .workout .wk-main { align-items: end; gap: 12px; }
 .wk-next { margin: 0; }
 .wk-left b { font-size: 44px; }
-body.riding #wkStop { display: none; } /* "Fine" del cruscotto chiude l'uscita e l'allenamento */
 body.has-workout .act-mode { display: none; } /* con un allenamento l'ERG è suo */
 .wk-actions .ghost { min-height: 44px; padding: 0 12px; font-size: var(--fs-caption); }
 
@@ -818,3 +817,5 @@ body.riding.in-workout .metrics dd { font-size: 36px; }
 .pl-act .link { color: var(--t2); text-decoration-color: var(--t3); }
 body.riding .power .zone { justify-self: end; }
 @media (max-width: 420px) { body.riding .power-value { font-size: 100px; } body.riding.in-workout .power-value { font-size: 92px; } }
+
+.wk-actions { flex-wrap: wrap; }

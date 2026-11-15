@@ -7,13 +7,13 @@ const FAKE_BLE = fileURLToPath(new URL('./fake-ble.js', import.meta.url));
 test('calibrazione: con un sensore di cadenza vero il rapporto è cadenza / velocità', async ({ page }) => {
   const errors = []; page.on('pageerror', (e) => errors.push(e.message));
   await page.clock.install();
-  await page.addInitScript(() => { localStorage.setItem('lang', 'it'); localStorage.setItem('analytics', '0'); localStorage.setItem('devMode', '1'); }); // con la cadenza vera l'invito a calibrare è nascosto: resta solo in modalità sviluppatore
+  await page.addInitScript(() => { localStorage.setItem('lang', 'it'); localStorage.setItem('analytics', '0'); localStorage.setItem('devMode', '1'); localStorage.setItem('mode', 'gears'); }); // con la cadenza vera l'invito a calibrare è nascosto: resta solo in modalità sviluppatore
   await page.addInitScript({ path: FAKE_BLE });
   await page.goto('/index.html');
   await page.evaluate(async () => { while (!window.rfDevices) await new Promise((r) => setTimeout(r, 50)); return window.rfDevices.add(); });
   await expect(page.locator('#trainerStatus')).toContainText('FTMS');
   await page.clock.runFor(4000); // il rullo finto: 28 km/h e 80 rpm; le medie si stabilizzano
-  await page.click('#openSettings');
+  await page.evaluate(() => document.getElementById('openSettings').click()); // pedalando parte il cruscotto, senza testata: le impostazioni si aprono dal menu Click o da qui
   await expect(page.locator('#cadFactorInfo')).toContainText('non calibrato');
   await page.click('#calibrateCad');
   await page.click('.calib-go');

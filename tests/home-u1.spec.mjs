@@ -71,7 +71,8 @@ test('cruscotto: durante l\'uscita restano potenza, obiettivo con − / +, e i q
   for (const id of ['#today', '#quickPick', '#moreModes', '#deviceBar']) await expect(page.locator(id)).toBeHidden();
   await page.click('#up');
   await expect.poll(() => lastErgW(page)).toBe(125);
-  // pausa e ripresa: il tasto cambia scritta
+  // pausa e ripresa: il tasto cambia scritta (prima che l'uscita sia davvero partita, la partenza automatica la riavvierebbe)
+  await expect(page.locator('#time')).not.toHaveText('0:00');
   await page.click('#startStop');
   await expect(page.locator('#startStop')).toHaveText('Riprendi');
   await page.click('#startStop');

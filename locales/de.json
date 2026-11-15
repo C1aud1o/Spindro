@@ -1082,7 +1082,7 @@
   "workout.confirmInterrupt": "„{name}“ stoppen?",
   "workout.connectHint": "Verbinde deinen Rollentrainer: Das Training startet trotzdem",
   "workout.done": "{name} abgeschlossen!",
-  "workout.end": "Ende",
+  "workout.end": "Training beenden",
   "workout.ftpFound": "Beste Minute: {best} W. Deine geschätzte FTP ist {ftp} W (war {old} W). Speichern?",
   "workout.ftpUpdated": "FTP aktualisiert: {ftp} W",
   "workout.intensity": "Intensität {pct} %",

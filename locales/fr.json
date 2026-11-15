@@ -1082,7 +1082,7 @@
   "workout.confirmInterrupt": "Arrêter « {name} » ?",
   "workout.connectHint": "Connecte ton home-trainer : l'entraînement démarre quand même",
   "workout.done": "{name} terminé !",
-  "workout.end": "Fin",
+  "workout.end": "Terminer l'entraînement",
   "workout.ftpFound": "Meilleure minute : {best} W. Ton FTP estimé est de {ftp} W (il était de {old} W). Je l'enregistre ?",
   "workout.ftpUpdated": "FTP mis à jour : {ftp} W",
   "workout.intensity": "Intensité {pct} %",

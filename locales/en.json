@@ -1082,7 +1082,7 @@
   "workout.confirmInterrupt": "Stop \"{name}\"?",
   "workout.connectHint": "Connect your trainer: the workout starts anyway",
   "workout.done": "{name} complete!",
-  "workout.end": "End",
+  "workout.end": "End workout",
   "workout.ftpFound": "Best minute: {best} W. Your estimated FTP is {ftp} W (was {old} W). Save it?",
   "workout.ftpUpdated": "FTP updated: {ftp} W",
   "workout.intensity": "Intensity {pct}%",

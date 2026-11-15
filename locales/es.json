@@ -1082,7 +1082,7 @@
   "workout.confirmInterrupt": "¿Detener «{name}»?",
   "workout.connectHint": "Conecta tu rodillo: el entrenamiento empieza igualmente",
   "workout.done": "¡{name} completado!",
-  "workout.end": "Fin",
+  "workout.end": "Terminar el entrenamiento",
   "workout.ftpFound": "Mejor minuto: {best} W. Tu FTP estimado es de {ftp} W (antes era de {old} W). ¿Lo guardo?",
   "workout.ftpUpdated": "FTP actualizado: {ftp} W",
   "workout.intensity": "Intensidad {pct} %",
