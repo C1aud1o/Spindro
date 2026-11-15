@@ -2,7 +2,7 @@
 
 *Stato: progetto + regole + test. **Login web, profilo, consensi e sincronizzazione (E3/E4) sono integrati** (`js/account/`, spenti finché `FIREBASE_CONFIG` in `js/config.js` è `null`). Le classifiche e le sfide del mese (E5) sono integrate (§16). Resta il login nativo Android.*
 
-Riferimenti: `docs/PIANO-LANCIO.md` sez. 4, 5, 7 · bozze legali in `docs/legal/` (privacy sez. 4 e 5, cancellazione account) · setup della console in `docs/firebase-setup.md`.
+Riferimenti: bozze legali in `docs/legal/` (privacy sez. 4 e 5, cancellazione account).
 
 File di questa fase:
 

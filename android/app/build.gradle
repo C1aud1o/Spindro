@@ -38,7 +38,7 @@ android {
         buildConfig true
     }
 
-    // Due varianti dallo stesso codice (docs/PIANO-LANCIO.md, sez. 3):
+    // Due varianti dallo stesso codice:
     //  - foss: niente servizi Google -> APK pubblico (release GitHub, sito, F-Droid/IzzyOnDroid)
     //  - play: AAB per il Play Store
     // Per ora sono identiche: stesso applicationId, stesso codice.
@@ -70,7 +70,7 @@ android {
             }
         }
         // chiave di release: arriva SOLO da variabili d'ambiente (in CI dai Secret GitHub),
-        // mai dal repository. Vedi docs/android-release.md
+        // mai dal repository.
         if (releaseKeystoreAvailable) {
             release {
                 storeFile file(System.getenv('ANDROID_KEYSTORE_FILE'))
@@ -92,7 +92,7 @@ android {
             }
             // Riduzione del codice spenta di proposito: Capacitor trova i plugin (anche il BLE)
             // per riflessione tramite annotazioni, e R8 rischierebbe di rimuoverli o rinominarli.
-            // Il guadagno sarebbe minimo (l'app è quasi tutta HTML/JS negli asset). Vedi docs/android-release.md
+            // Il guadagno sarebbe minimo (l'app è quasi tutta HTML/JS negli asset).
             minifyEnabled false
             shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'

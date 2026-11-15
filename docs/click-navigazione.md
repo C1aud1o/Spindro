@@ -74,7 +74,7 @@ Opens by itself the **first time each model connects** (`clickCheckSeen` in `loc
 4. **Copy report**: model, protocol message types seen (e.g. `0x23`), confirmed or not, the role → raw id table (learned ids
    marked), unknown ids seen, app build. No device id, name or other personal data. The text is also shown under “Report text”.
 
-How the owner runs it: connect the controller (Devices → Add device); the sheet opens → press every key and watch the drawing →
+How to run it: connect the controller (Devices → Add device); the sheet opens → press every key and watch the drawing →
 “Map my keys” → follow the prompts → “Copy report” and paste it to the developers.
 
 ## What is verified
