@@ -30,7 +30,7 @@ async function openGame(page) {
 
 // Il bot: guarda dove cadrà la borraccia (con un errore fisso da seme), si sposta alla velocità del tasto tenuto premuto (12 m/s)
 // e tiene una potenza fissa (multiplo della FTP). Misure: stelle, tempo al primo evento, intervallo più lungo, eventi al minuto.
-function botRun({ mult, durIdx, lvl, ftp, seed }) {
+function botRun({ mult, durIdx, lvl, ftp, seed, jit = 1 }) {
   const g = window.__game; g.active = false; g.durIdx = durIdx; g.lvlIdx = lvl; g.seed = seed; g.reset(); g.begin();
   g.hooks = { ...g.hooks, connected: () => true, ftp: () => ftp, stats: () => ({ power: ftp * mult, cadence: 85 }), speedKmh: () => 30, setGrade() {} };
   let s = seed * 7919 + 13; const rnd = () => { s = (s + 0x6d2b79f5) >>> 0; let x = s; x = Math.imul(x ^ (x >>> 15), x | 1); x ^= x + Math.imul(x ^ (x >>> 7), x | 61); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
@@ -42,7 +42,7 @@ function botRun({ mult, durIdx, lvl, ftp, seed }) {
       if (!b.stuck && b.vz < 0) {
         const tt = (b.z - 1.5) / -b.vz; let x = b.x + b.vx * tt;
         while (x > W || x < -W) { if (x > W) x = 2 * W - x; if (x < -W) x = -2 * W - x; }
-        if (b.z > 6 && Math.floor(n / 45) !== Math.floor((n - 1) / 45)) { err = (rnd() - 0.5) * 1.6; aim = (rnd() - 0.5) * 1.8; } // lo sguardo si aggiorna ogni 1,5 s
+        if (b.z > 6 && Math.floor(n / 45) !== Math.floor((n - 1) / 45)) { err = (rnd() - 0.5) * 1.6 * jit; aim = (rnd() - 0.5) * 1.8; } // lo sguardo si aggiorna ogni 1,5 s
         want = x + err + aim * 0.4;
       }
       const dx = Math.max(-1, Math.min(1, want - g.tx)); g.tx = Math.max(-4.2, Math.min(4.2, g.tx + Math.sign(dx) * Math.min(Math.abs(want - g.tx), 12 / 30)));
@@ -50,7 +50,7 @@ function botRun({ mult, durIdx, lvl, ftp, seed }) {
     g.update(1 / 30); n++; if (g.boss) seenBoss = true;
   }
   const es = g.eventStats();
-  return { state: g.state, secs: n / 30, res: g.result, es, delivered: g.delivered, waves: g.waveClears, lives: g.lives, seenBoss };
+  return { state: g.state, secs: n / 30, res: g.result, es, delivered: g.delivered, waves: g.waveClears, lives: g.lives, seenBoss, lost: g.evLog.filter((e) => e.k === 'lose').length, flats: g.ko };
 }
 
 async function runBot(page, mult, durIdx = 0, lvl = 1) {
@@ -75,6 +75,16 @@ for (const mult of [0.6, 0.8, 1.0, 1.2]) {
     expect(r.seenBoss, 'l’auto della squadra arriva').toBe(true);
   });
 }
+
+test('Feed Zone: un giocatore distratto perde la borraccia ogni tanto, ma la partita arriva in fondo e non finisce mai prima', async ({ page }) => {
+  await openGame(page);
+  const r = await page.evaluate(botRun, { mult: 1.0, durIdx: 0, lvl: 1, ftp: 200, seed: 3, jit: 4 });
+  console.log(`BOT distratto (errore ±3,2 m) → stelle ${r.res.stars}, borracce perse ${r.lost}, forature ${r.flats}, musette ${r.delivered}, max senza eventi ${r.es.maxGap.toFixed(1)} s`);
+  expect(r.state).toBe('over'); expect(r.secs).toBeGreaterThanOrEqual(299);
+  expect(r.lost, 'perde la borraccia qualche volta').toBeGreaterThanOrEqual(3);
+  expect(r.res.stars).toBeGreaterThanOrEqual(1);
+  expect(r.es.maxGap, 'anche così succede sempre qualcosa').toBeLessThanOrEqual(5);
+});
 
 test('Feed Zone: livelli e piano: 5/10/20 minuti, Facile −10 % e Difficile +10 % sui watt, 4/7/12 zone', async ({ page }) => {
   await openGame(page);

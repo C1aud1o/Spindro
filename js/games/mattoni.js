@@ -19,7 +19,7 @@ import { DURATIONS, LEVELS, COOL_S, buildPlan, segAt, targetW, targetPct, Adapte
 
 const A = 'assets/3d';
 export const HW = 5.6;             // metà larghezza del campo (m)
-export const TOP = 17;             // fondo del campo
+export const TOP = 15.5;             // fondo del campo
 const PZ = 1.5;                    // linea della bici
 const BR = 0.8;                    // raggio della borraccia
 const RIDER_S = 1.75;              // il ciclista è più grande del vero: si legge dall'alto
@@ -35,7 +35,7 @@ const SEG_COLOR = { warm: '#9ee37d', pace: '#ffd34d', effort: '#ff9f43', sprint:
 export const FORMS = [
   { id: 'lines', rows: 3, spd: 0.9, gel: 0.1, crate: 0 },
   { id: 'gel', rows: 3, spd: 1.2, gel: 0.34, crate: 0.1 },
-  { id: 'wind', rows: 4, spd: 1.9, gel: 0.1, crate: 0.15 },
+  { id: 'wind', rows: 3, spd: 2.1, gel: 0.1, crate: 0.15 },
   { id: 'car', rows: 1, spd: 1.2, gel: 0.1, crate: 0.2 },
 ];
 export const WARM_FORM = { id: 'warm', rows: 2, spd: 0.7, gel: 0.15, crate: 0 };
@@ -273,6 +273,7 @@ export class Mattoni {
     const bot = prop(this.m.bottle, 1.9); const inner = new THREE.Group(); inner.add(bot); bot.position.y = -0.95; this.ball.root.add(inner); this.ball.spin = inner;
     this.ball.fire = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: '#ff7a2a', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); this.ball.fire.scale.setScalar(3);
     this.ball.glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: '#d9ff3d', transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending })); this.ball.glow.scale.setScalar(3.4);
+    this.ball.glow.material.depthTest = false; this.ball.glow.renderOrder = 5; this.ball.fire.material.depthTest = false; this.ball.fire.renderOrder = 5;
     this.ball.root.add(this.ball.glow, this.ball.fire); scene.add(this.ball.root);
     this.ball.blob = new THREE.Mesh(new THREE.CircleGeometry(0.8, 14).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: 0.3, depthWrite: false })); this.ball.blob.renderOrder = 1; scene.add(this.ball.blob);
     // striscia della bici
@@ -356,9 +357,9 @@ export class Mattoni {
   buildRows(form, wave) {
     this.form = form; this.targets = []; this.rows = [];
     const rand = this.rand;
-    const nRows = form.rows; const z0 = form.id === 'car' ? TOP - 4.6 : TOP - 3.5; const dz = form.id === 'car' ? 0 : 3.0;
+    const nRows = form.rows; const z0 = TOP - 3.1; const dz = 2.6;
     for (let r = 0; r < nRows; r++) {
-      const z = z0 - r * dz; const gap = 2.05; const amp = form.spd > 1.5 ? 0.35 : 0.55;
+      const z = z0 - r * dz; const gap = 2.4; const amp = form.spd > 1.5 ? 0.45 : 0.6;
       const n = form.id === 'car' ? 3 : Math.floor((2 * HW - 2 * amp - 0.9) / gap) + 1;
       const row = { z, dir: r % 2 ? -1 : 1, spd: form.spd * (0.85 + 0.3 * rand()), off: 0, amp, n };
       this.rows.push(row);
@@ -391,10 +392,10 @@ export class Mattoni {
   }
 
   // ---------- la borraccia ----------
-  speed() { return 9.5 * clamp((this.cadence || 85) / 85, 0.8, 1.35) * (1 + this.lvlIdx * 0.03); }
+  speed() { return 8.6 * clamp((this.cadence || 85) / 85, 0.8, 1.35) * (1 + this.lvlIdx * 0.03); }
 
   serve(initial = false) {
-    const b = this.ballS = { x: this.x, z: PZ + 0.9, vx: 0, vz: 0, stuck: true, charged: false, sp: this.speed(), spin: 0, born: 0 };
+    const b = this.ballS = { x: this.x, z: PZ + 1.2, vx: 0, vz: 0, stuck: true, charged: false, sp: this.speed(), spin: 0, born: 0 };
     this.serveT = initial ? 1.4 : 1.0; this.ballAlive = true; return b;
   }
 
@@ -408,7 +409,7 @@ export class Mattoni {
     const b = this.ballS; if (!b) return;
     b.born = Math.min(1, b.born + dt / 0.35);
     if (b.stuck) {
-      b.x = this.x; b.z = PZ + 0.9; this.serveT -= dt;
+      b.x = this.x; b.z = PZ + 1.2; this.serveT -= dt;
       if (this.serveT <= 0) this.launch();
       return;
     }
@@ -500,7 +501,6 @@ export class Mattoni {
     this.popAdd(pts, mult > 1 ? `×${mult}` : '');
     this.fx.explode(tg.x, 1.6, tg.z, 0.7); this.confetti.burst(tg.x, 2, tg.z, tg.kind === 'gel' ? 16 : 10, 2.4);
     this.audio.sfx(this.combo > 4 ? 'coin' : 'hit'); this.shake.add(0.12); this.ev('deliver');
-    this.prog('coins', val, 0);
     if (tg.kind === 'gel') this.dropGel(tg.x, tg.z);
     if (this.waveGot >= this.waveQuota && !this.waveDone) this.waveComplete();
   }
@@ -523,7 +523,7 @@ export class Mattoni {
 
   dropGel(x, z) {
     const mesh = gelObject('#ffd34d'); mesh.position.set(x, 1.2, z); this.scene.add(mesh);
-    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: '#ffd34d', transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending })); glow.scale.setScalar(2.6); mesh.add(glow);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: '#ffd34d', transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending })); glow.scale.setScalar(1.5); mesh.add(glow);
     this.gels.push({ mesh, x, z, t: 0 });
   }
   stepGels(dt) {
@@ -539,7 +539,7 @@ export class Mattoni {
     this.audio.sfx('pickup'); this.ev('gel'); this.charge = Math.min(1, this.charge + 0.5); this.score += 50;
     if (this.lives < MAX_LIVES) this.lives++;
     this.say(t('games.mattoni.gel'), '#ffd34d', 1.1, false, 1);
-    this.fx.explode(this.x, 1.2, PZ, 0.7); this.shake.add(0.12); this.prog('itemsUsed', 1, 0);
+    this.fx.explode(this.x, 1.2, PZ, 0.7); this.shake.add(0.12);
   }
 
   // ---------- auto della squadra ----------
@@ -549,10 +549,10 @@ export class Mattoni {
   }
   spawnBoss(seg) {
     const hp = Math.round(9 + this.lvlIdx * 2 + (seg.wave > 4 ? 2 : 0));
-    this.boss = { wave: seg.wave, hp, maxHp: hp, x: -HW + 3, dir: 1, z: 7.4, flash: 0, grow: 0, dead: false, deadT: 0, leave: false, sway: 0, bob: 0 };
+    this.boss = { wave: seg.wave, hp, maxHp: hp, x: -HW + 3, dir: 1, z: 6.8, flash: 0, grow: 0, dead: false, deadT: 0, leave: false, sway: 0, bob: 0 };
     this.carRoot.visible = true; this.carRoot.scale.setScalar(0.01);
     this.audio.sfx('alarm'); this.ev('boss');
-    this.say(t('games.mattoni.carSay'), '#ff4d4d', 2.4, true, 3, t('games.mattoni.carSub'));
+    this.say(t('games.mattoni.carSay'), '#ff4d4d', 1.9, true, 3, t('games.mattoni.carSub'));
   }
   hitBoss(b) {
     const bs = this.boss; if (!bs || bs.dead || bs.leave || bs.grow < 0.9) return;
@@ -600,7 +600,7 @@ export class Mattoni {
       this.waveQuota = Math.max(8, Math.round(L * 0.6 * (form.id === 'car' ? 0.7 : 1)));
       this.say(t('games.mattoni.zoneOf', { n: seg.wave, m: this.plan.N }), '#d9ff3d', 2.6, true, 3, t('games.horde.say.waveSub', { what: t(`games.mattoni.f.${form.id}`), w: W }));
       this.ev('wave');
-    } else if (seg.kind === 'effort') { this.say(t('games.horde.say.effort', { w: W }), SEG_COLOR.effort, 2.4, true, 3, t('games.mattoni.say.effortSub')); this.audio.sfx('go'); this.ev('segment'); this.maybeBoss(seg); }
+    } else if (seg.kind === 'effort') { this.say(t('games.horde.say.effort', { w: W }), SEG_COLOR.effort, 1.9, true, 3, t('games.mattoni.say.effortSub')); this.audio.sfx('go'); this.ev('segment'); this.maybeBoss(seg); }
     else if (seg.kind === 'sprint') { this.say(t('games.horde.say.sprint', { w: W }), SEG_COLOR.sprint, 2.4, true, 3, t('games.mattoni.say.sprintSub', { s: Math.round(seg.t1 - seg.t0) })); this.audio.sfx('alarm'); this.ev('segment'); }
     else if (seg.kind === 'rest') {
       this.say(t('games.horde.say.rest'), SEG_COLOR.rest, 2.4, true, 2, t('games.horde.say.restSub', { w: W })); this.ev('segment');
@@ -712,7 +712,7 @@ export class Mattoni {
     const T = this.t; const play = this.state === 'play';
     this.shake.update(dt); this.padPulse = Math.max(0, this.padPulse - dt * 7);
     // la bici
-    this.player.root.position.set(this.x, 0, PZ - 1.15); this.player.root.rotation.set(0, clamp(-(this.tx - this.x) * 0.06, -0.3, 0.3), 0);
+    this.player.root.position.set(this.x, 0, PZ - 1.9); this.player.root.rotation.set(0, clamp(-(this.tx - this.x) * 0.06, -0.3, 0.3), 0);
     this.player.lean.rotation.z = clamp((this.tx - this.x) * 0.05, -0.25, 0.25);
     this.player.pose(dt, play && !this.paused ? this.cadence || 80 : 40, play ? 7 : 0, { stand: this.hot ? 1 : 0 });
     this.player.root.visible = !(this.hurtT > 0.4 && Math.floor(this.hurtT * 14) % 2);
@@ -765,9 +765,9 @@ export class Mattoni {
     // musette consegnate: salgono verso la telecamera e svaniscono (rimpiccioliscono)
     for (const tg of this.targets) {
       if (tg.flyT <= 0) continue;
-      const k = 1 - tg.flyT / 0.7; const s = GUY_S * (1 - k * k);
+      const k = 1 - tg.flyT / 0.7; const s = GUY_S * 0.62 * (1 - 0.75 * k);
       if (nb >= this.guyCap) break;
-      p.set(tg.flyX + k * 1.2 * (tg.flyX >= 0 ? -1 : 1), 3.0 + k * 3.2, tg.flyZ - k * 3); sc.setScalar(Math.max(0.01, s * 1.1)); q.setFromAxisAngle(up, k * 9);
+      p.set(tg.flyX + k * 1.2 * (tg.flyX >= 0 ? -1 : 1), 3.4 + k * 2.4, tg.flyZ - k * 2.5); sc.setScalar(Math.max(0.01, s)); q.setFromAxisAngle(up, k * 9);
       this.bags.setMatrixAt(nb, m4.compose(p, q, sc)); this.bags.setColorAt(nb, col.set(tg.flyKind === 'gel' ? '#ffd34d' : '#fff4e0')); this.bagTrim.setMatrixAt(nb, m4.compose(p, q, sc)); nb++;
     }
     this.guys.count = n; this.bags.count = nb; this.bagTrim.count = nb;
@@ -798,11 +798,11 @@ export class Mattoni {
   camera(dt) {
     const cam = this.stage.camera; const aspect = this.stage.W / this.stage.H; const tall = aspect < 0.75;
     const target = this._tp || (this._tp = new THREE.Vector3());
-    target.set(this.x * 0.2, tall ? 10 : 8.5, tall ? -8 : -9);
+    target.set(this.x * 0.4, tall ? 9.8 : 8.5, tall ? -7.6 : -9);
     if (!this.camInit) { this.camPos = target.clone(); this.camInit = true; }
     this.camPos.lerp(target, Math.min(1, (dt || 0.03) * 4));
     cam.position.copy(this.camPos);
-    cam.lookAt(this.x * 0.1, 0.4, tall ? 7.5 : 8);
+    cam.lookAt(this.x * 0.3, 0.4, tall ? 7.9 : 8);
     const fov = (tall ? 62 : 48) + (this.hot ? 3 : 0); cam.fov += (fov - cam.fov) * Math.min(1, (dt || 0.03) * 3); cam.updateProjectionMatrix();
     this.shake.apply(cam);
     const sd = this.sunDir || new THREE.Vector3(0.5, 0.75, -0.45);
@@ -881,7 +881,7 @@ export class Mattoni {
     // "+N" dei punti: sopra la bici, uno alla volta
     const p = this.pop;
     if (p) {
-      const k = 1 - p.t / p.t0; const rp = this.stage.project(this.x, 4.6, PZ - 0.5);
+      const k = 1 - p.t / p.t0; const rp = this.stage.project(this.x, 4.4, PZ - 1.9);
       ctx.globalAlpha = clamp(p.t / p.t0 * 2.5, 0, 1);
       hudText(ctx, `+${p.sum}${p.mult ? ' ' + p.mult : ''}`, clamp(rp.x, 80, W - 80), clamp(rp.y, 300, H - 160) - k * 24, { size: 26 + Math.min(10, p.sum / 120), align: 'center', color: this.combo > 4 ? '#4de3ff' : '#ffd34d', maxW: 160 });
       ctx.globalAlpha = 1;
@@ -897,33 +897,37 @@ export class Mattoni {
   }
 
   drawMenu(ctx, W, H, dt) {
+    const compact = H < 520; // schermo basso (telefono in orizzontale): titolo piccolo, scelte più strette, regole che stanno nello spazio libero
     const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, 'rgba(8,10,28,.8)'); g.addColorStop(0.5, 'rgba(8,10,28,.1)'); g.addColorStop(1, 'rgba(8,10,28,.9)');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    hudText(ctx, t('games.mattoni.hud.title'), W / 2, 124, { size: 56, align: 'center', color: '#d9ff3d' });
-    hudText(ctx, t('games.mattoni.hud.tagline'), W / 2, 154, { size: 17, align: 'center', font: 'text' });
-    const rowW = Math.min(W - 28, 440); const x0 = (W - rowW) / 2; let y = 184;
+    hudText(ctx, t('games.mattoni.hud.title'), W / 2, compact ? 84 : 124, { size: compact ? 36 : 56, align: 'center', color: '#d9ff3d' });
+    hudText(ctx, t('games.mattoni.hud.tagline'), W / 2, compact ? 106 : 154, { size: compact ? 14 : 17, align: 'center', font: 'text' });
+    const rowW = Math.min(W - 28, 440); const x0 = (W - rowW) / 2; let y = compact ? 118 : 184;
     const chip = (label, opts, idx, key) => {
-      hudText(ctx, label, x0, y + 20, { size: 16, color: '#c8c8c8', font: 'text', maxW: rowW * 0.25 });
+      const ch = compact ? 26 : 30;
+      hudText(ctx, label, x0, y + (compact ? 14 : 20), { size: compact ? 14 : 16, color: '#c8c8c8', font: 'text', maxW: rowW * 0.25 });
+      if (compact) hudText(ctx, key, x0, y + 28, { size: 11, color: '#9aa', font: 'text', maxW: rowW * 0.25 });
       const cw = (rowW * 0.74) / opts.length; const cx0 = x0 + rowW * 0.26;
       opts.forEach((o, i) => {
-        ctx.fillStyle = i === idx ? '#d9ff3d' : 'rgba(255,255,255,.14)'; rrect(ctx, cx0 + i * cw + 2, y, cw - 4, 30, 9); ctx.fill();
-        hudText(ctx, o, cx0 + i * cw + cw / 2, y + 22, { size: 17, align: 'center', color: i === idx ? '#15141b' : '#f0f0f0', stroke: i === idx ? null : 'rgba(0,0,0,.85)', maxW: cw - 8 });
+        ctx.fillStyle = i === idx ? '#d9ff3d' : 'rgba(255,255,255,.14)'; rrect(ctx, cx0 + i * cw + 2, y, cw - 4, ch, 9); ctx.fill();
+        hudText(ctx, o, cx0 + i * cw + cw / 2, y + ch - 8, { size: compact ? 15 : 17, align: 'center', color: i === idx ? '#15141b' : '#f0f0f0', stroke: i === idx ? null : 'rgba(0,0,0,.85)', maxW: cw - 8 });
       });
-      hudText(ctx, key, x0 + rowW, y + 48, { size: 13, align: 'right', color: '#9aa', font: 'text' });
-      y += 62;
+      if (!compact) hudText(ctx, key, x0 + rowW, y + 48, { size: 13, align: 'right', color: '#9aa', font: 'text' });
+      y += compact ? 38 : 62;
     };
     chip(t('games.horde.dur'), DURATIONS.map((d) => t('games.horde.durMin', { n: d / 60 })), this.durIdx, t('games.horde.keyDur'));
     chip(t('games.horde.level'), LEVELS.map((l) => t(`games.horde.lv.${l.id}`)), this.lvlIdx, t('games.horde.keyLvl'));
     const mw = Math.min(W - 28, 460); let fs = W < 500 ? 16 : 18; const rules = [1, 2, 3, 4].map((i) => t(`games.mattoni.rule${i}`));
-    const bottom = H * 0.64;
+    const bottom = compact ? H - 40 : H * 0.64; const startY = compact ? H - 30 : H - 56;
     const count = () => rules.reduce((a, r) => a + wrapLines(ctx, '· ' + r, mw, fs, { font: 'text' }).length, 0);
     while (fs > 11 && count() * 1.28 * fs + rules.length * 5 > bottom - y) fs -= 0.5;
-    for (const r of rules) { const o = paragraph(ctx, '· ' + r, W / 2, y + fs, { size: fs, maxW: mw, lineK: 1.28, color: '#f0f0f0' }); y = o.bottom + 5; }
+    for (const r of rules) { if (y + fs * 1.3 > bottom) break; const o = paragraph(ctx, '· ' + r, W / 2, y + fs, { size: fs, maxW: mw, lineK: 1.28, color: '#f0f0f0' }); y = o.bottom + 5; }
     const rec = this.record();
-    if (rec.score) hudText(ctx, `${t('games.common.best', { n: rec.score })} · ${'★'.repeat(rec.stars || 0)}`, W / 2, H - 92, { size: 16, align: 'center', color: '#c8c8c8', font: 'text' });
-    hudText(ctx, t(this.hooks.connected() ? 'games.horde.startPedal' : 'games.horde.startHold'), W / 2, H - 56, { size: 22, align: 'center', color: '#d9ff3d' });
-    ctx.fillStyle = 'rgba(255,255,255,.2)'; rrect(ctx, W / 2 - 80, H - 40, 160, 8, 4); ctx.fill();
-    ctx.fillStyle = '#d9ff3d'; rrect(ctx, W / 2 - 80, H - 40, Math.max(0, 160 * clamp(Math.max(this.startT / 1.6, this.held ? this.heldT / 0.8 : 0), 0, 1)), 8, 4); ctx.fill();
+    if (rec.score && !compact) hudText(ctx, `${t('games.common.best', { n: rec.score })} · ${'★'.repeat(rec.stars || 0)}`, W / 2, H - 92, { size: 16, align: 'center', color: '#c8c8c8', font: 'text' });
+    hudText(ctx, t(this.hooks.connected() ? 'games.horde.startPedal' : 'games.horde.startHold'), W / 2, startY, { size: compact ? 18 : 22, align: 'center', color: '#d9ff3d' });
+    const by = startY + (compact ? 8 : 16);
+    ctx.fillStyle = 'rgba(255,255,255,.2)'; rrect(ctx, W / 2 - 80, by, 160, 8, 4); ctx.fill();
+    ctx.fillStyle = '#d9ff3d'; rrect(ctx, W / 2 - 80, by, Math.max(0, 160 * clamp(Math.max(this.startT / 1.6, this.held ? this.heldT / 0.8 : 0), 0, 1)), 8, 4); ctx.fill();
     this.hooks.progress?.drawToasts(ctx, W, dt);
   }
 
