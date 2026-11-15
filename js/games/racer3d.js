@@ -14,7 +14,8 @@ import { Quality } from './kit/quality.js';
 import { txt, panel, uiScale, powerColor, gradeColor, HUD, hudView, measure, paragraph, MessageQueue, FONT_DISPLAY } from './kit/hud.js';
 import { clamp, lerp, hash } from './engine.js';
 import { SONGS } from './audio.js';
-import { Race, buildTimeline, LANES, START, COOL } from './racer-sim.js';
+import { Race, buildTimeline, itemsFromWorkout, LANES, START, COOL } from './racer-sim.js';
+import { WorkoutClock, BandMeter, wkTarget } from './kit/workout-plan.js';
 import { GameMenu, ResultsView } from './kit/menu.js';
 import { makeRandom } from './kit/rng.js';
 import { t, fmtDec, ordinal } from '../i18n.js';
@@ -104,7 +105,7 @@ export class Racer3D {
       id: 'racer', title: () => t('games.racer.hud.title'), pitch: () => t('games.racer.hud.tagline'),
       howto: () => [t('games.racer.menu.how1'), t('games.racer.menu.how2'), t('games.racer.menu.ftp', { w: this.hooks.ftp?.() || 200 })],
       best: (d, l) => { const bt = Number(lsGet(`racer3dBest${STAGE_FOR[d]}`)) || 0; return { stars: Number(lsGet(`racerStars${d}_${l}`)) || 0, text: bt ? fmt(bt) : null }; },
-      sfx: (n) => this.audio.sfx(n), ready: () => this.state === 'menu',
+      sfx: (n) => this.audio.sfx(n), ready: () => this.state === 'menu', workout: () => this.hooks.workout?.(),
       onStart: (d, l) => { this.durIdx = d; this.level = l; this.stageIndex = STAGE_FOR[d]; this.begin(); },
     });
     this.results = new ResultsView({ sfx: (n) => this.audio.sfx(n), onAgain: () => this.begin(), onBack: () => this.hooks.close?.() });
@@ -163,11 +164,11 @@ export class Racer3D {
   // ---------- costruzione della tappa ----------
   buildStage() {
     this.disposeStage();
-    this.stageIndex = STAGE_FOR[this.durIdx]; this.builtKey = `${this.durIdx}`;
+    this.stageIndex = this.wkItems ? this.wkStage : STAGE_FOR[this.durIdx]; this.builtKey = this.wkItems ? this.wkKey : `${this.durIdx}`;
     const S0 = STAGES[this.stageIndex];
-    this.tl = buildTimeline(this.dur, this.stageIndex);
+    this.tl = buildTimeline(this.dur, this.stageIndex, this.wkItems);
     // paesi e fattorie: lo stesso schema ripetuto lungo tutta la tappa
-    const reps = this.dur / 300; const expand = (a) => Array.from({ length: reps }, (_, k) => a.map((v) => (v + k) / reps)).flat();
+    const reps = Math.max(1, Math.round(this.dur / 300)); const expand = (a) => Array.from({ length: reps }, (_, k) => a.map((v) => (v + k) / reps)).flat();
     const S = { ...S0, villages: expand(S0.villages), farms: expand(S0.farms) }; this.S = S;
     const scene = new THREE.Scene(); this.scene = scene; this.stage.scene = scene;
     // il passo di render del bagliore guarda la scena vecchia: si ricrea
@@ -672,12 +673,12 @@ export class Racer3D {
   }
 
   // ---------- gara ----------
-  get dur() { return DURATIONS[this.durIdx]; }
+  get dur() { return this.wkItems ? this.wkDur : DURATIONS[this.durIdx]; }
 
   newRace() {
     this.rnd = makeRandom(this.seed);
     const D = this.dur;
-    this.race = new Race({ tl: this.tl, duration: D, stage: this.stageIndex, level: this.level, adapt: this.adaptMem, names: RIVALS.map((r) => t(r.name)) });
+    this.race = new Race({ tl: this.tl, duration: D, stage: this.stageIndex, level: this.level, adapt: this.wkItems ? 0 : this.adaptMem, names: RIVALS.map((r) => t(r.name)) });
     this.rivals = this.race.rivals;
     this.rivals.forEach((r, i) => { r.name = t(RIVALS[i].name); r.color = RIVALS[i].color; r.line = t(RIVALS[i].line); r.said = 0; r.boost = 0; });
     this.s = START; this.x = 0; this.lane = 1; this.speed = 0; this.raceT = 0; this.capV = null; this.blockT = 0; this.bumpT = 0;
@@ -685,6 +686,7 @@ export class Racer3D {
     this.draftOf = null; this.draftNear = null; this.hardT = 0; this.lastObjOk = 0; this.paused = false; this.idleT = 0;
     for (const c of this.coins) c.taken = false;
     for (const r of this.riders) { r.cy.sitDown(); r.cy.root.visible = true; r.cy.root.scale.setScalar(1); }
+    this.band = new BandMeter(); this.pwf = 0; this.manualT = 0; this.tgtW = 0;
     this.marker.visible = true; this.podiumLight.visible = false; this.msgs.clear();
     this.state = 'countdown'; this.stateT = 0; this.lastBeep = 4; this.hooks.runStart?.();
     this.sentGrade = null; this.cheerT = 0; this.lastKSaid = false; this.camMode = 'chase'; this.camInit = false; this.prevPlace = 8;
@@ -697,6 +699,8 @@ export class Racer3D {
     if (this.state === 'menu') { this.menu.input(dir); return; }
     if (this.state === 'results') { this.results.input(dir); return; }
     if (this.state !== 'race' && this.state !== 'countdown') return;
+    // con un allenamento + / − scelgono la corsia (il cambio e l'intensità dell'allenamento non si toccano: il rullo è in ERG)
+    if (this.wk) { if (this.state === 'race') { this.lane = clamp(this.lane + (dir > 0 ? 1 : -1), 0, 2); this.manualT = 4; this.lean = dir > 0 ? 1 : -1; this.audio.sfx('select'); } return; }
     // + / − restano il cambio: marce virtuali dell'app
     this.hooks.shift?.(dir);
     this.audio.sfx(dir > 0 ? 'shiftUp' : 'shiftDown');
@@ -707,7 +711,17 @@ export class Racer3D {
 
   // il percorso dipende dalla durata: se serve si ricostruisce, poi si parte
   begin() {
-    const key = `${this.durIdx}`;
+    // allenamento in corso: la gara È l'allenamento (a tempo: finisce con lui; i watt sono i suoi, il livello cambia solo i rivali).
+    // La gara parte 3 s dopo (il conto alla rovescia) dal punto in cui è l'allenamento; la tappa è lunga quanto resta.
+    this.wc = new WorkoutClock(this.hooks); const wp = this.wc.begin(this.hooks.ftp?.() || 200); this.wk = wp;
+    this.wkItems = null;
+    if (wp) {
+      this.wkStart = Math.min(wp.total - 1, this.wc.el + 3);
+      this.wkItems = itemsFromWorkout(wp, this.wkStart); this.wkDur = this.wkItems.total + COOL;
+      this.wkStage = STAGE_FOR[this.wkItems.total <= 450 ? 0 : this.wkItems.total <= 900 ? 1 : 2];
+      this.wkKey = `wk:${this.wkStage}:${Math.round(this.wkStart)}:${Math.round(wp.total)}:${wp.name}`;
+    }
+    const key = this.wkItems ? this.wkKey : `${this.durIdx}`;
     if (this.builtKey === key && this.scene) { this.newRace(); return; }
     this.state = 'loading'; this.loadPct = 1;
     setTimeout(() => { if (!this.active) return; this.buildStage(); this.newRace(); }, 60);
@@ -725,7 +739,7 @@ export class Racer3D {
     // senza rullo la demo simula 0,8 × FTP con uno scatto ogni 22 s
     const demoBurst = !connected && (this.t % 22) > 14 && (this.t % 22) < 22;
     this.connected = connected;
-    this.power = connected ? st.power || 0 : (demoBurst ? 1.3 : 0.8 + Math.sin(this.t * 0.7) * 0.04) * this.ftp;
+    this.power = connected ? st.power || 0 : this.wk && this.tgtW ? this.tgtW : (demoBurst ? 1.3 : 0.8 + Math.sin(this.t * 0.7) * 0.04) * this.ftp;
     this.cadence = connected ? st.cadence || 0 : demoBurst ? 104 : 88;
     this.gear = st.gear;
     this.sprinting = this.power >= this.ftp * 1.15;
@@ -739,6 +753,7 @@ export class Racer3D {
     this.gearFlash = Math.max(0, (this.gearFlash || 0) - realDt);
     if (this.state === 'loading' || this.state === 'error' || this.state === 'menu') return;
     this.stateT += realDt;
+    if (this.wk && (this.state === 'countdown' || this.state === 'race')) this.wkTick(realDt);
     if (this.state === 'countdown') {
       const left = 3 - Math.floor(this.stateT);
       if (left !== this.lastBeep && left > 0) { this.lastBeep = left; this.audio.sfx('beep'); }
@@ -763,6 +778,7 @@ export class Racer3D {
     this.x = lerp(this.x, LANES[this.lane], Math.min(1, dt * 2.2));
     const e = this.power / this.ftp;
     pl.s = this.s; pl.speed = this.speed;
+    if (this.wk) race.t = Math.max(0, this.wc.el - this.wkStart) - dt; // il tempo della gara è quello dell'allenamento
     race.step(dt, { e, x: this.x });
     this.s = pl.s; this.speed = pl.speed; this.draft = pl.draft; this.raceT = race.t;
     this.handleBlock(dt);
@@ -771,7 +787,7 @@ export class Racer3D {
     const p = this.at(this.s);
     this.grade = clamp(p.grade, -4, 7);
     const g = Math.round(this.grade * 2) / 2;
-    if (g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade(g); }
+    if (!this.wk && g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade(g); }
     if (this.draft >= 1) { this.draftAcc = (this.draftAcc || 0) + dt; if (this.draftAcc >= 1) { this.draftAcc -= 1; this.prog('draftSec', 1, 1); } }
     // tifo: quando passi fra il pubblico
     this.cheerT -= dt;
@@ -781,7 +797,15 @@ export class Racer3D {
     if (place < this.prevPlace) { if (this.t > 5) this.audio.sfx('pass'); if (this.s > this.length - 400) { this.time.slowmo(0.5, 0.6); this.shake.add(0.12); } }
     this.prevPlace = place;
     this.standing = race.ranking().map((q) => (q.me ? { name: 'TU', me: true, d: q.s, color: PLAYER_COLOR } : { name: this.rivals[q.i].name, d: q.s, color: this.rivals[q.i].color, r: this.rivals[q.i] }));
-    if (race.checkEnd()) this.finish();
+    if (race.checkEnd() || (this.wk && this.wc.ended)) this.finish();
+  }
+
+  // tempo dell'allenamento, passo in corso e bersaglio (watt chiesti adesso), tempo entro ±7 %
+  wkTick(realDt) {
+    const el = this.wc.tick(realDt); const segs = this.wk.segs;
+    const seg = segs.find((x) => el >= x.t0 && el < x.t1) || segs[segs.length - 1];
+    this.wkSeg = seg; this.tgtW = wkTarget(seg, el);
+    if (this.state === 'race') { this.pwf += (this.power - this.pwf) * Math.min(1, realDt / 1.2); this.band.add(realDt, this.pwf, this.tgtW, el - seg.stepStart); }
   }
 
   // blocco: chi è più veloce di chi ha davanti resta a ruota un attimo, poi passa dalla corsia libera
@@ -836,6 +860,8 @@ export class Racer3D {
   // traiettoria automatica: scia del corridore davanti, altrimenti le monete, altrimenti si resta
   chooseLine(dt) {
     this.lineT = (this.lineT || 0) - dt;
+    this.manualT = Math.max(0, (this.manualT || 0) - dt);
+    if (this.manualT > 0) return; // con un allenamento + / − hanno scelto la corsia: il pilota automatico aspetta qualche secondo
     if (this.lineT > 0) return;
     this.lineT = 0.6;
     let best = null;
@@ -874,7 +900,7 @@ export class Racer3D {
 
   finish() {
     const race = this.race; const crossed = race.player.fin != null && race.player.s >= this.length - 0.01;
-    const res = race.finalize(); this.result = res;
+    const res = race.finalize(this.wk ? this.band.ratio : null); this.result = res;
     this.finished = true; this.finishT = res.time;
     this.standing = race.ranking().map((q) => (q.me ? { name: 'TU', me: true, d: q.s, fin: res.time, color: PLAYER_COLOR } : { name: this.rivals[q.i].name, d: q.s, fin: this.rivals[q.i].fin, color: this.rivals[q.i].color, r: this.rivals[q.i] }));
     const place = res.place;
@@ -884,19 +910,19 @@ export class Racer3D {
     const p = this.at(this.length); this.confetti.burst(p.x, p.y + 5, p.z, 160, 5);
     const key = `racer3dBest${this.stageIndex}`;
     const best = Number(localStorage.getItem(key)) || Infinity;
-    this.newBest = crossed && this.finishT < best;
+    this.newBest = !this.wk && crossed && this.finishT < best;
     if (this.newBest) localStorage.setItem(key, this.finishT.toFixed(1));
     // stelle e livello adattivo restano per la prossima tappa
     const sk = `racerStars${this.durIdx}_${this.level}`; const prev = Number(localStorage.getItem(sk)) || 0;
-    this.newStars = res.stars > prev; if (this.newStars) localStorage.setItem(sk, res.stars);
-    this.adaptMem = race.adapt; try { localStorage.setItem('racerAdapt', race.adapt); } catch { /* niente storage */ }
+    this.newStars = !this.wk && res.stars > prev; if (this.newStars) localStorage.setItem(sk, res.stars);
+    if (!this.wk) { this.adaptMem = race.adapt; try { localStorage.setItem('racerAdapt', race.adapt); } catch { /* niente storage */ } }
     this.hooks.runEnd?.({ game: 'racer', stage: this.stageIndex, score: Math.round(this.finishT * 10) / 10 });
     this.prog('races', 1, 60 + ([100, 70, 50][place - 1] || 0) + res.stars * 20);
     if (place <= 3) this.prog('podiums', 1, 0);
     if (place === 1) { this.prog('wins', 1, 0); this.hooks.progress?.addToList('tracksWon', this.stageIndex); }
     if (this.leader('green')?.name === 'TU') { this.prog('green', 1, 80); this.prog('jerseys', 1, 0); }
     if (this.leader('kom')?.name === 'TU') { this.prog('kom', 1, 80); this.prog('jerseys', 1, 0); }
-    this.hooks.setGrade(0);
+    if (!this.wk) this.hooks.setGrade(0);
   }
 
   toPodium() {
@@ -1085,7 +1111,7 @@ export class Racer3D {
     const leftT = Math.max(0, race.tl.race - race.t);
     txt(ctx, `${Math.floor(leftT / 60)}:${String(Math.floor(leftT % 60)).padStart(2, '0')}`, W / 2, top + 30 * u, { size: 34 * u, align: 'center', color: leftT < 30 ? HUD.red : HUD.white });
     const left = Math.max(0, this.length - this.s) / WORLD_SCALE;
-    txt(ctx, left >= 1000 ? `${fmtDec(left / 1000, 1)} km` : `${Math.round(left / 10) * 10} m`, W / 2, top + 52 * u, { size: 17 * u, align: 'center', color: left < 500 ? HUD.red : HUD.dim });
+    if (!this.wk) txt(ctx, left >= 1000 ? `${fmtDec(left / 1000, 1)} km` : `${Math.round(left / 10) * 10} m`, W / 2, top + 52 * u, { size: 17 * u, align: 'center', color: left < 500 ? HUD.red : HUD.dim });
     // marcia e cadenza (sotto la posizione)
     const gy = top + 64 * u;
     if (this.gear != null) {
@@ -1132,6 +1158,7 @@ export class Racer3D {
 
   // scheda dell'obiettivo (sempre visibile): il momento della tappa, il ritmo da tenere in % FTP e in watt, la barra di avanzamento
   drawObjective(ctx, W, u, y) {
+    if (this.wk) return this.drawWkCard(ctx, W, u, y);
     const race = this.race; const pl = race.player; const ob = race.obj; const m = race.moment(); const nx = race.tl.moments[race.mi + 1];
     const soon = nx && nx.obj && nx.obj.type !== 'rest' && race.announced.has(nx.i) && pl.s < nx.s0 && (!ob || ob.done || ob.type === 'stay');
     let kind = m.kind; let pct = null; let sec = null; let frac = 0; let status = ''; let extra = null; let mm = m;
@@ -1161,6 +1188,23 @@ export class Racer3D {
     return y + h;
   }
 
+  // con un allenamento: nome del passo, watt del bersaglio e tempo che manca alla fine del passo (la striscia dell'app è nascosta)
+  drawWkCard(ctx, W, u, y) {
+    const seg = this.wkSeg || this.wk.segs[0]; const race = this.race; const ob = race.obj; const m = race.moment();
+    const col = KIND_COLORS[m.kind] || HUD.cyan; const w = Math.min(W - 28, 350 * u); const x = (W - w) / 2; const h = 60 * u;
+    const left = Math.max(0, Math.ceil(seg.stepEnd - this.wc.el));
+    panel(ctx, x, y, w, h, { fill: 'rgba(12,12,18,.7)', border: col });
+    ctx.fillStyle = col; ctx.fillRect(x + 6, y + 8 * u, 5 * u, h - 16 * u);
+    txt(ctx, seg.label || t(`games.wk.seg.${seg.kind}`), x + 20 * u, y + 25 * u, { size: 19 * u, color: col, maxW: w - 40 * u - 80 * u });
+    txt(ctx, `${this.tgtW} W`, x + w - 12 * u, y + 25 * u, { size: 19 * u, align: 'right' });
+    const by = y + 36 * u; const bw = w - 34 * u;
+    ctx.fillStyle = 'rgba(255,255,255,.16)'; ctx.fillRect(x + 20 * u, by, bw, 8 * u);
+    const frac = ob && ob.type === 'hold' ? ob.bar / ob.sec : 1 - left / Math.max(1, seg.stepEnd - seg.stepStart);
+    ctx.fillStyle = col; ctx.fillRect(x + 20 * u, by, bw * clamp(frac, 0, 1), 8 * u);
+    txt(ctx, t('games.wk.left', { left: `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` }), x + 20 * u, y + 56 * u, { size: 13 * u, color: HUD.dim, font: 'text', maxW: w - 30 * u });
+    return y + h;
+  }
+
   // dopo la linea: il risultato grande, al rallentatore
   drawFinish(ctx, W, H, u, dt) {
     const place = this.place(); const k = clamp(this.stateT * 2.5, 0, 1);
@@ -1168,7 +1212,7 @@ export class Racer3D {
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * 0.4);
     ctx.globalAlpha = k;
     txt(ctx, place === 1 ? t('games.racer.victory') : place <= 3 ? t('games.racer.podium') : t('games.racer.finish'), W / 2, 120 * u, { size: (64 - (1 - k) * 30) * u, align: 'center', color: place <= 3 ? HUD.lime : HUD.white, italic: true });
-    txt(ctx, `${ordinal(place)} · ${fmt(this.finishT)}`, W / 2, 158 * u, { size: 30 * u, align: 'center' });
+    txt(ctx, this.wk ? ordinal(place) : `${ordinal(place)} · ${fmt(this.finishT)}`, W / 2, 158 * u, { size: 30 * u, align: 'center' });
     ctx.globalAlpha = 1;
     this.hooks.progress?.drawToasts(ctx, W, dt);
   }
@@ -1251,10 +1295,10 @@ export class Racer3D {
     const bt = Number(lsGet(`racer3dBest${this.stageIndex}`)) || 0;
     R.draw(ctx, W, H, {
       title: place === 1 ? t('games.racer.victory') : top3 ? t('games.racer.podium') : t('games.racer.finish'),
-      subtitle: `${ordinal(place)} · ${fmt(this.finishT)}`,
+      subtitle: this.wk ? `${ordinal(place)} · ${this.wk.name}` : `${ordinal(place)} · ${fmt(this.finishT)}`,
       stars: res.stars,
-      criteria: [{ ok: true, label: t('games.racer.res.star1') }, { ok: star2, label: t('games.racer.res.star2') }, { ok: res.stars >= 3, label: t('games.racer.res.star3') }],
-      score: fmt(this.finishT), best: bt ? fmt(bt) : null, newBest: !!this.newBest,
+      criteria: res.wk ? [{ ok: true, label: t('games.wk.res.done') }, { ok: res.band >= 0.85, label: t('games.wk.res.band', { p: Math.round(res.band * 100) }) }, { ok: top3, label: t('games.racer.podium') }] : [{ ok: true, label: t('games.racer.res.star1') }, { ok: star2, label: t('games.racer.res.star2') }, { ok: res.stars >= 3, label: t('games.racer.res.star3') }],
+      score: res.wk ? String(this.coinsTaken) : fmt(this.finishT), best: res.wk ? null : bt ? fmt(bt) : null, newBest: !!this.newBest,
       lines: [t('games.racer.res.goals', { a: res.objDone, b: res.objTotal })],
       note: cool > 0 ? t('games.racer.res.cool', { t: `0:${String(cool).padStart(2, '0')}` }) : t('games.racer.res.coolDone'),
     });

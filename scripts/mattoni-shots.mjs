@@ -20,7 +20,7 @@ for (const [w, h] of [[390, 780], [1280, 720]]) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, serviceWorkers: 'block' });
   const page = await ctx.newPage();
   const errors = []; page.on('pageerror', (e) => errors.push(e.message)); page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errors.push(m.text()); });
-  await page.addInitScript(() => { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('lang', 'it'); localStorage.setItem('gameQuality', 'high'); });
+  await page.addInitScript(() => { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('safetyAck', '1'); localStorage.setItem('lang', 'it'); localStorage.setItem('gameQuality', 'high'); });
   await page.goto(`${BASE}/index.html`);
   await page.click('#openGame'); await page.evaluate(() => document.body.classList.add('dev')); await page.click('[data-game=mattoni]');
   await page.waitForFunction(() => window.__game?.state === 'menu', null, { timeout: 90000 });

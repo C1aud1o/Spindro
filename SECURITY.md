@@ -10,11 +10,10 @@ issue that may already be fixed.
 
 **Please do not open a public issue, pull request or discussion for a security problem.**
 
-Report it privately, using one of these channels:
-
-1. **GitHub private vulnerability reporting** (preferred): go to the **Security** tab of this repository and
-   click **Report a vulnerability**. Only maintainers can see the report.
-2. **Email**: [CONTACT EMAIL]. Use a subject starting with `[Spindro security]`.
+Report it privately with **GitHub private vulnerability reporting**: go to the **Security** tab of this repository
+and click **Report a vulnerability**. Only maintainers can see the report. (If you cannot see that button, open a
+public issue that says only "I need a private channel for a security report", with no details, and a maintainer
+will arrange one.)
 
 Please include:
 

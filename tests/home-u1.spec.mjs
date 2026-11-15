@@ -109,8 +109,7 @@ test('allenamento → gioco col solo tocco: "Gioca" parte l\'allenamento e apre 
   await expect(page.locator('#workoutSheet')).toBeHidden();
   await expect(page.locator('#gamePanel')).toBeVisible();
   await expect(page.locator('#gameMenu')).toBeVisible();
-  await expect(page.locator('#gameStrip')).toBeVisible();
-  await expect(page.locator('#gsTail')).toContainText('W');
+  await expect(page.locator('#gameStrip')).toBeHidden(); // il passo sta nell'HUD del gioco (workoutHud)
   await expect(page.locator('#startStop')).toHaveText('Pausa');
 });
 
@@ -121,7 +120,7 @@ test('piano attivo: "Oggi" ha Avvia e Gioca; Gioca apre i giochi con l\'allename
   await expect(page.locator('#freeRide')).toBeHidden();
   await page.locator('#planCard [data-pl-game]').click();
   await expect(page.locator('#workoutCard')).toBeVisible();
-  await expect(page.locator('#gameStrip')).toBeVisible();
+  await expect(page.locator('#gamePanel')).toBeVisible();
 });
 
 test('un gioco aperto sopra un allenamento non toglie il rullo all\'allenamento', async ({ page }) => {
@@ -143,14 +142,14 @@ test('un gioco aperto sopra un allenamento non toglie il rullo all\'allenamento'
   await page.waitForTimeout(2500);
   expect(info.mode).toBe('erg');
   expect(info.wk.n).toBeGreaterThan(2);
-  expect(info.wk.keys).toEqual(['dur', 'kind', 'pct', 't0', 'watts']);
+  expect(info.wk.keys).toEqual(['dur', 'kind', 'label', 'pct', 't0', 'w0', 'w1', 'watts']);
   expect(info.wk.first.t0).toBe(0);
   const after = await ops(page);
   expect(after.slice(before.length)).not.toContain(0x11); // nessun comando di simulazione (pendenza) dopo l'avvio del gioco
   const w = await lastErgW(page);
   const shown = Number(await page.locator('#controlValue').textContent());
   expect(Math.abs(w - shown)).toBeLessThanOrEqual(5);
-  await expect(page.locator('#gameStrip')).toBeVisible();
+  await expect(page.locator('#gameStrip')).toBeHidden();
   // senza allenamento l'hook dice null
   await page.evaluate(() => document.querySelector('#wkStop').click());
   await page.click('.dlg [data-ok]');

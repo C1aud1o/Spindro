@@ -12,7 +12,7 @@ import { GEARS, virtualSpeed, powerForSpeed } from './gears.js';
 import { HeartRate } from './hr.js';
 import { encodeFit, encodeWorkoutFit, encodeZwo } from './fit.js';
 import { Strava } from './strava.js';
-import { STRAVA_PROXY, GOATCOUNTER_URL, SENTRY_DSN } from './config.js';
+import { STRAVA_PROXY, GOATCOUNTER_URL, SENTRY_DSN, SITE_URL } from './config.js';
 import { initMonitoring, track, consentAsked, consentGiven, setConsent } from './monitor.js';
 import { buildReportUrl } from './report.js';
 import { setupDebug } from './debugview.js';
@@ -391,8 +391,15 @@ function describeTarget(k) {
 }
 
 // ---------- Sessione ----------
+// Avviso di sicurezza: una sola frase, una sola volta, prima della prima uscita (ogni avvio passa da qui).
+function safetyAcknowledged() { try { return localStorage.getItem('safetyAck') === '1'; } catch { return true; } }
+$('safetyOk').addEventListener('click', () => {
+  try { localStorage.setItem('safetyAck', '1'); } catch { /* storage non disponibile */ }
+  closeSheet('safetySheet'); $('startStop').click();
+});
 $('startStop').addEventListener('click', () => {
   const r = state.ride;
+  if (!r.running && !safetyAcknowledged()) { openSheet('safetySheet'); return; }
   r.running = !r.running;
   if (r.running) $('reportHint').hidden = true; // niente inviti mentre si pedala
   if (r.running) { r.start = performance.now() - r.elapsed * 1000; requestWakeLock(); }
@@ -881,6 +888,7 @@ function renderWelcome() {
   const riding = isRiding();
   const plan = plans.renderHome(riding); // la scheda "Oggi" mostra il piano; true se oggi c'è un allenamento
   $('today').classList.toggle('plan-due', !!plan);
+  document.body.classList.toggle('no-trainer', !riding && !trainer.connected); // senza rullo l'unico tasto lime è "Collega il rullo"
   renderChallenges(hist, riding || trainer.connected);
   if (riding || trainer.connected) { el.hidden = true; return; }
   el.hidden = false;
@@ -889,10 +897,10 @@ function renderWelcome() {
     el.innerHTML = `<h2>${t('welcome.title')}</h2>
       <p>${t('welcome.subtitle')}</p>
       <ol><li>${t('welcome.step1')}</li><li>${t('welcome.step2')}</li><li>${t('welcome.step3')}</li></ol>
-      <button class="ghost" id="welcomeConnect">${t('welcome.connect')}</button>`;
+      <button class="cta" id="welcomeConnect">${t('welcome.connect')}</button>`;
   } else {
     // utente che torna: solo il tasto per collegare il rullo (e l'obiettivo della settimana, se c'è)
-    el.innerHTML = `<button class="ghost" id="welcomeConnect">${t('welcome.connect')}</button>${goalHtml(hist)}`;
+    el.innerHTML = `<button class="cta" id="welcomeConnect">${t('welcome.connect')}</button>${goalHtml(hist)}`;
   }
   $('welcomeConnect')?.addEventListener('click', () => addDevice()); // apre direttamente la scelta Bluetooth
 }
@@ -938,6 +946,10 @@ $('reportIssue').addEventListener('click', () => {
 
 // ---------- Monitoraggio e consenso (D1) ----------
 initMonitoring({ release: BUILD, environment: isNative ? 'android' : 'web', lang: getLang() });
+// pagine legali del sito (in italiano sotto /it/) e licenze open source dalle Impostazioni
+function legalHref(slug) { return `${SITE_URL}${getLang() === 'it' ? '/it' : ''}/${slug}/`; }
+function setLegalLinks() { document.querySelectorAll('a[data-legal]').forEach((el) => { el.href = legalHref(el.dataset.legal); }); }
+setLegalLinks(); window.addEventListener('langchange', setLegalLinks);
 $('analyticsOn').checked = consentGiven();
 $('analyticsOn').addEventListener('change', (e) => { setConsent(e.target.checked); if (e.target.checked) { track('app-open'); track('lang', getLang()); } });
 function answerConsent(yes) {
@@ -947,6 +959,8 @@ function answerConsent(yes) {
 $('consentYes').addEventListener('click', () => answerConsent(true));
 $('consentNo').addEventListener('click', () => answerConsent(false));
 // se statistiche o segnalazione errori non sono configurate (fork, build di prova) non si chiede né si mostra nulla
+// la frase sugli errori compare solo se la segnalazione errori è davvero accesa (Sentry spento nel repository)
+document.querySelector('#consentSheet [data-i18n="privacy.errors"]').hidden = !SENTRY_DSN;
 $('analyticsRow').hidden = !GOATCOUNTER_URL; $('errorsNote').hidden = !SENTRY_DSN; $('privacyGroup').hidden = !GOATCOUNTER_URL && !SENTRY_DSN;
 if (GOATCOUNTER_URL && !consentAsked()) openSheet('consentSheet');
 
@@ -1103,13 +1117,13 @@ function workoutForGames() {
     const a = workout.wattsOf(x, 0) * k; const b = workout.wattsOf(x, x.d) * k; const watts = Math.round((a + b) / 2);
     const pct = +(watts / state.ftp).toFixed(3);
     const kind = i === 0 && b > a && pct < 0.7 ? 'warm' : b < a && pct < 0.65 ? 'cool' : pct >= 1.05 ? (x.d <= 60 ? 'sprint' : 'effort') : pct >= 0.85 ? 'effort' : pct >= 0.6 ? 'pace' : 'rest';
-    const o = { t0, dur: x.d, pct, watts, kind }; t0 += x.d; return o;
+    const o = { t0, dur: x.d, pct, watts, kind, w0: Math.round(a), w1: Math.round(b), label: x.label }; t0 += x.d; return o;
   });
   return { name: w.name, total: workout.total, elapsed: Math.round(workout.t), steps };
 }
 // striscia in cima al gioco: passo dell'allenamento, watt del rullo e tempo che resta nel passo
 function updateGameStrip(st) {
-  const strip = $('gameStrip'); const on = !!(workout && st && !$('gamePanel').hidden);
+  const strip = $('gameStrip'); const on = !!(workout && st && !$('gamePanel').hidden && !gameHooks.workoutHud); // i giochi con workoutHud mostrano da soli il passo nel loro HUD
   strip.hidden = !on; $('gamePanel').classList.toggle('has-strip', on);
   if (!on) return;
   $('gameStrip').title = workout.w.name; $('gsLabel').textContent = st.x.label;
@@ -1145,9 +1159,11 @@ const gameHooks = {
   //   total   durata totale (s)
   //   elapsed secondi già fatti
   //   steps   [{ t0, dur, pct, watts, kind }]: inizio (s), durata (s), media in frazione della FTP (0.75 = 75%, con l'intensità scelta),
-  //           watt medi, e kind come nei piani dei giochi: warm | pace | effort | sprint | rest | cool
+  //           watt medi, e kind come nei piani dei giochi: warm | pace | effort | sprint | rest | cool; w0/w1 watt a inizio e fine
+  //           del passo (rampe), label nome del passo. I giochi usano kit/workout-plan.js per leggerlo.
   // Con un allenamento in corso setGrade viene ignorato: il rullo resta in ERG sui watt dell'allenamento.
   workout: () => workoutForGames(),
+  workoutHud: true, // i giochi mostrano il passo dell'allenamento nel proprio HUD: la striscia dell'app sta nascosta
   setGrade: (g) => {
     if (workout) return; // l'ERG dell'allenamento non si tocca
     // stessa regola dei percorsi: la pendenza arriva al rullo scalata dal "realismo salite" (default 50%)
@@ -1595,33 +1611,37 @@ const clickNav = createClickNav({
   // il primo tasto del menu è quello principale della scheda "Oggi" (nel cruscotto: Pausa/Riprendi)
   prefer: () => (!trainer.connected ? ($('welcomeConnect') && !$('welcome').hidden ? $('welcomeConnect') : $('deviceBar')) : ($('today').classList.contains('plan-due') && !isRiding() ? document.querySelector('#planCard [data-pl-start]') || $('startStop') : $('startStop'))),
   onChange: (on) => document.body.classList.toggle('click-nav', on),
+  // voci del menu Click, in ordine di utilità: prima ciò che serve adesso (avviare / mettere in pausa), poi il resto
   menuItems: () => {
-    const rec = { label: state.ride.running ? t('clickmenu.pause') : t('clickmenu.start'), run: () => $('startStop').click() };
-    const music = GarminBridge && $('musicOn').checked ? [{ label: t('clickmenu.music'), run: () => GarminBridge.mediaKey({ key: 'playpause' }).then(() => toast(t('music.playPause'))).catch((err) => log(`Music: ${err.message}`)) }] : [];
+    const rec = { icon: state.ride.running ? 'pause' : 'play', label: t(state.ride.running ? 'clickmenu.pause' : state.ride.log.length ? 'clickmenu.resume' : 'clickmenu.start'), run: () => $('startStop').click() };
+    const music = GarminBridge && $('musicOn').checked ? [{ icon: 'music', label: t('clickmenu.music'), run: () => GarminBridge.mediaKey({ key: 'playpause' }).then(() => toast(t('music.playPause'))).catch((err) => log(`Music: ${err.message}`)) }] : [];
+    const check = { icon: 'controller', label: t('clickmenu.check'), run: () => clickCheck.open() };
+    const devices = { icon: 'trainer', label: t('clickmenu.devices'), run: () => devicesUi.open() };
+    const settings = { icon: 'settings', label: t('clickmenu.settings'), run: () => $('openSettings').click() };
+    const workouts = { icon: 'workouts', label: t('clickmenu.workouts'), run: () => $('openWorkouts').click() };
+    const games = { icon: 'games', label: t('clickmenu.games'), run: () => openGame() };
+    const video = { icon: 'video', label: t('clickmenu.video'), run: () => { openGame(); startGame('video'); } };
+    const history = { icon: 'history', label: t('clickmenu.history'), run: () => openHistory() };
+    const home = { icon: 'home', label: t('clickmenu.home'), run: () => closeEverything() };
     if (inGame()) {
       return [
-        { label: t('clickmenu.resumeGame'), run: () => {} },
-        { label: t('clickmenu.exitGame'), run: () => closeGame() },
-        { label: t('clickmenu.home'), run: () => { closeGame(); closeGame(); } },
-        { label: gameAudio.muted ? t('clickmenu.audioOn') : t('clickmenu.audioOff'), run: () => $('muteGame').click() },
+        { icon: 'play', label: t('clickmenu.resumeGame'), run: () => {} },
+        { icon: gameAudio.muted ? 'soundOn' : 'soundOff', label: gameAudio.muted ? t('clickmenu.audioOn') : t('clickmenu.audioOff'), run: () => $('muteGame').click() },
         rec, ...music,
-        { label: t('clickmenu.check'), run: () => clickCheck.open() },
+        { icon: 'exit', label: t('clickmenu.exitGame'), run: () => closeGame() },
+        { icon: 'home', label: t('clickmenu.home'), run: () => { closeGame(); closeGame(); } },
+        check,
       ];
     }
-    return [
-      rec, ...music,
-      ...(workout ? [{ label: t('clickmenu.endWorkout'), run: () => $('wkStop').click() }] : []),
-      ...(state.ride.log.length ? [{ label: t('clickmenu.finish'), run: () => $('finishRide').click() }] : []),
-      { label: t('clickmenu.devices'), run: () => devicesUi.open() },
-      { label: t('clickmenu.workouts'), run: () => $('openWorkouts').click() },
-      { label: t('clickmenu.games'), run: () => openGame() },
-      { label: t('clickmenu.video'), run: () => { openGame(); startGame('video'); } },
-      { label: t('clickmenu.history'), run: () => openHistory() },
-      { label: t('clickmenu.settings'), run: () => $('openSettings').click() },
-      ...(overlayOpen() ? [{ label: t('clickmenu.home'), run: () => closeEverything() }] : []),
-      { label: t('clickmenu.check'), run: () => clickCheck.open() },
-      { label: t('clickmenu.close'), run: () => clickNav.stop() },
-    ];
+    const open = overlayOpen();
+    const finish = state.ride.log.length ? [{ icon: 'flag', label: t('clickmenu.finish'), run: () => $('finishRide').click() }] : [];
+    const endWk = workout ? [{ icon: 'stop', label: t('clickmenu.endWorkout'), run: () => $('wkStop').click() }] : [];
+    const close = { icon: 'close', label: t('clickmenu.close'), run: () => clickNav.stop() };
+    if (isRiding() || workout) { // in uscita: pausa e fine per prime, poi cosa si può fare mentre si pedala
+      return [rec, ...finish, ...endWk, ...(open ? [home] : []), ...music, games, video, workouts, devices, settings, history, check, close];
+    }
+    // a riposo: senza rullo il primo bisogno è collegarlo; poi partire, scegliere cosa fare, il resto
+    return [...(trainer.connected ? [rec] : [devices, rec]), ...(open ? [home] : []), workouts, games, video, history, ...(trainer.connected ? [devices] : []), settings, check, close];
   },
 });
 // Verifica tasti ("Controlla il tuo controller"): si apre da sola al primo collegamento, dal pannello Dispositivi e dal menu Click

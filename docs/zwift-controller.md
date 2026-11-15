@@ -11,6 +11,12 @@ Behaviour (roles, navigation, legend, key check): `docs/click-navigazione.md`.
 
 These were consulted from memory, not re-read line by line: anything marked “unverified” must be compared with the sources.
 
+## Legal position, plainly
+- Support for the Zwift controllers comes from **open-source reverse engineering of a Bluetooth Low Energy protocol, used for interoperability** (so that hardware the user owns works with a free app).
+- **No Zwift code, key, firmware, asset, logo or image is included** in Spindro, and Spindro never contacts any Zwift server or uses a Zwift app, account or login. The encrypted key exchange that some firmware needs is deliberately **not** implemented.
+- The protocol details (UUIDs, message types, bit positions) are facts about the devices. Spindro's code is its own JavaScript; it was written from the descriptions above, not copied from those projects. Their licences differ (SwiftControl's current releases use a non-commercial licence; qdomyos-zwift is GPL-3.0; zwiftplay states none): **a maintainer should confirm that nothing was copied** (see `docs/compliance-report.md`).
+- Zwift® and the product names are trademarks of their owners; Spindro is not affiliated with Zwift (see the trademark notice).
+
 ## What is implemented
 - One “Click” button in the app connects every model (name filter `Zwift*` or service `0xfc82`).
 - Model recognised from the BLE name (`Ride` → Zwift Ride, `Play` → Zwift Play, otherwise Click) and refined by the message type

@@ -13,7 +13,8 @@ import { t } from '../i18n.js';
 import { SONGS } from './audio.js';
 import { GameMenu, ResultsView, LENGTHS } from './kit/menu.js';
 import { makeRandom } from './kit/rng.js';
-import { DURATIONS, LEVELS, COOL_S, SPEED, RING_EVERY, FIRST_RING, Y_LO, Y_HI, PCT_LO, PCT_HI, buildPlan, segAt, targetW, targetPct, profilePct, altOf, pctOf, Adapter, starsFor, nextStarHint } from './planata-plan.js';
+import { DURATIONS, LEVELS, COOL_S, SPEED, RING_EVERY, FIRST_RING, Y_LO, Y_HI, PCT_LO, PCT_HI, buildPlan, planFromWorkout, segAt, targetW, targetPct, profilePct, altOf, pctOf, Adapter, starsFor, nextStarHint } from './planata-plan.js';
+import { WorkoutClock, BandMeter, workoutStars } from './kit/workout-plan.js';
 
 const PLANE_SPAN = 8;       // apertura alare (m)
 const RIDER_S = 1.75;       // scala del ciclista (più grande del vero: si legge da lontano)
@@ -207,7 +208,7 @@ export class Planata {
       load: () => ({ durIdx: clamp(Number(ls('planataDur', 0)) || 0, 0, DURATIONS.length - 1), level: clamp(Number(ls('planataLvl', 1)) || 0, 0, LEVELS.length - 1) }),
       save: ({ durIdx, level }) => { try { localStorage.setItem('planataDur', durIdx); localStorage.setItem('planataLvl', level); } catch { /* niente storage */ } },
       best: (d, l) => { const r = this.record(DURATIONS[d], LEVELS[l].id); return { stars: r.stars || 0, text: r.score ? String(r.score) : null }; },
-      sfx: (n) => this.audio.sfx(n), ready: () => this.state === 'menu',
+      sfx: (n) => this.audio.sfx(n), ready: () => this.state === 'menu', workout: () => this.hooks.workout?.(),
       onStart: (d, l) => { this.configure(d, l); this.reset(); this.begin(); },
     });
     this.results = new ResultsView({ sfx: (n) => this.audio.sfx(n), onAgain: () => { this.reset(); this.begin(); }, onBack: () => this.hooks.close?.() });
@@ -395,11 +396,15 @@ export class Planata {
   // ---------- partita ----------
   get ftp() { return Math.max(80, this.hooks.ftp?.() || Number(localStorage.getItem('ftp')) || 200); }
   recordKey() { return `planataBest2:${this.total}:${this.level.id}`; }
-  record(total = this.total, lvl = this.level?.id) { try { return JSON.parse(localStorage.getItem(`planataBest2:${total}:${lvl}`) || '{}'); } catch { return {}; } }
+  record(total = this.total, lvl = this.level?.id) { if (this.wk) return {}; try { return JSON.parse(localStorage.getItem(`planataBest2:${total}:${lvl}`) || '{}'); } catch { return {}; } }
 
   configure(durIdx, lvlIdx) {
     this.durIdx = durIdx; this.lvlIdx = lvlIdx;
-    this.total = DURATIONS[durIdx]; this.level = LEVELS[lvlIdx]; this.plan = buildPlan(this.total);
+    this.level = LEVELS[lvlIdx];
+    // allenamento in corso: la partita È l'allenamento (durata, tratti e watt vengono da lì; il livello non cambia i watt)
+    this.wc = new WorkoutClock(this.hooks); this.wk = this.wc.begin(this.ftp);
+    if (this.wk) { this.plan = planFromWorkout(this.wk); this.total = this.plan.total; } else { this.total = DURATIONS[durIdx]; this.plan = buildPlan(this.total); }
+    this.band = new BandMeter();
   }
 
   reset() {
@@ -407,13 +412,13 @@ export class Planata {
     for (const o of this.items || []) this.dropItem(o);
     this.configure(this.durIdx, this.lvlIdx);
     this.z = 0; this.x = 0; this.lane = 0; this.manualT = 0; this.y = altOf(0.62); this.vy = 0; this.pitch = 0; this.roll = 0;
-    this.items = []; this.zBase = 0; this.el = 0; this.segIdx = -1; this.seg = this.plan.segs[0];
+    this.items = []; this.zBase = 0; this.el = this.wk ? this.wc.el : 0; this.segIdx = -1; this.seg = this.plan.segs[0];
     this.score = 0; this.combo = 0; this.bestCombo = 0; this.rings = 0; this.ringsTotal = 0; this.coins = 0; this.pods = 0; this.hits = 0;
     this.waveRings = {}; this.waveHit = {};
     this.effortsDone = 0; this.effortsTotal = 0; this.adapt = new Adapter(); this.evLog = []; this.sprinting = false; this.inTarget = false;
     this.paused = false; this.pauseT = 0; this.startT = 0; this.result = null; this.recStart = null; this.finished = false; this.landing = 0; this.rollV = 0;
     this.hurtT = 0; this.boostT = 0; this.gustK = 0; this.sentGrade = undefined; this.pops = []; this.msgs.clear();
-    this.nextRingT = FIRST_RING; this.cn = 0; this.prev = { t: FIRST_RING - RING_EVERY, z: 0, x: 0, lane: 0 }; this.lastRing = this.prev; this.courseDone = false;
+    const e0 = this.wk ? this.wc.el : 0; this.nextRingT = e0 + FIRST_RING; this.cn = 0; this.prev = { t: e0 + FIRST_RING - RING_EVERY, z: 0, x: 0, lane: 0 }; this.lastRing = this.prev; this.courseDone = false;
     this.rnd = makeRandom(this.seed);
     this.camInit = false; this.runway.visible = false; this.stateT = 0; setRunway(null); this.landMsg = false;
     for (const c of this.chunks) c.index = null;
@@ -422,9 +427,10 @@ export class Planata {
 
   begin() {
     this.state = 'play'; this.stateT = 0;
-    this.zBase = this.z; this.el = 0; this.hurtT = 0;
+    const e0 = this.wk ? this.wc.el : 0; // aperto a metà allenamento: il percorso comincia dal punto giusto del profilo
+    this.zBase = this.z - e0 * SPEED; this.el = e0; this.hurtT = 0;
     this.pw = this.power; this.y = altOf(clamp(this.pw / this.ftp, 0.5, 1.3)); this.x = 0;
-    this.prev = { t: FIRST_RING - RING_EVERY, z: this.zBase + (FIRST_RING - RING_EVERY) * SPEED, x: 0, lane: 0 }; this.lastRing = { ...this.prev, z: this.z };
+    this.nextRingT = e0 + FIRST_RING; this.prev = { t: e0 + FIRST_RING - RING_EVERY, z: this.zBase + (e0 + FIRST_RING - RING_EVERY) * SPEED, x: 0, lane: 0 }; this.lastRing = { ...this.prev, z: this.z };
     this.runwayZ = this.zBase + this.total * SPEED; setRunway(this.runwayZ);
     this.runway.position.set(0, 0, this.runwayZ - 10); this.runway.visible = true;
     for (const c of this.chunks) c.index = null; this.lastChunk = -1e9; this.updateWorld(true);
@@ -438,7 +444,7 @@ export class Planata {
     this.state = 'over'; this.stateT = 0; this.finished = true; this.rollV = SPEED * 0.55;
     this.audio.stopSong(); this.audio.sfx('win');
     this.hooks.runEnd?.({ game: 'planata', score: Math.round(this.score) });
-    this.hooks.setGrade(0);
+    if (!this.wk) this.hooks.setGrade(0);
   }
 
   // ---------- eventi: tutto ciò che chiede o premia qualcosa (si misura nel test) ----------
@@ -557,12 +563,14 @@ export class Planata {
 
   // ---------- il piano: cambio di tratto, giudizio degli sforzi, adattamento ----------
   enterSeg(i) {
-    const prev = this.seg; const seg = this.plan.segs[i];
-    if (this.segIdx >= 0) this.judge(prev);
+    const prev = this.seg; const seg = this.plan.segs[i]; const first = this.segIdx < 0;
+    if (!first) this.judge(prev);
     this.segIdx = i; this.seg = seg; seg.inT = 0; seg.okT = 0;
-    const W = targetW(seg, this.ftp, this.level.k, this.adapt.value);
+    const W = targetW(seg, this.ftp, this.level.k, this.adapt.value, this.el);
     const N = this.plan.N;
-    if (seg.kind === 'warm') { this.say(t('games.planata.say.warm'), SEG_COLOR.warm, 3, true, 2, t('games.planata.say.warmSub')); this.ev('start'); }
+    if (this.wk && seg.wave >= 1 && seg.wave <= N && seg.wave !== prev?.wave && seg.kind !== 'pace') this.ev('wave');
+    if (seg.kind === 'warm' && !first && prev?.kind === 'warm') { /* riscaldamento lungo spezzato in ondate: un solo annuncio */ }
+    else if (seg.kind === 'warm') { this.say(t('games.planata.say.warm'), SEG_COLOR.warm, 3, true, 2, t('games.planata.say.warmSub')); this.ev('start'); }
     else if (seg.kind === 'pace') { this.say(t('games.planata.say.wave', { n: seg.wave, m: N }), '#d9ff3d', 2.6, true, 3, t('games.planata.say.waveSub', { w: W })); this.ev('wave'); }
     else if (seg.kind === 'effort') { this.say(t('games.planata.say.effort', { w: W }), SEG_COLOR.effort, 2.4, true, 3, t('games.planata.say.effortSub')); this.audio.sfx('go'); this.ev('segment'); }
     else if (seg.kind === 'climb') { this.say(t('games.planata.say.climb', { w: W }), SEG_COLOR.climb, 2.4, true, 3, t('games.planata.say.climbSub', { s: Math.round(seg.t1 - seg.t0) })); this.audio.sfx('alarm'); this.ev('segment'); }
@@ -581,23 +589,24 @@ export class Planata {
       this.say(t(seg.kind === 'climb' ? 'games.planata.climbOk' : 'games.planata.effortOk'), '#7dff6a', 1.8, true, 2); this.prog('sprintsWon', seg.kind === 'climb' ? 1 : 0, 20);
     } else this.say(t('games.planata.effortKo'), '#ffb84d', 1.6, false, 1);
     this.ev(ok ? 'effortOk' : 'effortKo');
-    const moved = this.adapt.report(ok);
+    const moved = this.wk ? 0 : this.adapt.report(ok); // con un allenamento i watt li decide lui
     if (moved) this.say(t(moved < 0 ? 'games.planata.adaptDown' : 'games.planata.adaptUp'), moved < 0 ? '#4de3ff' : '#ffd34d', 2.2, false, 2);
   }
 
   startCool() {
     this.finishResult();
-    this.say(t('games.planata.say.cool'), SEG_COLOR.cool, 3, true, 3, t('games.planata.say.coolSub', { w: targetW(this.seg, this.ftp, 0, 0) }));
+    this.say(t('games.planata.say.cool'), SEG_COLOR.cool, 3, true, 3, t('games.planata.say.coolSub', { w: targetW(this.seg, this.ftp, 0, 0, this.el) }));
     this.audio.sfx('win');
   }
 
   finishResult(update = false) {
-    const s = starsFor({ done: this.effortsDone, total: this.effortsTotal, hits: this.hits });
+    // con un allenamento le stelle sono le stesse di tutti i giochi: tempo entro ±7 % del bersaglio (kit/workout-plan.js)
+    const s = this.wk ? { stars: workoutStars(this.band.ratio, true), ratio: this.band.ratio } : starsFor({ done: this.effortsDone, total: this.effortsTotal, hits: this.hits });
     const rec = this.recStart || (this.recStart = this.record()); const prevBest = rec.score || 0; const score = Math.round(this.score);
     const newBest = score > prevBest;
-    if (newBest || s.stars > (rec.stars || 0)) { try { localStorage.setItem(this.recordKey(), JSON.stringify({ score: Math.max(prevBest, score), stars: Math.max(rec.stars || 0, s.stars) })); } catch { /* niente storage */ } }
+    if (!this.wk && (newBest || s.stars > (rec.stars || 0))) { try { localStorage.setItem(this.recordKey(), JSON.stringify({ score: Math.max(prevBest, score), stars: Math.max(rec.stars || 0, s.stars) })); } catch { /* niente storage */ } }
     this.result = { ...s, done: this.effortsDone, total: this.effortsTotal, rings: this.rings, ringsTotal: this.ringsTotal, hits: this.hits, score, newBest, prevStars: rec.stars || 0, bestCombo: this.bestCombo };
-    this.result.hint = nextStarHint(this.result);
+    this.result.hint = this.wk ? null : nextStarHint(this.result); this.result.wk = !!this.wk; this.result.band = this.band.ratio;
     if (update) return;
     this.prog('races', 0, 40 + s.stars * 40 + this.effortsDone * 10);
     this.hooks.progress?.setMax('planataStars', s.stars);
@@ -611,7 +620,7 @@ export class Planata {
     // senza rullo la demo simula 0,8 × FTP con scatti (e un po' meno nel recupero)
     const demo = !connected; this.connected = connected;
     const rest = this.state === 'play' && (this.seg?.kind === 'rest' || this.seg?.kind === 'cool');
-    const demoP = demo ? ftp * (rest ? 0.58 : 0.8) * (((this.t % 40) > 31 && !rest) ? 1.6 : 1) : 0;
+    const demoP = demo && this.wk && this.seg ? targetW(this.seg, ftp, 0, 0, this.el) : demo ? ftp * (rest ? 0.58 : 0.8) * (((this.t % 40) > 31 && !rest) ? 1.6 : 1) : 0;
     this.power = connected ? st.power || 0 : demoP;
     this.cadence = connected ? st.cadence || 0 : 88;
     this.pw += (this.power - this.pw) * Math.min(1, dt / 0.9);
@@ -623,8 +632,8 @@ export class Planata {
     this.stateT += dt;
     if (this.state === 'menu') { this.menuTick(dt, connected); this.cruise(dt); this.view(dt); return; }
     if (this.state === 'over') { this.results.update(dt); this.rollOut(dt); this.view(dt); return; }
-    // pausa: chi smette di pedalare non perde, il tempo si ferma
-    if (connected) {
+    // pausa: chi smette di pedalare non perde, il tempo si ferma. Con un allenamento il tempo è il suo e non si ferma: il rullo è in ERG
+    if (connected && !this.wk) {
       if (this.power < 12) { this.pauseT += dt; if (this.pauseT > 2.5 && !this.paused) { this.paused = true; this.audio.sfx('beep'); } } else if (this.power > 25) { this.pauseT = 0; this.paused = false; }
     }
     if (this.paused) { this.view(dt, true); return; }
@@ -640,20 +649,24 @@ export class Planata {
 
   sim(dt) {
     const ftp = this.ftp;
-    this.el += dt; this.z += SPEED * dt;
+    if (this.wk) { const e0 = this.el; this.el = this.wc.tick(dt); this.z += SPEED * (this.el - e0); if (this.wc.ended) { this.finish(); return; } } else { this.el += dt; this.z += SPEED * dt; }
     // il tratto dell'allenamento
     let seg = segAt(this.plan, this.el); const idx = this.plan.segs.indexOf(seg);
     if (idx !== this.segIdx) { this.enterSeg(idx); seg = this.seg; }
     if (this.el >= this.total) { this.finish(); return; }
-    const tgt = targetW(seg, ftp, this.level.k, this.adapt.value); this.tgtW = tgt;
+    const tgt = targetW(seg, ftp, this.level.k, this.adapt.value, this.el); this.tgtW = tgt;
     seg.inT += dt;
+    if (this.wk) this.band.add(dt, this.pw, tgt, this.el - seg.stepStart);
     if ((seg.kind === 'effort' || seg.kind === 'climb') && seg.inT > (seg.kind === 'climb' ? 2 : 4) && this.pw >= 0.92 * tgt) seg.okT += dt;
     this.inTarget = this.pw >= 0.92 * tgt; this.sprinting = seg.kind === 'climb' && this.inTarget;
     const g = seg.kind === 'rest' || seg.kind === 'cool' ? 0 : seg.kind === 'warm' ? 1 : seg.kind === 'pace' ? 2 : 3;
-    if (g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade(g); }
+    if (!this.wk && g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade(g); }
     this.hurtT = Math.max(0, this.hurtT - dt); this.boostT = Math.max(0, this.boostT - dt); this.manualT = Math.max(0, this.manualT - dt);
     // quota: la potenza (smussata) è la percentuale di FTP; l'aereo la insegue morbido, come un volo e non un grafico
-    const ty = altOf(clamp(this.pw / ftp, 0, 1.4));
+    // Quota = watt. Con un allenamento il rullo è in ERG e segue da solo il bersaglio: la quota segue il profilo dell'allenamento
+    // e i tuoi watt la spostano di poco (al massimo ±10 % della FTP): chi segue l'allenamento passa gli anelli, chi non pedala no.
+    const pPath = this.wk ? profilePct(this.plan, this.el, this.level.k, this.adapt.value) : 0;
+    const ty = altOf(this.wk ? clamp(pPath + clamp(this.pw / ftp - pPath, -0.1, 0.1), 0, 1.4) : clamp(this.pw / ftp, 0, 1.4));
     this.gustK = lerp(this.gustK, 0, Math.min(1, dt * 2.2));
     let y = this.y; const y0 = y;
     y += (ty - GUST_DROP * this.gustK - y) * (1 - Math.exp(-dt * 3));
@@ -830,7 +843,7 @@ export class Planata {
     if (this.state === 'menu') { this.menu.draw(ctx, W, H, { connected: this.hooks.connected() }); this.hooks.progress?.drawToasts(ctx, W, dt); return; }
     if (this.state === 'over') { if (this.result) this.drawResult(ctx, W, H, true); this.hooks.progress?.drawToasts(ctx, W, dt, W > H * 1.15 ? Math.round(H * 0.78) : 330, true); return; }
     const seg = this.seg; const pad = 12; const y0 = 84; const ftp = this.ftp;
-    const col = SEG_COLOR[seg.kind]; const tw = this.tgtW || targetW(seg, ftp, this.level.k, this.adapt.value);
+    const col = SEG_COLOR[seg.kind]; const tw = this.tgtW || targetW(seg, ftp, this.level.k, this.adapt.value, this.el);
     // riga in alto
     ctx.fillStyle = 'rgba(8,10,26,.62)'; rrect(ctx, pad - 4, y0 - 22, W - 2 * pad + 8, 36, 10); ctx.fill();
     hudText(ctx, String(Math.round(this.score)), pad + 6, y0 + 5, { size: 26, maxW: 100 });
@@ -842,19 +855,19 @@ export class Planata {
     const by = y0 + 22; const bh2 = 44;
     ctx.fillStyle = 'rgba(8,10,26,.72)'; rrect(ctx, pad - 4, by, W - 2 * pad + 8, bh2, 12); ctx.fill();
     ctx.fillStyle = col; rrect(ctx, pad - 4, by, 7, bh2, 3); ctx.fill();
-    const left = Math.max(0, Math.ceil(seg.t1 - this.el));
-    hudText(ctx, t(`games.planata.seg.${seg.kind}`), pad + 12, by + 29, { size: 21, color: col, maxW: W * 0.34 });
+    const left = Math.max(0, Math.ceil((this.wk ? seg.stepEnd : seg.t1) - this.el)); // con un allenamento: nome del passo e tempo che manca alla fine del passo
+    hudText(ctx, this.wk ? (seg.label || t(`games.wk.seg.${seg.wkKind}`)) : t(`games.planata.seg.${seg.kind}`), pad + 12, by + 29, { size: 21, color: col, maxW: W * 0.34 });
     const calm = seg.kind === 'rest' || seg.kind === 'cool' || seg.kind === 'warm';
     hudText(ctx, `${tw} W`, W / 2 + 8, by + 32, { size: 32, align: 'center', color: this.inTarget || calm ? '#ffffff' : '#ffd34d', maxW: W * 0.34 });
     hudText(ctx, `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`, W - pad - 4, by + 29, { size: 21, align: 'right', color: '#e8e8f4', maxW: 70 });
-    const segK = clamp((seg.t1 - this.el) / (seg.t1 - seg.t0), 0, 1);
+    const segK = this.wk ? clamp((seg.stepEnd - this.el) / (seg.stepEnd - seg.stepStart), 0, 1) : clamp((seg.t1 - this.el) / (seg.t1 - seg.t0), 0, 1);
     ctx.fillStyle = 'rgba(255,255,255,.18)'; rrect(ctx, pad, by + bh2 + 4, W - 2 * pad, 6, 3); ctx.fill();
     ctx.fillStyle = col; rrect(ctx, pad, by + bh2 + 4, Math.max(6, (W - 2 * pad) * segK), 6, 3); ctx.fill();
     const ty = by + bh2 + 15; const tk = clamp(this.el / this.total, 0, 1);
     ctx.fillStyle = 'rgba(255,255,255,.14)'; rrect(ctx, pad, ty, W - 2 * pad, 5, 2.5); ctx.fill();
     ctx.fillStyle = '#d9ff3d'; rrect(ctx, pad, ty, Math.max(5, (W - 2 * pad) * tk), 5, 2.5); ctx.fill();
     ctx.fillStyle = 'rgba(8,10,26,.9)';
-    for (const s of this.plan.segs) if (s.kind === 'pace') ctx.fillRect(pad + (W - 2 * pad) * (s.t0 / this.total) - 1, ty - 1, 2, 7);
+    for (const [i, s] of this.plan.segs.entries()) if (this.wk ? (s.wave >= 1 && s.wave !== this.plan.segs[i - 1]?.wave) : s.kind === 'pace') ctx.fillRect(pad + (W - 2 * pad) * (s.t0 / this.total) - 1, ty - 1, 2, 7);
     // obiettivo: anelli di quest'ondata e distanza dalla pista
     const gy = ty + 14; const pw2 = (W - 2 * pad - 8) / 2; const gh = 28;
     const a = this.waveHit[seg.wave] || 0; const b = this.waveRings[seg.wave] || 0; const dist = Math.max(0, this.total - this.el) * SPEED;
@@ -937,8 +950,8 @@ export class Planata {
     }
     const r2 = this.result; const done = r2.total ? r2.done / r2.total : 0;
     this.results.draw(ctx, W, H, {
-      title: t('games.planata.res.title'), subtitle: `${t('games.menu.min', { n: this.total / 60 })} · ${t(`games.menu.${this.level.id}`)}`, stars: r2.stars,
-      criteria: [{ ok: true, label: t('games.planata.res.cLand') }, { ok: done >= 0.5, label: t('games.planata.res.cHalf', { a: r2.done, b: r2.total }) }, { ok: done >= 0.8 && r2.hits <= 3, label: t('games.planata.res.cFull', { a: r2.done, b: r2.total, n: r2.hits }) }],
+      title: t('games.planata.res.title'), subtitle: r2.wk ? this.wk.name : `${t('games.menu.min', { n: this.total / 60 })} · ${t(`games.menu.${this.level.id}`)}`, stars: r2.stars,
+      criteria: r2.wk ? [{ ok: true, label: t('games.wk.res.done') }, { ok: r2.band >= 0.85, label: t('games.wk.res.band', { p: Math.round(r2.band * 100) }) }, { ok: r2.hits <= 3, label: t('games.planata.res.storms', { n: r2.hits }) }] : [{ ok: true, label: t('games.planata.res.cLand') }, { ok: done >= 0.5, label: t('games.planata.res.cHalf', { a: r2.done, b: r2.total }) }, { ok: done >= 0.8 && r2.hits <= 3, label: t('games.planata.res.cFull', { a: r2.done, b: r2.total, n: r2.hits }) }],
       score: r2.score, best: (this.record().score || 0) ? String(this.record().score) : null, newBest: r2.newBest,
       lines: [`${t('games.planata.res.rings', { a: r2.rings, b: r2.ringsTotal })} · ${t('games.planata.res.storms', { n: r2.hits })}`],
     });

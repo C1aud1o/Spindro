@@ -86,7 +86,7 @@ const ok = (cond, msg) => { console.log(`${cond ? '  ✓' : '  ✗'} ${msg}`); i
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('dialog', (d) => d.accept());
-  await page.addInitScript(() => { try { localStorage.setItem('lang', 'it'); localStorage.setItem('analytics', '0'); localStorage.setItem('mode', 'gears'); localStorage.setItem('clickCheckSeen', 'click,play,ride'); } catch { /* */ } }); // i controlli leggono testi italiani
+  await page.addInitScript(() => { try { localStorage.setItem('lang', 'it'); localStorage.setItem('analytics', '0'); localStorage.setItem('safetyAck', '1'); localStorage.setItem('mode', 'gears'); localStorage.setItem('clickCheckSeen', 'click,play,ride'); } catch { /* */ } }); // i controlli leggono testi italiani
   await page.addInitScript(MOCK);
   await page.goto(base);
   await page.click('#startStop'); // fermo i tasti navigano nei menu: per cambiare marcia si pedala

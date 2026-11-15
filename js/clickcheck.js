@@ -121,14 +121,35 @@ export function createClickCheck({ click, t, playing = () => false }) {
   click.addEventListener('press', onPress);
   click.addEventListener('release', onRelease);
 
-  // apertura automatica la prima volta che si collega un modello (mai mentre si pedala)
+  // apertura automatica la prima volta che si collega ogni modello (mai mentre si pedala). Il Click v1 e il v2 si chiamano uguale
+  // alla connessione: il modello vero si sa solo dal primo messaggio (evento 'kind'). Fino ad allora un avviso piccolo, che non blocca nulla.
   const seen = () => { try { return (localStorage.getItem('clickCheckSeen') || '').split(',').filter(Boolean); } catch { return ['x']; } };
+  const seenKinds = () => { const s = seen(); return new Set(s.includes('click') ? [...s, 'v1', 'v2'] : s); }; // "click" = voce vecchia, valeva per entrambi
+  const lastKindKey = (m) => `clickKind:${m}`;
+  let banner = null;
+  const showBanner = (on) => {
+    if (on && !banner) { banner = document.createElement('div'); banner.className = 'cc-banner'; banner.setAttribute('role', 'status'); document.body.appendChild(banner); }
+    if (!banner) return;
+    banner.hidden = !on; if (on) banner.textContent = t('clickcheck.hint');
+  };
   click.addEventListener('connected', (e) => {
     const m = e.detail?.model || 'click';
-    if (seen().includes(m) || playing()) return;
-    try { localStorage.setItem('clickCheckSeen', [...seen(), m].join(',')); } catch { /* niente storage */ }
+    let last = null; try { last = localStorage.getItem(lastKindKey(m)); } catch { /* niente storage */ }
+    const s = seenKinds();
+    const needs = m === 'click' ? (last ? !s.has(last) : !(s.has('v1') && s.has('v2'))) : !s.has(m);
+    if (needs && !playing()) showBanner(true);
+  });
+  click.addEventListener('kind', (e) => {
+    const k = e.detail?.kind; if (!k) return;
+    showBanner(false);
+    const link = click.links.find((l) => l.kind === k);
+    try { if (link) localStorage.setItem(lastKindKey(link.model), k); } catch { /* niente storage */ }
+    if (seenKinds().has(k) || playing()) return;
+    try { localStorage.setItem('clickCheckSeen', [...seen(), k].join(',')); } catch { /* niente storage */ }
     api.open();
   });
+  click.addEventListener('disconnected', () => showBanner(false));
+  window.addEventListener('langchange', () => { if (banner && !banner.hidden) banner.textContent = t('clickcheck.hint'); });
 
   // ---- vista ----
   function build() {
@@ -192,6 +213,7 @@ export function createClickCheck({ click, t, playing = () => false }) {
     isOpen: () => open,
     open() {
       if (!el) build();
+      showBanner(false);
       open = true; el.hidden = false; st.mode = 'live'; st.last = null; st.lit.clear(); st.msg = ''; st.warn = '';
       document.body.classList.add('cc-open');
       render();

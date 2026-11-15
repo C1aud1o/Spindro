@@ -12,11 +12,11 @@ Spindro è un'app gratuita per rulli smart: si collega al rullo, mostra l'uscita
 
 ## 3. Fornita "così com'è"
 
-Spindro è fornita così com'è, senza garanzie di alcun tipo. Può avere errori. Non tutti i rulli funzionano e la compatibilità è dichiarata solo per ciò che è stato provato. Nei limiti consentiti dalla legge, chi cura il progetto non risponde dei danni derivanti dall'uso dell'app. Nulla qui limita i diritti che hai per legge come consumatore, né la responsabilità che la legge non permette di limitare.
+Spindro è software libero e, come indicato nelle sezioni 15 e 16 della GNU GPL-3.0, non ha alcuna garanzia nei limiti consentiti dalla legge: è fornita così com'è, senza garanzie di alcun tipo. Può avere errori. Non tutti i rulli funzionano: segniamo un dispositivo come verificato solo se è stato provato su hardware reale, il resto è "dovrebbe funzionare, non ancora verificato". Non promettiamo che l'app sia sempre disponibile, senza errori o compatibile con i tuoi dispositivi, e le funzioni possono cambiare o cessare. Nei limiti consentiti dalla legge, chi cura il progetto non risponde dei danni derivanti dall'uso dell'app. Nulla qui limita i diritti che hai per legge come consumatore, né la responsabilità che la legge non permette di limitare.
 
 ## 4. Allenati in sicurezza
 
-Spindro non è un consiglio medico. Chiedi al medico prima di iniziare allenamenti intensi, soprattutto se hai problemi di salute. Fermati se non ti senti bene. Controlla che bici e rullo siano montati e fissati bene. I cambi di resistenza dell'app, come la modalità ERG, possono essere improvvisi. Usa l'app in un luogo sicuro.
+Spindro non è un consiglio medico, e valori come potenza, calorie, stima dell'FTP e zone cardio sono indicativi, non misure mediche. Chiedi al medico prima di iniziare allenamenti intensi, soprattutto se hai problemi di salute. Fermati se non ti senti bene. Controlla che bici e rullo siano montati e fissati bene. I cambi di resistenza dell'app, come la modalità ERG, possono essere improvvisi. Usa l'app in un luogo sicuro.
 
 ## 5. Chi può usarla
 
@@ -24,7 +24,7 @@ Spindro non è pensata per i minori di 14 anni.
 
 ## 6. Servizi e contenuti di terzi
 
-Spindro può collegarsi a Strava e YouTube e carica i caratteri da Google. Valgono i loro termini e li usi sotto la tua responsabilità. Spindro non è affiliata a queste aziende. Vedi la [nota sui marchi](trademarks.it.md).
+Spindro può collegarsi a Strava e riprodurre i video di YouTube che scegli. Valgono i loro termini e li usi sotto la tua responsabilità: per YouTube i [Termini di servizio di YouTube](https://www.youtube.com/t/terms) e la [Privacy Policy di Google](https://policies.google.com/privacy); per Strava i termini e l'API Agreement di Strava (nella "modalità personale" crei e sei responsabile della tua applicazione API di Strava). Spindro non è affiliata a queste aziende. Vedi la [nota sui marchi](trademarks.it.md).
 
 ## 7. Licenza
 

@@ -7,47 +7,77 @@ Spindro è un'app gratuita e open source per rulli smart. Funziona nel browser e
 ## In breve
 
 - **Spindro non ha account né server propri.** Non raccogliamo, non riceviamo e non conserviamo dati personali.
-- Contiamo le visite in forma **anonima**, senza cookie. Nell'app solo se dici di sì.
+- Contiamo le visite in forma **anonima**, senza cookie. Nell'app **solo se dici di sì**: se non rispondi, o dici di no, l'app non invia nulla al contatore.
 - Uscite, impostazioni e dati del rullo restano **sul tuo dispositivo**.
-- Il sito **non usa cookie** e non ti segue da un sito all'altro.
-- Le uniche connessioni verso altre aziende partono **da te** e sono elencate qui sotto.
+- Il sito e l'app **non usano cookie** né caratteri o tracciatori di terzi.
+- Le uniche connessioni verso altre aziende sono elencate qui sotto. Ognuna parte da una tua azione, tranne il contatore di visite del sito e l'hosting dei file.
 
 ## Cosa resta sul tuo dispositivo
 
-L'app salva solo sul tuo dispositivo (memoria del browser, o memoria dell'app su Android): impostazioni, lingua, FTP e frequenza massima, storico delle uscite, allenamenti, record dei giochi e rulli usati in precedenza. Noi non possiamo vederli.
+L'app salva solo sul tuo dispositivo, nella memoria locale del browser (`localStorage`) o nella memoria propria dell'app Android. Noi non possiamo vederla:
+
+- impostazioni (lingua, musica e suoni, sensazione del cambio, sorgenti dei dispositivi, qualità dei giochi), FTP, frequenza cardiaca massima, peso e obiettivo settimanale;
+- storico delle uscite (con i campioni usati per i grafici), allenamenti creati, avanzamento dei piani, record e livelli dei giochi;
+- nome e tipo di protocollo dei rulli e dei sensori Bluetooth usati in precedenza, e la mappa dei tasti dei controller Zwift;
+- se colleghi Strava in "modalità personale": il tuo Client ID e Client Secret di Strava e i token di accesso che Strava dà all'app, finché non ti scolleghi o cancelli i dati;
+- le tue risposte alla domanda sulle statistiche e all'avviso di sicurezza;
+- l'ultimo link usato per un'uscita con video.
+
+L'app web tiene anche una copia dei propri file nella cache del browser (service worker) per funzionare offline. Non usa cookie né IndexedDB.
 
 Con l'app Android, il sistema può includere questi dati nel backup Google (`allowBackup` è attivo). È una scelta del tuo dispositivo, non di Spindro.
 
 ## Bluetooth e sensori
 
-L'app parla con rullo, misuratore di potenza, fascia cardio e controller Zwift via Bluetooth. I dati servono in diretta e sono salvati solo nello storico sul tuo dispositivo. Non ci vengono inviati. Su Android 11 e precedenti il sistema chiede il permesso di posizione solo perché Android lo richiede per cercare dispositivi Bluetooth. Spindro non legge la tua posizione.
+L'app parla con rullo, misuratore di potenza, fascia cardio e controller Zwift via Bluetooth. I dati servono in diretta e sono salvati solo nello storico sul tuo dispositivo. Non ci vengono inviati.
 
-## Cosa carica l'app da internet
+L'app Android chiede questi permessi:
 
-- **Caratteri da Google Fonts.** L'app carica i font Barlow da Google (`fonts.googleapis.com`, `fonts.gstatic.com`). Google riceve il tuo indirizzo IP e i dati tecnici della richiesta.
-- **Il sito stesso** è ospitato su GitHub Pages. GitHub può registrare i dati tecnici di una richiesta, come l'indirizzo IP.
-- **Aggiornamenti.** Il codice dell'app viene caricato dallo stesso sito.
+| Permesso | Perché |
+|---|---|
+| Dispositivi nelle vicinanze: `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT` | trovare e collegare rullo, sensori e controller. La ricerca è dichiarata "mai per la posizione". |
+| `BLUETOOTH_ADVERTISE` | il ponte facoltativo verso l'orologio Garmin: il telefono si annuncia come normale sensore Bluetooth di ciclismo, così l'orologio legge velocità, potenza e cadenza. Si usa solo quando attivi il ponte. |
+| Posizione (`ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`), **solo Android 11 e precedenti** | su quelle versioni Android la richiede per cercare dispositivi Bluetooth. Spindro non legge la tua posizione. |
+| `BLUETOOTH`, `BLUETOOTH_ADMIN`, solo Android 11 e precedenti | forma più vecchia dei permessi Bluetooth qui sopra. |
+| `INTERNET` | caricare l'app e i servizi elencati sotto quando li usi. |
+| `VIBRATE` | risposta tattile. |
+| `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK` (aggiunti dal componente delle notifiche) | il promemoria giornaliero facoltativo del tuo piano di allenamento: le notifiche sono programmate e mostrate solo sul tuo telefono, non viene inviato nulla. Il sistema chiede il permesso per le notifiche solo se attivi il promemoria. |
+
+L'app Android può anche ricevere un link condiviso da un'altra app (per esempio "Condividi" di YouTube) per aprirlo come uscita con video. Legge solo il testo condiviso.
+
+## Cosa caricano dalla rete l'app e il sito
+
+- **I file dell'app**, dallo stesso sito (`spindro.fun`), ospitato su GitHub Pages. GitHub può registrare i dati tecnici standard di una richiesta, come l'indirizzo IP.
+- **Caratteri:** tutti i caratteri sono serviti dall'app e dal sito stessi. Non si carica nulla da Google Fonts né da altri servizi di caratteri.
+- **Contatore di visite, sito:** lo script di GoatCounter (`gc.zgo.at`), vedi sotto.
+- **Contatore di visite, app:** solo dopo il tuo sì, vedi sotto.
+- **YouTube, Strava, GitHub:** solo quando usi quelle funzioni, vedi sotto.
+- I link verso altri siti (per esempio Garmin Connect, le pagine di assistenza dei produttori di orologi, la ricerca su YouTube) si aprono nel browser solo se li tocchi.
 
 ## Statistiche anonime
 
 Per capire quante persone usano Spindro contiamo le visite con **GoatCounter** (`goatcounter.com`), un servizio open source che non usa cookie e non salva nulla sul tuo dispositivo.
 
-- **Sul sito** viene contata la pagina aperta, con dati tecnici generici: pagina di provenienza, tipo di browser e di sistema, dimensione dello schermo, paese. L'indirizzo IP non viene conservato.
-- **Nell'app** il conteggio parte **solo se accetti** alla prima apertura. Puoi cambiare idea in Impostazioni → Privacy. Vengono contati: apertura dell'app, lingua, tipo di protocollo del rullo (per esempio FTMS), gioco aperto, uscita completata. Mai potenza, battito, posizione o nomi dei dispositivi.
+- **Sul sito** si conta la pagina aperta, con dati tecnici generici: pagina di provenienza, tipo di browser e di sistema, dimensione dello schermo, paese. L'indirizzo IP non viene conservato.
+- **Nell'app** il conteggio parte **solo se acconsenti** alla prima apertura. Se non rispondi, o rispondi "No", l'app non carica il contatore e non invia nulla; la domanda non si ripete. Puoi cambiare idea quando vuoi in Impostazioni → Privacy. Si contano: app aperta, lingua, tipo di protocollo del rullo (per esempio FTMS), gioco aperto, uscita completata. Mai potenza, battito, posizione o nomi dei dispositivi.
 
-Da questi dati non possiamo risalire a te.
+Non possiamo risalire a te da questi dati.
+
+## Segnalazione degli errori
+
+Spindro non invia segnalazioni di arresto o di errore. Se qualcosa non va, puoi segnalarlo tu su GitHub (vedi sotto).
 
 ## Servizi che scegli tu di usare
 
 Partono solo quando agisci tu. Hanno le proprie informative.
 
-- **YouTube.** Se avvii un'uscita con video, il lettore viene caricato da YouTube. YouTube può usare cookie e raccogliere dati. Vedi l'informativa di Google.
-- **Strava.** Se colleghi Strava usi la "modalità personale": inserisci le tue credenziali API di Strava e l'app parla direttamente con Strava. Il file dell'uscita (`.FIT`, con il battito se usi la fascia) va dal tuo dispositivo a Strava. Il token resta sul tuo dispositivo. Il progetto Spindro non ha server in mezzo. Puoi scollegarti dall'app e revocare l'accesso nelle impostazioni di Strava.
-- **GitHub.** Se tocchi "Segnala il tuo rullo", l'app apre nel browser una segnalazione GitHub precompilata, con nome Bluetooth del rullo, servizi, protocollo, piattaforma e versione dell'app. Non viene inviato nulla finché non premi invio su GitHub. Le segnalazioni GitHub sono pubbliche.
+- **YouTube.** Se avvii un'uscita con video, il lettore e il suo script vengono caricati da YouTube (`www.youtube.com`). YouTube può usare cookie e raccogliere dati, come per ogni video incorporato. Usando questa funzione sei soggetto anche ai [Termini di servizio di YouTube](https://www.youtube.com/t/terms) e alla [Privacy Policy di Google](https://policies.google.com/privacy). Spindro non registra, non scarica e non separa l'audio dei video di YouTube.
+- **Strava.** Se colleghi Strava usi la "modalità personale": crei la tua applicazione API di Strava e inserisci le sue credenziali, e l'app parla direttamente con Strava (`www.strava.com`). Il file dell'uscita (`.FIT`, che include il battito se usi una fascia), il nome e la descrizione dell'attività vanno dal tuo dispositivo a Strava. Il token di accesso resta sul tuo dispositivo. Il progetto Spindro non ha alcun server in mezzo. Puoi scollegarti nell'app (l'app chiede anche a Strava di revocare il token) e revocare l'accesso dalle impostazioni di Strava.
+- **GitHub.** Se tocchi "Segnala il tuo rullo" o "Segnala un problema", l'app apre nel browser una segnalazione GitHub già compilata. Contiene nome Bluetooth del rullo, servizi, protocollo, piattaforma, versione dell'app, browser e lingua. Non viene inviato nulla finché non premi invio su GitHub. Le segnalazioni su GitHub sono pubbliche.
 
 ## I tuoi diritti
 
-Poiché non conserviamo dati personali su di te, non c'è nulla da fornire, correggere o cancellare. Per eliminare i dati locali cancella i dati del sito nel browser, svuota la memoria dell'app nelle impostazioni di Android o disinstalla l'app. Per i dati presso Google, Strava, YouTube o GitHub rivolgiti a queste aziende.
+Poiché non conserviamo dati personali su di te, non c'è nulla da fornire, correggere o cancellare. Per eliminare i dati locali usa "Cancella tutti i dati" nelle Impostazioni, cancella i dati del sito nel browser, svuota la memoria dell'app nelle impostazioni di Android o disinstalla l'app. Per i dati detenuti da Google, Strava, YouTube, GitHub o GoatCounter rivolgiti a quelle aziende. Puoi anche presentare reclamo all'autorità per la protezione dei dati (in Italia, il Garante per la protezione dei dati personali).
 
 ## Età minima
 

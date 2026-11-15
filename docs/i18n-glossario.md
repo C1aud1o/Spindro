@@ -17,7 +17,6 @@ Il codice sorgente è la fonte delle chiavi; `node tests/i18n-check.mjs` segnala
 - Chiavi `*.html` o usate con `data-i18n-html` contengono markup (`<b>`, `<a>`, `<code id=…>`): non togliere i tag né gli `id`.
 - Le frasi del coach vocale (`coach.*`) si ascoltano: scrivile per la voce, senza simboli.
 - Restano **fissi in inglese**, non vanno tradotti: la modalità sviluppatore (classe `dev-only`, pannello debug, registro), il titolo e il testo delle segnalazioni GitHub, i nomi di prodotto (Strava, Garmin Connect, Zwift Click, FTMS, ERG…).
-- "Compatible with Strava" è il testo richiesto dalle linee guida di Strava: tradurre solo se Strava lo prevede.
 - Unità metriche (km, km/h, kJ, W, rpm, bpm, m). TODO: preferenza miglia.
 - Tono: amichevole, frasi brevi, niente gergo tecnico nelle schermate normali.
 

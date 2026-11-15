@@ -140,6 +140,7 @@ before translating terms like "ERG", "FTMS" or "trainer".
 We do not use a CLA. Instead, every commit must be signed off with the
 [Developer Certificate of Origin 1.1](https://developercertificate.org/): a line saying you wrote the code, or
 have the right to submit it under the project licence (GPL-3.0).
+**By contributing you agree that your contribution is licensed under the GNU GPL-3.0**, like the rest of the project, and that the sign-off below applies to it.
 
 Add it with `-s`:
 

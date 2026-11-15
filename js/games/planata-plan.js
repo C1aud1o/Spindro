@@ -2,7 +2,7 @@
 // Come Horde Run: 5/10/20 minuti, curva in % della FTP (avvio facile, ondate di sforzo e recupero, finale più duro,
 // 30 s di defaticamento = la discesa verso la pista). In più: la quota dell'aereo È la percentuale di FTP
 // (in basso 50 %, in alto 130 %), quindi il percorso di anelli è il profilo dell'allenamento. Vedi docs/giochi-design.md §1.
-import { DURATIONS, LEVELS, WARM_S, COOL_S, ADAPT_MAX, Adapter, segAt, targetPct, targetW } from './horde-plan.js';
+import { DURATIONS, LEVELS, WARM_S, COOL_S, ADAPT_MAX, Adapter, segAt, targetPct, targetW, WK_KIND, planFromWorkout as workoutBase } from './horde-plan.js';
 
 export { DURATIONS, LEVELS, WARM_S, COOL_S, ADAPT_MAX, Adapter, segAt, targetPct, targetW };
 export const CLIMB_S = 10;      // la salita ripida (scatto)
@@ -39,6 +39,12 @@ export function buildPlan(total) {
   push(COOL_S, 'cool', 0.5, N + 1);
   segs[segs.length - 1].t1 = total;
   return { total, N, segs, climbWaves, L };
+}
+
+// Allenamento in corso → piano (kit/workout-plan.js): il percorso di anelli è il profilo dell'allenamento; lo scatto è la salita ripida.
+export function planFromWorkout(wp) {
+  const b = workoutBase(wp, { ...WK_KIND, sprint: 'climb' });
+  return { total: b.total, N: b.N, segs: b.segs, climbWaves: [...new Set(b.segs.filter((s) => s.kind === 'climb').map((s) => s.wave))], L: b.L, wk: true, name: b.name };
 }
 
 // quota ↔ percentuale della FTP

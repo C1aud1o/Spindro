@@ -7,6 +7,7 @@
 //   in un gioco:           + / − (e sinistra / destra) vanno al gioco · tieni back 0,8 s (o tieni − con due tasti) apre il menu Click
 // In basso una legenda dice sempre cosa fanno i tasti ADESSO; sul tasto lungo l'elemento in primo piano si riempie.
 import { t } from './i18n.js';
+import { icon } from './icons.js';
 const LONG = 650;
 const MENU_LONG = 800;
 const POLL = 150;
@@ -141,17 +142,20 @@ export function createClickNav({ enabled = () => true, playing = () => false, in
   function showBar() {
     const on = !blocked() && (nav.active || enabled());
     bar.hidden = !on; document.body.classList.toggle('click-legend', on);
-    if (!on) return;
+    if (!on) { document.documentElement.style.removeProperty('--legend-h'); return; }
     const el = nav.items[nav.idx];
     const html = legendHtml(legendContext(), caps(), !!el && isGrabbable(el));
     if (bar.dataset.k !== html + document.documentElement.lang) { bar.innerHTML = html; bar.dataset.k = html + document.documentElement.lang; }
+    // altezza della legenda (può andare su due righe, soprattutto in tedesco): i contenitori che scorrono lasciano questo spazio in fondo (css: --legend-h)
+    const h = `${Math.ceil(bar.offsetHeight) + 10}px`;
+    if (document.documentElement.style.getPropertyValue('--legend-h') !== h) document.documentElement.style.setProperty('--legend-h', h);
   }
 
   // ---- ciclo di vita ----
   function renderMenu() {
     const items = menuItems();
     menu.querySelector('.cm-title').textContent = t('clicknav.title');
-    menu.querySelector('.cm-list').innerHTML = items.map((it, i) => `<button type="button" data-i="${i}">${it.label}</button>`).join('');
+    menu.querySelector('.cm-list').innerHTML = items.map((it, i) => `<button type="button" data-i="${i}">${icon(it.icon, 'ico-line cm-ico')}<span>${it.label}</span></button>`).join('');
     menu.querySelectorAll('.cm-list button').forEach((b) => b.addEventListener('click', () => {
       const it = items[+b.dataset.i]; menu.hidden = true; nav.scope = null;
       it.run(); setTimeout(sync, 120);
@@ -173,7 +177,7 @@ export function createClickNav({ enabled = () => true, playing = () => false, in
   }
   /** Decide se la navigazione deve essere accesa: chiamata di continuo e a ogni tasto. */
   function sync() {
-    if (blocked()) { if (nav.active) stop(); bar.hidden = true; document.body.classList.remove('click-legend'); return; }
+    if (blocked()) { if (nav.active) stop(); bar.hidden = true; document.body.classList.remove('click-legend'); document.documentElement.style.removeProperty('--legend-h'); return; }
     const open = overlay();
     if (!enabled() && !open) nav.sticky = false;
     const want = enabled() ? (open || !playing()) : (nav.sticky && open);

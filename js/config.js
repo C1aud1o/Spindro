@@ -4,6 +4,7 @@
 export const STRAVA_PROXY = '';
 
 // ---- Monitoraggio (D1). Vuoti = spento: i fork e le build locali non inviano nulla. ----
+// Anche per Sentry/GoatCounter con un altro host: aggiorna la Content-Security-Policy di index.html (script-src, connect-src, img-src).
 // Sentry (errori JavaScript), regione UE: il DSN termina con ".de.sentry.io". Esempio: 'https://chiave@o123.ingest.de.sentry.io/456'
 // Il DSN è pubblico per natura (compare in ogni app che usa Sentry), non è un segreto.
 export const SENTRY_DSN = '';
@@ -12,6 +13,8 @@ export const GOATCOUNTER_URL = 'https://c1laud1o.goatcounter.com/count';
 
 // ---- Account facoltativo (E3/E4, docs/account-architettura.md). ----
 // FIREBASE_CONFIG = null → nessun login, nessuna richiesta di rete verso Google: è il comportamento di fork e build foss.
+// ATTENZIONE: la Content-Security-Policy di index.html non ammette i siti di Firebase/Google. Prima di attivare l'account aggiungi
+// a script-src e connect-src gli host che servono (gstatic.com/firebasejs, *.googleapis.com, il dominio Cloud Functions, reCAPTCHA).
 // Per attivarlo incolla qui l'oggetto `firebaseConfig` dell'app web (valori pubblici).
 // Esempio: { apiKey: '…', authDomain: 'spindro-app.firebaseapp.com', projectId: 'spindro-app', appId: '…', messagingSenderId: '…' }
 export const FIREBASE_CONFIG = null;

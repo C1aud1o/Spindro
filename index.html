@@ -2,15 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <!-- Solo ciò che l'app usa davvero (docs/compliance-report.md): GoatCounter dopo il consenso, YouTube per i video, Strava se lo colleghi. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-hj9YLHtXa6XlhEuI0Piw3nIiX7fW9qt8Edtric8vsHM=' 'wasm-unsafe-eval' https://gc.zgo.at https://www.youtube.com https://s.ytimg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://c1laud1o.goatcounter.com; media-src 'self' blob: data:; font-src 'self'; connect-src 'self' https://c1laud1o.goatcounter.com https://www.strava.com; frame-src https://www.youtube.com; worker-src 'self' blob:; manifest-src 'self'; base-uri 'self'; form-action 'none'; object-src 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0f0e0c">
   <meta name="description" content="" data-i18n-attr="content:app.description">
   <title>Spindro</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,700;1,800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body data-mode="erg">
@@ -25,7 +24,7 @@
 
   <main>
     <!-- stato dei dispositivi: una riga sola che apre il pannello "Dispositivi" -->
-    <button id="deviceBar" class="device-bar" data-i18n-attr="aria-label:devices.open">
+    <button id="deviceBar" class="device-bar" data-i18n-attr="title:devices.open">
       <span class="dv" id="dvTrainer"><svg class="dv-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="2.2" /><path d="M12 3.5v4M12 16.5v4" /></svg><span class="dv-l" data-i18n="home.trainer"></span><span id="trainerStatus" class="dv-s s-state" data-i18n="home.status.none"></span></span>
       <!-- Zwift Click: corpo tondo con i due tasti, − a sinistra e + a destra (nessun marchio) -->
       <span class="dv" id="dvClick"><svg class="dv-ico dv-click" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" /><path class="seam" d="M12 4.5v15" /><path d="M5.8 12h3.9" /><path d="M14.3 12h3.9M16.25 10v4" /></svg><span class="dv-l">Click</span><span id="clickStatus" class="dv-s s-state" data-i18n="home.status.none"></span></span>
@@ -170,7 +169,7 @@
       <div id="rideStartSlot" class="ride-start-slot"></div>
       <button id="finishRide" class="act" disabled data-i18n="ride.end"></button>
       <button id="rideGames" class="act" data-i18n="nav.games"></button>
-      <button id="rideMode" class="act act-mode" data-i18n-attr="aria-label:home.modes"><span id="rideModeLabel"></span></button>
+      <button id="rideMode" class="act act-mode" data-i18n-attr="title:home.modes"><span id="rideModeLabel"></span></button>
     </div>
     </div>
 
@@ -272,6 +271,15 @@
     </div>
   </div>
 
+  <!-- Avviso di sicurezza: una sola volta, prima della prima uscita -->
+  <div id="safetySheet" class="sheet" hidden>
+    <div class="sheet-body" role="dialog" aria-modal="true" aria-labelledby="safetyTitle">
+      <div class="sheet-head"><h2 id="safetyTitle" data-i18n="safety.title"></h2></div>
+      <p data-i18n="safety.body"></p>
+      <button id="safetyOk" class="cta-sm" data-i18n="safety.ok"></button>
+    </div>
+  </div>
+
   <!-- Dispositivi Bluetooth -->
   <div id="devicesSheet" class="sheet" hidden>
     <div class="sheet-body" role="dialog" aria-modal="true" aria-labelledby="devicesTitle">
@@ -314,6 +322,17 @@
         <h3 data-i18n="privacy.settingsTitle"></h3>
         <label class="switch" id="analyticsRow"><input type="checkbox" id="analyticsOn"><span data-i18n="privacy.settingsLabel"></span></label>
         <p class="fine" id="errorsNote" data-i18n="privacy.errors"></p>
+      </section>
+
+      <section class="group" id="legalGroup">
+        <h3 data-i18n="legal.title"></h3>
+        <ul class="legal-links">
+          <li><a data-legal="privacy" target="_blank" rel="noopener" data-i18n="legal.privacy"></a></li>
+          <li><a data-legal="terms" target="_blank" rel="noopener" data-i18n="legal.terms"></a></li>
+          <li><a id="openLicences" data-legal="licenses" target="_blank" rel="noopener" data-i18n="legal.licenses"></a></li>
+          <li><a data-legal="trademarks" target="_blank" rel="noopener" data-i18n="legal.trademarks"></a></li>
+          <li><a href="https://github.com/C1aud1o/Spindro" target="_blank" rel="noopener" data-i18n="legal.source"></a></li>
+        </ul>
       </section>
 
       <section class="group">
