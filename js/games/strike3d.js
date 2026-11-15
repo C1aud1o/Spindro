@@ -1569,6 +1569,7 @@ export class Strike3D {
     ctx.drawImage(this.backCanvas, 0, 0, W, H);
     if (this.overdrive > 0) { const k = Math.min(1, this.overdrive / 0.6); ctx.fillStyle = `rgba(77,227,255,${0.1 * k})`; ctx.fillRect(0, 0, W, H); }
     if (this.state === 'menu') { this.menu.draw(ctx, W, H, { connected: this.hooks.connected() }); this.hooks.progress?.drawToasts(ctx, W, dt); return; }
+    if (this.state === 'results') { this.drawResults(ctx, W, H, S); this.hooks.progress?.drawToasts(ctx, W, dt); return; } // il riepilogo sta da solo, senza la grafica di gioco
     const pad = 10; const top = 60;
     // riga in alto: punteggio · tempo e blocco · cuori
     ctx.fillStyle = 'rgba(8,10,26,.62)'; rr(ctx, pad, top, W - 2 * pad, 40 * S, 12); ctx.fill();
