@@ -25,7 +25,7 @@ export const FIREBASE_VERSION = '12.19.0';
 export const FIREBASE_REGION = 'europe-west1';
 // Pagine legali del sito (la versione italiana sta sotto /it/). TERMS_VERSION / PRIVACY_VERSION = data della bozza in docs/legal/:
 // cambiandola, l'app chiede di nuovo l'accettazione.
-export const SITE_URL = 'https://spindro.fit';
+export const SITE_URL = 'https://spindro.fun';
 export const TERMS_URL = `${SITE_URL}/terms/`;
 export const PRIVACY_URL = `${SITE_URL}/privacy/`;
 export const TERMS_VERSION = '2026-11';
