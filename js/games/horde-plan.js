@@ -21,6 +21,8 @@ export const COMPOS = [
 ];
 export const WARM_MIX = { id: 'warm', mix: { zombie: 1 }, pack: [2, 5], demand: 1 };
 
+import { wkTarget } from './kit/workout-plan.js';
+
 const lerp = (a, b, k) => a + (b - a) * k;
 
 // Costruisce il piano: segmenti { t0, t1, kind, pct, wave } e la lista dei Custodi.
@@ -50,9 +52,22 @@ export const segAt = (plan, t) => plan.segs.find((s) => t >= s.t0 && t < s.t1) |
 export const composAt = (wave) => (wave < 1 ? WARM_MIX : COMPOS[(wave - 1) % 4]);
 
 const FIXED = { rest: 1, cool: 1, warm: 1 };
-// Watt richiesti: percentuale × FTP, più livello e adattamento (recupero, avvio e defaticamento non si adattano)
-export function targetPct(seg, levelK, adapt) { return seg.pct + (FIXED[seg.kind] ? 0 : levelK + adapt); }
-export function targetW(seg, ftp, levelK, adapt) { return Math.round(ftp * targetPct(seg, levelK, adapt)); }
+// Watt richiesti: percentuale × FTP, più livello e adattamento (recupero, avvio e defaticamento non si adattano).
+// Nei tratti di un allenamento vero (seg.fixed) i watt sono quelli dell'allenamento: livello e adattamento non contano.
+export function targetPct(seg, levelK, adapt) { return seg.fixed ? seg.pct : seg.pct + (FIXED[seg.kind] ? 0 : levelK + adapt); }
+export function targetW(seg, ftp, levelK, adapt, el) { return seg.fixed ? (el == null ? seg.watts : wkTarget(seg, el)) : Math.round(ftp * targetPct(seg, levelK, adapt)); }
+
+// Allenamento in corso → piano (kit/workout-plan.js workoutPlan): stessi tratti dei piani di Horde Run, con i watt dell'allenamento.
+// warm | easy, tempo → pace | effort | sprint | recovery → rest | cool. Custodi: ondate con scatto e l'ultima ondata di lavoro duro.
+export const WK_KIND = { warm: 'warm', easy: 'pace', tempo: 'pace', effort: 'effort', sprint: 'sprint', recovery: 'rest', cool: 'cool' };
+export function planFromWorkout(wp, kindMap = WK_KIND) {
+  const segs = wp.segs.map((s) => ({ ...s, kind: kindMap[s.kind] || s.kind, wkKind: s.kind }));
+  const bossWaves = [...new Set(segs.filter((s) => s.wkKind === 'sprint').map((s) => s.wave))];
+  const lastWork = [...segs].reverse().find((s) => s.wave >= 1 && s.wave <= wp.N && s.wkKind !== 'recovery');
+  if (lastWork && (lastWork.wkKind === 'effort' || lastWork.wkKind === 'sprint') && !bossWaves.includes(lastWork.wave)) bossWaves.push(lastWork.wave);
+  bossWaves.sort((a, b) => a - b);
+  return { total: wp.total, N: wp.N, segs, bossWaves, L: wp.total / Math.max(1, wp.N), wk: true, name: wp.name };
+}
 
 // Adattamento: dopo due sforzi falliti di fila −5 %, dopo tre riusciti +5 %, entro ±15 %
 export class Adapter {

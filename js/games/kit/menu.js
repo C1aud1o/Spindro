@@ -10,6 +10,7 @@
 // menu.update(dt, { connected, power }) + menu.draw(ctx, W, H). Il menu non conosce il gioco: chiama `onStart(durIdx, level)`.
 import { t } from '../../i18n.js';
 import { txt, panel, HUD, uiScale, fitText } from './hud.js';
+import { minutesLeft } from './workout-plan.js';
 
 export const LENGTHS = [5, 10, 20]; // minuti
 export const LEVEL_KEYS = ['easy', 'normal', 'hard'];
@@ -46,8 +47,8 @@ const stars = (n, of = 3) => '★'.repeat(n) + '☆'.repeat(Math.max(0, of - n))
 export class GameMenu {
   // id: 'racer', …; title/pitch/howto: stringhe già tradotte (o funzioni che le restituiscono); howto: ≤ 3 righe brevi.
   // best(durIdx, level) → { stars: 0–3, text: 'record' | null }; load() → { durIdx, level }; save({ durIdx, level }).
-  constructor({ id, title, pitch, howto = [], best = null, load = null, save = null, onStart = () => {}, sfx = () => {}, ready = () => true }) {
-    this.id = id; this.title = title; this.pitch = pitch; this.howto = howto; this.best = best; this.onStart = onStart; this.sfx = sfx; this.ready = ready;
+  constructor({ id, title, pitch, howto = [], best = null, load = null, save = null, onStart = () => {}, sfx = () => {}, ready = () => true, workout = () => null }) {
+    this.workout = workout; this.id = id; this.title = title; this.pitch = pitch; this.howto = howto; this.best = best; this.onStart = onStart; this.sfx = sfx; this.ready = ready;
     this.saveFn = save; const s = (load ? load() : this.defaultLoad()) || {};
     this.durIdx = clampI(s.durIdx ?? 0, 0, LENGTHS.length - 1); this.level = clampI(s.level ?? 1, 0, 2);
     this.zones = []; this.reset();
@@ -62,7 +63,9 @@ export class GameMenu {
   reset() { this.age = 0; this.pend = null; this.hd = 0; this.ht = 0; this.fired = false; this.pedT = 0; this.started = false; }
   get fill() { return Math.max(this.hd > 0 && !this.fired ? Math.min(1, this.ht / HOLD_START) : 0, Math.min(1, this.pedT / PEDAL_SECS)); }
 
-  cycleLength() { this.durIdx = (this.durIdx + 1) % LENGTHS.length; this.pedT = 0; this.sfx('select'); this.save(); }
+  // allenamento in corso sotto al gioco: la durata la decide lui (niente scelta 5/10/20)
+  get wk() { try { return this.workout() || null; } catch { return null; } }
+  cycleLength() { if (this.wk) return; this.durIdx = (this.durIdx + 1) % LENGTHS.length; this.pedT = 0; this.sfx('select'); this.save(); }
   cycleLevel() { this.level = (this.level + 1) % 3; this.pedT = 0; this.sfx('select'); this.save(); }
   start() { if (this.started || this.age < SETTLE || !this.ready()) return; this.started = true; this.save(); this.sfx('pickup'); this.onStart(this.durIdx, this.level); }
 
@@ -86,7 +89,7 @@ export class GameMenu {
   tap(x, y) {
     if (this.age < SETTLE) return false;
     for (const z of this.zones) if (x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h) {
-      if (z.kind === 'len') { this.durIdx = z.i; this.pedT = 0; this.sfx('select'); this.save(); } else if (z.kind === 'lvl') { this.level = z.i; this.pedT = 0; this.sfx('select'); this.save(); } else if (z.kind === 'start') this.start();
+      if (z.kind === 'len') { if (this.wk) return true; this.durIdx = z.i; this.pedT = 0; this.sfx('select'); this.save(); } else if (z.kind === 'lvl') { this.level = z.i; this.pedT = 0; this.sfx('select'); this.save(); } else if (z.kind === 'start') this.start();
       return true;
     }
     return false;
@@ -110,19 +113,25 @@ export class GameMenu {
     txt(ctx, T(this.title), cx, y, { size: 46 * u, align: al, color: HUD.lime, italic: true, maxW: inner });
     y += 26 * u; txt(ctx, T(this.pitch), cx, y, { size: 15 * u, align: al, color: HUD.dim, font: 'text', maxW: inner, minK: 0.75 });
     const cw = Math.min(110 * u, (inner - 16) / 3); const px0 = cx - (cw * 3 + 16) / 2;
+    const wk = this.wk;
+    if (wk) { // la riga della durata diventa una sola riga: l'allenamento è la partita
+      y += 38 * u; panel(ctx, px0, y, cw * 3 + 16, 40 * u, { r: 12 * u, fill: HUD.lime });
+      txt(ctx, t('games.menu.wkLine', { name: wk.name, n: minutesLeft(wk) }), cx, y + 40 * u * 0.67, { size: 17 * u, align: al, color: ink, stroke: null, maxW: cw * 3 + 16 - 16, minK: 0.6 });
+    } else {
     y += 30 * u; txt(ctx, t('games.menu.length'), cx, y, { size: 13 * u, align: al, color: HUD.dim, font: 'text' });
     y += 8 * u; LENGTHS.forEach((m, i) => { const x = px0 + i * (cw + 8); pill(ctx, x, y, cw, 40 * u, t('games.menu.min', { n: m }), i === this.durIdx, HUD.lime, u); this.zones.push({ kind: 'len', i, x, y, w: cw, h: 40 * u }); });
+    }
     y += 62 * u; txt(ctx, t('games.menu.level'), cx, y, { size: 13 * u, align: al, color: HUD.dim, font: 'text' });
     y += 8 * u; LEVEL_KEYS.forEach((k, i) => { const x = px0 + i * (cw + 8); pill(ctx, x, y, cw, 40 * u, t(`games.menu.${k}`), i === this.level, HUD.cyan, u); this.zones.push({ kind: 'lvl', i, x, y, w: cw, h: 40 * u }); });
     y += 40 * u + 8 * u;
-    for (const line of T(this.howto).slice(0, 3)) { y += 21 * u; txt(ctx, line, cx, y, { size: 14 * u, align: al, color: HUD.white, font: 'text', maxW: inner, minK: 0.7 }); }
-    const b = this.best ? this.best(this.durIdx, this.level) : null;
+    for (const line of (wk ? [t('games.menu.wkHold')] : T(this.howto)).slice(0, 3)) { y += 21 * u; txt(ctx, line, cx, y, { size: 14 * u, align: al, color: HUD.white, font: 'text', maxW: inner, minK: 0.7 }); }
+    const b = this.best && !wk ? this.best(this.durIdx, this.level) : null;
     y += 28 * u; txt(ctx, `${stars(b?.stars || 0)}${b?.text ? `  ·  ${t('games.menu.best', { v: b.text })}` : `  ·  ${t('games.menu.noBest')}`}`, cx, y, { size: 17 * u, align: al, color: HUD.gold, font: 'text', maxW: inner, minK: 0.7 });
     this.contentBottom = y; // il personaggio sta sotto: tra contentBottom e startTop
     // tasto VIA con barra di pressione lunga; sotto, il suggerimento dei tasti
     const bw = Math.min(inner, 300 * u); const bh = 46 * u; const bx = cx - bw / 2; const by = L.land ? Math.max(y + 24 * u, H - 120 * u) : H - 96 * u;
     this.startTop = by - 22 * u;
-    txt(ctx, t('games.menu.keys'), cx, by - 8 * u, { size: 14 * u, align: al, color: HUD.lime, font: 'text', maxW: inner, minK: 0.7 });
+    txt(ctx, t(wk ? 'games.menu.wkKeys' : 'games.menu.keys'), cx, by - 8 * u, { size: 14 * u, align: al, color: HUD.lime, font: 'text', maxW: inner, minK: 0.7 });
     panel(ctx, bx, by, bw, bh, { r: 14 * u, fill: 'rgba(12,12,18,.78)', border: HUD.lime });
     const f = this.fill;
     if (f > 0) { ctx.save(); ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, by, bw, bh, 14 * u) : ctx.rect(bx, by, bw, bh); ctx.clip(); ctx.fillStyle = HUD.lime; ctx.fillRect(bx, by, bw * f, bh); ctx.restore(); }

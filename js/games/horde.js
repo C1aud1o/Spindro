@@ -15,7 +15,8 @@ import { t, fmtDec } from '../i18n.js';
 import { GameMenu, ResultsView } from './kit/menu.js';
 import { makeRandom } from './kit/rng.js';
 import { SONGS } from './audio.js';
-import { DURATIONS, LEVELS, COOL_S, buildPlan, segAt, composAt, targetW, targetPct, Adapter, starsFor, nextStarHint } from './horde-plan.js';
+import { DURATIONS, LEVELS, COOL_S, buildPlan, planFromWorkout, segAt, composAt, targetW, targetPct, Adapter, starsFor, nextStarHint } from './horde-plan.js';
+import { WorkoutClock, BandMeter, workoutStars } from './kit/workout-plan.js';
 
 const M = 'assets/3d/meshy';
 const ROAD = 5.2;           // metà larghezza percorribile (la strada è larga 13 m, il resto è cancellata)
@@ -91,7 +92,7 @@ export class Horde {
       load: () => ({ durIdx: clamp(Number(ls('hordeDur', 0)) || 0, 0, DURATIONS.length - 1), level: clamp(Number(ls('hordeLvl', 1)) || 0, 0, LEVELS.length - 1) }),
       save: ({ durIdx, level }) => { try { localStorage.setItem('hordeDur', durIdx); localStorage.setItem('hordeLvl', level); } catch { /* niente storage */ } },
       best: (d, l) => { const r = this.recordFor(DURATIONS[d], LEVELS[l].id); return { stars: r.stars || 0, text: r.score ? String(r.score) : null }; },
-      sfx: (n) => this.audio.sfx(n), ready: () => this.state === 'menu',
+      sfx: (n) => this.audio.sfx(n), ready: () => this.state === 'menu', workout: () => this.hooks.workout?.(),
       onStart: () => { this.reset(); this.begin(); },
     });
     this.results = new ResultsView({ sfx: (n) => this.audio.sfx(n), onAgain: () => { this.reset(); this.begin(); }, onBack: () => this.hooks.close?.() });
@@ -237,7 +238,7 @@ export class Horde {
     this.rnd = makeRandom(this.seed); this.configure(this.durIdx, this.lvlIdx);
     this.z = 0; this.x = 0; this.tx = 0; this.held = 0; this.heldT = 0; this.hp = 6; this.maxHp = 6; this.pops = [];
     this.weapon = 0; this.xp = 0; this.rateMul = 1; this.dmgMul = 1;
-    this.kills = 0; this.score = 0; this.spawnAcc = 0; this.el = 0; this.segIdx = -1; this.seg = this.plan.segs[0];
+    this.kills = 0; this.score = 0; this.spawnAcc = 0; this.el = this.wk ? this.wc.el : 0; this.segIdx = -1; this.seg = this.plan.segs[0];
     this.enemies = []; this.allies = []; this.gates = []; this.gems = [];
     this.gateN = 0; this.lastPair = -1; this.nextGate = 12; this.overdrive = 0; this.hurtT = 0; this.shake = 0; this.bossAlive = false;
     this.pw = 0; this.sinceSpawn = 0; this.gemAcc = 0; this.gemT = 0; this.popN = 0; // niente eredità dal menu o dalla partita prima: la potenza di allora dipende dal tempo reale
@@ -253,13 +254,17 @@ export class Horde {
   // durata e livello scelti: ricostruiscono il piano
   configure(durIdx, lvlIdx) {
     this.durIdx = durIdx; this.lvlIdx = lvlIdx;
-    this.total = DURATIONS[durIdx]; this.level = LEVELS[lvlIdx]; this.plan = buildPlan(this.total);
+    this.level = LEVELS[lvlIdx];
+    // allenamento in corso: la partita È l'allenamento (durata, tratti e watt vengono da lì; il livello non cambia i watt)
+    this.wc = new WorkoutClock(this.hooks); this.wk = this.wc.begin(this.ftp);
+    if (this.wk) { this.plan = planFromWorkout(this.wk); this.total = this.plan.total; } else { this.total = DURATIONS[durIdx]; this.plan = buildPlan(this.total); }
+    this.band = new BandMeter();
   }
 
   get ftp() { return Math.max(80, this.hooks.ftp?.() || Number(localStorage.getItem('ftp')) || 200); }
   recordKey() { return `hordeBest2:${this.total}:${this.level.id}`; }
   recordFor(total, id) { try { return JSON.parse(localStorage.getItem(`hordeBest2:${total}:${id}`) || '{}'); } catch { return {}; } }
-  record() { return this.recordFor(this.total, this.level.id); }
+  record() { return this.wk ? {} : this.recordFor(this.total, this.level.id); }
 
   // ---------- eventi: tutto ciò che chiede o premia qualcosa (si misura nel test) ----------
   ev(kind) { if (this.evLog.length < 20000) this.evLog.push({ t: this.el, k: kind }); }
@@ -396,6 +401,7 @@ export class Horde {
     // la pressione scende quando ti colpiscono e risale piano quando tieni la linea: nessuno viene schiacciato, nessuno si annoia
     if (this.el - (this.lastHitT || 0) > 18) this.pressure = Math.min(1.35, this.pressure + dt * 0.004);
     rate *= this.pressure;
+    if (this.wk) rate *= 1 + 2 * this.level.k; // con un allenamento il livello cambia solo quanti nemici arrivano, mai i watt
     if (this.bossAlive) rate *= 0.5;
     if (this.calm > 0) { this.calm -= dt; rate *= 0.65; }
     this.spawnAcc += rate * dt;
@@ -412,15 +418,17 @@ export class Horde {
     const prev = this.seg; const seg = this.plan.segs[i];
     if (this.segIdx >= 0) this.judge(prev);
     this.segIdx = i; this.seg = seg; seg.inT = 0; seg.okT = 0;
-    const W = targetW(seg, this.ftp, this.level.k, this.adapt.value);
+    const W = targetW(seg, this.ftp, this.level.k, this.adapt.value, this.el);
     const wc = (composId) => t(`games.horde.c.${composId}`);
-    if (seg.kind === 'warm') { this.say(t('games.horde.say.warm'), SEG_COLOR.warm, 3, true, 2, t('games.horde.say.warmSub')); }
+    if (this.wk && seg.wave >= 1 && seg.wave <= this.plan.N && seg.wave !== prev?.wave && seg.kind !== 'pace') { this.ev('wave'); this.hudWave = seg.wave; }
+    if (seg.kind === 'warm' && prev?.kind === 'warm') { /* riscaldamento lungo spezzato in ondate: un solo annuncio */ }
+    else if (seg.kind === 'warm') { this.say(t('games.horde.say.warm'), SEG_COLOR.warm, 3, true, 2, t('games.horde.say.warmSub')); }
     else if (seg.kind === 'pace') {
       const comp = composAt(seg.wave);
       this.say(t('games.horde.say.wave', { n: seg.wave, m: this.plan.N }), '#d9ff3d', 2.6, true, 3, t('games.horde.say.waveSub', { what: wc(comp.id), w: W }));
       this.ev('wave');
     } else if (seg.kind === 'effort') { this.say(t('games.horde.say.effort', { w: W }), SEG_COLOR.effort, 2.4, true, 3, t('games.horde.say.effortSub')); this.audio.sfx('go'); this.ev('segment'); this.maybeBoss(seg); }
-    else if (seg.kind === 'sprint') { this.say(t('games.horde.say.sprint', { w: W }), SEG_COLOR.sprint, 2.4, true, 3, t('games.horde.say.sprintSub', { s: Math.round(seg.t1 - seg.t0) })); this.audio.sfx('alarm'); this.ev('segment'); }
+    else if (seg.kind === 'sprint') { this.say(t('games.horde.say.sprint', { w: W }), SEG_COLOR.sprint, 2.4, true, 3, t('games.horde.say.sprintSub', { s: Math.round(seg.t1 - seg.t0) })); this.audio.sfx('alarm'); this.ev('segment'); this.maybeBoss(seg); }
     else if (seg.kind === 'rest') { this.say(t('games.horde.say.rest'), SEG_COLOR.rest, 2.4, true, 2, t('games.horde.say.restSub', { w: W })); this.ev('segment'); }
     else if (seg.kind === 'cool') { this.startCool(); }
   }
@@ -436,7 +444,7 @@ export class Horde {
       this.say(t(seg.kind === 'sprint' ? 'games.horde.sprintOk' : 'games.horde.effortOk'), '#7dff6a', 1.8, true, 2); this.prog('sprintsWon', seg.kind === 'sprint' ? 1 : 0, 20);
     } else this.say(t('games.horde.effortKo'), '#ffb84d', 1.6, false, 1);
     this.ev(ok ? 'effortOk' : 'effortKo');
-    const moved = this.adapt.report(ok);
+    const moved = this.wk ? 0 : this.adapt.report(ok); // con un allenamento i watt li decide lui
     if (moved) this.say(t(moved < 0 ? 'games.horde.adaptDown' : 'games.horde.adaptUp'), moved < 0 ? '#4de3ff' : '#ffd34d', 2.2, false, 2);
   }
 
@@ -476,14 +484,16 @@ export class Horde {
 
   finishResult() {
     const bossTotal = this.plan.bossWaves.length;
-    const s = starsFor({ done: this.effortsDone, total: this.effortsTotal, bossKilled: this.bossKilled, bossTotal, ko: this.ko });
+    // con un allenamento le stelle sono le stesse di tutti i giochi: tempo entro ±7 % del bersaglio (kit/workout-plan.js)
+    const s = this.wk ? { stars: workoutStars(this.band.ratio, true), ratio: this.band.ratio } : starsFor({ done: this.effortsDone, total: this.effortsTotal, bossKilled: this.bossKilled, bossTotal, ko: this.ko });
     const rec = this.record(); const prevBest = rec.score || 0;
     const newBest = this.score > prevBest;
-    if (newBest || (s.stars > (rec.stars || 0))) { try { localStorage.setItem(this.recordKey(), JSON.stringify({ score: Math.max(prevBest, this.score), stars: Math.max(rec.stars || 0, s.stars) })); } catch { /* niente storage */ } }
+    if (!this.wk && (newBest || (s.stars > (rec.stars || 0)))) { try { localStorage.setItem(this.recordKey(), JSON.stringify({ score: Math.max(prevBest, this.score), stars: Math.max(rec.stars || 0, s.stars) })); } catch { /* niente storage */ } }
     this.result = { ...s, done: this.effortsDone, total: this.effortsTotal, bossKilled: this.bossKilled, bossTotal, ko: this.ko, score: this.score, newBest, prevStars: rec.stars || 0, bestScore: Math.max(prevBest, this.score) };
-    this.result.hint = nextStarHint(this.result);
+    this.result.hint = this.wk ? null : nextStarHint(this.result);
+    this.result.wk = !!this.wk; this.result.band = this.band.ratio;
     this.prog('races', 0, 40 + s.stars * 40 + this.effortsDone * 10);
-    this.hooks.progress?.setMax('hordeStars', s.stars);
+    if (!this.wk) this.hooks.progress?.setMax('hordeStars', s.stars);
   }
 
   // ---------- aggiornamento ----------
@@ -493,7 +503,7 @@ export class Horde {
     const ftp = this.ftp;
     // senza rullo la demo simula 0,8 × FTP con scatti (e un po' meno nel recupero)
     const demo = !connected;
-    const demoP = demo ? ftp * (this.state === 'play' && this.seg?.kind === 'rest' ? 0.58 : 0.8) * (((this.t % 40) > 31 && this.seg?.kind !== 'rest') ? 1.6 : 1) : 0;
+    const demoP = demo && this.wk && this.seg ? targetW(this.seg, ftp, 0, 0, this.el) : demo ? ftp * (this.state === 'play' && this.seg?.kind === 'rest' ? 0.58 : 0.8) * (((this.t % 40) > 31 && this.seg?.kind !== 'rest') ? 1.6 : 1) : 0;
     this.power = connected ? st.power || 0 : demoP;
     this.cadence = connected ? st.cadence || 0 : 88;
     this.pw += (this.power - this.pw) * Math.min(1, dt / 1.2);
@@ -506,20 +516,23 @@ export class Horde {
     if (this.state === 'menu') { this.menuTick(dt, connected); this.animateIdle(dt); return; }
     if (this.state === 'over') { this.results.update(dt); this.animateIdle(dt); return; }
 
+    // con un allenamento il tempo è quello dell'allenamento (anche se in pausa); finito lui, finisce la partita
+    if (this.wk) { this.el = this.wc.tick(dt); if (this.wc.ended) return this.finish(); }
     // pausa: chi smette di pedalare non perde, il tempo si ferma
     if (connected) {
       if (this.power < 12) { this.pauseT += dt; if (this.pauseT > 2.5 && !this.paused) { this.paused = true; this.audio.sfx('beep'); } } else if (this.power > 25) { this.pauseT = 0; this.paused = false; }
     }
     if (this.paused) { this.player.pose(dt, 0, 8); this.camera(dt); return; }
 
-    this.el += dt;
+    if (!this.wk) this.el += dt;
     // il tratto dell'allenamento
     let seg = segAt(this.plan, this.el);
     const idx = this.plan.segs.indexOf(seg);
     if (idx !== this.segIdx) { this.enterSeg(idx); seg = this.seg; }
     if (this.el >= this.total) return this.finish();
-    const tgt = targetW(seg, ftp, this.level.k, this.adapt.value);
+    const tgt = targetW(seg, ftp, this.level.k, this.adapt.value, this.el);
     seg.inT += dt;
+    if (this.wk) this.band.add(dt, this.pw, tgt, this.el - seg.stepStart);
     if ((seg.kind === 'effort' || seg.kind === 'sprint') && seg.inT > (seg.kind === 'sprint' ? 2 : 4) && this.pw >= 0.92 * tgt) seg.okT += dt;
     this.inTarget = this.pw >= 0.92 * tgt;
     this.tgtW = tgt;
@@ -538,7 +551,7 @@ export class Horde {
     this.x = lerp(this.x, this.tx, 1 - Math.exp(-dt * 9));
     this.shake = Math.max(0, this.shake - dt); this.hurtT = Math.max(0, this.hurtT - dt);
     const g = this.bossAlive ? 4 : seg.kind === 'rest' || seg.kind === 'cool' ? 0 : seg.kind === 'warm' ? 1 : seg.kind === 'pace' ? 2 : 3;
-    if (g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade(g); }
+    if (!this.wk && g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade(g); } // con un allenamento il rullo resta in ERG: la pendenza non si tocca
 
     this.directorTick(dt, seg);
     if (seg.kind !== 'cool') { this.trailT -= dt; if (this.trailT <= 0) { this.spawnTrail(this.z + SPAWN_Z); this.trailT = 6 + this.rnd() * 3; } }
@@ -556,10 +569,11 @@ export class Horde {
   menuTick(dt, connected) { this.menu.update(dt, { connected, power: this.power }); }
 
   finish() {
+    if (!this.result) this.finishResult();
     this.state = 'over'; this.stateT = 0; this.finished = true;
     this.audio.stopSong(); this.audio.sfx('win'); this.results.reset();
     this.hooks.runEnd?.({ game: 'horde', score: this.score });
-    this.hooks.setGrade(0);
+    if (!this.wk) this.hooks.setGrade(0);
   }
 
   // ---------- portali: arco di pietra Meshy con energia colorata per tipo ----------
@@ -926,20 +940,21 @@ export class Horde {
     const col = SEG_COLOR[seg.kind]; const by = y0 + 22; const bh2 = 44;
     ctx.fillStyle = 'rgba(8,10,26,.72)'; rrect(ctx, pad - 4, by, W - 2 * pad + 8, bh2, 12); ctx.fill();
     ctx.fillStyle = col; rrect(ctx, pad - 4, by, 7, bh2, 3); ctx.fill();
-    const tw = this.tgtW || targetW(seg, this.ftp, this.level.k, this.adapt.value);
-    const left = Math.max(0, Math.ceil(seg.t1 - this.el));
-    hudText(ctx, t(`games.horde.seg.${seg.kind}`), pad + 12, by + 29, { size: 21, color: col, maxW: W * 0.34 });
+    const tw = this.tgtW || targetW(seg, this.ftp, this.level.k, this.adapt.value, this.el);
+    // con un allenamento: nome del passo e tempo che manca alla fine del passo (la striscia dell'app è nascosta)
+    const left = Math.max(0, Math.ceil((this.wk ? seg.stepEnd : seg.t1) - this.el));
+    hudText(ctx, this.wk ? (seg.label || t(`games.wk.seg.${seg.wkKind}`)) : t(`games.horde.seg.${seg.kind}`), pad + 12, by + 29, { size: 21, color: col, maxW: W * 0.34 });
     hudText(ctx, `${tw} W`, W / 2 + 8, by + 32, { size: 32, align: 'center', color: this.inTarget || seg.kind === 'rest' || seg.kind === 'cool' || seg.kind === 'warm' ? '#ffffff' : '#ffd34d', maxW: W * 0.34 });
     hudText(ctx, `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`, W - pad - 4, by + 29, { size: 21, align: 'right', color: '#e8e8f4', maxW: 70 });
     // barra del tratto (cala) e barra dell'allenamento intero con i confini delle ondate
-    const segK = clamp((seg.t1 - this.el) / (seg.t1 - seg.t0), 0, 1);
+    const segK = this.wk ? clamp((seg.stepEnd - this.el) / (seg.stepEnd - seg.stepStart), 0, 1) : clamp((seg.t1 - this.el) / (seg.t1 - seg.t0), 0, 1);
     ctx.fillStyle = 'rgba(255,255,255,.18)'; rrect(ctx, pad, by + bh2 + 4, W - 2 * pad, 6, 3); ctx.fill();
     ctx.fillStyle = col; rrect(ctx, pad, by + bh2 + 4, Math.max(6, (W - 2 * pad) * segK), 6, 3); ctx.fill();
     const ty = by + bh2 + 15; const tk = clamp(this.el / this.total, 0, 1);
     ctx.fillStyle = 'rgba(255,255,255,.14)'; rrect(ctx, pad, ty, W - 2 * pad, 5, 2.5); ctx.fill();
     ctx.fillStyle = '#d9ff3d'; rrect(ctx, pad, ty, Math.max(5, (W - 2 * pad) * tk), 5, 2.5); ctx.fill();
     ctx.fillStyle = 'rgba(8,10,26,.9)';
-    for (const s of this.plan.segs) if (s.kind === 'pace') ctx.fillRect(pad + (W - 2 * pad) * (s.t0 / this.total) - 1, ty - 1, 2, 7);
+    for (const [i, s] of this.plan.segs.entries()) if (this.wk ? (s.wave >= 1 && s.wave !== this.plan.segs[i - 1]?.wave) : s.kind === 'pace') ctx.fillRect(pad + (W - 2 * pad) * (s.t0 / this.total) - 1, ty - 1, 2, 7);
     // vita del Custode
     const boss = this.enemies.find((e) => e.def.boss && !e.dead);
     let nextY = ty + 24;
@@ -1007,7 +1022,11 @@ export class Horde {
     const hint = r.hint ? t(r.hint.key, { n: r.hint.n }) : null;
     this.results.draw(ctx, W, H, {
       title: t('games.horde.res.title'), stars: r.stars, score: r.score,
-      criteria: [
+      criteria: r.wk ? [
+        { ok: true, label: t('games.wk.res.done') },
+        { ok: r.band >= 0.85, label: t('games.wk.res.band', { p: Math.round(r.band * 100) }) },
+        { ok: r.bossKilled >= r.bossTotal, label: t('games.horde.res.bosses', { a: r.bossKilled, b: r.bossTotal }) },
+      ] : [
         { ok: r.ratio >= 0.8, label: t('games.horde.res.efforts', { a: r.done, b: r.total }) },
         { ok: r.bossKilled >= r.bossTotal, label: t('games.horde.res.bosses', { a: r.bossKilled, b: r.bossTotal }) },
         { ok: r.ko <= 3, label: t('games.horde.res.falls', { n: r.ko }) },
@@ -1027,7 +1046,7 @@ export class Horde {
     drawStars(ctx, W / 2, y + 30, 24, r.stars);
     let yy = y + 74;
     const line = (s, c = '#f0f0f0') => { const o = paragraph(ctx, s, W / 2, yy, { size: 17, maxW: W - 40, color: c, maxLines: 2 }); yy = o.bottom + 4; };
-    line(t('games.horde.res.efforts', { a: r.done, b: r.total }));
+    line(r.wk ? t('games.wk.res.band', { p: Math.round(r.band * 100) }) : t('games.horde.res.efforts', { a: r.done, b: r.total }));
     line(t('games.horde.res.bosses', { a: r.bossKilled, b: r.bossTotal }) + ' · ' + t('games.horde.res.falls', { n: r.ko }));
     line(`${t('games.common.score', { n: r.score })}${r.newBest ? t('games.common.newBest') : ''}`, r.newBest ? '#7dff6a' : '#f0f0f0');
     if (r.hint) line(t(r.hint.key, { n: r.hint.n }), '#ffd34d');
