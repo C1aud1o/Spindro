@@ -2,7 +2,7 @@
 // Ogni partita dura 5, 10 o 20 minuti e segue una curva in % della FTP: avvio facile, ondate (ritmo → sforzo → recupero),
 // scatti di volata, finale più duro, 30 s di defaticamento. Vedi docs/giochi-design.md §1 e docs/slipstream.md.
 // Durate, livelli, adattamento e tratti sono gli stessi di Horde Run (horde-plan.js).
-import { DURATIONS, LEVELS, WARM_S, COOL_S, SPRINT_S, ADAPT_MAX, Adapter, segAt, targetPct, targetW } from './horde-plan.js';
+import { DURATIONS, LEVELS, WARM_S, COOL_S, SPRINT_S, ADAPT_MAX, Adapter, segAt, targetPct, targetW, planFromWorkout as workoutBase } from './horde-plan.js';
 export { DURATIONS, LEVELS, WARM_S, COOL_S, SPRINT_S, ADAPT_MAX, Adapter, segAt, targetPct, targetW };
 
 const lerp = (a, b, k) => a + (b - a) * k;
@@ -40,6 +40,23 @@ export function buildPlan(total) {
   const bridges = segs.filter((s) => s.bridge && s.kind !== 'warm');
   const riders = segs.reduce((a, s) => a + (s.bridge?.riders || 0), 0);
   return { total, N, segs, L, primes, bridgeCount: bridges.length, riders };
+}
+
+// Allenamento in corso → piano (kit/workout-plan.js): i tratti e i watt sono quelli dell'allenamento; i ponti stanno sugli sforzi
+// e sugli scatti (un corridore in più a ogni ondata, come nelle partite normali), il traguardo vero sull'ultimo scatto.
+export const WARM_BRIDGE = { riders: 1, gap: 18, lead: 0 };
+export function planFromWorkout(wp) {
+  const base = workoutBase(wp);
+  const lastHard = Math.max(0, ...base.segs.filter((s) => s.wkKind === 'sprint').map((s) => s.wave));
+  for (const s of base.segs) {
+    const k = base.N > 1 ? (Math.max(1, s.wave) - 1) / (base.N - 1) : 1; const riders = 1 + Math.floor(k * 2.2);
+    if (s.kind === 'warm') s.bridge = WARM_BRIDGE;
+    else if (s.kind === 'effort') s.bridge = { riders, gap: 20, lead: 80 };
+    else if (s.kind === 'sprint') { s.bridge = { riders: Math.min(3, riders + 1), gap: 20, lead: 80 }; s.line = s.wave === lastHard ? 'finish' : 'prime'; }
+  }
+  const primes = [...new Set(base.segs.filter((s) => s.kind === 'sprint').map((s) => s.wave))];
+  const bridges = base.segs.filter((s) => s.bridge && s.kind !== 'warm');
+  return { ...base, primes, bridgeCount: bridges.length, riders: base.segs.reduce((a, s) => a + (s.bridge?.riders || 0), 0) };
 }
 
 // Velocità di avvicinamento (m/s) al corridore che scatta, in funzione dei watt (già filtrati).

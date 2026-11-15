@@ -40,7 +40,7 @@ function botRun({ id, startAt, steps, ftp }) {
   const reqW = window.__wkReq;
   const bad = []; const seen = new Set(); let n = 0; let first = null; const dt = 1 / 30; let wave = null;
   while (g.state === 'play' && n < 600 * 30) {
-    const b = g.bot?.(); if (b) g.input(b);
+    const b = window.__wkBot?.(g); if (b) g.input(b);
     clock += dt; g.update(dt); n++;
     if (n === 1) first = { el: g.el, w: reqW(g), step: stepAt(clock).label, waveText: g.plan?.N };
     if (n % 30 === 15 && g.state === 'play') {
@@ -51,20 +51,22 @@ function botRun({ id, startAt, steps, ftp }) {
   return { state: g.state, secs: n / 30, first, bad: bad.slice(0, 8), nBad: bad.length, seen: [...seen], grade, stars: g.result?.stars, band: g.result?.band ?? null, wkFlag: !!g.wk };
 }
 
+// req: watt chiesti dal gioco adesso · bot: l'unico input del bot (+1 / −1) o 0
 const GAMES = [
-  { id: 'horde', req: (g) => g.tgtW },
+  { id: 'horde', req: (g) => g.tgtW, bot: () => 0 },
+  { id: 'gruppetto', req: (g) => g.tgtW, bot: (g) => { const b = g.bridge; return b && b.state === 'attack' && b.lane !== g.lane ? (b.lane > g.lane ? 1 : -1) : 0; } },
 ];
 
-async function openGame(page, id, req) {
+async function openGame(page, id, req, bot) {
   await page.click('#openGame');
   await page.click(`[data-game=${id}]`);
   await expect.poll(() => page.evaluate(() => window.__game?.state), { timeout: 120_000 }).toBe('menu');
-  await page.evaluate((src) => { window.__wkReq = new Function('g', `return (${src})(g)`); }, req.toString().replace(/^/, ''));
+  await page.evaluate(([a, b]) => { window.__wkReq = new Function('g', `return (${a})(g)`); window.__wkBot = new Function('g', `return (${b})(g)`); }, [req.toString(), bot.toString()]);
 }
 
 for (const G of GAMES) {
   test(`${G.id}: l'allenamento è la partita (bersaglio per secondo, fine con l'allenamento, setGrade mai)`, async ({ page }) => {
-    await openGame(page, G.id, G.req);
+    await openGame(page, G.id, G.req, G.bot);
     const r = await page.evaluate(botRun, { id: G.id, startAt: 0, steps: STEPS, ftp: FTP });
     console.log(`${G.id} wk: ${JSON.stringify({ ...r, bad: r.bad.slice(0, 3) })}`);
     expect(r.wkFlag).toBe(true);
@@ -76,7 +78,7 @@ for (const G of GAMES) {
   });
 
   test(`${G.id}: aperto a metà (elapsed 150 s) parte nello sforzo giusto e finisce a 360 s`, async ({ page }) => {
-    await openGame(page, G.id, G.req);
+    await openGame(page, G.id, G.req, G.bot);
     const r = await page.evaluate(botRun, { id: G.id, startAt: 150, steps: STEPS, ftp: FTP });
     expect(r.first.el).toBeGreaterThanOrEqual(150); expect(r.first.el).toBeLessThan(151);
     expect(r.first.w, 'primo bersaglio = sforzo 105 %').toBe(210);
