@@ -2,7 +2,7 @@ name: App Android (APK)
 
 on:
   push:
-    branches: [main, ccr-28a29a79-yshigo, 'spindro/**']
+    branches: [main, beta]
     paths:
       - 'android/**'
       - 'js/**'
@@ -19,6 +19,10 @@ on:
 
 permissions:
   contents: write
+
+# main = produzione (app-android), beta = beta (app-android-beta, "Spindro Beta"). Vedi docs/environments.md
+env:
+  CHANNEL: ${{ github.ref_name == 'beta' && 'beta' || 'prod' }}
 
 concurrency:
   group: android-apk-${{ github.ref }}
@@ -79,14 +83,15 @@ jobs:
         working-directory: android
         env:
           VERSION_CODE: ${{ github.run_number }}
+          APK_NAME: ${{ github.ref_name == 'beta' && 'spindro-beta.apk' || 'spindro.apk' }}
         run: |
           if [ "$SPINDRO_SIGNED" = "true" ]; then
             ./gradlew assembleFossRelease bundlePlayRelease --no-daemon
-            cp app/build/outputs/apk/foss/release/app-foss-release.apk ../spindro.apk
+            cp app/build/outputs/apk/foss/release/app-foss-release.apk ../$APK_NAME
             cp app/build/outputs/bundle/playRelease/app-play-release.aab ../spindro-play.aab
           else
             ./gradlew assembleFossDebug --no-daemon
-            cp app/build/outputs/apk/foss/debug/app-foss-debug.apk ../spindro.apk
+            cp app/build/outputs/apk/foss/debug/app-foss-debug.apk ../$APK_NAME
           fi
           echo "Build ${VERSION_CODE} (versionName 1.0.${VERSION_CODE}), firmata release: $SPINDRO_SIGNED" >> "$GITHUB_STEP_SUMMARY"
       - name: Elimina la chiave dal runner
@@ -94,8 +99,8 @@ jobs:
         run: rm -f "$RUNNER_TEMP/spindro-release.jks"
       - uses: actions/upload-artifact@v4
         with:
-          name: spindro-apk
-          path: spindro.apk
+          name: spindro-apk-${{ env.CHANNEL }}
+          path: spindro*.apk
       # l'AAB serve solo per caricarlo a mano su Google Play: resta artifact della run, NON va nella release pubblica
       - uses: actions/upload-artifact@v4
         if: env.SPINDRO_SIGNED == 'true'
@@ -103,9 +108,9 @@ jobs:
           name: spindro-play-aab
           path: spindro-play.aab
           if-no-files-found: error
-      # i branch di lavoro (spindro/**) compilano soltanto: la release pubblica si aggiorna da main e dal branch storico
+      # solo main e beta pubblicano: ogni canale ha la sua release
       - name: Pubblica l'APK nella release "app-android"
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/ccr-28a29a79-yshigo'
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: app-android
@@ -117,3 +122,15 @@ jobs:
             Apri questa pagina dal telefono, scarica **spindro.apk** e installalo
             (Android chiederà di consentire l'installazione da questa fonte).
             Novità dell'app: Bluetooth nativo e ponte verso Garmin (il telefono diventa un sensore di potenza, cadenza e velocità).
+      - name: Pubblica l'APK beta nella prerelease "app-android-beta"
+        if: github.ref == 'refs/heads/beta'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: app-android-beta
+          name: Spindro Beta per Android
+          prerelease: true
+          make_latest: false
+          files: spindro-beta.apk
+          body: |
+            **Spindro Beta** (build ${{ github.run_number }}): versione di prova, si installa accanto all'app stabile.
+            Scarica **spindro-beta.apk** dal telefono e installalo. Può contenere errori: i dati reali restano nell'app stabile.

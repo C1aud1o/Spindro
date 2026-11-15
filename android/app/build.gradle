@@ -14,6 +14,7 @@ android {
         // su GitHub Actions il numero cresce a ogni build, così l'aggiornamento si installa sopra
         versionCode ((System.getenv('VERSION_CODE') ?: '1') as int)
         versionName "1.0.${System.getenv('VERSION_CODE') ?: '1'}"
+        manifestPlaceholders = [appLabel: 'Spindro']
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -21,6 +22,17 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Canale beta (CHANNEL=beta, vedi docs/environments.md): app affiancata a quella stabile, stesso codice.
+    // Il namespace e l'appId di Capacitor restano com.spindro.app; cambia solo l'applicationId installato.
+    // FileProvider e GarminBridge usano ${applicationId} / getPackageName(), quindi seguono il suffisso.
+    if (System.getenv('CHANNEL') == 'beta') {
+        defaultConfig {
+            applicationIdSuffix ".beta"
+            versionNameSuffix "-beta"
+            manifestPlaceholders = [appLabel: 'Spindro Beta']
+        }
+    }
+
     // BuildConfig.DISTRIBUTION serve ai flavor (AGP 8 non genera BuildConfig di default)
     buildFeatures {
         buildConfig true

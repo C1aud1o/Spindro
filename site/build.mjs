@@ -266,7 +266,7 @@ for (const lang of cfg.langs) {
 const urls = written.filter((w) => w.index);
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.map((w) => `  <url>\n    <loc>${abs(w.path)}</loc>\n${w.alternates.map(([l, p]) => `    <xhtml:link rel="alternate" hreflang="${l}" href="${abs(p)}"/>`).join('\n')}\n  </url>`).join('\n')}\n</urlset>\n`;
 writeFileSync(join(out, 'sitemap.xml'), sitemap);
-writeFileSync(join(out, 'robots.txt'), `User-agent: *\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\n`);
+writeFileSync(join(out, 'robots.txt'), `User-agent: *\nAllow: /\nDisallow: /beta/\n\nSitemap: ${SITE_URL}/sitemap.xml\n`);
 
 console.log(`site: ${written.length} pagine in ${out} (${cfg.langs.join(', ')}), dominio ${SITE_URL}`);
 if (legalWarnings.length) console.log(`pagine legali ancora bozza (noindex, fuori dalla sitemap):\n  - ${legalWarnings.join('\n  - ')}`);

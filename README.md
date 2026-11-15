@@ -14,6 +14,7 @@ Spindro runs in your browser (Android, PC, Mac) or as an Android app. It connect
 - **Website:** https://spindro.fun
 - **Web app:** https://spindro.fun/app/ (Chrome or Edge)
 - **Android APK:** https://spindro.fun/app/spindro.apk
+- **Beta (testers):** https://spindro.fun/beta/ and https://spindro.fun/beta/spindro-beta.apk, see [docs/environments.md](docs/environments.md)
 
 ## What it does
 

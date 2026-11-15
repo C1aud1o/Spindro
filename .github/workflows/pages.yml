@@ -1,10 +1,15 @@
 name: Pubblica su GitHub Pages
 
+# Un solo deploy contiene sempre entrambi gli ambienti (vedi docs/environments.md):
+#   produzione (ramo main): sito alla radice, app in /app/, APK in /app/spindro.apk
+#   beta (ramo beta):       solo l'app in /beta/, APK in /beta/spindro-beta.apk (noindex)
+# Il deploy parte sempre dal ramo main (l'ambiente "github-pages" accetta solo il ramo predefinito):
+# un push su beta lo avvia tramite pages-beta.yml.
 on:
   push:
-    branches: [main, ccr-28a29a79-yshigo]
+    branches: [main]
   workflow_dispatch:
-  # quando è pronto un nuovo APK, ripubblica il sito con il file aggiornato
+  # quando è pronto un nuovo APK, ripubblica con il file aggiornato
   workflow_run:
     workflows: ["App Android (APK)"]
     types: [completed]
@@ -21,35 +26,75 @@ concurrency:
 
 jobs:
   deploy:
-    # dopo una build Android, ripubblica solo se era una build riuscita del ramo principale
-    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && contains(fromJSON('["main","ccr-28a29a79-yshigo"]'), github.event.workflow_run.head_branch))
+    # dopo una build Android, ripubblica solo se era una build riuscita di main o beta
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && contains(fromJSON('["main","beta"]'), github.event.workflow_run.head_branch))
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
+      - name: Il ramo beta esiste?
+        id: branches
+        run: |
+          if gh api "repos/$GITHUB_REPOSITORY/branches/beta" --silent; then echo "beta=true" >> "$GITHUB_OUTPUT"; else echo "beta=false" >> "$GITHUB_OUTPUT"; echo "::notice::Ramo beta assente: pubblico solo la produzione"; fi
       - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+      - uses: actions/checkout@v4
+        if: steps.branches.outputs.beta == 'true'
+        with:
+          ref: beta
+          path: beta
       - uses: actions/configure-pages@v5
-      - name: Prepara l'app (solo i file web, senza android/)
-        run: node scripts/copy-web.mjs && cp sw.js www/
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # ---- produzione: dal codice di main ----
+      - name: Produzione, app (solo i file web, senza android/)
+        working-directory: main
+        run: |
+          node scripts/copy-web.mjs
+          [ -f www/sw.js ] || cp sw.js www/   # copy-web di main non ancora aggiornato
         env:
+          CHANNEL: prod
+          WEB_DEPLOY: '1'
           VERSION_CODE: web-${{ github.run_number }}
-      - name: Costruisci il sito vetrina (site/dist)
+      - name: Produzione, sito vetrina (site/dist)
+        working-directory: main
         run: node site/build.mjs
-      # Struttura pubblicata: sito vetrina alla radice (/, /it/, /compatibility/…), app sotto /app/,
-      # APK in /app/spindro.apk. Per cambiare dominio: CNAME qui sotto e "siteUrl" in site/config.json.
-      - name: Sito alla radice, app sotto /app/, ultimo APK
+
+      # ---- beta: dal codice di beta ----
+      - name: Beta, app
+        if: steps.branches.outputs.beta == 'true'
+        working-directory: beta
+        run: node scripts/copy-web.mjs
         env:
-          GH_TOKEN: ${{ github.token }}
+          CHANNEL: beta
+          WEB_DEPLOY: '1'
+          VERSION_CODE: web-${{ github.run_number }}
+
+      # Struttura pubblicata. Per cambiare dominio: CNAME di main e "siteUrl" in site/config.json.
+      - name: Assembla pub/
         run: |
           rm -rf pub && mkdir -p pub/app
-          cp -r site/dist/. pub/
-          cp -r www/. pub/app/
+          cp -r main/site/dist/. pub/
+          cp -r main/www/. pub/app/
           gh release download app-android -p spindro.apk -D pub/app --repo "$GITHUB_REPOSITORY" || echo "APK non ancora disponibile"
           [ -f pub/app/spindro.apk ] && cp pub/app/spindro.apk pub/app/ride-freedom.apk  # vecchi link
-          cp CNAME pub/CNAME
+          if [ "${{ steps.branches.outputs.beta }}" = "true" ]; then
+            mkdir -p pub/beta
+            cp -r beta/www/. pub/beta/
+            gh release download app-android-beta -p spindro-beta.apk -D pub/beta --repo "$GITHUB_REPOSITORY" || echo "APK beta non ancora disponibile"
+          fi
+          # /beta/ non va indicizzato (oltre al meta noindex nell'app); vale anche se robots.txt di main è più vecchio
+          grep -q '^Disallow: /beta/' pub/robots.txt || printf 'User-agent: *\nDisallow: /beta/\n' >> pub/robots.txt
+          cp main/CNAME pub/CNAME
           touch pub/.nojekyll
-          ls -la pub pub/app | head -40
+          ls -la pub pub/app pub/beta 2>/dev/null | head -60
       - uses: actions/upload-pages-artifact@v3
         with:
           path: pub

@@ -123,3 +123,8 @@ senza errori di compilazione, e lo si scoprirebbe solo provando con un rullo ver
 piccolo, perché l'app è quasi tutta HTML/JS/asset. Se un giorno si vorrà attivarlo: aggiungere le
 regole `-keep` per `com.getcapacitor.**` e per i plugin in `proguard-rules.pro` e provare tutta la
 parte BLE su un dispositivo prima di pubblicare.
+
+## Canale beta
+
+Il ramo `beta` compila con `CHANNEL=beta`: `applicationId` `com.spindro.app.beta`, `versionName` `1.0.<run>-beta`, nome "Spindro Beta",
+pubblicato come prerelease `app-android-beta` (`spindro-beta.apk`). Stessi Secret di firma. Vedi [environments.md](environments.md).

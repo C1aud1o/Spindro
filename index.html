@@ -15,7 +15,7 @@
 </head>
 <body data-mode="gears">
   <header class="top">
-    <h1 class="wordmark">Spin<b>dro</b></h1>
+    <h1 class="wordmark">Spin<b>dro</b><span id="betaBadge" class="beta-badge" hidden>BETA</span></h1>
     <span class="top-actions">
       <button id="openSettings" class="icon-btn" data-i18n-attr="aria-label:nav.settings">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></svg>
@@ -360,6 +360,7 @@
         <button id="openHistory" class="ghost" data-i18n="history.open"></button>
         <div class="row2 backup-row"><button id="backupOut" class="ghost" data-i18n="backup.export"></button><label class="ghost file-btn"><span data-i18n="backup.import"></span><input id="backupIn" type="file" accept=".json,application/json" hidden></label></div>
         <p class="fine" data-i18n="backup.hint"></p>
+        <button id="betaCopy" class="ghost" data-i18n="beta.copy" hidden></button>
         <button id="wipeData" class="ghost danger" data-i18n="wipe.button"></button>
         <p class="fine" data-i18n="wipe.hint"></p>
         <button id="reportTrainer" class="ghost" data-i18n="trainerReport.button"></button>
