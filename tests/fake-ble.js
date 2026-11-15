@@ -73,6 +73,9 @@
   const batSvc = new Service(0x180f, [batChar]);
   const u32 = (n) => [n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, (n >>> 24) & 0xff];
 
+  // La verifica tasti si apre da sola al primo collegamento di un modello: nei test è già "vista" (i test che la provano lo tolgono)
+  try { if (localStorage.getItem('clickCheckSeen') === null) localStorage.setItem('clickCheckSeen', 'click,play,ride'); } catch { /* niente storage */ }
+
   const state = { power: 150, cadence: 80, speed: 28, controlLog: [], trainer: null, click: null, timer: null };
 
   // ---- Rullo FTMS ----
@@ -107,9 +110,19 @@
   const RELEASED = 0x3ffff; // tutti i pulsanti a riposo (bit a 1)
   const rideMsg = (mask) => [0x23, 0x08, ...varint(mask)];
 
+  // Quale controller Zwift finge il "Click": __fakeBle.clickModel = 'click' | 'play' | 'ride' (nome Bluetooth) e
+  // __fakeBle.clickProto = 'ride' (Click v2, predefinito) | 'v1' | 'play' | 'zr' (Ride); se non è scelto segue il modello.
+  const protoNow = () => window.__fakeBle.clickProto || ({ click: 'ride', play: 'play', ride: 'zr' })[window.__fakeBle.clickModel || 'click'];
+  const msgFor = (proto, nums) => {
+    if (proto === 'v1') return [0x37, 0x08, nums.includes(1) ? 0 : 1, 0x10, nums.includes(2) ? 0 : 1];
+    if (proto === 'play') return [0x07, 0x08, 0x00, ...[2, 3, 4, 5, 6, 7].flatMap((f) => [f << 3, nums.includes(f) ? 0 : 1])];
+    return rideMsg(nums.reduce((m, b) => m & ~(1 << b), RELEASED)); // 'ride' (Click v2) e 'zr' (Ride): maschera di bit, 0 = premuto
+  };
+  const sendNums = (nums) => zAsync.push(msgFor(protoNow(), nums));
+  const NAMES = { click: 'Zwift Click', play: 'Zwift Play', ride: 'Zwift Ride' };
   const make = (kind) => {
     const mk = (id, name, svcs) => new Device(id, name, [...svcs, batSvc]);
-    if (kind === 'click') { state.click = mk('fake-click', 'Zwift Click', [zwift]); return state.click; }
+    if (kind === 'click') { state.click = mk('fake-click', NAMES[window.__fakeBle.clickModel || 'click'], [zwift]); return state.click; }
     if (kind === 'hr') return mk('fake-hr', 'Fake HRM', [hrSvc]);
     if (kind === 'csc') return mk('fake-csc', 'Fake RPM Sensor', [cscSvc]);
     if (kind === 'cps') return mk('fake-cps', 'Fake Power Pedals', [cpsSvc]);
@@ -124,27 +137,27 @@
     state, make,
     setPower(w) { state.power = w; sendBikeData(); },
     setCadence(c) { state.cadence = c; },
-    /** Preme e rilascia il pulsante "+" (bit 12) o "−" (bit 8) del Click v2. */
-    async press(dir) {
-      const bit = dir > 0 ? 12 : 8;
-      zAsync.push(rideMsg(RELEASED));
-      zAsync.push(rideMsg(RELEASED & ~(1 << bit)));
-      zAsync.push(rideMsg(RELEASED));
+    /** Numero del tasto "+" (dir > 0) o "−" (dir < 0) nel protocollo in uso. */
+    plusMinusNum(dir) { const p = protoNow(); return p === 'v1' ? (dir > 0 ? 1 : 2) : p === 'play' ? (dir > 0 ? 2 : 5) : p === 'zr' ? (dir > 0 ? 9 : 10) : (dir > 0 ? 12 : 8); },
+    /** Tiene premuti i tasti (numeri) per ms millisecondi (0 = solo un attimo), poi rilascia. */
+    async pressNums(nums, ms = 0) {
+      sendNums([]);
+      sendNums(nums);
+      if (ms) await new Promise((r) => setTimeout(r, ms));
+      sendNums([]);
     },
-    /** Preme e rilascia un tasto qualsiasi del Click v2 per numero di bit (1 = Su, 3 = Giù, 0 = Sinistra, 2 = Destra, 4 = A, 5 = B). */
-    async pressBit(bit) {
-      zAsync.push(rideMsg(RELEASED));
-      zAsync.push(rideMsg(RELEASED & ~(1 << bit)));
-      zAsync.push(rideMsg(RELEASED));
+    /** Preme e rilascia "+" (dir > 0) o "−" (dir < 0) del controller finto. */
+    async press(dir) { return this.pressNums([this.plusMinusNum(dir)]); },
+    /** Preme e rilascia un tasto per numero di bit / campo (Click v2: 1 = Su, 3 = Giù, 0 = Sinistra, 2 = Destra, 4 = A, 5 = B, 6 = Y, 7 = Z). */
+    async pressBit(bit, ms = 0) { return this.pressNums([bit], ms); },
+    /** Come pressBit con l'id grezzo del driver ('ride:12', 'v1:1', 'play:2', 'zr:9'): usa il protocollo dell'id. */
+    async pressId(id, ms = 0) {
+      const [proto, n] = id.split(':'); const prev = window.__fakeBle.clickProto;
+      window.__fakeBle.clickProto = proto;
+      try { await this.pressNums([+n], ms); } finally { window.__fakeBle.clickProto = prev; }
     },
     /** Tiene premuto "+" / "−" (dir) per ms millisecondi, poi rilascia: pressione lunga. */
-    async hold(dir, ms = 900) {
-      const bit = dir > 0 ? 12 : 8;
-      zAsync.push(rideMsg(RELEASED));
-      zAsync.push(rideMsg(RELEASED & ~(1 << bit)));
-      await new Promise((r) => setTimeout(r, ms));
-      zAsync.push(rideMsg(RELEASED));
-    },
+    async hold(dir, ms = 900) { return this.pressNums([this.plusMinusNum(dir)], ms); },
     /** Prossimo dispositivo scelto nel selettore Bluetooth: 'trainer' (predefinito), 'click', 'hr', 'csc', 'cps', 'cps-csc'. */
     next: 'trainer',
     /** Elenco per navigator.bluetooth.getDevices() (ricollegamento all'avvio). */

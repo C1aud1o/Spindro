@@ -37,7 +37,7 @@ test('Cancella tutti i dati: raggiungibile col solo Click; la selezione parte da
   await seed(page);
   // i dispositivi si aggiungono dal pannello Dispositivi: qui direttamente, come negli altri test
   await page.evaluate(async () => { while (!window.rfDevices) await new Promise((r) => setTimeout(r, 50)); return window.rfDevices.add(); });
-  await page.evaluate(async () => { window.__fakeBle.next = 'click'; return window.rfDevices.add(); });
+  await page.evaluate(async () => { window.__fakeBle.clickProto = 'v1'; window.__fakeBle.next = 'click'; return window.rfDevices.add(); });
   await expect(page.locator('#clickStatus')).toContainText('Zwift');
   const press = async (d) => { await page.evaluate((x) => window.__fakeBle.press(x), d); await page.waitForTimeout(80); };
   const hold = (d) => page.evaluate((x) => window.__fakeBle.hold(x, 900), d);

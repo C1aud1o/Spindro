@@ -1,23 +1,64 @@
-// Navigazione con i soli tasti del Click (o frecce / Invio / Esc della tastiera): vedi docs/click-navigazione.md.
-//  Fermo (nessuna uscita in corso, nessun gioco):  navigazione ATTIVA da sola
-//     + / −  → elemento successivo / precedente · tieni + → sceglie · tieni − → indietro
-//     su un campo numerico o a elenco: tieni + lo "prende", poi + / − cambiano il valore, tieni + o − per finire
-//  Pedalando o giocando: + / − fanno il loro lavoro (marcia, intensità, gioco); tieni − (0,8 s) apre il menu Click.
+// Navigazione con i tasti dei controller Zwift, per RUOLI (plus, minus, up, down, left, right, ok, back): vedi docs/click-navigazione.md.
+// Un solo modello su tutte le schermate:
+//   due tasti (Click v1):  + / − spostano · tieni + sceglie · tieni − torna indietro
+//   con le frecce:         le frecce spostano nello spazio (elemento più vicino in quella direzione, con giro ai bordi)
+//                          ok (A) sceglie subito · back (B) torna subito · + / − cambiano il valore di cursori / numeri / elenchi, altrimenti spostano
+//   pedalando:             + / − cambiano marcia o ERG · ok o tieni − apre il menu Click · back lo chiude
+//   in un gioco:           + / − (e sinistra / destra) vanno al gioco · tieni back 0,8 s (o tieni − con due tasti) apre il menu Click
+// In basso una legenda dice sempre cosa fanno i tasti ADESSO; sul tasto lungo l'elemento in primo piano si riempie.
 import { t } from './i18n.js';
 const LONG = 650;
 const MENU_LONG = 800;
 const POLL = 150;
 const FOCUSABLE = 'button:not([disabled]), a[href], input:not([type=hidden]):not([disabled]), select:not([disabled]), summary, label.switch, label.file-btn, .modes label';
 const SELF_LABEL = 'label.switch, label.file-btn, .modes label'; // l'input dentro queste etichette si attiva dall'etichetta
+const TWO_KEY = { plus: true, minus: true, plusMinus: true, up: false, down: false, left: false, right: false, ok: false, back: false, menu: false, arrows: false };
 
-export function createClickNav({ enabled = () => true, playing = () => false, menuItems, back, prefer, undo, onChange, isIdle = () => true }) {
+/** Elemento più vicino a `cur` nella direzione `dir` ('up' | 'down' | 'left' | 'right'); null se non c'è. Pura: lavora sui rettangoli. */
+export function pickSpatial(rects, cur, dir, wrap = true) {
+  const R = (r) => ({ left: r.left, right: r.right, top: r.top, bottom: r.bottom, cx: (r.left + r.right) / 2, cy: (r.top + r.bottom) / 2, w: r.right - r.left, h: r.bottom - r.top }); // (DOMRect: le proprietà non si copiano con lo spread)
+  const c = R(cur); const horiz = dir === 'left' || dir === 'right';
+  const gap = (a0, a1, b0, b1) => Math.max(0, Math.max(a0, b0) - Math.min(a1, b1)); // distanza fra due intervalli (0 = si sovrappongono)
+  const info = (r) => {
+    const o = R(r);
+    return horiz
+      ? { along: o.cx - c.cx, across: gap(c.top, c.bottom, o.top, o.bottom), cross: Math.abs(o.cy - c.cy), size: Math.min(o.w, c.w), o }
+      : { along: o.cy - c.cy, across: gap(c.left, c.right, o.left, o.right), cross: Math.abs(o.cx - c.cx), size: Math.min(o.h, c.h), o };
+  };
+  const sign = dir === 'right' || dir === 'down' ? 1 : -1;
+  let best = null; let bestScore = Infinity;
+  rects.forEach((r, i) => {
+    const k = info(r);
+    if (k.o.left === c.left && k.o.top === c.top && k.o.right === c.right && k.o.bottom === c.bottom) return; // lo stesso elemento
+    const d = k.along * sign;
+    if (d <= Math.max(2, k.size * 0.35)) return; // non è davvero oltre (stessa riga / colonna)
+    const score = d + 3 * k.across + 0.25 * k.cross;
+    if (score < bestScore) { bestScore = score; best = i; }
+  });
+  if (best != null || !wrap) return best;
+  // niente oltre: si riparte dal bordo opposto, nella stessa riga / colonna se possibile
+  rects.forEach((r, i) => {
+    const k = info(r);
+    if (k.o.left === c.left && k.o.top === c.top && k.o.right === c.right && k.o.bottom === c.bottom) return;
+    const edge = horiz ? k.o.cx : k.o.cy;
+    const score = (sign > 0 ? edge : -edge) + 3 * k.across + 0.25 * k.cross;
+    if (score < bestScore) { bestScore = score; best = i; }
+  });
+  return best;
+}
+
+export function createClickNav({ enabled = () => true, playing = () => false, inGame = () => false, caps = () => TWO_KEY, blocked = () => false, menuItems, back, prefer, undo, onChange }) {
   const menu = document.createElement('div'); menu.id = 'clickMenu'; menu.className = 'click-menu'; menu.hidden = true;
   menu.innerHTML = `<div class="cm-box"><p class="cm-title">${t('clicknav.title')}</p><div class="cm-list"></div></div>`;
   document.body.appendChild(menu);
   const bar = document.createElement('div'); bar.className = 'click-bar'; bar.hidden = true; bar.setAttribute('role', 'status');
   document.body.appendChild(bar);
+  const fill = document.createElement('div'); fill.className = 'cn-fill'; fill.hidden = true; fill.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(fill);
 
-  const nav = { active: false, idx: 0, items: [], scope: null, timer: null, fired: false, dir: 0, idleT: null, grab: null, sticky: false, waitRelease: false, menuT: null };
+  const nav = { active: false, idx: 0, items: [], scope: null, grab: null, sticky: false, menuT: null, ignore: new Set() };
+  const held = new Set(); // ruoli premuti adesso
+  const pend = new Map(); // ruolo → { timer, fired, long } (tasti che agiscono al rilascio o dopo una pressione lunga)
 
   const visible = (el) => !!(el.offsetParent || el.getClientRects().length) && !el.closest('[hidden]');
   const shown = (id) => { const e = document.getElementById(id); return !!e && !e.hidden; };
@@ -52,7 +93,8 @@ export function createClickNav({ enabled = () => true, playing = () => false, me
     document.querySelectorAll('.cn-focus, .cn-grab').forEach((e) => e.classList.remove('cn-focus', 'cn-grab'));
     const el = nav.items[nav.idx]; if (!el) return;
     el.classList.add('cn-focus'); if (nav.grab === el) el.classList.add('cn-grab');
-    el.scrollIntoView({ block: 'center', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    // "nearest" + scroll-margin (css): mai sotto la barra in basso né sotto la legenda
+    el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   }
   /** Rifà l'elenco; se la schermata è cambiata riparte dall'elemento più utile. */
   function refresh(keep = false) {
@@ -63,15 +105,49 @@ export function createClickNav({ enabled = () => true, playing = () => false, me
     else if (nav.idx >= nav.items.length) nav.idx = 0;
     paint(); showBar();
   }
-  function showBar() {
-    const on = nav.active || enabled();
-    bar.hidden = !on;
-    if (!on) return;
-    const key = nav.grab ? 'clicknav.barGrab' : nav.active ? 'clicknav.bar' : 'clicknav.barRide';
-    if (bar.dataset.k !== key + document.documentElement.lang) { bar.innerHTML = t(key); bar.dataset.k = key + document.documentElement.lang; }
-  }
-  function poke() { clearTimeout(nav.idleT); nav.idleT = null; }
 
+  // ---- legenda ----
+  const kk = (...keys) => (keys.length > 1 && keys.every((k) => k.length === 1) ? `<kbd class="kk">${keys.join(' ')}</kbd>` : keys.map((k) => `<kbd class="kk">${k}</kbd>`).join('')); // varie icone di fila = un solo riquadro
+  const hold = (k) => `${t('legend.hold')} ${kk(k)}`;
+  function legendContext() {
+    if (nav.active) return nav.grab ? 'grab' : 'menu';
+    return inGame() ? 'game' : 'ride';
+  }
+  /** Testo della legenda (HTML con piccole icone dei tasti) per un contesto e per ciò che il controller sa fare. Pura rispetto al DOM. */
+  function legendHtml(ctx, c, focusIsValue) {
+    const arrows = !!c.arrows; const pm = !!c.plusMinus;
+    const sel = c.ok ? kk('A') : pm ? hold('+') : hold('▶');
+    const bk = c.back ? kk('B') : pm ? hold('−') : hold('◀');
+    const menuKey = c.ok && ctx === 'ride' ? kk('A') : c.menu && !pm ? kk('☰') : hold('−');
+    const shiftKeys = pm ? kk('+', '−') : kk('▲', '▼');
+    const parts = [];
+    if (ctx === 'grab') {
+      parts.push(`${kk('+', '−')} ${t('legend.change')}`);
+      parts.push(`${c.ok ? kk('A') : `${hold('+')} ${t('legend.or')} ${kk('−')}`} ${t('legend.done')}`);
+    } else if (ctx === 'menu') {
+      parts.push(`${arrows ? kk('▲', '▼', '◀', '▶') : kk('+', '−')} ${t('legend.move')}`);
+      if (arrows && pm && focusIsValue) parts.push(`${kk('+', '−')} ${t('legend.change')}`);
+      parts.push(`${sel} ${t('legend.choose')}`);
+      parts.push(`${bk} ${t('legend.back')}`);
+    } else if (ctx === 'game') {
+      parts.push(`${pm ? kk('+', '−') : kk('▲', '▼')}${arrows && c.left ? kk('◀', '▶') : ''} ${t('legend.game')}`);
+      parts.push(`${arrows && c.back ? hold('B') : c.menu && !pm ? kk('☰') : hold('−')} ${t('legend.menu')}`);
+    } else {
+      parts.push(`${shiftKeys} ${t('legend.shift')}`);
+      parts.push(`${menuKey} ${t('legend.menu')}`);
+    }
+    return parts.join(' <i>·</i> ');
+  }
+  function showBar() {
+    const on = !blocked() && (nav.active || enabled());
+    bar.hidden = !on; document.body.classList.toggle('click-legend', on);
+    if (!on) return;
+    const el = nav.items[nav.idx];
+    const html = legendHtml(legendContext(), caps(), !!el && isGrabbable(el));
+    if (bar.dataset.k !== html + document.documentElement.lang) { bar.innerHTML = html; bar.dataset.k = html + document.documentElement.lang; }
+  }
+
+  // ---- ciclo di vita ----
   function renderMenu() {
     const items = menuItems();
     menu.querySelector('.cm-title').textContent = t('clicknav.title');
@@ -82,11 +158,13 @@ export function createClickNav({ enabled = () => true, playing = () => false, me
     }));
   }
   function start() {
-    nav.active = true; nav.grab = null; nav.scope = null; nav.waitRelease = !isIdle();
-    poke(); refresh(); onChange?.(true);
+    nav.active = true; nav.grab = null; nav.scope = null;
+    nav.ignore = new Set(held); // tasti già premuti all'accensione (es. il "tieni −" che ha aperto il menu): si ignorano fino al rilascio
+    clearPend(); clearTimeout(nav.menuT);
+    refresh(); onChange?.(true);
   }
   function stop() {
-    nav.active = false; nav.grab = null; nav.scope = null; menu.hidden = true; clearTimeout(nav.timer); poke();
+    nav.active = false; nav.grab = null; nav.scope = null; menu.hidden = true; clearPend(); clearTimeout(nav.menuT);
     document.querySelectorAll('.cn-focus, .cn-grab').forEach((e) => e.classList.remove('cn-focus', 'cn-grab')); showBar(); onChange?.(false);
   }
   function openMenu() {
@@ -95,6 +173,7 @@ export function createClickNav({ enabled = () => true, playing = () => false, me
   }
   /** Decide se la navigazione deve essere accesa: chiamata di continuo e a ogni tasto. */
   function sync() {
+    if (blocked()) { if (nav.active) stop(); bar.hidden = true; document.body.classList.remove('click-legend'); return; }
     const open = overlay();
     if (!enabled() && !open) nav.sticky = false;
     const want = enabled() ? (open || !playing()) : (nav.sticky && open);
@@ -131,46 +210,94 @@ export function createClickNav({ enabled = () => true, playing = () => false, me
     if (overlay()) back?.();
     setTimeout(() => nav.active && refresh(), 150);
   }
-  function move(d) {
+  function move(d) { // lineare: elemento successivo / precedente in ordine di lettura
     collect(); if (!nav.items.length) return;
     nav.idx = Math.min(nav.items.length - 1, Math.max(0, nav.idx)); // non dopo la fine se l'elenco si è accorciato
     nav.idx = (nav.idx + d + nav.items.length) % nav.items.length; paint();
   }
+  function moveDir(dir) { // spaziale, per i controller con le frecce
+    collect(); if (!nav.items.length) return;
+    nav.idx = Math.min(nav.items.length - 1, Math.max(0, nav.idx));
+    const rects = nav.items.map((e) => e.getBoundingClientRect());
+    const i = pickSpatial(rects, rects[nav.idx], dir, true);
+    if (i != null) { nav.idx = i; paint(); }
+  }
+
+  // ---- tasti ----
+  const clearPend = () => { for (const p of pend.values()) clearTimeout(p.timer); pend.clear(); fill.hidden = true; fill.className = 'cn-fill'; };
+  function showFill(kind, ms) {
+    const el = nav.active ? nav.items[nav.idx] : null;
+    if (!el) { bar.classList.remove('holding'); void bar.offsetWidth; bar.style.setProperty('--hold-ms', `${ms}ms`); bar.classList.add('holding'); return; }
+    const r = el.getBoundingClientRect(); const cs = getComputedStyle(el);
+    Object.assign(fill.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, borderRadius: cs.borderRadius, '--hold-ms': `${ms}ms` });
+    fill.className = `cn-fill ${kind}`; fill.hidden = false; void fill.offsetWidth; fill.classList.add('go');
+  }
+  const hideFill = () => { fill.hidden = true; fill.className = 'cn-fill'; bar.classList.remove('holding'); };
+
+  const playLike = (c) => !c.plusMinus && !c.ok; // solo frecce (Play): destra / sinistra tenuti fanno da "scegli" e "indietro"
+  const LONG_ACTION = (role, c) => (role === 'plus' ? 'select' : role === 'minus' ? 'back' : playLike(c) && role === 'right' ? 'select' : playLike(c) && role === 'left' ? 'back' : null);
+  const DIRS = { up: 'up', down: 'down', left: 'left', right: 'right' };
+
+  function shortAction(role, c) {
+    const el = nav.items[nav.idx];
+    const sign = role === 'plus' || role === 'right' || role === 'down' ? 1 : -1;
+    if (nav.grab) { adjust(nav.grab, role === 'up' ? 1 : role === 'down' ? -1 : sign); return; }
+    if (c.arrows && c.plusMinus && el && isGrabbable(el) && (role === 'plus' || role === 'minus')) { adjust(el, sign); return; } // con le frecce + / − cambiano il valore sul posto
+    if (role === 'plus' || role === 'minus') move(sign);
+    else if (c.arrows) moveDir(DIRS[role]);
+    else move(role === 'up' || role === 'left' ? -1 : 1); // tastiera con un controller a due tasti: frecce = avanti / indietro
+  }
+
+  /** Un tasto (per ruolo) è stato premuto (down = true) o rilasciato. Chiamato dagli eventi 'press' / 'release' del driver e dalla tastiera. */
+  function key(role, down) {
+    if (!role || blocked()) return;
+    sync(); // prima di registrare il tasto: se è questo a trovare la navigazione spenta, deve poterla usare subito
+    if (down) held.add(role); else held.delete(role);
+    const c = caps();
+    if (!nav.active) { inactiveKey(role, down, c); return; }
+    if (nav.ignore.has(role)) { if (!down) nav.ignore.delete(role); return; }
+    const longAct = LONG_ACTION(role, c);
+    if (down) {
+      if (pend.has(role)) return; // ripetizione (tastiera)
+      if (role === 'ok') { if (nav.grab) { nav.grab = null; paint(); showBar(); } else activate(); return; }
+      if (role === 'back') { goBack(); return; }
+      if (role === 'menu') return; // il tasto menu arriva come 'combo'
+      const p = { fired: false, timer: null };
+      if (longAct) {
+        p.timer = setTimeout(() => {
+          p.fired = true; hideFill();
+          if (nav.grab) { nav.grab = null; paint(); showBar(); } else if (longAct === 'select') activate(); else goBack();
+        }, LONG);
+        showFill(longAct, LONG);
+        pend.set(role, p);
+      } else if (DIRS[role]) shortAction(role, c); // frecce: subito
+    } else {
+      const p = pend.get(role); if (!p) return;
+      clearTimeout(p.timer); pend.delete(role); hideFill();
+      if (!p.fired) shortAction(role, c);
+    }
+  }
+  function inactiveKey(role, down, c) {
+    if (!enabled()) return;
+    const game = inGame();
+    // pedalando: ok apre il menu; tieni − (o, in un gioco con le frecce, tieni back) lo apre dopo 0,8 s
+    if (down && role === 'ok' && !game && playing()) { clearTimeout(nav.menuT); openMenu(); return; }
+    const opener = game && c.arrows && c.back ? 'back' : 'minus';
+    if (role !== opener) return;
+    clearTimeout(nav.menuT);
+    if (!down) { hideFill(); return; }
+    showFill('back', MENU_LONG);
+    nav.menuT = setTimeout(() => { hideFill(); if (nav.active) return; if (role === 'minus') undo?.(); openMenu(); }, MENU_LONG);
+  }
+  /** Tutti i tasti rilasciati (controller scollegato). */
+  function releaseAll() { held.clear(); nav.ignore.clear(); clearPend(); clearTimeout(nav.menuT); }
 
   return {
     get active() { return nav.active; },
-    sync, overlay, menuOpen, openMenu,
+    sync, overlay, menuOpen, openMenu, key, releaseAll, legendHtml,
     toggle() { if (menuOpen()) this.closeMenu(); else openMenu(); },
     stop,
     closeMenu() { menu.hidden = true; nav.scope = null; sync(); if (nav.active) refresh(); },
-    /** tastiera: Invio = tieni +, Esc = tieni − */
-    select() { if (nav.active && !nav.waitRelease) activate(); },
     back() { if (nav.active) goBack(); else openMenu(); },
-    // eventi "tasto tenuto" dal Click (dir = +1, −1, 0 = rilasciato). Vero = consumato dalla navigazione.
-    hold(d) {
-      sync();
-      if (!nav.active) {
-        // pedalando o giocando: tieni − (0,8 s) apre il menu
-        clearTimeout(nav.menuT);
-        if (d < 0 && enabled()) nav.menuT = setTimeout(() => { if (nav.active) return; undo?.(); openMenu(); }, MENU_LONG);
-        return false;
-      }
-      poke();
-      if (nav.waitRelease) { if (!d && isIdle()) nav.waitRelease = false; return true; }
-      if (d) {
-        nav.dir = d; nav.fired = false; clearTimeout(nav.timer);
-        nav.timer = setTimeout(() => {
-          nav.fired = true;
-          if (nav.grab) { nav.grab = null; paint(); showBar(); } else if (d > 0) activate(); else goBack();
-        }, LONG);
-      } else if (nav.dir) {
-        clearTimeout(nav.timer);
-        if (!nav.fired) {
-          if (nav.grab) { adjust(nav.grab, nav.dir); } else move(nav.dir > 0 ? 1 : -1);
-        }
-        nav.dir = 0;
-      }
-      return true;
-    },
   };
 }

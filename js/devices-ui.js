@@ -5,7 +5,7 @@ import { POWER_OPTIONS, CADENCE_OPTIONS } from './sources.js';
 const ROLE_KEY = { trainer: 'devices.role.trainer', hr: 'devices.role.hr', click: 'devices.role.click', power: 'devices.role.power', cadence: 'devices.role.cadence', '?': 'devices.role.unknown' };
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-export function initDevicesUi({ hub, trainer, hrm, click, src, prefs, setPref, addDevice, openSheet, closeSheet, t }) {
+export function initDevicesUi({ hub, trainer, hrm, click, src, prefs, setPref, addDevice, openSheet, closeSheet, t, openClickCheck }) {
   const $ = (id) => document.getElementById(id);
 
   /** Ruolo mostrato: il sensore CSC è "cadenza", "velocità" o entrambe, secondo ciò che ha mandato. */
@@ -32,7 +32,8 @@ export function initDevicesUi({ hub, trainer, hrm, click, src, prefs, setPref, a
       return `<div class="dev-card"><div class="dev-top"><b class="dev-name">${esc(e.name || t('devices.unnamed'))}</b>${bat}</div>
         <div class="dev-roles">${roles}<span class="dev-state">${esc(t('devices.connected'))}</span></div>${sw}
         <button class="ghost" data-remove="${i}">${esc(t('ui.disconnect'))}</button></div>`;
-    }).join('');
+    }).join('') + (click.connected ? `<button class="ghost" id="clickCheckOpen">${esc(t('clickcheck.open'))}</button>` : '');
+    $('clickCheckOpen')?.addEventListener('click', () => openClickCheck?.());
     box.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', () => hub.remove(hub.entries[+b.dataset.remove])));
     box.querySelectorAll('[data-role]').forEach((s) => s.addEventListener('change', async () => {
       try { await hub.setRole(hub.entries[+s.dataset.role], s.value); } catch (err) { error(err); }

@@ -27,6 +27,7 @@ import * as challenges from './challenges.js';
 import { initPlans } from './plans-ui.js';
 import { loadFactor, runCalibration, DEFAULT_FACTOR } from './calibrate.js';
 import { createClickNav } from './clicknav.js';
+import { createClickCheck } from './clickcheck.js';
 import { ask } from './dialog.js';
 import { parseGpx, at as routeAt, SAMPLES as ROUTES, drawElevation, drawMap } from './route.js';
 import { workouts, WorkoutRunner, drawProfile, duration, tss, fmtTime as fmtClock, parseZwo } from './workouts.js';
@@ -146,13 +147,15 @@ trainer.addEventListener('data', (e) => {
 
 click.addEventListener('connected', () => refreshDeviceBar());
 click.addEventListener('disconnected', () => refreshDeviceBar());
-click.addEventListener('shift', (e) => { clickNav.sync(); if (clickNav.active) return; if (activeGame?.active) activeGame.input(e.detail); else step(e.detail); });
-click.addEventListener('navkey', (e) => { clickNav.sync(); if (!clickNav.active) return; if (e.detail === 'select') clickNav.select(); else clickNav.back(); }); // Click v2: A = scegli, B = indietro
-click.addEventListener('combo', () => { clearTimeout(mediaTimer); clickNav.toggle(); }); // scorciatoia: + e − insieme aprono/chiudono il menu
+// Controller Zwift: il driver emette ROLI (press / release con il ruolo, shift, hold, combo); vedi js/click.js e docs/click-navigazione.md
+click.addEventListener('shift', (e) => { if (clickCheck.isOpen()) return; clickNav.sync(); if (clickNav.active) return; if (activeGame?.active) activeGame.input(e.detail); else step(e.detail); });
+click.addEventListener('press', (e) => clickNav.key(e.detail.role, true));
+click.addEventListener('release', (e) => clickNav.key(e.detail.role, false));
+click.addEventListener('combo', () => { if (clickCheck.isOpen()) return; clearTimeout(mediaTimer); clickNav.toggle(); }); // + e − insieme (o il tasto Zwift) aprono/chiudono il menu
 click.addEventListener('hold', (e) => {
-  // nei menu i tasti muovono la selezione, con le frecce Su/Giù come sullo schermo; pedalando o giocando vale la direzione del cambio
+  if (clickCheck.isOpen()) return;
   clickNav.sync();
-  if (clickNav.hold(clickNav.active ? (click.navHeld ?? e.detail) : e.detail)) return;
+  if (clickNav.active) return;
   if (activeGame?.active) activeGame.hold?.(e.detail);
   // pressione lunga = comandi musica (solo app Android): annulla il cambio fatto dalla pressione breve
   clearTimeout(mediaTimer);
@@ -268,16 +271,16 @@ $('down').addEventListener('click', () => step(-1));
 
 // Tastiera / telecomandi Bluetooth che inviano frecce o pagina su/giù
 const keyDir = (k) => (['ArrowRight', 'ArrowUp', 'PageUp', '+', '=', ' ', 'd', 'D'].includes(k) ? 1 : ['ArrowLeft', 'ArrowDown', 'PageDown', '-', 'a', 'A'].includes(k) ? -1 : 0);
-// nei menu le frecce verticali seguono lo schermo: Su = elemento precedente, Giù = successivo
-const navKeyDir = (k) => (['ArrowUp', 'PageUp'].includes(k) ? -1 : ['ArrowDown', 'PageDown'].includes(k) ? 1 : keyDir(k));
-window.addEventListener('keyup', (e) => { clickNav.sync(); if (clickNav.active && keyDir(e.key)) { clickNav.hold(0); return; } if (activeGame?.active && keyDir(e.key)) activeGame.hold?.(0); });
+// tastiera = stessi ruoli del controller: frecce, Invio = ok, Esc = back, + / − = plus / minus
+const keyRole = (k) => ({ ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', Enter: 'ok', Escape: 'back', '+': 'plus', '=': 'plus', '-': 'minus', PageUp: 'plus', PageDown: 'minus' })[k] || null;
+window.addEventListener('keyup', (e) => { const r = keyRole(e.key); if (clickNav.active && r) { clickNav.key(r, false); return; } if (activeGame?.active && keyDir(e.key)) activeGame.hold?.(0); });
 window.addEventListener('keydown', (e) => {
+  if (clickCheck.isOpen()) { if (e.key === 'Escape') clickCheck.close(); return; }
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') { if (e.key === 'Escape') e.target.blur(); return; }
   clickNav.sync();
-  // stesse regole del Click: frecce = + / −, Invio = tieni +, Esc = tieni − (indietro, o menu Click se si pedala)
-  if (clickNav.active && e.key === 'Enter') { e.preventDefault(); if (!e.repeat) clickNav.select(); return; }
-  if (e.key === 'Escape' && (clickNav.active || (playingNow() && !activeGame?.active))) { e.preventDefault(); clickNav.back(); return; }
-  if (clickNav.active && keyDir(e.key) && e.key !== ' ') { e.preventDefault(); if (!e.repeat) clickNav.hold(navKeyDir(e.key)); return; }
+  const role = keyRole(e.key);
+  if (clickNav.active && role) { e.preventDefault(); if (!e.repeat) clickNav.key(role, true); return; }
+  if (e.key === 'Escape' && playingNow() && !activeGame?.active) { e.preventDefault(); clickNav.back(); return; }
   if (activeGame?.active) {
     const d = keyDir(e.key);
     if (d) { e.preventDefault(); if (!e.repeat) { activeGame.input(d); activeGame.hold?.(d); } }
@@ -978,7 +981,7 @@ window.addEventListener('langchange', renderWatchBrand);
 renderWatchBrand();
 
 // ---------- Pannello Dispositivi ----------
-const devicesUi = initDevicesUi({ hub, trainer, hrm, click, src, prefs, setPref, addDevice, openSheet, closeSheet, t });
+const devicesUi = initDevicesUi({ hub, trainer, hrm, click, src, prefs, setPref, addDevice, openSheet, closeSheet, t, openClickCheck: () => clickCheck.open() });
 $('deviceBar').addEventListener('click', () => devicesUi.open());
 // all'avvio riprova, in silenzio, i dispositivi già usati (browser: navigator.bluetooth.getDevices(); app Android: plugin)
 setTimeout(() => { if ('bluetooth' in navigator) hub.reconnectKnown().catch(() => {}); }, 800);
@@ -1583,11 +1586,13 @@ const clickNav = createClickNav({
   enabled: () => click.connected,
   // "in azione" = uscita in corso, allenamento o gioco aperto: + / − lavorano per la bici o per il gioco
   playing: () => !!(state.ride.running || workout || (activeGame?.active && $('gameMenu').hidden)),
+  inGame: () => !!(activeGame?.active && $('gameMenu').hidden && !document.querySelector('.video-pick:not([hidden])')),
+  caps: () => click.caps,
+  blocked: () => clickCheck.isOpen(), // durante la verifica tasti i tasti non navigano né cambiano marcia
   undo: () => { if (!activeGame?.active) step(+1); }, // la pressione lunga di − è già stata contata come un −
   back: () => window.rfBack(),
   // il primo tasto del menu è quello principale della scheda "Oggi" (nel cruscotto: Pausa/Riprendi)
   prefer: () => (!trainer.connected ? ($('welcomeConnect') && !$('welcome').hidden ? $('welcomeConnect') : $('deviceBar')) : ($('today').classList.contains('plan-due') && !isRiding() ? document.querySelector('#planCard [data-pl-start]') || $('startStop') : $('startStop'))),
-  isIdle: () => !click.pressed?.size,
   onChange: (on) => document.body.classList.toggle('click-nav', on),
   menuItems: () => {
     const rec = { label: state.ride.running ? t('clickmenu.pause') : t('clickmenu.start'), run: () => $('startStop').click() };
@@ -1599,6 +1604,7 @@ const clickNav = createClickNav({
         { label: t('clickmenu.home'), run: () => { closeGame(); closeGame(); } },
         { label: gameAudio.muted ? t('clickmenu.audioOn') : t('clickmenu.audioOff'), run: () => $('muteGame').click() },
         rec, ...music,
+        { label: t('clickmenu.check'), run: () => clickCheck.open() },
       ];
     }
     return [
@@ -1612,14 +1618,19 @@ const clickNav = createClickNav({
       { label: t('clickmenu.history'), run: () => openHistory() },
       { label: t('clickmenu.settings'), run: () => $('openSettings').click() },
       ...(overlayOpen() ? [{ label: t('clickmenu.home'), run: () => closeEverything() }] : []),
+      { label: t('clickmenu.check'), run: () => clickCheck.open() },
       { label: t('clickmenu.close'), run: () => clickNav.stop() },
     ];
   },
 });
+// Verifica tasti ("Controlla il tuo controller"): si apre da sola al primo collegamento, dal pannello Dispositivi e dal menu Click
+const clickCheck = createClickCheck({ click, t, playing: () => playingNow() || !!activeGame?.active });
+click.addEventListener('disconnected', () => clickNav.releaseAll());
 // da tastiera: M apre il menu Click (comodo anche per provarlo dal PC)
 window.addEventListener('keydown', (e) => { if ((e.key === 'm' || e.key === 'M') && e.target.tagName !== 'INPUT') clickNav.toggle(); });
 const overlayOpen = () => clickNav.overlay() && !clickNav.menuOpen();
 function closeEverything() { // torna alla home da qualsiasi schermata
+  clickCheck.close();
   document.querySelectorAll('.calib').forEach((c) => (c._cancel ? c._cancel() : c.remove()));
   for (const sh of document.querySelectorAll('.sheet')) if (!sh.hidden) closeSheet(sh.id);
   if (!$('debugPanel').hidden) $('closeDebug').click();
@@ -1630,6 +1641,7 @@ function closeEverything() { // torna alla home da qualsiasi schermata
 // tasto indietro (Android e browser): chiude ciò che è aperto; per uscire va premuto due volte
 let backArmed = 0;
 window.rfBack = () => {
+  if (clickCheck.isOpen()) { clickCheck.close(); return 'ok'; }
   if (clickNav.menuOpen()) { clickNav.closeMenu(); return 'ok'; }
   const dlg = [...document.querySelectorAll('.calib')].pop();
   if (dlg) { const c = dlg.querySelector('.calib-cancel'); if (dlg._cancel) dlg._cancel(); else if (c) c.click(); else dlg.remove(); return 'ok'; }
