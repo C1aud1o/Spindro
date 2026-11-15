@@ -881,6 +881,7 @@ function renderWelcome() {
   const riding = isRiding();
   const plan = plans.renderHome(riding); // la scheda "Oggi" mostra il piano; true se oggi c'è un allenamento
   $('today').classList.toggle('plan-due', !!plan);
+  document.body.classList.toggle('no-trainer', !riding && !trainer.connected); // senza rullo l'unico tasto lime è "Collega il rullo"
   renderChallenges(hist, riding || trainer.connected);
   if (riding || trainer.connected) { el.hidden = true; return; }
   el.hidden = false;
@@ -889,10 +890,10 @@ function renderWelcome() {
     el.innerHTML = `<h2>${t('welcome.title')}</h2>
       <p>${t('welcome.subtitle')}</p>
       <ol><li>${t('welcome.step1')}</li><li>${t('welcome.step2')}</li><li>${t('welcome.step3')}</li></ol>
-      <button class="ghost" id="welcomeConnect">${t('welcome.connect')}</button>`;
+      <button class="cta" id="welcomeConnect">${t('welcome.connect')}</button>`;
   } else {
     // utente che torna: solo il tasto per collegare il rullo (e l'obiettivo della settimana, se c'è)
-    el.innerHTML = `<button class="ghost" id="welcomeConnect">${t('welcome.connect')}</button>${goalHtml(hist)}`;
+    el.innerHTML = `<button class="cta" id="welcomeConnect">${t('welcome.connect')}</button>${goalHtml(hist)}`;
   }
   $('welcomeConnect')?.addEventListener('click', () => addDevice()); // apre direttamente la scelta Bluetooth
 }

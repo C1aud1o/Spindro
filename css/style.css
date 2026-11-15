@@ -940,3 +940,11 @@ body.click-legend .game-menu { padding-bottom: calc(24px + var(--legend-pad)); }
 body.click-legend .debug-panel { padding-bottom: calc(16px + var(--legend-pad)); }
 body.click-legend .click-menu { padding-bottom: calc(16px + var(--legend-pad)); }
 body.click-legend .cm-box { max-height: calc(100dvh - 32px - var(--legend-pad)); }
+
+/* avviso "premi un tasto" finché il modello del controller non è noto: piccolo e senza bloccare niente */
+.cc-banner { position: fixed; z-index: 90; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top) + 8px); width: max-content; max-width: calc(100% - 32px); padding: 8px 16px; border-radius: 999px; text-align: center; font: 600 13px/1.4 var(--font-ui); color: var(--t1); background: rgba(15, 15, 13, .92); border: 1px solid var(--accent-line); pointer-events: none; }
+.cc-banner[hidden] { display: none; }
+
+/* senza rullo: un solo tasto lime ("Collega il rullo"); "Avvia" della scheda Oggi resta con il solo bordo (e parte in demo) */
+.welcome .cta { min-height: 60px; }
+body.no-trainer .today .cta:not(.running) { border: 1px solid var(--accent-line); background: var(--accent-5); color: var(--t1); box-shadow: none; }
