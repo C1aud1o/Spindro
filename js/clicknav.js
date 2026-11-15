@@ -16,7 +16,7 @@ const TWO_KEY = { plus: true, minus: true, plusMinus: true, up: false, down: fal
 
 /** Elemento più vicino a `cur` nella direzione `dir` ('up' | 'down' | 'left' | 'right'); null se non c'è. Pura: lavora sui rettangoli. */
 export function pickSpatial(rects, cur, dir, wrap = true) {
-  const R = (r) => ({ cx: (r.left + r.right) / 2, cy: (r.top + r.bottom) / 2, w: r.right - r.left, h: r.bottom - r.top, ...r });
+  const R = (r) => ({ left: r.left, right: r.right, top: r.top, bottom: r.bottom, cx: (r.left + r.right) / 2, cy: (r.top + r.bottom) / 2, w: r.right - r.left, h: r.bottom - r.top }); // (DOMRect: le proprietà non si copiano con lo spread)
   const c = R(cur); const horiz = dir === 'left' || dir === 'right';
   const gap = (a0, a1, b0, b1) => Math.max(0, Math.max(a0, b0) - Math.min(a1, b1)); // distanza fra due intervalli (0 = si sovrappongono)
   const info = (r) => {
@@ -251,8 +251,8 @@ export function createClickNav({ enabled = () => true, playing = () => false, in
   /** Un tasto (per ruolo) è stato premuto (down = true) o rilasciato. Chiamato dagli eventi 'press' / 'release' del driver e dalla tastiera. */
   function key(role, down) {
     if (!role || blocked()) return;
+    sync(); // prima di registrare il tasto: se è questo a trovare la navigazione spenta, deve poterla usare subito
     if (down) held.add(role); else held.delete(role);
-    sync();
     const c = caps();
     if (!nav.active) { inactiveKey(role, down, c); return; }
     if (nav.ignore.has(role)) { if (!down) nav.ignore.delete(role); return; }

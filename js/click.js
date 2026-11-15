@@ -171,7 +171,8 @@ export class ZwiftClick extends EventTarget {
   get kind() { return this.kinds[0] || null; }
   /** Cosa può fare ciò che è collegato (secondo i ruoli attuali): per la legenda e per il modello di navigazione. */
   get caps() {
-    const c = {}; for (const r of ROLES) c[r] = this.idsOf(r).length > 0;
+    const kinds = this.kinds.length ? this.kinds : (this.connected ? ['v1'] : []); // un Click che non ha ancora mandato nulla: finché non si sa, due tasti
+    const c = {}; for (const r of ROLES) c[r] = this.idsOf(r, kinds).length > 0;
     c.arrows = c.up || c.down || c.left || c.right;
     c.plusMinus = c.plus && c.minus;
     return c;

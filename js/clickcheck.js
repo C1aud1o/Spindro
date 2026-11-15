@@ -69,7 +69,7 @@ export function createClickCheck({ click, t, playing = () => false }) {
       `Protocol messages seen: ${d.types.join(', ') || 'none'}`,
       `Mapping: ${d.confirmed ? 'confirmed by the user' : 'defaults, not confirmed by the user'}`,
       'Roles (role = raw id):',
-      ...ROLES.filter((r) => d.rows[r]).map((r) => `  ${r} = ${d.rows[r].join(', ')}${d.rows[r].some((id) => id === d.learned[r]) ? ' (learned)' : ''}`),
+      ...ROLES.filter((r) => d.rows[r]).map((r) => `  ${r} = ${d.rows[r].map((id) => (id === d.learned[r] ? `${id} (learned)` : id)).join(', ')}`),
       `Unknown ids seen: ${d.unknown.join(', ') || 'none'}`,
       'Only + (ride:12) and − (ride:8) of the Click v2 bitmask are verified on real hardware; every other name is from an open-source table.',
     ];
