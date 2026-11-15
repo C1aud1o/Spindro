@@ -948,3 +948,17 @@ body.click-legend .cm-box { max-height: calc(100dvh - 32px - var(--legend-pad));
 /* senza rullo: un solo tasto lime ("Collega il rullo"); "Avvia" della scheda Oggi resta con il solo bordo (e parte in demo) */
 .welcome .cta { min-height: 60px; }
 body.no-trainer .today .cta:not(.running) { border: 1px solid var(--accent-line); background: var(--accent-5); color: var(--t1); box-shadow: none; }
+
+/* testi lunghi (tedesco): nessuna scheda allarga la pagina; le etichette della riga dispositivi si accorciano con i puntini */
+main { grid-template-columns: minmax(0, 1fr); }
+main > * { min-width: 0; }
+.dv-l { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (min-width: 1024px) { main { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); } body.riding main { grid-template-columns: none; } }
+body:not(.riding) .metrics { grid-template-columns: repeat(4, minmax(0, auto)); gap: 0 8px; }
+body:not(.riding) .metrics > div { min-width: 0; }
+body:not(.riding) .metrics dt { overflow: hidden; text-overflow: ellipsis; letter-spacing: .02em; }
+@media (max-width: 420px) { body:not(.riding) .readout { gap: 10px; } body:not(.riding) .metrics div + div { padding-left: 8px; } }
+.cc-banner { top: calc(env(safe-area-inset-top) + 64px); }
+.cc-box [data-primary] { border: 0; border-radius: var(--r-btn); background: var(--accent); color: var(--accent-ink); font-weight: 700; box-shadow: var(--shadow-cta); }
+.game-panel:has(#gameMenu:not([hidden])) .game-bar { background: var(--bg); }
+@media (min-width: 1024px) { body:not(.riding) .readout { grid-template-columns: 1fr; gap: 8px; } body:not(.riding) .metrics { grid-template-columns: repeat(4, auto); justify-content: space-between; } }
