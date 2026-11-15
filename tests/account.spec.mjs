@@ -7,6 +7,10 @@ import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import * as core from '../js/account/sync-core.js';
 
+// L'account è facoltativo e spento (FIREBASE_CONFIG = null): la Content-Security-Policy di index.html non ammette i siti di Firebase.
+// Chi lo attiva deve aggiungerli alla policy (vedi docs/compliance-report.md); qui la policy è esclusa per poter provare il codice dell'account.
+test.use({ bypassCSP: true });
+
 const FAKE_BLE = fileURLToPath(new URL('./fake-ble.js', import.meta.url));
 const CONFIG = fileURLToPath(new URL('../js/config.js', import.meta.url));
 // i Google Fonts (fonts.googleapis.com / fonts.gstatic.com) sono nell'app da prima dell'account: qui contano solo gli host di Firebase e dell'SDK

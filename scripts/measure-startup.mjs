@@ -15,7 +15,7 @@ for (let i = 0; i < runs; i++) {
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
   let bytes = 0; let reqs = 0;
   cdp.on('Network.loadingFinished', (e) => { bytes += e.encodedDataLength; reqs++; });
-  await page.addInitScript(() => { localStorage.setItem('analytics', '0'); localStorage.setItem('lang', 'en'); });
+  await page.addInitScript(() => { localStorage.setItem('analytics', '0'); localStorage.setItem('safetyAck', '1'); localStorage.setItem('lang', 'en'); });
   const t0 = Date.now();
   await page.goto(url, { waitUntil: 'commit' });
   await page.waitForFunction(() => document.querySelector('#startStop')?.textContent.trim().length > 0, null, { timeout: 120000 });

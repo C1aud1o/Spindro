@@ -3,6 +3,7 @@
 //   CHANNEL       'prod' (default) | 'beta'
 //   VERSION_CODE  numero di build mostrato nelle impostazioni
 //   WEB_DEPLOY=1  build per GitHub Pages: copia anche sw.js; in beta isola il localStorage, mette noindex e separa la cache
+import { createHash } from 'node:crypto';
 import { cpSync, rmSync, mkdirSync, existsSync, writeFileSync, readFileSync } from 'node:fs';
 const out = 'www';
 const channel = process.env.CHANNEL === 'beta' ? 'beta' : 'prod';
@@ -29,6 +30,10 @@ if (webDeploy) {
     if (!html.includes('<head>')) throw new Error('index.html: <head> non trovato');
     // lo shim dev'essere il primo script della pagina: subito dopo <head>
     html = html.replace('<head>', `<head>\n  ${inject}`);
+    // la Content-Security-Policy dell'app deve ammettere (per hash) lo script in linea della beta
+    const shimHash = `'sha256-${createHash('sha256').update(shim).digest('base64')}'`;
+    if (!html.includes("script-src 'self' ")) throw new Error('index.html: script-src non trovato');
+    html = html.replace("script-src 'self' ", `script-src 'self' ${shimHash} `);
     writeFileSync(`${out}/index.html`, html);
   }
   writeFileSync(`${out}/sw.js`, sw);

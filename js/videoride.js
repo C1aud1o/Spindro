@@ -32,7 +32,8 @@ export class VideoRide {
       <label class="ghost file-btn"><span>${t('video.fromDevice')}</span><input id="vrFile" type="file" accept="video/*" hidden></label>
       <p class="fine">${t('video.refSpeed')}</p>
       <div class="chips" id="vrRef">${REF_KMH.map((r) => `<button data-v="${r.v}" class="${r.v === this.ref ? 'on' : ''}">${r.v} km/h<small>${t(r.key)}</small></button>`).join('')}</div>
-      <p class="fine">${t('video.drm')}</p>`;
+      <p class="fine">${t('video.drm')}</p>
+      <p class="fine">${t('video.ytTerms')}</p>`;
     panel.appendChild(this.ui);
     this.ui.querySelector('#vrGo').addEventListener('click', () => this.openUrl(this.ui.querySelector('#vrUrl').value));
     this.ui.querySelector('#vrPaste').addEventListener('click', async () => {
@@ -49,12 +50,15 @@ export class VideoRide {
     }));
     this.ctx = this.hud.getContext('2d');
     this.resize(); this.onResize = () => this.resize(); window.addEventListener('resize', this.onResize);
+    // niente riproduzione in secondo piano: se la pagina non è visibile il video si ferma
+    this.onVis = () => { if (document.hidden) { try { this.yt?.pauseVideo?.(); } catch { /* lettore non pronto */ } this.video?.pause(); } };
+    document.addEventListener('visibilitychange', this.onVis);
     requestAnimationFrame(this.loop);
   }
 
   stop() {
     this.active = false;
-    window.removeEventListener('resize', this.onResize);
+    window.removeEventListener('resize', this.onResize); document.removeEventListener('visibilitychange', this.onVis);
     try { this.yt?.destroy(); } catch { /* già chiuso */ }
     if (this.video?.src?.startsWith('blob:')) URL.revokeObjectURL(this.video.src);
     this.box?.remove(); this.ui?.remove(); this.yt = null; this.video = null;
@@ -77,6 +81,8 @@ export class VideoRide {
     if (!id) { this.ui.querySelector('#vrUrl').setCustomValidity(t('video.badLink')); this.ui.querySelector('#vrUrl').reportValidity(); return; }
     localStorage.setItem('videoLast', url);
     this.ui.hidden = true; this.kind = 'yt';
+    // Regole del lettore YouTube: nessun elemento davanti al lettore. Il lettore sta fra la barra in alto e la fascia dei dati in basso.
+    this.box.classList.add('yt');
     this.box.innerHTML = '<div id="vrYt"></div>';
     loadYouTubeApi().then((YT) => {
       if (!this.active) return;
@@ -138,9 +144,10 @@ export class VideoRide {
         hudText(ctx, v, x, H - 54, { size: 26, align: 'center', color: i === 0 ? '#d9ff3d' : '#fff' });
         hudText(ctx, u, x, H - 34, { size: 11, align: 'center', color: '#ccc' });
       });
-      hudText(ctx, this.rate ? t('video.speed', { rate: fmtDec(this.rate, 2) }) : t('video.paused'), W - 16, 76, { size: 13, align: 'right', color: this.rate ? '#fff' : '#ffd34d' });
-      if (!this.hooks.connected()) hudText(ctx, t('video.noTrainer'), W / 2, 100, { size: 12, align: 'center', color: '#ffd34d' });
-      if (this.error) hudText(ctx, this.error, W / 2, H / 2, { size: 13, align: 'center', color: '#ff6b6b' });
+      const yt = this.kind === 'yt'; const noteY = yt ? H - 98 : 100;
+      hudText(ctx, this.rate ? t('video.speed', { rate: fmtDec(this.rate, 2) }) : t('video.paused'), W - 16, yt ? 40 : 76, { size: 13, align: 'right', color: this.rate ? '#fff' : '#ffd34d' });
+      if (!this.hooks.connected()) hudText(ctx, t('video.noTrainer'), W / 2, noteY, { size: 12, align: 'center', color: '#ffd34d' });
+      if (this.error) hudText(ctx, this.error, W / 2, yt ? noteY : H / 2, { size: 13, align: 'center', color: '#ff6b6b' });
     }
     requestAnimationFrame(this.loop);
   }

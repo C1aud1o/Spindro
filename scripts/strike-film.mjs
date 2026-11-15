@@ -29,7 +29,7 @@ for (const name of want) {
   const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 1, serviceWorkers: 'block' });
   const page = await ctx.newPage();
   const errors = []; page.on('pageerror', (e) => errors.push(e.message));
-  await page.addInitScript((w) => { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('ftp', '200'); localStorage.setItem('lang', 'it'); localStorage.setItem('gameQuality', 'medium'); localStorage.setItem('strikeWorld', String(w)); localStorage.setItem('strikeMin', '5'); }, sc.world);
+  await page.addInitScript((w) => { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('safetyAck', '1'); localStorage.setItem('ftp', '200'); localStorage.setItem('lang', 'it'); localStorage.setItem('gameQuality', 'medium'); localStorage.setItem('strikeWorld', String(w)); localStorage.setItem('strikeMin', '5'); }, sc.world);
   await page.goto(`${BASE}/index.html`);
   await page.click('#openGame'); await page.evaluate(() => document.body.classList.add('dev'));
   await page.click('[data-game=shooter]');

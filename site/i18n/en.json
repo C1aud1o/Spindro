@@ -136,7 +136,7 @@
         "rows": [
           [
             "Watch",
-            "Garmin in daily use; others should work"
+            "Garmin and others should work, not yet verified"
           ],
           [
             "File",
@@ -239,8 +239,8 @@
       [
         "Garmin watches",
         "Sensor bridge",
-        "ok",
-        "In daily use"
+        "maybe",
+        "Should work"
       ]
     ],
     "compatBtn": "Full compatibility list",
@@ -257,7 +257,7 @@
     "legendTitle": "What the labels mean",
     "status": {
       "verified": "Verified",
-      "expected": "Should work",
+      "expected": "Should work, not yet verified",
       "reported": "Reported by users"
     },
     "statusDesc": {
@@ -294,7 +294,7 @@
   "footer": {
     "legal": "Legal",
     "project": "Project",
-    "trademark": "Zwift, Garmin, Strava, Tacx, Wahoo, Van Rysel, Decathlon and YouTube are trademarks of their respective owners. Spindro is not affiliated with these companies.",
+    "trademark": "Zwift, Garmin, Strava, Tacx, Wahoo, Van Rysel, Decathlon, YouTube, Google Play, Android and Bluetooth are trademarks of their respective owners. Spindro is not affiliated with these companies.",
     "madeBy": "Free and open source. Made by a cyclist with a cheap trainer.",
     "source": "Source code",
     "issues": "Report an issue"

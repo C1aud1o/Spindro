@@ -107,7 +107,7 @@ function md(src, lang) {
     } else if (l.startsWith('|')) {
       const rows = []; while (i < lines.length && lines[i].startsWith('|')) rows.push(lines[i++]);
       const head = cells(rows[0]); const body = rows.slice(2).map(cells);
-      html.push(`<div class="tablewrap"><table><thead><tr>${head.map((c) => `<th>${inline(c, lang)}</th>`).join('')}</tr></thead><tbody>${body.map((r) => `<tr>${r.map((c) => `<td>${inline(c, lang)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`);
+      html.push(`<div class="tablewrap" tabindex="0"><table><thead><tr>${head.map((c) => `<th>${inline(c, lang)}</th>`).join('')}</tr></thead><tbody>${body.map((r) => `<tr>${r.map((c) => `<td>${inline(c, lang)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`);
     } else if (/^[-*]\s+/.test(l) || /^\d+\.\s+/.test(l)) {
       const ordered = /^\d+\./.test(l); const re = ordered ? /^\d+\.\s+/ : /^[-*]\s+/; const items = [];
       while (i < lines.length && re.test(lines[i])) {
@@ -147,12 +147,29 @@ function ctxFor(lang, extra) {
   };
 }
 
+// Content-Security-Policy: solo ciò che il sito usa davvero (stile e font propri, GoatCounter se configurato, nessuna richiesta ad altri).
+// Lo script in linea del modello è ammesso per hash, calcolato su ogni pagina.
+function withCsp(html) {
+  const hashes = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => `'sha256-${createHash('sha256').update(m[1]).digest('base64')}'`);
+  const gc = cfg.goatcounter ? new URL(cfg.goatcounter).origin : '';
+  const policy = [
+    "default-src 'none'",
+    `script-src 'self' ${hashes.join(' ')}${gc ? ' https://gc.zgo.at' : ''}`.trim(),
+    "style-src 'self' 'unsafe-inline'", // gli attributi style="" del modello
+    `img-src 'self' data:${gc ? ` ${gc}` : ''}`,
+    "font-src 'self'",
+    gc ? `connect-src ${gc}` : "connect-src 'none'",
+    "base-uri 'self'", "form-action 'none'", "object-src 'none'",
+  ].join('; ');
+  return html.replace('<!--CSP-->', `<meta http-equiv="Content-Security-Policy" content="${policy}">`);
+}
+
 function writePage({ lang, slug: pslug = '', tplName, extra, title, description, jsonld = '', index = true, langsAvailable = cfg.langs, file }) {
   const t = T[lang];
   const path = pageUrl(lang, pslug);
   const alternates = langsAvailable.map((l) => `<link rel="alternate" hreflang="${l}" href="${abs(pageUrl(l, pslug))}">`);
   if (langsAvailable.includes(cfg.defaultLang)) alternates.push(`<link rel="alternate" hreflang="x-default" href="${abs(pageUrl(cfg.defaultLang, pslug))}">`);
-  const langLinks = langsAvailable.filter((l) => l !== lang).map((l) => `<a class="lang" href="${pageUrl(l, pslug)}" hreflang="${l}" lang="${l}" aria-label="${esc(T[l].langName)}" title="${esc(T[l].langName)}">${l.toUpperCase()}</a>`).join('');
+  const langLinks = langsAvailable.filter((l) => l !== lang).map((l) => `<a class="lang" href="${pageUrl(l, pslug)}" hreflang="${l}" lang="${l}" aria-label="${l.toUpperCase()} – ${esc(T[l].langName)}" title="${esc(T[l].langName)}">${l.toUpperCase()}</a>`).join('');
   const body = render(tpl[tplName], { ...ctxFor(lang, extra) });
   const ctx = {
     ...ctxFor(lang, extra), title, description, content: body,
@@ -160,11 +177,11 @@ function writePage({ lang, slug: pslug = '', tplName, extra, title, description,
     canonical: abs(path), alternates: alternates.join('\n'), langLinks,
     ogLocaleAlt: langsAvailable.filter((l) => l !== lang).map((l) => `<meta property="og:locale:alternate" content="${T[l].ogLocale}">`).join('\n'),
     compatCurrent: pslug === 'compatibility' ? ' aria-current="page"' : '',
-    jsonld,
+    jsonld, csp: '<!--CSP-->',
   };
   const outFile = file || join(out, path, 'index.html');
   mkdirSync(dirname(outFile), { recursive: true });
-  writeFileSync(outFile, render(tpl.base, ctx));
+  writeFileSync(outFile, withCsp(render(tpl.base, ctx)));
   if (!file) written.push({ path, alternates: langsAvailable.map((l) => [l, pageUrl(l, pslug)]), index });
 }
 
@@ -224,7 +241,7 @@ for (const lang of cfg.langs) {
 
   // compatibilità
   const c = t.compat;
-  const table = (rows) => `<div class="tablewrap"><table class="ctable"><thead><tr><th scope="col">${esc(c.cols.device)}</th><th scope="col">${esc(c.cols.protocol)}</th><th scope="col">${esc(c.cols.status)}</th><th scope="col">${esc(c.cols.note)}</th></tr></thead><tbody>${rows.map((r) => {
+  const table = (rows) => `<div class="tablewrap" tabindex="0"><table class="ctable"><thead><tr><th scope="col">${esc(c.cols.device)}</th><th scope="col">${esc(c.cols.protocol)}</th><th scope="col">${esc(c.cols.status)}</th><th scope="col">${esc(c.cols.note)}</th></tr></thead><tbody>${rows.map((r) => {
     const reports = r.reports ? ` (${r.reports})` : '';
     return `<tr><td data-l="${esc(c.cols.device)}"><strong>${esc(r.name)}</strong>${r.brand ? `<span class="brand">${esc(r.brand)}</span>` : ''}</td><td data-l="${esc(c.cols.protocol)}">${esc(r.protocol)}</td><td data-l="${esc(c.cols.status)}"><span class="badge ${r.status}">${esc(c.status[r.status])}${reports}</span></td><td data-l="${esc(c.cols.note)}">${esc(r.note[lang] || r.note.en)}</td></tr>`;
   }).join('')}</tbody></table></div>`;

@@ -35,9 +35,9 @@ Spindro runs in your browser (Android, PC, Mac) or as an Android app. It connect
 | Van Rysel D100 (FTMS) | Tested on the real trainer |
 | Other FTMS trainers (most trainers since 2020) | Should work; please report |
 | Tacx FE-C over BLE, Wahoo legacy (old Kickr/Snap/Core firmware) | Implemented, tested only against simulated devices |
-| Zwift Click | Tested on the real device |
+| Zwift Click | Only the + / − keys of one Click v2 were tested on the real device; other keys and firmware not verified |
 | Zwift Play, Zwift Ride | Implemented, tested only against simulated devices |
-| Garmin watches (sensor bridge) | Built and used with a Garmin watch; please report your model |
+| Garmin watches (sensor bridge) | Implemented as a standard Bluetooth sensor, not yet verified on a real watch; please report your model |
 | Wahoo Elemnt, Coros, Suunto, Polar, Apple Watch | Should work; please report |
 
 Use **Settings → Report your trainer** in the app, or open a [trainer compatibility issue](../../issues/new/choose). Reports are how this table grows.
@@ -70,12 +70,24 @@ Trainer support, translations and games are the best places to start: see [CONTR
 [GPL-3.0](LICENSE). Zwift, Garmin, Strava, Tacx, Wahoo, Van Rysel and the other names are trademarks of their owners; Spindro is not affiliated with them.
 
 ## Credits
-- Modelli 3D: [Kenney](https://kenney.nl) — Racing Kit, Nature Kit, Blocky Characters, Graveyard Kit,
-  Blaster Kit, Platformer Kit (gioielli e monete) (CC0), in `assets/3d`.
-- Personaggi 3D in `assets/3d/meshy/` (ciclista, tifoso, zombie, orco, più bici, arco del traguardo, podio, auto del team, tenda ristoro, baita, chiesa, cascina, cipresso, balla di fieno, trattore, staccionata, pecora, mucca, mulino, zombie corridore, zombie bestione, scheletro, lapidi, cancellata, cripta, albero secco, lampione, portale e blaster per L'Orda; robot soldato, robot bestione, mech, drone, carro ruspa, dirigibile, gabbia, gru del porto e grattacielo al neon per Pedal Strike): generati con [Meshy](https://www.meshy.ai) per Spindro (CC BY 4.0 per i modelli del piano gratuito; i modelli nuovi sono fatti con l'abbonamento e non richiedono attribuzione).
-- Modelli 3D: [Quaternius](https://quaternius.com) — Ultimate Modular Men (ciclista e pubblico), Simple Nature Pack,
-  Farm Buildings, Simple Buildings (CC0), in `assets/3d/quaternius` (convertiti e ottimizzati).
-- Decoder meshopt: [meshoptimizer](https://github.com/zeux/meshoptimizer) (MIT), in `vendor/three/addons/libs`.
-- Particelle: Kenney — Particle Pack (CC0), in `assets/fx` (scie dei colpi, lampi, fumo, scintille).
-- Jingle: Kenney — Music Jingles (CC0), in `assets/audio/jingles`.
-- Motore 3D: [three.js](https://threejs.org) (MIT), in `vendor/three`.
+
+Everything third-party that ships with Spindro, with author, licence and use. Full licence texts: [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md); the readable list is in [docs/legal/licenses.en.md](docs/legal/licenses.en.md) and in the app (Settings → Open-source licences).
+
+**Code**
+- [three.js](https://threejs.org) r170, three.js authors, MIT: 3D engine of the games, in `vendor/three` (with its add-ons: `GLTFLoader`, post-processing, `BufferGeometryUtils`).
+- [meshoptimizer](https://github.com/zeux/meshoptimizer) decoder 0.18, Arseny Kapoulkine, MIT: decompresses the 3D models, in `vendor/three/addons/libs`.
+- [Capacitor](https://capacitorjs.com) 7.6.10, Drifty Co., MIT, plus `@capacitor/local-notifications` (Ionic, MIT) and `@capacitor-community/bluetooth-le` (MIT): the Android shell, in `vendor/capacitor` and `android/`.
+- AndroidX `appcompat`, `coordinatorlayout`, `core-splashscreen`, The Android Open Source Project, Apache 2.0 (Android app).
+- Trainer and controller protocols were learned from public documents and open-source projects (Tacx "FE-C over BLE", ANT+ FE-C, GoldenCheetah, SwiftySensors, incyclist, ajchellew/zwiftplay, SwiftControl, qdomyos-zwift). No code is copied and **no Zwift code, key or asset is included**; see `js/click.js`, `js/trainers/` and [docs/zwift-controller.md](docs/zwift-controller.md).
+
+**Fonts** (SIL Open Font License 1.1, all served by the app itself, in `assets/fonts`)
+- [Barlow and Barlow Condensed](https://github.com/jpt/barlow), The Barlow Project Authors: text and numbers.
+- Lilita One, Juan Montoreano: game titles. [Nunito](https://github.com/googlefonts/nunito), The Nunito Project Authors: game texts.
+
+**3D models, particles and sound** (CC0 1.0, no credit required, given anyway)
+- [Kenney](https://kenney.nl): Racing Kit, Nature Kit, Blocky Characters, Graveyard Kit, Blaster Kit, Platformer Kit (3D, `assets/3d`), Particle Pack (`assets/fx`), Music Jingles (`assets/audio/jingles`).
+- [Quaternius](https://quaternius.com): Ultimate Modular Men, Simple Nature Pack, Farm Buildings, Simple Buildings (`assets/3d/quaternius`, converted and optimised).
+
+**Generated with [Meshy](https://www.meshy.ai) for Spindro**: the models in `assets/3d/meshy/` (cyclist, fan, zombies, ogre, bikes, finish arch, podium, team car, buildings, scenery, farm animals, the Pedal Strike robots, mech, drone and so on) and the home icons in `assets/icons/`. The models generated on Meshy's free plan are licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) and credited here to **Meshy** (https://www.meshy.ai); those made on a paid plan need no attribution. The repository does not record which model came from which plan, so all are credited.
+
+**Everything else** (code, icons, the games' design and their generated sounds) is original and GPL-3.0.
