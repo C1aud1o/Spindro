@@ -126,7 +126,9 @@ export class GameMenu {
     y += 40 * u + 8 * u;
     for (const line of (wk ? [t('games.menu.wkHold')] : T(this.howto)).slice(0, 3)) { y += 21 * u; txt(ctx, line, cx, y, { size: 14 * u, align: al, color: HUD.white, font: 'text', maxW: inner, minK: 0.7 }); }
     const b = this.best && !wk ? this.best(this.durIdx, this.level) : null;
+    if (wk) y += 8 * u; else {
     y += 28 * u; txt(ctx, `${stars(b?.stars || 0)}${b?.text ? `  ·  ${t('games.menu.best', { v: b.text })}` : `  ·  ${t('games.menu.noBest')}`}`, cx, y, { size: 17 * u, align: al, color: HUD.gold, font: 'text', maxW: inner, minK: 0.7 });
+    }
     this.contentBottom = y; // il personaggio sta sotto: tra contentBottom e startTop
     // tasto VIA con barra di pressione lunga; sotto, il suggerimento dei tasti
     const bw = Math.min(inner, 300 * u); const bh = 46 * u; const bx = cx - bw / 2; const by = L.land ? Math.max(y + 24 * u, H - 120 * u) : H - 96 * u;
