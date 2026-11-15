@@ -415,13 +415,13 @@ export class Horde {
 
   // ---------- il piano: cambio di tratto, giudizio degli sforzi, adattamento ----------
   enterSeg(i) {
-    const prev = this.seg; const seg = this.plan.segs[i];
-    if (this.segIdx >= 0) this.judge(prev);
+    const prev = this.seg; const seg = this.plan.segs[i]; const first = this.segIdx < 0;
+    if (!first) this.judge(prev);
     this.segIdx = i; this.seg = seg; seg.inT = 0; seg.okT = 0;
     const W = targetW(seg, this.ftp, this.level.k, this.adapt.value, this.el);
     const wc = (composId) => t(`games.horde.c.${composId}`);
     if (this.wk && seg.wave >= 1 && seg.wave <= this.plan.N && seg.wave !== prev?.wave && seg.kind !== 'pace') { this.ev('wave'); this.hudWave = seg.wave; }
-    if (seg.kind === 'warm' && prev?.kind === 'warm') { /* riscaldamento lungo spezzato in ondate: un solo annuncio */ }
+    if (seg.kind === 'warm' && !first && prev?.kind === 'warm') { /* riscaldamento lungo spezzato in ondate: un solo annuncio */ }
     else if (seg.kind === 'warm') { this.say(t('games.horde.say.warm'), SEG_COLOR.warm, 3, true, 2, t('games.horde.say.warmSub')); }
     else if (seg.kind === 'pace') {
       const comp = composAt(seg.wave);

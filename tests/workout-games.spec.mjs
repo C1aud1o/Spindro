@@ -48,12 +48,13 @@ function botRun({ id, startAt, steps, ftp }) {
       if (got !== want) bad.push({ t: Math.round(clock), want, got });
     }
   }
-  return { state: g.state, secs: n / 30, first, bad: bad.slice(0, 8), nBad: bad.length, seen: [...seen], grade, stars: g.result?.stars, band: g.result?.band ?? null, wkFlag: !!g.wk };
+  return { state: g.state, secs: n / 30, first, bad: bad.slice(0, 8), nBad: bad.length, seen: [...seen], grade, stars: g.result?.stars, band: g.result?.band ?? null, wkFlag: !!g.wk, rings: g.rings, ringsTotal: g.ringsTotal, hits: g.hits };
 }
 
 // req: watt chiesti dal gioco adesso · bot: l'unico input del bot (+1 / −1) o 0
 const GAMES = [
   { id: 'horde', req: (g) => g.tgtW, bot: () => 0 },
+  { id: 'planata', req: (g) => g.tgtW, bot: () => 0 },
   { id: 'gruppetto', req: (g) => g.tgtW, bot: (g) => { const b = g.bridge; return b && b.state === 'attack' && b.lane !== g.lane ? (b.lane > g.lane ? 1 : -1) : 0; } },
 ];
 
@@ -75,6 +76,7 @@ for (const G of GAMES) {
     expect(r.secs, 'finisce con l’allenamento (360 s)').toBeGreaterThanOrEqual(359); expect(r.secs).toBeLessThanOrEqual(361);
     expect(r.grade, 'setGrade mai chiamato').toBe(0);
     expect(r.stars).toBeGreaterThanOrEqual(1);
+    if (G.id === 'planata') { expect(r.rings / r.ringsTotal, 'chi segue l’allenamento passa gli anelli').toBeGreaterThanOrEqual(0.85); expect(r.hits).toBeLessThanOrEqual(3); }
   });
 
   test(`${G.id}: aperto a metà (elapsed 150 s) parte nello sforzo giusto e finisce a 360 s`, async ({ page }) => {
