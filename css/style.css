@@ -975,3 +975,4 @@ body:not(.riding) .metrics dt { overflow: hidden; text-overflow: ellipsis; lette
 @media (min-width: 1024px) { body:not(.riding) .readout { grid-template-columns: 1fr; gap: 8px; } body:not(.riding) .metrics { grid-template-columns: repeat(4, auto); justify-content: space-between; } }
 #consentSheet .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 #consentSheet .consent-btn { min-height: 56px; width: 100%; }
+.game-list { display: contents; }

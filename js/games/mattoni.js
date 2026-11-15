@@ -181,7 +181,7 @@ export class Mattoni {
     } catch (err) { console.error(err); this.state = 'error'; this.error = err.message; }
   }
 
-  stop() { this.active = false; for (const d of this.detach || []) d(); this.detach = []; this.audio.stopSong(); this.hooks.setGrade?.(null); this.stage?.dispose(); }
+  stop() { this.active = false; for (const d of this.detach || []) d(); this.detach = []; this.audio.stopSong(); this.hooks.setGrade(null); this.stage?.dispose(); }
 
   // ---------- scena ----------
   build() {
@@ -676,7 +676,7 @@ export class Mattoni {
     this.audio.stopSong(); this.audio.sfx('win');
     if (!this.result) this.finishResult();
     this.hooks.runEnd?.({ game: 'mattoni', score: this.score });
-    if (!this.wk) this.hooks.setGrade?.(0);
+    if (!this.wk) this.hooks.setGrade(0);
   }
 
   // ---------- aggiornamento ----------
@@ -722,7 +722,7 @@ export class Mattoni {
     if (hot && !this.hot) { this.audio.sfx('overdrive'); this.prog('overdrives', 1, 15); this.ev('hot'); }
     this.hot = hot; this.sprinting = hot;
     const g = this.boss && !this.boss.dead ? 4 : seg.kind === 'rest' || seg.kind === 'cool' ? 0 : seg.kind === 'warm' ? 1 : seg.kind === 'pace' ? 2 : 3;
-    if (!this.wk && g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade?.(g); }
+    if (!this.wk && g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade(g); }
 
     if (this.held) { this.heldT += dt; if (this.heldT > 0.12) this.tx = clamp(this.tx - this.held * MOVE * dt, -this.reach(), this.reach()); }
     this.x = lerp(this.x, this.tx, 1 - Math.exp(-dt * 12));
