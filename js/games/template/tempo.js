@@ -7,7 +7,7 @@
 import { t } from '../../i18n.js';
 import { GameMenu, ResultsView } from '../kit/menu.js';
 import { txt, panel, HUD, hudView, uiScale, loadHudFonts } from '../kit/hud.js';
-import { WorkoutClock, BandMeter, wkTarget, workoutStars } from '../kit/workout-plan.js';
+import { WorkoutClock, wkTarget, workoutStars, BAND, SETTLE_S } from '../kit/workout-plan.js';
 import { makeRandom } from '../kit/rng.js';
 
 const ID = 'tempo';                    // = registry id: strings are games.tempo.*, storage keys start with "tempo"
@@ -21,7 +21,7 @@ export class Tempo {
   /** @param {HTMLCanvasElement} canvas  @param {import('../kit/types.js').GameHooks} hooks  @param {import('../kit/types.js').GameAudio} audio */
   constructor(canvas, hooks, audio) {
     this.canvas = canvas; this.hooks = hooks; this.audio = audio; this.active = false; this.state = 'loading';
-    this.clock = new WorkoutClock(hooks); this.band = new BandMeter();
+    this.clock = new WorkoutClock(hooks); this.evLog = [];
     // The shared menu and results screen are the same in every game: you only describe them.
     this.menu = new GameMenu({
       id: ID, title: () => t('games.tempo.name'), pitch: () => t('games.tempo.tagline'),
@@ -65,7 +65,7 @@ export class Tempo {
   begin(level) {
     this.rnd = makeRandom();            // seeded by window.__spindroSeed in tests: same run every time
     this.order = PCTS.map((p) => p * (0.98 + this.rnd() * 0.04));  // a touch of variety per run, never harder than +2 %
-    this.k = LEVEL_K[level] ?? 1; this.band = new BandMeter(); this.el = 0; this.fill = 0.3; this.still = 0; this.wait = false;
+    this.k = LEVEL_K[level] ?? 1; this.inT = 0; this.totT = 0; this.evLog = []; this.nextTick = 4; this.lastBlock = -1; this.el = 0; this.fill = 0.3; this.still = 0; this.wait = false;
     this.plan = this.clock.begin(this.ftp);                          // workout mode: the plan decides the targets and the length
     this.total = this.plan ? this.plan.total : SESSION; this.state = 'play'; this.hooks.runStart?.(); this.audio?.sfx('go');
   }
@@ -75,8 +75,8 @@ export class Tempo {
     return { w: r5(this.ftp * this.order[i] * this.k), since: this.el - i * BLOCK, label: null };
   }
   finish() {
-    const ratio = this.band.ratio; const stars = workoutStars(ratio, true);   // same star rule as every game: 60 % / 85 % of the time within ±7 %
-    const score = Math.round(this.band.inT * 10); const key = `${this.menu.durIdx}:${this.menu.level}`;
+    const ratio = this.totT > 0 ? this.inT / this.totT : 0; const stars = workoutStars(ratio, true);   // same star rule as every game: 60 % / 85 % of the time within ±7 %
+    const score = Math.round(this.inT * 10); const key = `${this.menu.durIdx}:${this.menu.level}`;
     const prev = this.plan ? null : this.hooks.progress?.bestOf(ID, key); const newBest = !this.plan && score > (prev?.score || 0);
     if (!this.plan && (newBest || stars > (prev?.stars || 0))) this.hooks.progress?.saveBest(ID, key, { score: Math.max(score, prev?.score || 0), stars: Math.max(stars, prev?.stars || 0) });
     this.result = { stars, ratio, score, best: Math.max(score, prev?.score || 0), newBest, wk: !!this.plan };
@@ -93,10 +93,22 @@ export class Tempo {
     this.still = power < STOPPED_W ? this.still + dt : 0; this.wait = this.still > STOPPED_S;   // stopped pedalling: pause the clock
     if (this.wait) return;
     this.el = this.plan ? this.clock.tick(dt) : this.el + dt;
-    const tg = this.target(); this.band.add(dt, power, tg.w, tg.since);
-    const inBand = Math.abs(power - tg.w) <= 0.07 * tg.w;
+    const tg = this.target();
+    // The green: from 7 % under the target up. Pushing harder is never punished (docs/games/DESIGN-RULES.md §3); a workout is stricter: ±7 %.
+    const inBand = power >= (1 - BAND) * tg.w && (!this.plan || power <= (1 + BAND) * tg.w);
+    if (tg.since >= SETTLE_S) { this.totT += dt; if (inBand) this.inT += dt; }        // the first seconds of a block are not judged
+    // Something must happen at least every 5 s: a new block, or a reward / a nudge every 4 s. ev() feeds eventStats() (below).
+    const block = this.plan ? this.plan.segs.findIndex((x) => this.el >= x.t0 && this.el < x.t1) : Math.floor(this.el / BLOCK);
+    if (block !== this.lastBlock) { this.lastBlock = block; this.nextTick = this.el + 4; this.ev('block'); this.audio?.sfx('pass'); }
+    else if (this.el >= this.nextTick) { this.nextTick += 4; this.ev('tick'); this.audio?.sfx(inBand ? 'coin' : 'shiftDown'); }
     this.fill = Math.max(0, Math.min(1, this.fill + (inBand ? dt / 8 : -dt / 14)));     // the bar rises in the green, sinks slowly outside
     if (this.el >= this.total || this.clock.ended) this.finish();
+  }
+  // The bot harness (npm run game:check) reads these: when things happened, so it can check "first event within 8 s, never 5 s of nothing".
+  ev(kind) { if (this.evLog.length < 20000) this.evLog.push({ t: this.el, k: kind }); }
+  eventStats() {
+    const ts = this.evLog.map((e) => e.t); let maxGap = 0; let prev = 0; for (const x of ts) { maxGap = Math.max(maxGap, x - prev); prev = x; }
+    return { first: ts[0] ?? Infinity, maxGap: Math.max(maxGap, this.total - prev), perMin: ts.length / (this.total / 60), n: ts.length };
   }
   loop(now) {
     if (!this.active) return;

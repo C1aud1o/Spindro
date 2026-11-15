@@ -59,7 +59,7 @@ for (const mult of [0.6, 0.8, 1.0, 1.2]) {
   test(`Horde Run: bot a ${mult} × FTP, 5 minuti, livello Normale`, async ({ page }) => {
     const r = await runBot(page, mult);
     console.log(`BOT ${mult}× → stelle ${r.res.stars}, sforzi ${r.res.done}/${r.res.total}, Custodi ${r.res.bossKilled}/${r.res.bossTotal}, cadute ${r.res.ko}, primo evento ${r.es.first.toFixed(1)} s, max senza eventi ${r.es.maxGap.toFixed(1)} s, eventi/min ${Math.round(r.es.perMin)}, nemici entro 40 m ${r.near.toFixed(1)}`);
-    expect(r.state, 'la partita finisce da sola').toBe('over');
+    expect(r.state, 'la partita finisce da sola').toBe('results');
     expect(r.secs, 'durata: 5 minuti').toBeGreaterThanOrEqual(299);
     expect(r.secs).toBeLessThanOrEqual(301);
     expect(r.res.stars, 'stelle').toBeGreaterThanOrEqual(EXPECT[mult][0]);

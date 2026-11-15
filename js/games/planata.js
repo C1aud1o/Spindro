@@ -222,7 +222,7 @@ export class Planata {
 
   async start() {
     this.active = true;
-    this.detach = [this.menu.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'menu'), this.results.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'over')];
+    this.detach = [this.menu.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'menu'), this.results.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'results')];
     this.quality = new Quality();
     this.stage = new Stage(this.hudCanvas, { quality: this.quality });
     this.stage.onQuality = (cfg) => this.applyQuality(cfg);
@@ -441,7 +441,7 @@ export class Planata {
 
   finish() {
     this.finishResult(true); // numeri definitivi: anelli e punti arrivati dopo l'inizio del defaticamento
-    this.state = 'over'; this.stateT = 0; this.finished = true; this.rollV = SPEED * 0.55;
+    this.state = 'results'; this.stateT = 0; this.finished = true; this.rollV = SPEED * 0.55;
     this.audio.stopSong(); this.audio.sfx('win');
     this.hooks.runEnd?.({ game: 'planata', score: Math.round(this.score) });
     if (!this.wk) this.hooks.setGrade(0);
@@ -464,7 +464,7 @@ export class Planata {
   input(dir) {
     this.audio.ensure();
     if (this.state === 'menu') { this.menu.input(dir); return; } // − durata, + livello, + lungo avvia
-    if (this.state === 'over') { this.results.input(dir); return; }
+    if (this.state === 'results') { this.results.input(dir); return; }
     if (this.state !== 'play' || this.paused || this.landing > 0) return;
     // + = destra, − = sinistra: una corsia per volta; il pilota automatico riprende dopo qualche secondo
     const now = this.manualT > 0 ? this.lane : clamp(Math.round(-this.x / LANE_W), -1, 1);
@@ -631,7 +631,7 @@ export class Planata {
     this.fx.update(dt);
     this.stateT += dt;
     if (this.state === 'menu') { this.menuTick(dt, connected); this.cruise(dt); this.view(dt); return; }
-    if (this.state === 'over') { this.results.update(dt); this.rollOut(dt); this.view(dt); return; }
+    if (this.state === 'results') { this.results.update(dt); this.rollOut(dt); this.view(dt); return; }
     // pausa: chi smette di pedalare non perde, il tempo si ferma. Con un allenamento il tempo è il suo e non si ferma: il rullo è in ERG
     if (connected && !this.wk) {
       if (this.power < 12) { this.pauseT += dt; if (this.pauseT > 2.5 && !this.paused) { this.paused = true; this.audio.sfx('beep'); } } else if (this.power > 25) { this.pauseT = 0; this.paused = false; }
@@ -799,7 +799,7 @@ export class Planata {
     if (!this.camInit) { cam.position.copy(target); this.camInit = true; }
     cam.position.lerp(target, Math.min(1, dt * 3.5));
     const mf = this.state === 'menu' ? this.menuFrame(cam, tall, back, up) : null;
-    const lift = mf ? mf.lift : (this.state === 'over' || this.seg?.kind === 'cool') ? (tall ? 3.2 : 1.2) : 0; this.lift = lerp(this.lift ?? 0, lift, Math.min(1, dt * 3));
+    const lift = mf ? mf.lift : (this.state === 'results' || this.seg?.kind === 'cool') ? (tall ? 3.2 : 1.2) : 0; this.lift = lerp(this.lift ?? 0, lift, Math.min(1, dt * 3));
     this.lookX = lerp(this.lookX ?? 0, mf ? mf.sx : 0, Math.min(1, dt * 3));
     cam.lookAt(this.x * 0.9 + this.lookX, this.y - 0.2 + this.lift, this.z + 22);
     this.shake.apply(cam);
@@ -841,7 +841,7 @@ export class Planata {
     if (this.state === 'loading') { ctx.fillStyle = '#0f0e0c'; ctx.fillRect(0, 0, W, H); hudText(ctx, t('games.common.loading'), W / 2, H / 2, { size: 22, align: 'center', color: '#d9ff3d' }); hudText(ctx, `${Math.round((this.loadPct || 0) * 100)}%`, W / 2, H / 2 + 28, { size: 14, align: 'center' }); return; }
     if (this.state === 'error') { hudText(ctx, t('ui.error', { error: this.error }), W / 2, H / 2, { size: 14, align: 'center', color: '#ff6b6b' }); return; }
     if (this.state === 'menu') { this.menu.draw(ctx, W, H, { connected: this.hooks.connected() }); this.hooks.progress?.drawToasts(ctx, W, dt); return; }
-    if (this.state === 'over') { if (this.result) this.drawResult(ctx, W, H, true); this.hooks.progress?.drawToasts(ctx, W, dt, W > H * 1.15 ? Math.round(H * 0.78) : 330, true); return; }
+    if (this.state === 'results') { if (this.result) this.drawResult(ctx, W, H, true); this.hooks.progress?.drawToasts(ctx, W, dt, W > H * 1.15 ? Math.round(H * 0.78) : 330, true); return; }
     const seg = this.seg; const pad = 12; const y0 = 84; const ftp = this.ftp;
     const col = SEG_COLOR[seg.kind]; const tw = this.tgtW || targetW(seg, ftp, this.level.k, this.adapt.value, this.el);
     // riga in alto
@@ -877,7 +877,7 @@ export class Planata {
     if (!this.hooks.connected()) hudText(ctx, t('games.common.demo'), W / 2, gy + gh + 17, { size: 13, align: 'center', color: '#ffd34d' });
 
     // altimetro: 50 % in basso, 130 % in alto; il segno dorato è dove sta il prossimo anello
-    if (seg.kind !== 'cool' && this.state !== 'over') this.drawAltimeter(ctx, W, H, ftp, pad);
+    if (seg.kind !== 'cool' && this.state !== 'results') this.drawAltimeter(ctx, W, H, ftp, pad);
     // in basso: potenza (numero grande + barra con il bersaglio)
     const bh = 22; const barY = H - 16 - bh; const bx = pad + 2; const bw2 = W - 2 * pad - 4;
     const gr = ctx.createLinearGradient(0, H - 118, 0, H); gr.addColorStop(0, 'rgba(6,8,22,0)'); gr.addColorStop(0.35, 'rgba(6,8,22,.55)'); gr.addColorStop(1, 'rgba(6,8,22,.82)');
@@ -901,7 +901,7 @@ export class Planata {
       hudText(ctx, p.text, clamp((v3.x + 1) / 2 * W, 70, W - 90), clamp((1 - v3.y) / 2 * H, H * 0.44, H - 160), { size: 22, align: 'center', color: p.color, maxW: 150 });
       ctx.globalAlpha = 1;
     }
-    this.pops = this.pops.filter((p) => p.t > 0 && this.state !== 'over');
+    this.pops = this.pops.filter((p) => p.t > 0 && this.state !== 'results');
     if (this.hurtT > 0.9) { ctx.fillStyle = `rgba(255,0,40,${(this.hurtT - 0.9) * 0.55})`; ctx.fillRect(0, 0, W, H); }
     if (this.paused) {
       ctx.fillStyle = 'rgba(8,10,26,.72)'; ctx.fillRect(0, 0, W, H);

@@ -72,7 +72,7 @@ export class Gruppetto {
     this.stage = new Stage(this.hudCanvas, { quality: this.quality });
     this.stage.onQuality = (cfg) => this.applyQuality(cfg);
     this.state = 'loading'; this.t = 0;
-    this.detach = [this.menu.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'menu'), this.results.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'over')]; this.msgs = new MessageQueue(); this.power = 0; this.pw = 0; this.cadence = 0; this.pops = [];
+    this.detach = [this.menu.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'menu'), this.results.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'results')]; this.msgs = new MessageQueue(); this.power = 0; this.pw = 0; this.cadence = 0; this.pops = [];
     this.last = performance.now();
     requestAnimationFrame(this.loop);
     this.audio.playSong(SONGS.menu);
@@ -226,7 +226,7 @@ export class Gruppetto {
   input(dir) {
     this.audio.ensure();
     if (this.state === 'menu') { this.menu.input(dir); return; }
-    if (this.state === 'over') { this.results.input(dir); return; }
+    if (this.state === 'results') { this.results.input(dir); return; }
     if (this.state !== 'play' || this.paused) return;
     // una sola cosa: cambia corsia (+ destra, − sinistra)
     const l = clamp(this.lane + (dir > 0 ? 1 : -1), -1, 1);
@@ -379,7 +379,7 @@ export class Gruppetto {
     this.fx.update(dt); this.shake.update(dt);
     this.stateT += dt;
     if (this.state === 'menu') { this.menuTick(dt, connected); this.view(dt); return; }
-    if (this.state === 'over') { this.results.update(dt); this.view(dt, true); return; }
+    if (this.state === 'results') { this.results.update(dt); this.view(dt, true); return; }
 
     // con un allenamento il tempo è quello dell'allenamento (anche se in pausa); finito lui, finisce la partita
     if (this.wk) { this.el = this.wc.tick(dt); if (this.wc.ended) return this.finish(); }
@@ -555,7 +555,7 @@ export class Gruppetto {
 
   finish() {
     if (!this.result) this.finishResult();
-    this.state = 'over'; this.stateT = 0; this.finished = true; this.results.reset();
+    this.state = 'results'; this.stateT = 0; this.finished = true; this.results.reset();
     this.audio.stopSong(); this.audio.sfx('win');
     this.hooks.runEnd?.({ game: 'gruppetto', score: this.score });
     if (!this.wk) this.hooks.setGrade(0);
@@ -574,7 +574,7 @@ export class Gruppetto {
     if (!this.camInit) { cam.position.set(tx, ty, tz); this.camInit = true; this.camX = cx; }
     this.camX += (cx - this.camX) * Math.min(1, dt * 4); cam.position.set(this.camX, ty, tz);
     // solo nei risultati in verticale: il pannello copre il basso, il ciclista sale nella fascia libera sotto le stelle
-    const up = this.state === 'over' && this.stage.W < this.stage.H * 1.15 ? 3.2 : 0;
+    const up = this.state === 'results' && this.stage.W < this.stage.H * 1.15 ? 3.2 : 0;
     cam.lookAt(this.camX * 0.9, 0.9 - up, this.z + CAM_LOOK);
     this.shake.apply(cam);
     const fov = 46 + sprint * 5 + (this.seg?.kind === 'effort' ? 1.5 : 0); cam.fov += (fov - cam.fov) * Math.min(1, dt * 3); cam.updateProjectionMatrix();
@@ -603,7 +603,7 @@ export class Gruppetto {
     if (this.state === 'loading') { ctx.fillStyle = '#0f0e0c'; ctx.fillRect(0, 0, W, H); hudText(ctx, t('games.common.loading'), W / 2, H / 2, { size: 22, align: 'center', color: '#d9ff3d' }); hudText(ctx, `${Math.round((this.loadPct || 0) * 100)}%`, W / 2, H / 2 + 28, { size: 14, align: 'center' }); return; }
     if (this.state === 'error') { hudText(ctx, t('ui.error', { error: this.error }), W / 2, H / 2, { size: 14, align: 'center', color: '#ff6b6b' }); return; }
     if (this.state === 'menu') { this.menu.draw(ctx, W, H, { connected: this.hooks.connected() }); this.hooks.progress?.drawToasts(ctx, W, dt); return; }
-    if (this.state === 'over') { this.drawResult(ctx, W, H); this.hooks.progress?.drawToasts(ctx, W, dt); return; }
+    if (this.state === 'results') { this.drawResult(ctx, W, H); this.hooks.progress?.drawToasts(ctx, W, dt); return; }
     const seg = this.seg; const pad = 12; const y0 = 84;
     // riga in alto: punti · ponte · presi x/y
     ctx.fillStyle = 'rgba(8,10,26,.62)'; rrect(ctx, pad - 4, y0 - 22, W - 2 * pad + 8, 36, 10); ctx.fill();
@@ -675,7 +675,7 @@ export class Gruppetto {
       hudText(ctx, p.text, clamp((v3.x + 1) / 2 * W + p.slot * 56, 44, W - 44), (1 - v3.y) / 2 * H, { size: 24, align: 'center', color: p.color });
       ctx.globalAlpha = 1;
     }
-    this.pops = this.pops.filter((p) => p.t > 0 && this.state !== 'over');
+    this.pops = this.pops.filter((p) => p.t > 0 && this.state !== 'results');
     if (this.paused) {
       ctx.fillStyle = 'rgba(8,10,26,.72)'; ctx.fillRect(0, 0, W, H);
       hudText(ctx, t('games.gruppetto.paused'), W / 2, H * 0.42, { size: 42, align: 'center', color: '#ffd34d' });

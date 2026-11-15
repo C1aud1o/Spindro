@@ -64,7 +64,7 @@ for (const mult of [0.6, 0.8, 1.0, 1.2]) {
   test(`Feed Zone: bot a ${mult} × FTP, 5 minuti, livello Normale`, async ({ page }) => {
     const r = await runBot(page, mult);
     console.log(`BOT ${mult}× → stelle ${r.res.stars}, sforzi ${r.res.done}/${r.res.total}, auto ${r.res.bossKilled}/${r.res.bossTotal}, forature ${r.res.ko}, musette ${r.delivered}, zone chiuse ${r.waves}, primo evento ${r.es.first.toFixed(1)} s, max senza eventi ${r.es.maxGap.toFixed(1)} s, eventi/min ${Math.round(r.es.perMin)}, punti ${r.res.score}`);
-    expect(r.state, 'la partita finisce da sola').toBe('over');
+    expect(r.state, 'la partita finisce da sola').toBe('results');
     expect(r.secs, 'durata: 5 minuti').toBeGreaterThanOrEqual(299);
     expect(r.secs).toBeLessThanOrEqual(301);
     expect(r.res.stars, 'stelle').toBeGreaterThanOrEqual(EXPECT[mult][0]);
@@ -80,7 +80,7 @@ test('Feed Zone: un giocatore distratto perde la borraccia ogni tanto, ma la par
   await openGame(page);
   const r = await page.evaluate(botRun, { mult: 1.0, durIdx: 0, lvl: 1, ftp: 200, seed: 3, jit: 4 });
   console.log(`BOT distratto (errore ±3,2 m) → stelle ${r.res.stars}, borracce perse ${r.lost}, forature ${r.flats}, musette ${r.delivered}, max senza eventi ${r.es.maxGap.toFixed(1)} s`);
-  expect(r.state).toBe('over'); expect(r.secs).toBeGreaterThanOrEqual(299);
+  expect(r.state).toBe('results'); expect(r.secs).toBeGreaterThanOrEqual(299);
   expect(r.lost, 'perde la borraccia qualche volta').toBeGreaterThanOrEqual(3);
   expect(r.res.stars).toBeGreaterThanOrEqual(1);
   expect(r.es.maxGap, 'anche così succede sempre qualcosa').toBeLessThanOrEqual(5);

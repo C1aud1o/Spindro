@@ -163,7 +163,7 @@ export class Mattoni {
     this.stage.onQuality = (cfg) => this.applyQuality(cfg);
     this.state = 'loading'; this.t = 0; this.msgs = new MessageQueue(); this.power = 0; this.pw = 0; this.cadence = 0; this.pops = [];
     this.last = performance.now();
-    this.detach = [this.menu.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'menu'), this.results.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'over')];
+    this.detach = [this.menu.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'menu'), this.results.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'results')];
     requestAnimationFrame(this.loop);
     this.audio.playSong(SONGS.menu);
     try {
@@ -355,7 +355,7 @@ export class Mattoni {
   input(dir) {
     this.audio.ensure();
     if (this.state === 'menu') { this.menu.input(dir); return; }
-    if (this.state === 'over') { this.results.input(dir); return; }
+    if (this.state === 'results') { this.results.input(dir); return; }
     if (this.state !== 'play' || this.paused) return;
     this.tx = clamp(this.tx - dir * NUDGE, -this.reach(), this.reach()); // destra sullo schermo = −X
   }
@@ -672,7 +672,7 @@ export class Mattoni {
   end() { if (this.state !== 'play') return; if (!this.result) this.finishResult(); this.finish(); }
 
   finish() {
-    this.state = 'over'; this.stateT = 0; this.finished = true; this.results.reset();
+    this.state = 'results'; this.stateT = 0; this.finished = true; this.results.reset();
     this.audio.stopSong(); this.audio.sfx('win');
     if (!this.result) this.finishResult();
     this.hooks.runEnd?.({ game: 'mattoni', score: this.score });
@@ -695,7 +695,7 @@ export class Mattoni {
     this.fx.update(dt); this.confetti.update(dt);
     this.stateT += dt;
     if (this.state === 'menu') { this.menu.update(dt, { connected, power: st.power || 0 }); this.setTime(['morning', 'golden', 'dusk'][this.lvlIdx] || 'golden'); this.view(dt); return; }
-    if (this.state === 'over') { this.results.update(dt); this.view(dt); return; }
+    if (this.state === 'results') { this.results.update(dt); this.view(dt); return; }
 
     // con un allenamento il tempo è quello dell'allenamento (anche se in pausa); finito lui, finisce la partita
     if (this.wk) { this.el = this.wc.tick(dt); if (this.wc.ended) return this.finish(); }
@@ -858,7 +858,7 @@ export class Mattoni {
     if (this.state === 'loading') { ctx.fillStyle = '#0f0e0c'; ctx.fillRect(0, 0, W, H); hudText(ctx, t('games.common.loading'), W / 2, H / 2, { size: 22, align: 'center', color: '#d9ff3d' }); hudText(ctx, `${Math.round((this.loadPct || 0) * 100)}%`, W / 2, H / 2 + 28, { size: 14, align: 'center' }); return; }
     if (this.state === 'error') { hudText(ctx, t('ui.error', { error: this.error }), W / 2, H / 2, { size: 14, align: 'center', color: '#ff6b6b' }); return; }
     if (this.state === 'menu') { this.drawMenu(ctx, W, H, dt); return; }
-    if (this.state === 'over') { this.drawResult(ctx, W, H); this.kitToasts(ctx, W, H, dt, 238, true); return; }
+    if (this.state === 'results') { this.drawResult(ctx, W, H); this.kitToasts(ctx, W, H, dt, 238, true); return; }
     const seg = this.seg; const pad = 12; const y0 = 84;
     // riga in alto: punteggio · zona n/N · vite
     ctx.fillStyle = 'rgba(8,10,26,.62)'; rrect(ctx, pad - 4, y0 - 22, W - 2 * pad + 8, 36, 10); ctx.fill();

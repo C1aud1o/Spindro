@@ -58,7 +58,7 @@ for (const mult of [0.6, 0.8, 1.0, 1.2]) {
   test(`Slipstream: bot a ${mult} × FTP, 5 minuti, livello Normale`, async ({ page }) => {
     const r = await runBot(page, mult);
     console.log(`BOT ${mult}× → stelle ${r.res.stars}, ponti ${r.res.done}/${r.res.total}, corridori ${r.res.caught}/${r.res.riders}, persi ${r.res.dropped}, volata finale ${r.res.finalWon ? 'sì' : 'no'}, punti ${r.res.score}, primo evento ${r.es.first.toFixed(1)} s, max senza eventi ${r.es.maxGap.toFixed(1)} s, eventi/min ${Math.round(r.es.perMin)}, tipi ${JSON.stringify(r.kinds)}`);
-    expect(r.state, 'la partita finisce da sola').toBe('over');
+    expect(r.state, 'la partita finisce da sola').toBe('results');
     expect(r.secs, 'durata: 5 minuti').toBeGreaterThanOrEqual(299);
     expect(r.secs).toBeLessThanOrEqual(301);
     expect(r.res.stars, 'stelle').toBeGreaterThanOrEqual(EXPECT[mult][0]);
