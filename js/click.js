@@ -40,27 +40,45 @@ export const RIDE_BITS = {
 };
 const PLAY_FIELDS = { 2: 'Y/Up', 3: 'Z/Left', 4: 'A/Right', 5: 'B/Down', 6: 'Zwift button', 7: 'Shift lever' };
 
-// Assegnazione predefinita dei pulsanti alle cambiate (modificabile dalla pagina di debug)
-// Click v2 (verificato su un Click del D100 Zwift Ready): + = bit 12, − = bit 8.
-const DEFAULT_MAP = {
-  'v1:1': +1, 'v1:2': -1,
-  'ride:12': +1, 'ride:8': -1,
-  'ride:1': +1, 'ride:3': -1, 'ride:9': +1, 'ride:10': -1, 'ride:13': +1, 'ride:14': -1,
-  // Play (sx e dx mandano gli stessi campi): Y/Su e A/Destra = +, Z/Sinistra e B/Giù = −
-  'play:2': +1, 'play:5': -1, 'play:4': +1, 'play:3': -1,
-  // Ride (id "zr", stessa maschera di bit del Click v2): cambio sui tasti shift, croce e A/B/Y/Z per navigare
-  'zr:9': +1, 'zr:10': -1, 'zr:13': +1, 'zr:14': -1,
-  'zr:1': +1, 'zr:3': -1, 'zr:2': +1, 'zr:0': -1, 'zr:4': +1, 'zr:5': -1, 'zr:6': +1, 'zr:7': -1,
+// ---- Ruoli ----
+// Ogni id grezzo ("ride:12") ha un RUOLO. Tutta l'app ragiona per ruoli, mai per id grezzi:
+//   plus / minus: cambio (o + / − nei menu) · up / down / left / right: frecce · ok / back: A e B · menu: apre il menu Click
+// Click v2 (verificato su un Click del D100 Zwift Ready): SOLO + = bit 12 e − = bit 8. Tutto il resto è DA VERIFICARE
+// (nomi dei bit dalla tabella di SwiftControl): la "Verifica tasti" (js/clickcheck.js) serve a impararli.
+export const ROLES = ['plus', 'minus', 'up', 'down', 'left', 'right', 'ok', 'back', 'menu'];
+export const DEFAULT_ROLES = {
+  'v1:1': 'plus', 'v1:2': 'minus',
+  // Click v2: croce 0..3, A/B 4..5, − = 8, + = 12; le leve di cambio (9, 10, 13, 14) esistono solo sul Ride ma restano come prima
+  'ride:12': 'plus', 'ride:8': 'minus',
+  'ride:1': 'up', 'ride:3': 'down', 'ride:0': 'left', 'ride:2': 'right', 'ride:4': 'ok', 'ride:5': 'back',
+  'ride:9': 'plus', 'ride:10': 'minus', 'ride:13': 'plus', 'ride:14': 'minus',
+  // Play (sx e dx mandano gli stessi campi): Y/Su, Z/Sinistra, A/Destra, B/Giù; tasto Zwift = menu
+  'play:2': 'up', 'play:3': 'left', 'play:4': 'right', 'play:5': 'down', 'play:6': 'menu',
+  // Ride ("zr"): leve di cambio come +/−, croce come frecce; A/B/Y/Z cambiano marcia come sempre (finché non li impari)
+  'zr:9': 'plus', 'zr:10': 'minus', 'zr:13': 'plus', 'zr:14': 'minus',
+  'zr:1': 'up', 'zr:3': 'down', 'zr:2': 'right', 'zr:0': 'left', 'zr:4': 'plus', 'zr:5': 'minus', 'zr:6': 'plus', 'zr:7': 'minus',
+  'zr:12': 'menu', 'zr:17': 'menu',
 };
-// Nei menu le frecce verticali seguono lo schermo: Su = elemento precedente, Giù = successivo (il contrario del cambio,
-// dove Su = marcia più dura). Vale anche per Y (in alto) e B (in basso) dei Play.
-const NAV_FLIP = new Set(['ride:1', 'ride:3', 'zr:1', 'zr:3', 'play:2', 'play:5']);
-// Click v2, solo nei menu: frecce Sinistra/Destra = precedente/successivo, A = scegli, B = indietro.
-// Nomi dei bit dalla tabella di SwiftControl: DA VERIFICARE su un Click v2 vero.
-const NAV_ONLY = { 'ride:0': -1, 'ride:2': +1 };
-const NAV_KEYS = { 'ride:4': 'select', 'ride:5': 'back' };
-// Tasti "Zwift"/menu: aprono il menu Click (evento 'combo'), come premere + e − insieme.
-const DEFAULT_MENU = new Set(['play:6', 'zr:12', 'zr:17']);
+// Cambio di marcia / direzione nel gioco di ogni ruolo (Su = marcia più dura, Destra = +)
+export const SHIFT = { plus: 1, minus: -1, up: 1, down: -1, right: 1, left: -1 };
+// Tasti "di cambio" (leve): mai tolti agli altri quando si impara un ruolo
+const PADDLES = new Set(['ride:9', 'ride:10', 'ride:13', 'ride:14', 'zr:9', 'zr:10', 'zr:13', 'zr:14']);
+// Mappa vecchia (clickMap della pagina di debug, id → ±1) come era prima dei ruoli: serve a migrarne solo le modifiche
+const LEGACY_DEFAULT = {
+  'v1:1': +1, 'v1:2': -1, 'ride:12': +1, 'ride:8': -1, 'ride:1': +1, 'ride:3': -1, 'ride:9': +1, 'ride:10': -1, 'ride:13': +1, 'ride:14': -1,
+  'play:2': +1, 'play:5': -1, 'play:4': +1, 'play:3': -1,
+  'zr:9': +1, 'zr:10': -1, 'zr:13': +1, 'zr:14': -1, 'zr:1': +1, 'zr:3': -1, 'zr:2': +1, 'zr:0': -1, 'zr:4': +1, 'zr:5': -1, 'zr:6': +1, 'zr:7': -1,
+};
+const protoOf = (id) => id.split(':')[0];
+// Famiglia di dispositivo di un id: v1, v2 (id "ride:"), play, ride (id "zr:")
+export const KIND_OF_PROTO = { v1: 'v1', ride: 'v2', play: 'play', zr: 'ride' };
+export const KIND_NAMES = { v1: 'Zwift Click v1', v2: 'Zwift Click v2', play: 'Zwift Play', ride: 'Zwift Ride' };
+
+// id con un nome nelle tabelle (anche se senza ruolo): non sono "sconosciuti"
+const KNOWN_NAMES = {};
+for (const n of Object.keys(RIDE_BITS)) { KNOWN_NAMES[`ride:${n}`] = 1; KNOWN_NAMES[`zr:${n}`] = 1; }
+for (const n of Object.keys(PLAY_FIELDS)) KNOWN_NAMES[`play:${n}`] = 1;
+KNOWN_NAMES['v1:1'] = KNOWN_NAMES['v1:2'] = 1;
 
 export function buttonLabel(id) {
   const [proto, n] = id.split(':');
@@ -77,7 +95,94 @@ export class ZwiftClick extends EventTarget {
     this.pressed = new Set(); // unione dei tasti premuti su tutti i dispositivi
     this.dbg = new SensorDebug('click', 'Zwift Click');
     this.dbg.extra = { pressed: [], lastPressed: null, battery: null, protocol: null };
-    try { this.map = { ...DEFAULT_MAP, ...JSON.parse(localStorage.getItem('clickMap') || '{}') }; } catch { this.map = { ...DEFAULT_MAP }; }
+    this.unknownIds = new Set(); // id grezzi mai visti nella tabella dei ruoli (per la verifica tasti e il rapporto)
+    this.loadRoles();
+  }
+
+  // ---- Ruoli: id grezzo → ruolo (predefiniti + imparati dall'utente, salvati per famiglia di dispositivo) ----
+  loadRoles() {
+    this.store = {}; // { v2: { roles: { 'ride:12': 'minus', 'ride:3': null }, confirmed: true } }
+    try { this.store = JSON.parse(localStorage.getItem('clickRoles') || '{}') || {}; } catch { this.store = {}; }
+    // migrazione della vecchia mappa di debug: solo le voci che differivano dai predefiniti di allora
+    try {
+      const old = JSON.parse(localStorage.getItem('clickMap') || 'null');
+      if (old && !this.store._migrated) {
+        for (const [id, dir] of Object.entries(old)) if (LEGACY_DEFAULT[id] !== dir) this.setRole(id, dir > 0 ? 'plus' : dir < 0 ? 'minus' : null, false);
+        this.store._migrated = 1; this.saveRoles();
+      }
+    } catch { /* niente storage */ }
+    this.rebuild();
+  }
+  saveRoles() { try { localStorage.setItem('clickRoles', JSON.stringify(this.store)); } catch { /* niente storage */ } }
+  rebuild() {
+    this.roles = { ...DEFAULT_ROLES };
+    for (const k of Object.keys(this.store)) {
+      if (k.startsWith('_')) continue;
+      for (const [id, r] of Object.entries(this.store[k].roles || {})) { if (r) this.roles[id] = r; else delete this.roles[id]; }
+    }
+  }
+  /** Ruolo di un id grezzo (null = nessuno / sconosciuto). */
+  roleOf(id) { return this.roles[id] || null; }
+  /** Id che hanno un ruolo (predefinito o imparato), per le famiglie indicate (default: quelle collegate). */
+  idsOf(role, kinds = this.kinds) {
+    const protos = new Set(Object.entries(KIND_OF_PROTO).filter(([, k]) => kinds.includes(k)).map(([p]) => p));
+    return Object.entries(this.roles).filter(([id, r]) => r === role && protos.has(protoOf(id))).map(([id]) => id);
+  }
+  /** Assegna (o toglie, role = null) un ruolo a un id. Impara = toglie lo stesso ruolo agli altri tasti principali della famiglia. */
+  setRole(id, role, save = true, learned = false) {
+    const proto = protoOf(id); const fam = (this.store[proto] ||= { roles: {} });
+    if (role) {
+      for (const [other, r] of Object.entries(this.roles || DEFAULT_ROLES)) {
+        if (r === role && other !== id && protoOf(other) === proto && !PADDLES.has(other) && role !== 'menu') fam.roles[other] = null;
+      }
+      fam.roles[id] = role;
+    } else fam.roles[id] = null;
+    if (learned) fam.learned = { ...(fam.learned || {}), [role]: id };
+    if (save) { this.saveRoles(); this.rebuild(); }
+    else this.roles = { ...(this.roles || DEFAULT_ROLES), ...(role ? { [id]: role } : {}) };
+  }
+  /** Dalla verifica tasti: il tasto con questo id fa questo ruolo. */
+  learn(id, role) {
+    this.setRole(id, role, true, true);
+    this.dbg.log(`Learned ${buttonLabel(id)} (${id}) as "${role}"`);
+    this.emit('rolechange');
+  }
+  /** L'utente ha concluso la verifica tasti per questa famiglia: la mappatura è "confermata". */
+  confirm(kind) {
+    const proto = Object.keys(KIND_OF_PROTO).find((p) => KIND_OF_PROTO[p] === kind); if (!proto) return;
+    (this.store[proto] ||= { roles: {} }).confirmed = true; this.saveRoles(); this.emit('rolechange');
+  }
+  isConfirmed(kind) { const proto = Object.keys(KIND_OF_PROTO).find((p) => KIND_OF_PROTO[p] === kind); return !!this.store[proto]?.confirmed; }
+  /** Per la pagina di debug: "usa come + / − / nessuna azione" sopra i ruoli. */
+  assign(id, dir) {
+    this.setRole(id, dir > 0 ? 'plus' : dir < 0 ? 'minus' : null);
+    this.dbg.log(`${buttonLabel(id)} assigned to ${dir > 0 ? '+' : dir < 0 ? '−' : 'no action'}`);
+  }
+  resetMap(kind = null) {
+    if (!kind) this.store = {};
+    else { const proto = Object.keys(KIND_OF_PROTO).find((p) => KIND_OF_PROTO[p] === kind); delete this.store[proto]; }
+    try { localStorage.removeItem('clickMap'); } catch { /* niente storage */ }
+    this.store._migrated = 1; this.saveRoles(); this.rebuild();
+    this.dbg.log('Button assignments reset');
+    this.emit('rolechange');
+  }
+  /** Famiglie collegate di cui si conosce il tipo ('v1' | 'v2' | 'play' | 'ride'); un Click ancora muto non c'è. */
+  get kinds() { return [...new Set(this.links.filter((l) => l.device?.gatt?.connected && l.kind).map((l) => l.kind))]; }
+  get kind() { return this.kinds[0] || null; }
+  /** Cosa può fare ciò che è collegato (secondo i ruoli attuali): per la legenda e per il modello di navigazione. */
+  get caps() {
+    const c = {}; for (const r of ROLES) c[r] = this.idsOf(r).length > 0;
+    c.arrows = c.up || c.down || c.left || c.right;
+    c.plusMinus = c.plus && c.minus;
+    return c;
+  }
+  /** Id grezzi per cui esiste un ruolo di default o imparato, per famiglia: ciò che la verifica può mostrare. */
+  /** Dati per il rapporto "Copia rapporto". */
+  reportData() {
+    const kinds = this.kinds; const rows = {};
+    for (const r of ROLES) { const ids = this.idsOf(r, kinds); if (ids.length) rows[r] = ids; }
+    const learned = {}; for (const k of kinds) { const p = Object.keys(KIND_OF_PROTO).find((x) => KIND_OF_PROTO[x] === k); if (this.store[p]?.learned) Object.assign(learned, this.store[p].learned); }
+    return { kinds, rows, learned, unknown: [...this.unknownIds], types: [...new Set(this.links.flatMap((l) => [...(l.types || [])]))], confirmed: kinds.length > 0 && kinds.every((k) => this.isConfirmed(k)) };
   }
 
   get device() { return this.links[0]?.device || null; }
@@ -99,7 +204,7 @@ export class ZwiftClick extends EventTarget {
       optionalServices: [...SERVICES, 'battery_service', 'device_information'],
     });
     if (this.links.some((l) => l.device.id === device.id && l.device.gatt?.connected)) throw new Error('Device already connected');
-    const link = { device, rx: null, model: detectModel(device.name), pressed: new Set(), seenHigh: KNOWN_RIDE_BITS, unknown: 0 };
+    const link = { device, rx: null, model: detectModel(device.name), kind: null, types: new Set(), pressed: new Set(), seenHigh: KNOWN_RIDE_BITS, unknown: 0 };
     this.dbg.setStatus(`Connecting ${device.name || ''}…`);
     this.dbg.log(`Model recognized from name "${device.name || ''}": ${MODELS[link.model]}`);
     device.addEventListener('gattserverdisconnected', () => {
@@ -138,6 +243,7 @@ export class ZwiftClick extends EventTarget {
     }
     this.dbg.setStatus(`Connected ${MODELS[link.model]}, handshake sent`);
     this.dbg.extra.devices = this.links.map((l) => `${MODELS[l.model]} (${l.device.name || '?'})`);
+    this.emit('connected', { model: link.model });
     return this.label || device.name || 'Zwift Click';
   }
 
@@ -167,17 +273,20 @@ export class ZwiftClick extends EventTarget {
       return;
     }
     const type = bytes[0];
+    link.types.add(`0x${type.toString(16).padStart(2, '0')}`);
     const fields = parseFields(bytes.subarray(1));
     let pressed = null;
     const label = MODELS[link.model];
 
     if (type === MSG.CLICK) {
       this.dbg.extra.protocol = 'Click v1 (0x37)';
+      this.setKind(link, 'v1');
       pressed = new Set();
       for (const [f, v] of Object.entries(fields)) if (v === 0) pressed.add(`v1:${f}`);
     } else if (type === MSG.RIDE) {
       this.dbg.extra.protocol = `${label} (0x23)`;
       const proto = link.model === 'ride' ? 'zr' : 'ride'; // Click v2 mantiene gli id di sempre
+      this.setKind(link, KIND_OF_PROTO[proto]);
       const mask = fields[1];
       if (typeof mask === 'number') {
         link.seenHigh |= mask;
@@ -190,6 +299,7 @@ export class ZwiftClick extends EventTarget {
     } else if (type === MSG.PLAY) {
       if (link.model !== 'play') { this.dbg.log(`Play message (0x07) from "${link.device.name}": model corrected to Zwift Play`); link.model = 'play'; }
       this.dbg.extra.protocol = 'Play (0x07)';
+      this.setKind(link, 'play');
       pressed = new Set();
       // campo 1 = lato del controller (non è un tasto); 8-9 = leve analogiche, ignorate
       for (const [f, v] of Object.entries(fields)) if (Number(f) >= 2 && Number(f) <= 7 && v === 0) pressed.add(`play:${f}`);
@@ -208,24 +318,31 @@ export class ZwiftClick extends EventTarget {
     if (Object.keys(fields).length) this.dbg.extra.fields = fields;
 
     if (pressed) {
-      for (const id of pressed) {
-        if (!link.pressed.has(id)) {
-          this.dbg.extra.lastPressed = id;
-          const dir = this.map[id];
-          if (DEFAULT_MENU.has(id) && !dir) {
-            this.dbg.log(`Pressed ${buttonLabel(id)} → Click menu`);
-            this.emit('combo');
-          } else {
-            this.dbg.log(`Pressed ${buttonLabel(id)}${dir ? ` → shifted ${dir > 0 ? '+' : '−'}` : ' (unassigned)'}`);
-            if (dir) this.emit('shift', dir);
-            else if (NAV_KEYS[id]) this.emit('navkey', NAV_KEYS[id]);
-          }
-        }
-      }
+      const prev = link.pressed;
+      const released = [...prev].filter((id) => !pressed.has(id));
       link.pressed = pressed;
+      for (const id of released) this.emit('release', { id, role: this.roleOf(id), kind: link.kind });
+      for (const id of pressed) {
+        if (prev.has(id)) continue; // già premuto: non è una pressione nuova
+        this.dbg.extra.lastPressed = id;
+        const role = this.roleOf(id);
+        if (!role && !this.unknownIds.has(id) && !(id in KNOWN_NAMES)) { this.unknownIds.add(id); this.emit('unknown', { id }); }
+        this.dbg.log(`Pressed ${buttonLabel(id)} [${id}] → ${role || 'no role'}`);
+        this.emit('press', { id, role, kind: link.kind });
+        const dir = SHIFT[role];
+        if (role === 'menu') this.emit('combo');
+        else if (dir) this.emit('shift', dir);
+      }
       this.recompute();
     }
     this.dbg.changed();
+  }
+
+  setKind(link, kind) {
+    if (link.kind === kind) return;
+    link.kind = kind;
+    this.dbg.log(`Controller type seen: ${KIND_NAMES[kind]}`);
+    this.emit('kind', { kind });
   }
 
   // Unisce i tasti di tutti i dispositivi e aggiorna 'hold' (direzione tenuta) e 'combo' (+ e − insieme)
@@ -234,32 +351,18 @@ export class ZwiftClick extends EventTarget {
     for (const l of this.links) for (const id of l.pressed) all.add(id);
     this.pressed = all;
     this.dbg.extra.pressed = [...all];
+    const roles = [...all].map((id) => this.roleOf(id)).filter(Boolean);
+    this.heldRoles = new Set(roles);
     // direzione tenuta premuta (per sterzare in continuo nei giochi)
-    let held = 0; for (const id of all) held += this.map[id] || 0;
+    let held = 0; for (const r of roles) held += SHIFT[r] || 0;
     held = Math.sign(held);
-    // direzione per i menu: come sopra, ma con le frecce verticali girate e le frecce orizzontali del Click v2
-    let nav = 0; for (const id of all) { const d = this.map[id] || 0; nav += d ? (NAV_FLIP.has(id) ? -d : d) : (NAV_ONLY[id] || 0); }
-    nav = Math.sign(nav);
-    if (held !== this.held || nav !== this.navHeld) { this.held = held; this.navHeld = nav; this.emit('hold', held); }
+    if (held !== this.held) { this.held = held; this.emit('hold', held); }
     // + e − insieme: apre il menu di navigazione
-    const dirs = new Set([...all].map((id) => this.map[id]).filter(Boolean));
+    const dirs = new Set(roles.map((r) => SHIFT[r]).filter(Boolean));
     const both = dirs.has(1) && dirs.has(-1);
     if (both && !this.comboOn) this.emit('combo');
     this.comboOn = both;
     this.dbg.changed();
-  }
-
-  assign(id, dir) {
-    for (const k of Object.keys(this.map)) if (this.map[k] === dir && k.split(':')[0] === id.split(':')[0]) delete this.map[k];
-    if (dir) this.map[id] = dir; else delete this.map[id];
-    localStorage.setItem('clickMap', JSON.stringify(this.map));
-    this.dbg.log(`${buttonLabel(id)} assigned to ${dir > 0 ? '+' : dir < 0 ? '−' : 'no action'}`);
-  }
-
-  resetMap() {
-    this.map = { ...DEFAULT_MAP };
-    localStorage.removeItem('clickMap');
-    this.dbg.log('Button assignments reset');
   }
 
   emit(type, detail) { this.dispatchEvent(new CustomEvent(type, { detail })); }

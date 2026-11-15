@@ -1,3 +1,4 @@
+// Click v1 (due tasti, protocollo 0x37) finto: è il modello a DUE TASTI. I controller con le frecce sono in click-roles.spec.mjs.
 // Tutto col solo Zwift Click (finto): navigazione automatica da fermi, menu Click pedalando, impostazioni, allenamenti, giochi.
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
@@ -15,7 +16,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/index.html');
   await page.evaluate(async () => { while (!window.rfDevices) await new Promise((r) => setTimeout(r, 50)); return window.rfDevices.add(); });
   await expect(page.locator('#trainerStatus')).toContainText('FTMS');
-  await page.evaluate(async () => { while (!window.rfDevices) await new Promise((r) => setTimeout(r, 50)); window.__fakeBle.next = 'click'; return window.rfDevices.add(); });
+  await page.evaluate(async () => { while (!window.rfDevices) await new Promise((r) => setTimeout(r, 50)); window.__fakeBle.clickProto = 'v1'; window.__fakeBle.next = 'click'; return window.rfDevices.add(); });
   await expect(page.locator('#clickStatus')).toContainText('Zwift');
 });
 test.afterEach(async ({ page }) => { expect(page.errors, 'errori JavaScript non gestiti nella pagina').toEqual([]); });
@@ -132,29 +133,6 @@ test('tastiera: frecce, Invio ed Esc seguono le stesse regole', async ({ page })
   await page.keyboard.press('Enter');
   await expect(page.locator('#settingsSheet')).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(page.locator('#settingsSheet')).toBeHidden();
-});
-
-test('frecce del Click v2 e della tastiera: Giù va avanti, Su torna indietro; A sceglie, B torna', async ({ page }) => {
-  await expect(page.locator('.cn-focus')).toBeVisible();
-  const idx = () => page.evaluate(() => { const all = [...document.querySelectorAll('button, a[href], input, select, summary, label')]; return all.indexOf(document.querySelector('.cn-focus')); });
-  const bit = async (b) => { await page.evaluate((x) => window.__fakeBle.pressBit(x), b); await page.waitForTimeout(80); };
-  const start = await idx();
-  await bit(3); const down = await idx(); // Giù
-  expect(down, 'Giù = elemento successivo').toBeGreaterThan(start);
-  await bit(1); expect(await idx(), 'Su = elemento precedente').toBe(start); // Su
-  await bit(2); expect(await idx(), 'Destra = successivo').toBe(down);
-  await bit(0); expect(await idx(), 'Sinistra = precedente').toBe(start);
-  await page.keyboard.press('ArrowDown'); expect(await idx(), 'tastiera: freccia giù = successivo').toBe(down);
-  await page.keyboard.press('ArrowUp'); expect(await idx(), 'tastiera: freccia su = precedente').toBe(start);
-  // + e − restano come prima: + avanti, − indietro
-  await press(page, +1); expect(await idx()).toBe(down);
-  await press(page, -1); expect(await idx()).toBe(start);
-  // A sceglie subito, B torna indietro
-  await goTo(page, '#openSettings');
-  await bit(4);
-  await expect(page.locator('#settingsSheet')).toBeVisible();
-  await bit(5);
   await expect(page.locator('#settingsSheet')).toBeHidden();
 });
 
