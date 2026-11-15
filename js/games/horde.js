@@ -240,6 +240,7 @@ export class Horde {
     this.kills = 0; this.score = 0; this.spawnAcc = 0; this.el = 0; this.segIdx = -1; this.seg = this.plan.segs[0];
     this.enemies = []; this.allies = []; this.gates = []; this.gems = [];
     this.gateN = 0; this.lastPair = -1; this.nextGate = 12; this.overdrive = 0; this.hurtT = 0; this.shake = 0; this.bossAlive = false;
+    this.pw = 0; this.sinceSpawn = 0; this.gemAcc = 0; this.gemT = 0; this.popN = 0; // niente eredità dal menu o dalla partita prima: la potenza di allora dipende dal tempo reale
     this.paused = false; this.pauseT = 0; this.startT = 0; this.calm = 0; this.finished = false; this.result = null;
     this.nextSize = 0; this.trailT = 5; this.pressure = 1; this.lastHitT = 0; this.ko = 0; this.effortsDone = 0; this.effortsTotal = 0; this.bossKilled = 0; this.bossSpawned = new Set(); this.passed = 0;
     this.adapt = new Adapter(); this.evLog = []; this.sprinting = false; this.sentGrade = undefined; this.msgs.clear();
@@ -891,7 +892,11 @@ export class Horde {
     const target = new THREE.Vector3(this.x * 0.6 + sx, 3.3 + sy, this.z - 7.0);
     if (!this.camInit) { cam.position.copy(target); this.camInit = true; }
     cam.position.lerp(target, 1 - Math.exp(-dt * 6));
-    cam.lookAt(this.x * 0.7, 0.8, this.z + 8);
+    // solo nel menu: il ciclista sta nella fascia libera (verticale: tra testo e tasto; orizzontale: a destra della colonna di testo)
+    const { W, H } = this.stage; const m = this.menu; const menuOn = this.state === 'menu' && m.contentBottom;
+    const wantX = menuOn && W > H * 1.15 ? -1.3 : 0; const wantY = menuOn && W <= H * 1.15 ? 0.55 : 0;
+    this.menuOffX = lerp(this.menuOffX || 0, wantX, 1 - Math.exp(-dt * 4)); this.menuOffY = lerp(this.menuOffY || 0, wantY, 1 - Math.exp(-dt * 4));
+    cam.lookAt(this.x * 0.7 + this.menuOffX, 0.8 + this.menuOffY, this.z + 8);
     const wantFov = 60 + (this.overdrive > 0 ? 4 : 0);
     this.fov = lerp(this.fov, wantFov, 1 - Math.exp(-dt * 5));
     cam.fov = this.fov; cam.far = 520; cam.updateProjectionMatrix();
@@ -907,6 +912,7 @@ export class Horde {
     if (this.state === 'loading') { ctx.fillStyle = '#0f0e0c'; ctx.fillRect(0, 0, W, H); hudText(ctx, t('games.common.loading'), W / 2, H / 2, { size: 22, align: 'center', color: '#d9ff3d' }); hudText(ctx, `${Math.round((this.loadPct || 0) * 100)}%`, W / 2, H / 2 + 28, { size: 14, align: 'center' }); return; }
     if (this.state === 'error') { hudText(ctx, t('ui.error', { error: this.error }), W / 2, H / 2, { size: 14, align: 'center', color: '#ff6b6b' }); return; }
     if (this.state === 'menu') { this.drawMenu(ctx, W, H, dt); return; }
+    if (this.state === 'over' && this.result) { this.drawOver(ctx, W, H, dt); return; }
     const w = WEAPONS[this.weapon]; const seg = this.seg;
     const pad = 12; const y0 = 84; // sotto la barra del gioco (titolo, audio, esci)
     // riga in alto
@@ -984,7 +990,6 @@ export class Horde {
       hudText(ctx, t('games.horde.paused'), W / 2, H * 0.42, { size: 42, align: 'center', color: '#ffd34d' });
       paragraph(ctx, t('games.horde.pausedSub'), W / 2, H * 0.42 + 36, { size: 20, maxW: W - 40, color: '#f0f0f0' });
     }
-    if (this.state === 'over' && this.result) { this.drawOver(ctx, W, H, dt); return; }
     if (this.result && seg.kind === 'cool') this.drawResult(ctx, W, H);
     // i riquadri dei traguardi non coprono l'azione: durante sforzi e scatti aspettano il recupero
     if (!['pace', 'effort', 'sprint'].includes(seg.kind) || this.state === 'over') this.hooks.progress?.drawToasts(ctx, W, dt, this.result && seg.kind === 'cool' ? 400 : 206, true);
@@ -1009,7 +1014,7 @@ export class Horde {
       ],
       best: r.bestScore ? String(r.bestScore) : null, newBest: r.newBest, note: hint,
     });
-    this.hooks.progress?.drawToasts(ctx, W, dt, 206, true);
+    if (W <= H * 1.15) this.hooks.progress?.drawToasts(ctx, W, dt, 200, true); // in orizzontale il riquadro coprirebbe il pannello: resta in coda
   }
 
   // riepilogo: stelle, sforzi riusciti, Custodi, cadute, record e cosa manca alla prossima stella
