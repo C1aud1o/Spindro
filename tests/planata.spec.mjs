@@ -150,24 +150,25 @@ test('Updraft: i messaggi stanno nello schermo a 390×780 (menu, gioco, risultat
   expect(r.bad, 'testo fuori schermo').toEqual([]);
 });
 
-test('Updraft: prendere il pallone in corsia e restare lì costa solo la combo (tempesta), mai la partita', async ({ page }) => {
+test('Updraft: pallone e tempesta nella corsia dell’aereo: il pallone dà punti, la tempesta costa solo la combo, mai la partita', async ({ page }) => {
   await openGame(page);
   const r = await page.evaluate(() => {
     const g = window.__game; g.active = false; g.durIdx = 0; g.lvlIdx = 1; g.reset(); g.begin();
     g.hooks = { ...g.hooks, connected: () => true, ftp: () => 200, stats: () => ({ power: 170, cadence: 85 }), speedKmh: () => 30, setGrade() {} };
-    const dt = 1 / 30; let pressed = false; let podX = null; let sawStorm = false; let comboBefore = 0;
-    for (let i = 0; i < 120 * 30 && g.state === 'play'; i++) {
-      g.update(dt);
-      const pod = g.items.find((it) => it.kind === 'pod' && !it.done && g.items.some((st) => st.kind === 'storm' && st.x === it.x && st.z > it.z)); // un pallone con la tempesta dietro (la tempesta c'è nel 65 % dei casi)
-      if (pod && !pressed && pod.z - g.z < 12 && pod.z - g.z > 8) { podX = pod.x; g.input(pod.x < 0 ? 1 : -1); pressed = true; comboBefore = g.combo; }
-      if (pressed && g.hits > 0) { sawStorm = true; break; }
-    }
-    return { pressed, podX, sawStorm, hits: g.hits, combo: g.combo, state: g.state, pods: g.pods, hurtT: g.hurtT, comboBefore };
+    const dt = 1 / 30; for (let i = 0; i < 20 * 30; i++) g.update(dt);
+    const out = { comboBefore: g.combo };
+    g.manualT = 99; g.lane = Math.round(-g.x / 5.4); // niente pilota automatico: restiamo dove siamo
+    const score0 = g.score;
+    g.addPod(g.x, g.y, g.z + 25, 2.2); for (let i = 0; i < 2 * 30; i++) g.update(dt);
+    out.pods = g.pods; out.podPts = g.score - score0;
+    g.combo = 7; g.addStorm(g.x, g.y, g.z + 25); for (let i = 0; i < 2 * 30; i++) g.update(dt);
+    out.hits = g.hits; out.combo = g.combo; out.state = g.state;
+    g.manualT = 0; for (let i = 0; i < 4 * 30; i++) g.update(dt); out.stillPlaying = g.state === 'play';
+    return out;
   });
-  expect(r.pressed, 'c’è un pallone nei primi 2 minuti').toBe(true);
-  expect(r.pods, 'il pallone è stato preso').toBeGreaterThanOrEqual(1);
-  expect(r.sawStorm, 'la tempesta dietro al pallone colpisce chi resta in corsia').toBe(true);
-  expect(r.combo).toBe(0); expect(r.state).toBe('play');
+  expect(r.pods, 'il pallone è stato preso').toBe(1); expect(r.podPts).toBeGreaterThanOrEqual(60);
+  expect(r.hits, 'la tempesta colpisce').toBe(1); expect(r.combo, 'e azzera la combo').toBe(0);
+  expect(r.state).toBe('play'); expect(r.stillPlaying).toBe(true);
 });
 
 test('Updraft: 20 minuti a livello Facile arrivano in fondo con l’atterraggio, 3 livelli cambiano le quote', async ({ page }) => {

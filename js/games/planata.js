@@ -116,11 +116,11 @@ class Chunk {
 
 // ---------- strato di istanze che si riscrive quando arriva un pezzo nuovo ----------
 class Layer {
-  constructor(scene, gltf, cap, { kind = 'house', lodDist = 90 } = {}) {
+  constructor(scene, gltf, cap, { kind = 'house', lodDist = 90, lod = true } = {}) {
     groundModel(gltf);
     this.info = prepareModel(gltf); this.cap = cap;
     const dummy = Array.from({ length: cap }, () => ({ x: 0, y: -999, z: 0, rot: 0, h: 1 }));
-    this.inst = scatterModel(scene, gltf, dummy, { kind, lodDist });
+    this.inst = scatterModel(scene, gltf, dummy, { kind, lodDist, lod }); // lod=false: niente sagome a blocco (le nuvole e le case lontane sembravano scatole grigie)
     this.inst.baseLod = lodDist; this.n = 0;
     this.m4 = new THREE.Matrix4(); this.q = new THREE.Quaternion(); this.up = new THREE.Vector3(0, 1, 0); this.v = new THREE.Vector3(); this.s = new THREE.Vector3();
   }
@@ -184,6 +184,9 @@ const LANE_W = 5.4;           // distanza fra le corsie (3 corsie: −1, 0, +1; 
 const RING_R = 3.2;           // raggio dell'anello (m)
 const HIT_R = 2.7;            // si passa dentro l'anello se la distanza dal centro è minore
 const PERFECT_R = 0.9;        // nel mezzo: bonus
+// Nessuna punizione per chi spinge di più: nell'avvio, nei recuperi e nella discesa conta passare ad ogni quota SOPRA l'anello;
+// nel ritmo fino a 6 m sopra; negli sforzi e nelle salite l'anello resta preciso.
+const UP_TOL = { warm: Infinity, rest: Infinity, cool: Infinity, pace: 6, effort: 2.7, climb: 2.7 };
 const AHEAD_S = 15;           // il percorso si genera 15 s in anticipo (225 m, dentro la nebbia)
 const MANUAL_S = 2.6;         // dopo un tocco di + / − il pilota automatico aspetta questo tempo
 const RW_Y = 0.62;            // quota della pista
@@ -341,8 +344,8 @@ export class Planata {
     this.lay = {
       tree1: L(m.tree1, 150, { kind: 'tree', lodDist: 100 }), tree2: L(m.tree2, 150, { kind: 'tree', lodDist: 100 }), tree3: L(m.tree3, 130, { kind: 'tree', lodDist: 100 }),
       bush: L(m.bush1, 70, { kind: 'tree', lodDist: 70 }), cypress: L(m.cypress, 50, { kind: 'tree', lodDist: 110 }),
-      farm: L(m.farm, 22, { lodDist: 140 }), church: L(m.church, 6, { lodDist: 150 }), hut: L(m.hut, 22, { lodDist: 140 }), windmill: L(m.windmill, 6, { lodDist: 150 }),
-      cloud: L(m.cloud, 60, { kind: 'house', lodDist: 400 }), island: L(m.island, 8, { kind: 'house', lodDist: 400 }),
+      farm: L(m.farm, 22, { lod: false }), church: L(m.church, 6, { lod: false }), hut: L(m.hut, 22, { lod: false }), windmill: L(m.windmill, 6, { lod: false }),
+      cloud: L(m.cloud, 60, { kind: 'house', lod: false }), island: L(m.island, 8, { kind: 'house', lod: false }),
     };
     this.lastChunk = -1e9;
   }
@@ -487,14 +490,14 @@ export class Planata {
     // stelle lungo la linea fra l'anello di prima e questo
     for (let k = 1; k <= 3; k++) {
       const tk = p.t + (ta - p.t) * k / 4; if (tk < 0.5) continue;
-      this.addCoin(lerp(p.x, x, smoothstep(k / 4)), this.pathY(tk), this.zBase + tk * SPEED);
+      this.addCoin(lerp(p.x, x, smoothstep(k / 4)), this.pathY(tk), this.zBase + tk * SPEED, UP_TOL[segAt(this.plan, tk).kind] ?? 2.7);
     }
     // pallone bonus e tempesta: in una corsia che la rotta non attraversa mai (sempre ≥ 5,4 m dalla linea)
     if (this.cn >= 3 && this.cn % 3 === 0 && Math.abs(lane - p.lane) < 2 && seg.kind !== 'climb' && seg.kind !== 'cool' && seg.kind !== 'warm') {
       const cands = [-1, 0, 1].filter((l) => l !== p.lane && l !== lane);
       if (cands.length) {
         const pl = cands[r() < 0.5 ? 0 : cands.length - 1]; const tp = p.t + (ta - p.t) * 0.3;
-        this.addPod(-pl * LANE_W, this.pathY(tp), this.zBase + tp * SPEED);
+        this.addPod(-pl * LANE_W, this.pathY(tp), this.zBase + tp * SPEED, UP_TOL[segAt(this.plan, tp).kind] ?? 2.7);
         if (r() < 0.65) { const ts = p.t + (ta - p.t) * 0.78; this.addStorm(-pl * LANE_W, this.pathY(ts), this.zBase + ts * SPEED); }
       }
     }
@@ -514,17 +517,18 @@ export class Planata {
     const beam = new THREE.Mesh(this.beamGeo, this.beamMat); beam.scale.y = Math.max(0.1, y - RING_R - ground); beam.position.set(0, ground - y, 0);
     g.add(ring, film, beam); g.position.set(x, y, z); this.stage.scene.add(g);
     const wave = seg.wave; this.waveRings[wave] = (this.waveRings[wave] || 0) + 1; this.ringsTotal++;
-    this.items.push({ kind: 'ring', group: g, ring, film, ringMat, filmMat, x, y, z, wave, flash: 0, seg: kind });
+    const up = UP_TOL[kind] ?? 2.7;
+    this.items.push({ kind: 'ring', group: g, ring, film, ringMat, filmMat, x, y, z, wave, flash: 0, seg: kind, up });
   }
 
-  addCoin(x, y, z) {
+  addCoin(x, y, z, up = 1.9) {
     const g = new THREE.Group(); g.add(new THREE.Mesh(this.coinGeo, this.coinMat), new THREE.Mesh(this.coinRimGeo, this.coinRimMat));
-    g.position.set(x, y, z); this.stage.scene.add(g); this.items.push({ kind: 'coin', group: g, x, y, z });
+    g.position.set(x, y, z); this.stage.scene.add(g); this.items.push({ kind: 'coin', group: g, x, y, z, up: Math.min(up, 26) });
   }
 
-  addPod(x, y, z) {
+  addPod(x, y, z, up = 2.2) {
     const g = new THREE.Group(); const b = new THREE.Mesh(this.podGeo, this.podMat); const h = new THREE.Mesh(this.podHaloGeo, this.podHaloMat); h.rotation.x = Math.PI / 2.4;
-    g.add(b, h); g.position.set(x, y, z); this.stage.scene.add(g); this.items.push({ kind: 'pod', group: g, x, y, z, halo: h });
+    g.add(b, h); g.position.set(x, y, z); this.stage.scene.add(g); this.items.push({ kind: 'pod', group: g, x, y, z, halo: h, up: Math.min(up, 26) });
   }
 
   addStorm(x, y, z) {
@@ -685,10 +689,11 @@ export class Planata {
       if (it.done || this.z < it.z) continue;
       it.done = true;
       const dx = this.x - it.x; const dy = this.y - it.y; const d = Math.hypot(dx, dy); const mult = this.boostT > 0 ? 2 : 1;
+      const inside = (lim = HIT_R) => (dy > 0 && it.up > HIT_R ? Math.abs(dx) < HIT_R && dy < it.up : d < lim);
       if (it.kind === 'ring') {
         this.lastRing = { t: 0, z: it.z, x: it.x, lane: 0 };
-        this.ev(d < HIT_R ? 'ring' : 'ringMiss');
-        if (d < HIT_R) {
+        this.ev(inside() ? 'ring' : 'ringMiss');
+        if (inside()) {
           this.combo++; this.rings++; this.waveHit[it.wave] = (this.waveHit[it.wave] || 0) + 1; this.bestCombo = Math.max(this.bestCombo, this.combo);
           const perfect = d < PERFECT_R; const pts = 25 * Math.min(this.combo, 8) * mult * (perfect ? 2 : 1); this.score += pts;
           this.audio.sfx('coin'); this.prog('coins', 1, 1);
@@ -702,9 +707,9 @@ export class Planata {
           this.pop(this.y > it.y ? t('games.planata.tooHigh') : t('games.planata.tooLow'), '#ffb84d');
         }
       } else if (it.kind === 'coin') {
-        if (d < 1.9) { this.coins++; this.score += 5 * mult; this.ev('coin'); this.audio.sfx('pickup'); this.fx.spawn(it.x, it.y, it.z, { tex: 'spark', size: 1.6, life: 0.22 }); it.group.visible = false; }
+        if (it.up > 1.9 && dy > 0 ? Math.abs(dx) < 1.9 && dy < it.up : d < 1.9) { this.coins++; this.score += 5 * mult; this.ev('coin'); this.audio.sfx('pickup'); this.fx.spawn(it.x, it.y, it.z, { tex: 'spark', size: 1.6, life: 0.22 }); it.group.visible = false; }
       } else if (it.kind === 'pod') {
-        if (d < 2.2) { this.pods++; this.score += 60 * mult; this.ev('pod'); this.audio.sfx('rescue'); this.pop(`+${60 * mult}`, '#ff8cc4'); this.fx.spawn(it.x, it.y, it.z, { tex: 'spark', size: 5, life: 0.4, color: '#ff8cc4' }); this.shake.add(0.1); it.group.visible = false; this.say(t('games.planata.podSay'), '#ff8cc4', 1.2, false, 1); }
+        if (it.up > 2.2 && dy > 0 ? Math.abs(dx) < 2.2 && dy < it.up : d < 2.2) { this.pods++; this.score += 60 * mult; this.ev('pod'); this.audio.sfx('rescue'); this.pop(`+${60 * mult}`, '#ff8cc4'); this.fx.spawn(it.x, it.y, it.z, { tex: 'spark', size: 5, life: 0.4, color: '#ff8cc4' }); this.shake.add(0.1); it.group.visible = false; this.say(t('games.planata.podSay'), '#ff8cc4', 1.2, false, 1); }
       } else if (it.kind === 'storm') {
         this.ev('storm');
         if (d < 3.0 && this.hurtT <= 0) this.hitStorm(it);
@@ -893,21 +898,29 @@ export class Planata {
     if (this.result && seg.kind === 'cool') this.drawResult(ctx, W, H, false); // i riquadri dei traguardi non coprono l'azione: aspettano la fine del volo
   }
 
+  // altimetro: sfondo pieno e scuro, 50 % in basso e 130 % in alto. Il riempimento azzurro con la freccia bianca sei tu,
+  // l'anello dorato (con i watt) è il prossimo anello da passare.
   drawAltimeter(ctx, W, H, ftp, pad) {
-    const aw = 22; const ax = W - pad - aw - 2; const ay = Math.round(H * 0.46); const ah = Math.max(120, H - 168 - ay);
+    const aw = 30; const ax = W - pad - aw - 2; const ay = Math.round(H * 0.46); const ah = Math.max(120, H - 168 - ay);
     const yPx = (y) => ay + ah - clamp((y - Y_LO) / (Y_HI - Y_LO), 0, 1.04) * ah;
-    ctx.fillStyle = 'rgba(8,10,26,.55)'; rrect(ctx, ax - 4, ay - 4, aw + 8, ah + 8, 9); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,.28)'; for (let i = 0; i <= 4; i++) ctx.fillRect(ax + 2, Math.round(ay + ah - ah * i / 4) - 1, aw - 4, 2);
-    hudText(ctx, `${Math.round(ftp * PCT_HI)}`, ax - 8, ay + 12, { size: 13, align: 'right', color: HUD.dim, font: 'text' });
-    hudText(ctx, `${Math.round(ftp * PCT_LO)}`, ax - 8, ay + ah, { size: 13, align: 'right', color: HUD.dim, font: 'text' });
+    ctx.fillStyle = '#0d1226'; rrect(ctx, ax - 4, ay - 4, aw + 8, ah + 8, 10); ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.stroke();
+    const my = yPx(this.y);
+    ctx.fillStyle = '#2aa9d6'; ctx.fillRect(ax + 3, my, aw - 6, ay + ah - my - 1);
+    ctx.fillStyle = 'rgba(255,255,255,.55)'; for (let i = 1; i < 4; i++) ctx.fillRect(ax + 3, Math.round(ay + ah - ah * i / 4) - 1, aw - 6, 2);
+    hudText(ctx, `${Math.round(ftp * PCT_HI)}`, ax - 10, ay + 14, { size: 15, align: 'right', color: '#ffffff' });
+    hudText(ctx, `${Math.round(ftp * PCT_LO)}`, ax - 10, ay + ah, { size: 15, align: 'right', color: '#ffffff' });
     const nr = this.items.find((it) => it.kind === 'ring' && !it.done);
     if (nr) {
-      const py = yPx(nr.y); ctx.fillStyle = HUD.gold; ctx.fillRect(ax - 1, py - 4, aw + 2, 8);
-      hudText(ctx, `${Math.round(ftp * pctOf(nr.y) / 5) * 5}`, ax - 8, clamp(py + 6, ay + 26, ay + ah - 16), { size: 19, align: 'right', color: HUD.gold });
+      const py = yPx(nr.y); ctx.lineWidth = 5; ctx.strokeStyle = '#15141b'; ctx.fillStyle = HUD.gold;
+      ctx.beginPath(); ctx.arc(ax + aw / 2, py, 8, 0, Math.PI * 2); ctx.stroke(); ctx.lineWidth = 3.5; ctx.strokeStyle = HUD.gold; ctx.stroke();
+      const lab = `${Math.round(ftp * pctOf(nr.y) / 5) * 5}`; const ly = clamp(py + 7, ay + 28, ay + ah - 18);
+      const lw = Math.max(40, lab.length * 12 + 14); ctx.fillStyle = 'rgba(13,18,38,.92)'; rrect(ctx, ax - 14 - lw, ly - 20, lw, 26, 8); ctx.fill();
+      hudText(ctx, lab, ax - 20, ly, { size: 20, align: 'right', color: HUD.gold, stroke: null });
     }
-    const my = yPx(this.y); ctx.fillStyle = '#fff'; ctx.strokeStyle = 'rgba(0,0,0,.8)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(ax - 1, my); ctx.lineTo(ax - 12, my - 7); ctx.lineTo(ax - 12, my + 7); ctx.closePath(); ctx.fill(); ctx.stroke();
-
+    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#15141b'; ctx.lineWidth = 3; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(ax + 4, my); ctx.lineTo(ax - 12, my - 9); ctx.lineTo(ax - 12, my + 9); ctx.closePath(); ctx.stroke(); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(ax + 3, my - 2, aw - 6, 4);
   }
 
   // riepilogo: stelle, sforzi tenuti, anelli, tempeste, record e cosa manca alla prossima stella
