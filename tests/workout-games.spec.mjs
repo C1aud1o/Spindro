@@ -36,26 +36,29 @@ function botRun({ id, startAt, steps, ftp }) {
   g.hooks = { ...g.hooks, connected: () => true, ftp: () => ftp, workout: wk, speedKmh: () => 30, setGrade() { grade++; } };
   // il rullo è in ERG: la potenza è il bersaglio del passo
   g.hooks.stats = () => ({ power: stepAt(clock).watts, cadence: 88 });
-  g.durIdx = 0; g.lvlIdx = 1; g.reset(); g.begin();
-  const reqW = window.__wkReq;
-  const bad = []; const seen = new Set(); let n = 0; let first = null; const dt = 1 / 30; let wave = null;
-  while (g.state === 'play' && n < 600 * 30) {
+  g.durIdx = 0; g.lvlIdx = 1; g.reset?.(); g.begin();
+  const reqW = window.__wkReq; const timeOf = (x) => (x.st != null && x.block !== undefined ? x.st : x.el);
+  const bad = []; const seen = new Set(); let n = 0; let first = null; const dt = 1 / 30; let played = 0;
+  while (g.state !== 'over' && g.state !== 'results' && n < 600 * 30) {
     const b = window.__wkBot?.(g); if (b) g.input(b);
     clock += dt; g.update(dt); n++;
-    if (n === 1) first = { el: g.el, w: reqW(g), step: stepAt(clock).label, waveText: g.plan?.N };
-    if (n % 30 === 15 && g.state === 'play') {
-      const want = stepAt(clock).watts; const got = reqW(g); seen.add(`${stepAt(clock).label}:${got}`);
+    const got0 = reqW(g);
+    if (!first && got0 != null) first = { el: timeOf(g), w: got0 };
+    if (got0 != null) played++;
+    if (n % 30 === 15 && got0 != null) {
+      const want = stepAt(clock).watts; const got = got0; seen.add(`${stepAt(clock).label}:${got}`);
       if (got !== want) bad.push({ t: Math.round(clock), want, got });
     }
   }
-  return { state: g.state, secs: n / 30, first, bad: bad.slice(0, 8), nBad: bad.length, seen: [...seen], grade, stars: g.result?.stars, band: g.result?.band ?? null, wkFlag: !!g.wk, rings: g.rings, ringsTotal: g.ringsTotal, hits: g.hits };
+  return { state: g.state, secs: n / 30, played: played / 30, first, bad: bad.slice(0, 8), nBad: bad.length, seen: [...seen], grade, stars: g.result?.stars, band: g.result?.band ?? null, wkFlag: !!g.wk, rings: g.rings, ringsTotal: g.ringsTotal, hits: g.hits };
 }
 
 // req: watt chiesti dal gioco adesso · bot: l'unico input del bot (+1 / −1) o 0
 const GAMES = [
-  { id: 'horde', req: (g) => g.tgtW, bot: () => 0 },
-  { id: 'planata', req: (g) => g.tgtW, bot: () => 0 },
-  { id: 'gruppetto', req: (g) => g.tgtW, bot: (g) => { const b = g.bridge; return b && b.state === 'attack' && b.lane !== g.lane ? (b.lane > g.lane ? 1 : -1) : 0; } },
+  { id: 'horde', req: (g) => (g.state === 'play' ? g.tgtW : null), bot: () => 0 },
+  { id: 'shooter', req: (g) => (g.block ? g.tgW() : null), bot: () => 0 },
+  { id: 'planata', req: (g) => (g.state === 'play' ? g.tgtW : null), bot: () => 0 },
+  { id: 'gruppetto', req: (g) => (g.state === 'play' ? g.tgtW : null), bot: (g) => { const b = g.bridge; return b && b.state === 'attack' && b.lane !== g.lane ? (b.lane > g.lane ? 1 : -1) : 0; } },
 ];
 
 async function openGame(page, id, req, bot) {
@@ -72,8 +75,9 @@ for (const G of GAMES) {
     console.log(`${G.id} wk: ${JSON.stringify({ ...r, bad: r.bad.slice(0, 3) })}`);
     expect(r.wkFlag).toBe(true);
     expect(r.nBad, JSON.stringify(r.bad)).toBe(0);
-    expect(r.state).toBe('over');
-    expect(r.secs, 'finisce con l’allenamento (360 s)').toBeGreaterThanOrEqual(359); expect(r.secs).toBeLessThanOrEqual(361);
+    expect(['over', 'results']).toContain(r.state);
+    expect(r.secs, 'finisce con l’allenamento (360 s, il riepilogo di qualcuno compare dopo)').toBeGreaterThanOrEqual(359); expect(r.secs).toBeLessThanOrEqual(366);
+    expect(r.played, 'il bersaglio è stato chiesto per quasi tutta la partita').toBeGreaterThanOrEqual(350);
     expect(r.grade, 'setGrade mai chiamato').toBe(0);
     expect(r.stars).toBeGreaterThanOrEqual(1);
     if (G.id === 'planata') { expect(r.rings / r.ringsTotal, 'chi segue l’allenamento passa gli anelli').toBeGreaterThanOrEqual(0.85); expect(r.hits).toBeLessThanOrEqual(3); }
@@ -82,10 +86,10 @@ for (const G of GAMES) {
   test(`${G.id}: aperto a metà (elapsed 150 s) parte nello sforzo giusto e finisce a 360 s`, async ({ page }) => {
     await openGame(page, G.id, G.req, G.bot);
     const r = await page.evaluate(botRun, { id: G.id, startAt: 150, steps: STEPS, ftp: FTP });
-    expect(r.first.el).toBeGreaterThanOrEqual(150); expect(r.first.el).toBeLessThan(151);
+    expect(r.first.el).toBeGreaterThanOrEqual(150); expect(r.first.el).toBeLessThan(154);
     expect(r.first.w, 'primo bersaglio = sforzo 105 %').toBe(210);
     expect(r.nBad, JSON.stringify(r.bad)).toBe(0);
-    expect(r.secs, 'restano 210 s').toBeGreaterThanOrEqual(209); expect(r.secs).toBeLessThanOrEqual(211);
-    expect(r.state).toBe('over'); expect(r.grade).toBe(0);
+    expect(r.secs, 'restano 210 s').toBeGreaterThanOrEqual(209); expect(r.secs).toBeLessThanOrEqual(216);
+    expect(['over', 'results']).toContain(r.state); expect(r.grade).toBe(0);
   });
 }

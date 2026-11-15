@@ -59,13 +59,31 @@ export function checkWorkout(blocks) {
   return errs;
 }
 
+// Allenamento in corso → blocchi (kit/workout-plan.js workoutPlan). I watt sono quelli dell'allenamento (`fixed`): livello e adattamento
+// non li toccano. warm | easy, recovery → rec | tempo, effort → effort | sprint | cool; il boss è l'ultimo sforzo lungo (≥ 45 s),
+// il mini-boss quello più vicino a metà partita.
+export function blocksFromWorkout(wp) {
+  const KIND = { warm: 'warm', easy: 'rec', recovery: 'rec', tempo: 'effort', effort: 'effort', sprint: 'sprint', cool: 'cool' };
+  const blocks = wp.segs.map((g) => ({ kind: KIND[g.kind], wkKind: g.kind, t0: g.t0, t1: g.t1, dur: g.t1 - g.t0, pct: g.pct, watts: g.watts, w0: g.w0, w1: g.w1, fixed: true, wk: true, label: g.label, stepStart: g.stepStart, stepEnd: g.stepEnd, wave: g.wave }));
+  const hard = blocks.filter((b) => (b.wkKind === 'effort' || b.wkKind === 'sprint') && b.dur >= 45);
+  const boss = hard.at(-1);
+  if (boss) {
+    boss.kind = 'boss';
+    const mid = wp.total / 2; const rest = hard.filter((b) => b !== boss && b.t0 > wp.total * 0.15);
+    const mini = rest.sort((a, b) => Math.abs((a.t0 + a.t1) / 2 - mid) - Math.abs((b.t0 + b.t1) / 2 - mid))[0];
+    if (mini) mini.kind = 'mini';
+  }
+  blocks.total = wp.total;
+  return blocks;
+}
+
 export const isHard = (b) => b && (b.kind === 'effort' || b.kind === 'mini' || b.kind === 'boss' || b.kind === 'sprint');
 
 export class Coach {
   constructor(ftp = 200, level = 1) { this.ftp = ftp; this.level = level; this.adapt = 0; this.okRow = 0; this.failRow = 0; this.results = []; }
   get mul() { return LEVEL_MUL[this.level] * (1 + this.adapt); }
   // watt richiesti da un blocco (gli scatti non si adattano: sono un "tutto" breve)
-  target(b) { if (!b) return 0; const k = b.kind === 'sprint' ? LEVEL_MUL[this.level] : isHard(b) ? this.mul : 1; return Math.round(this.ftp * b.pct * k / 5) * 5; }
+  target(b) { if (!b) return 0; if (b.fixed) return b.watts; /* con un allenamento i watt li decide lui */ const k = b.kind === 'sprint' ? LEVEL_MUL[this.level] : isHard(b) ? this.mul : 1; return Math.round(this.ftp * b.pct * k / 5) * 5; }
   // esito di uno sforzo: media della potenza nel blocco rispetto al bersaglio
   finish(b, avgW, inZoneK) {
     const target = this.target(b);

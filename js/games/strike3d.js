@@ -11,7 +11,8 @@ import { loadGLTF } from './kit/loader.js';
 import { loadMeshyTemplate, MESHY_FAN_URL, BIKE } from './kit/cyclist.js';
 import { Walker, makeEnemyKit } from './kit/walkers.js';
 import { World, LEVELS, LANES } from './strike-world.js';
-import { buildWorkout, Coach, starsFor, isHard, DURATIONS, TOL } from './strike-plan.js';
+import { buildWorkout, blocksFromWorkout, Coach, starsFor, isHard, DURATIONS, TOL } from './strike-plan.js';
+import { WorkoutClock, BandMeter, workoutStars, workoutPlan } from './kit/workout-plan.js';
 import { clamp, lerp } from './engine.js';
 import { txt, HUD, hudView, measure, paragraph, wrapLines, MessageQueue } from './kit/hud.js';
 import { t, fmtDec } from '../i18n.js';
@@ -241,7 +242,7 @@ export class Strike3D {
       load: () => ({ durIdx: Math.max(0, DURATIONS.indexOf(this.minutes)), level: this.diff }),
       save: ({ durIdx, level }) => { this.minutes = DURATIONS[durIdx]; this.diff = level; try { localStorage.setItem('strikeMin', this.minutes); localStorage.setItem('strikeDiff', this.diff); } catch { /* niente storage */ } },
       onStart: (d, l) => { this.minutes = DURATIONS[d]; this.diff = l; this.begin(); },
-      sfx: (k) => this.audio.sfx(k), ready: () => this.state === 'menu',
+      sfx: (k) => this.audio.sfx(k), ready: () => this.state === 'menu', workout: () => this.hooks.workout?.(),
     });
     this.results = new ResultsView({ onAgain: () => this.begin(), onBack: () => this.hooks.close?.(), sfx: (k) => this.audio.sfx(k) });
     this.loop = this.loop.bind(this);
@@ -380,7 +381,7 @@ export class Strike3D {
     this.clearActors();
     this.worldIx = i; this.level = i; this.L = LEVELS[i];
     // il paesaggio copre tutta la partita più lunga alla velocità massima
-    this.world.setLevel(i, menu ? 0 : this.minutes * 60 * 10.6 + 500);
+    this.world.setLevel(i, menu ? 0 : (this.blocks?.total || this.minutes * 60) * 10.6 + 500);
     this.setView();
     this.foes = []; this.cages = []; this.pickups = []; this.wingmen = []; this.bullets = []; this.bolts = []; this.strikes = []; this.chain = [];
     this.walkerPool = this.walkerPool || {};
@@ -397,9 +398,11 @@ export class Strike3D {
   // nuova partita: allenamento, allenatore, punteggi
   newSession() {
     const ftp = this.ftp();
-    this.blocks = buildWorkout(this.minutes);
+    // allenamento in corso: la partita È l'allenamento (durata, blocchi e watt vengono da lì; il livello non cambia i watt)
+    this.wc = new WorkoutClock(this.hooks); const wp = this.wc.begin(ftp); this.wk = wp ? { ...wp } : null; this.band = new BandMeter();
+    this.blocks = wp ? blocksFromWorkout(wp) : buildWorkout(this.minutes);
     this.coach = new Coach(ftp, this.diff);
-    this.st = 0; this.bi = -1; this.block = null; this.blockStat = null;
+    this.st = wp ? this.wc.el : 0; this.bi = -1; this.block = null; this.blockStat = null;
     this.score = 0; this.kills = 0; this.rescued = 0; this.combo = 0; this.comboT = 0; this.maxCombo = 0; this.kos = 0; this.hitsTaken = 0;
     this.hp = this.hero.hp; this.maxHp = this.hero.hp;
     this.bossDown = false; this.miniDown = false; this.dirT = 0; this.dropT = 12; this.cageT = 20;
@@ -450,9 +453,11 @@ export class Strike3D {
   pop(text, color, x, y, z, life = 1) { this.pops.push({ text, color, x, y, z, t: life, life }); if (this.pops.length > 5) this.pops.shift(); }
   prog(stat, n = 1, xp = 0) { this.hooks.progress?.event(stat, n, xp); }
   tgW() { return this.coach ? this.coach.target(this.block) : 0; }
+  // con un allenamento il rullo è in ERG: «in zona» = segui il bersaglio del passo (in qualunque blocco), così scudi e boss restano giusti per chi segue l'allenamento
+  advance(dt) { if (this.wk) this.st = this.wc.tick(dt); else this.st += dt; }
   // potenza "in zona": sopra il 95 % di quella richiesta dal blocco
-  inZone() { const tg = this.block && isHard(this.block) ? this.coach.target(this.block) : 0; return tg > 0 && this.power >= tg * TOL; }
-  shieldW() { const b = this.block; if (!b) return 0; const k = isHard(b) && b.kind !== 'sprint' ? b : { kind: 'effort', pct: 1 }; return this.coach.target(k); }
+  inZone() { const tg = this.block && (this.wk || isHard(this.block)) ? this.coach.target(this.block) : 0; return tg > 0 && this.power >= tg * TOL; }
+  shieldW() { const b = this.block; if (!b) return 0; if (this.wk) return this.coach.target(b); const k = isHard(b) && b.kind !== 'sprint' ? b : { kind: 'effort', pct: 1 }; return this.coach.target(k); }
   shieldsDown() { return this.power >= this.shieldW() * TOL; }
 
   // ---------- nemici ----------
@@ -642,7 +647,7 @@ export class Strike3D {
     const wantSprint = this.block?.kind === 'sprint' || (this.boss?.phase === 3 && !this.boss.dead);
     const demoSprint = !connected && wantSprint && (this.st % 14) < 9;
     const demoHard = this.block && isHard(this.block) && this.coach ? this.coach.target(this.block) * 1.03 : 0;
-    this.power = connected ? st.power || 0 : demoSprint ? ftp * 1.4 : Math.max(demoHard, ftp * (0.8 + Math.sin(this.t * 0.7) * 0.05));
+    this.power = connected ? st.power || 0 : this.wk && this.block ? this.coach.target(this.block) : demoSprint ? ftp * 1.4 : Math.max(demoHard, ftp * (0.8 + Math.sin(this.t * 0.7) * 0.05));
     this.cadence = connected ? st.cadence || 0 : demoSprint ? 105 : 86;
     const kmh = connected ? this.hooks.speedKmh() : demoSprint ? 38 : 29;
     if (this.audio.song) this.audio.setTempo(this.audio.song.bpm * clamp((this.cadence || 85) / 88, 0.85, 1.25));
@@ -654,7 +659,7 @@ export class Strike3D {
     // chi smette di pedalare va in pausa (non perde): riparte da solo quando ricomincia
     if (connected && (this.state === 'play' || this.state === 'intro')) {
       if (this.power < 15 && this.cadence < 10) this.stopT += realDt; else this.stopT = 0;
-      if (!this.paused && this.stopT > 3) { this.paused = true; this.hooks.setGrade(0); this.sentGrade = 0; }
+      if (!this.paused && this.stopT > 3) { this.paused = true; if (!this.wk) { this.hooks.setGrade(0); this.sentGrade = 0; } }
       if (this.paused && (this.power > 40 || this.cadence > 30)) { this.paused = false; this.stopT = 0; this.say(t('games.shooter.resume'), HUD.lime, 1.2); }
       if (this.paused) { this.animate(0); return; }
     }
@@ -667,16 +672,16 @@ export class Strike3D {
     if (this.state === 'menu') { this.menu.update(realDt, { connected, power: st.power || 0 }); this.px += dt * 3; this.animate(dt); return; }
     // sprint: soglia dello scatto in % della FTP (135 %, scalata dal livello)
     this.sprintW = this.coach ? this.coach.target({ kind: 'sprint', pct: 1.35 }) : Math.round(ftp * 1.35);
-    this.sprinting = this.power >= this.sprintW * TOL;
+    this.sprinting = this.wk ? this.block?.kind === 'sprint' && this.inZone() : this.power >= this.sprintW * TOL;
     if (this.state === 'intro') {
-      this.st += realDt;
+      this.advance(realDt);
       this.px += this.speed * dt; this.animate(dt);
       if (this.stateT > 3.2) { this.state = 'play'; this.stateT = 0; }
       if (this.st > 2.4 && !this.firstSpawn) { this.firstSpawn = true; this.spawnPattern('pair'); this.dirT = 3; }
       return;
     }
     if (this.state === 'cool' || this.state === 'results') {
-      this.st += realDt;
+      this.advance(realDt);
       this.px += this.speed * dt * (this.state === 'results' ? 0.3 : 0.6);
       this.updateFoes(dt); this.updateBullets(dt); this.updateBolts(dt); this.updateWingmen(dt); this.animate(dt);
       this.updateResults(realDt);
@@ -684,7 +689,8 @@ export class Strike3D {
       return;
     }
     if (this.state !== 'play') return;
-    this.st += realDt;
+    this.advance(realDt);
+    if (this.wk && this.wc.ended) { this.bi = this.blocks.length - 1; this.block = this.blocks[this.bi]; this.startCool(); return; } // l'allenamento è finito (anche senza defaticamento)
     this.updateBlock(realDt);
     if (this.state !== 'play') return;
     this.px += this.speed * dt;
@@ -704,7 +710,10 @@ export class Strike3D {
       if (this.overdrive <= 0) { this.audio.transpose = 0; this.say(t('games.shooter.odOver'), HUD.white, 1.2); }
     } else {
       const k = this.boss?.phase === 3 ? 1.6 : 1;
-      this.odMeter = clamp(this.odMeter + (this.sprinting ? dt / 3.6 * this.hero.od * k : 0), 0, 1);
+      // lo scatto carica l'overdrive; con un allenamento (watt decisi da lui) lo carica anche, più piano, tenere il bersaglio negli sforzi
+      const rate = this.wk ? (this.sprinting ? 1 / 3.6 : this.inZone() && isHard(this.block) ? 1 / 40 : 0) : (this.sprinting ? 1 / 3.6 : 0);
+      this.charging = rate > 0;
+      this.odMeter = clamp(this.odMeter + dt * rate * this.hero.od * k, 0, 1);
       if (this.odMeter >= 1) this.startOverdrive();
     }
     this.director(dt);
@@ -732,10 +741,11 @@ export class Strike3D {
       this.startBlock(this.block);
     }
     const b = this.block; const S = this.blockStat;
+    if (this.wk) this.band.add(dt, this.power, this.tgW(), this.st - b.stepStart);
     if (S) { S.sum += this.power * dt; S.time += dt; if (this.power >= this.tgW() * (b.kind === 'sprint' ? TOL : TOL)) S.zone += dt; }
     // pendenza al rullo: facile nei recuperi, più dura negli sforzi
     const g = GRADE[b.kind] ?? 1;
-    if (g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade(g); }
+    if (!this.wk && g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade(g); }
     // conto alla rovescia negli ultimi 3 s prima di uno sforzo
     const next = this.blocks[i + 1]; const left = b.t1 - this.st;
     if (next && isHard(next) && !isHard(b) && left < 3.05 && Math.ceil(left) !== this.beepN) { this.beepN = Math.ceil(left); if (this.beepN > 0) { this.audio.sfx('beep'); this.logEvent('count'); } }
@@ -771,19 +781,20 @@ export class Strike3D {
     if (this.boss) { if (!this.boss.dead) this.bossFlee(); else { this.blast.boom(this.boss.x, this.boss.aimY, this.boss.z, 2); this.removeBoss(); } }
     for (const s of this.strikes) for (const m of s.meshes) m.visible = false; this.strikes = []; this.beam.visible = false;
     this.overdrive = 0; this.audio.transpose = 0; this.weapon !== 'blaster' && this.setWeapon('blaster');
-    this.hooks.setGrade(0); this.sentGrade = 0;
+    if (!this.wk) { this.hooks.setGrade(0); this.sentGrade = 0; }
     const finished = true;
     const okRate = this.coach.okRate;
-    const stars = starsFor({ finished, okRate, bossDown: this.bossDown });
-    const key = `${this.minutes}`; const prev = this.best[key] || 0;
+    // con un allenamento le stelle sono le stesse di tutti i giochi: tempo entro ±7 % del bersaglio (kit/workout-plan.js)
+    const stars = this.wk ? workoutStars(this.band.ratio, finished) : starsFor({ finished, okRate, bossDown: this.bossDown });
+    const key = `${this.minutes}`; const prev = this.wk ? Infinity : this.best[key] || 0;
     const newBest = this.score > prev;
     if (newBest) { this.best[key] = Math.round(this.score); localStorage.setItem('strikeBest5', JSON.stringify(this.best)); }
-    if (stars > (this.bestStars[key] || 0)) { this.bestStars[key] = stars; localStorage.setItem('strikeBestStars', JSON.stringify(this.bestStars)); }
+    if (!this.wk && stars > (this.bestStars[key] || 0)) { this.bestStars[key] = stars; localStorage.setItem('strikeBestStars', JSON.stringify(this.bestStars)); }
     const before = this.starsTotal; this.starsTotal += stars; localStorage.setItem('strikeStars', this.starsTotal);
     const unlock = HEROES.find((h) => before < h.stars && this.starsTotal >= h.stars) || null;
     const next = HEROES.find((h) => this.starsTotal < h.stars) || null;
     const ef = this.coach.efforts;
-    this.fwT = 1; this.result = { stars, okRate, ok: ef.filter((r) => r.ok).length, n: ef.length, newBest, best: this.best[key], unlock, next, shown: 0, revealT: 1.2 };
+    this.fwT = 1; this.result = { stars, okRate, wk: !!this.wk, band: this.band.ratio, ok: ef.filter((r) => r.ok).length, n: ef.length, newBest, best: this.wk ? 0 : this.best[key], unlock, next, shown: 0, revealT: 1.2 };
     this.audio.playSong(SONGS.menu); this.audio.sfx('win');
     this.confetti.burst(this.px + 4, 4, this.laneZ, 120, 5);
     this.prog('races', 0, 30 + stars * 30);
@@ -1284,7 +1295,7 @@ export class Strike3D {
     const B = {
       def, kind, mini, root, w, mats, hp: dps * def.kill, maxHp: 0, x: this.px + SPAWN + 10, z: 0, y0: def.fly || 0, h: def.h, halfW, halfD: 2.2,
       flash: 0, t: 0, atkT: 3, phase: 1, ready: false, dead: false, recoil: 0, fit, boss: true, aimY: (def.fly || 0) + def.h * 0.5,
-      shieldUp: true, shieldT: 0, shieldNeed: mini ? 10 : this.minutes >= 10 ? 20 : 15,
+      shieldUp: true, shieldT: 0, shieldNeed: this.wk ? clamp(Math.floor(this.block.dur * 0.3), 8, 20) : mini ? 10 : this.minutes >= 10 ? 20 : 15,
     };
     B.maxHp = B.hp;
     B.dome = this.makeDome('#5cc8ff'); B.dome.scale.set(halfW * 1.7 + 1, def.h * 0.75 + 1, 3.6); scene.add(B.dome);
@@ -1326,8 +1337,8 @@ export class Strike3D {
     B.hp -= n; B.flash = Math.max(B.flash, 0.55); this.audio.sfx('hit');
     if (!B.mini && B.phase === 2 && B.hp < B.maxHp / 2 && B.hp > 0) {
       B.phase = 3; B.atkT = 1.6;
-      this.say(t('games.shooter.finalSprint'), HUD.cyan, 2.2, true, 3);
-      this.msgs.say(t('games.shooter.holdW', { w: this.sprintW }), { color: HUD.white, dur: 2, prio: 1 });
+      if (this.wk) this.say(t('games.wk.finalPhase'), HUD.cyan, 2.2, true, 3); // i watt li decide l'allenamento: niente scatto da chiedere
+      else { this.say(t('games.shooter.finalSprint'), HUD.cyan, 2.2, true, 3); this.msgs.say(t('games.shooter.holdW', { w: this.sprintW }), { color: HUD.white, dur: 2, prio: 1 }); }
       this.ts.slowmo(0.35, 0.7); this.shakeK.add(0.5); this.audio.sfx('alarm');
       this.blast.boom(B.x - B.halfW * 0.5, B.aimY, B.z + 1, 1.6);
       this.logEvent('phase');
@@ -1641,12 +1652,12 @@ export class Strike3D {
   // il blocco in corso: nome, tempo che manca, watt richiesti e barra della potenza
   drawBlockCard(ctx, x, y, w, S) {
     const b = this.block || this.blocks[0]; const hard = isHard(b);
-    const tg = this.tgW(); const left = Math.max(0, b.t1 - (this.st || 0));
+    const tg = this.tgW(); const left = Math.max(0, (this.wk ? b.stepEnd : b.t1) - (this.st || 0)); // con un allenamento: nome del passo e tempo che manca alla fine del passo
     const colr = { warm: HUD.lime, rec: HUD.lime, cool: HUD.lime, effort: '#ff9f1c', mini: '#ff6b35', boss: '#ff4d6d', sprint: HUD.cyan }[b.kind];
     const h = 54 * S;
     ctx.fillStyle = 'rgba(8,10,26,.66)'; rr(ctx, x, y, w, h, 12); ctx.fill();
     ctx.fillStyle = colr; rr(ctx, x, y, 6, h, 3); ctx.fill();
-    const name = t(`games.shooter.card.${b.kind}`);
+    const name = this.wk ? (b.label || t(`games.wk.seg.${b.wkKind}`)) : t(`games.shooter.card.${b.kind}`);
     txt(ctx, name, x + 14, y + 22 * S, { size: fitSize(ctx, name, w * 0.42, 19 * S), color: colr, italic: true });
     txt(ctx, `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`, x + 14 + Math.min(measure(ctx, name, 19 * S), w * 0.42) + 10, y + 22 * S, { size: 16 * S, color: '#dfe3f0' });
     const goal = !tg ? '' : hard ? t('games.shooter.card.hold', { w: tg }) : t('games.shooter.card.easy', { w: tg });
@@ -1699,13 +1710,14 @@ export class Strike3D {
     if (this.puShield > 0) pu.push([t('games.shooter.pu.shield'), POWERUPS.shield.color, this.puShield]);
     if (this.puDouble > 0) pu.push([t('games.shooter.pu.double'), POWERUPS.double.color, this.puDouble]);
     if (pu.length) { const s = pu.map((p) => `${p[0]} ${Math.ceil(p[2])}`).join(' · '); txt(ctx, s, rx, ry, { size: fitSize(ctx, s, W * 0.5, 14 * S), align: 'right', color: pu[0][1] }); }
-    else { const od = this.overdrive > 0 ? t('games.shooter.overdrive') : t('games.shooter.sprintLine', { w: this.sprintW || 0 }); txt(ctx, od, rx, ry, { size: fitSize(ctx, od, W * 0.5, 13 * S), align: 'right', color: this.overdrive > 0 ? HUD.cyan : '#dfe3f0' }); }
+    else { const od = this.overdrive > 0 ? t('games.shooter.overdrive') : this.wk ? t('games.wk.charge') : t('games.shooter.sprintLine', { w: this.sprintW || 0 }); txt(ctx, od, rx, ry, { size: fitSize(ctx, od, W * 0.5, 13 * S), align: 'right', color: this.overdrive > 0 ? HUD.cyan : '#dfe3f0' }); }
     ctx.fillStyle = 'rgba(8,10,26,.8)'; rr(ctx, bx, barY, bw2, barH, 7); ctx.fill();
     const odK = this.overdrive > 0 ? this.overdrive / OD_TIME : this.odMeter;
     const og = ctx.createLinearGradient(bx, 0, bx + bw2, 0); og.addColorStop(0, '#1fa3ff'); og.addColorStop(1, '#4de3ff');
     ctx.fillStyle = this.overdrive > 0 ? `rgba(220,250,255,${0.75 + 0.25 * Math.sin(this.t * 20)})` : og; rr(ctx, bx, barY, Math.max(8, bw2 * odK), barH, 7); ctx.fill();
-    const lbl = this.overdrive > 0 ? '' : this.sprinting ? t('games.shooter.charging') : 'OVERDRIVE';
-    if (lbl) txt(ctx, lbl, bx + bw2 / 2, barY + barH - 3 * S, { size: 11 * S, align: 'center', color: this.sprinting ? '#06121c' : '#e8f6ff', stroke: this.sprinting ? null : undefined });
+    const chg = this.wk ? this.charging : this.sprinting;
+    const lbl = this.overdrive > 0 ? '' : chg ? t('games.shooter.charging') : 'OVERDRIVE';
+    if (lbl) txt(ctx, lbl, bx + bw2 / 2, barY + barH - 3 * S, { size: 11 * S, align: 'center', color: chg ? '#06121c' : '#e8f6ff', stroke: chg ? null : undefined });
   }
 
   drawShieldTags(ctx, W, S, yMin) {
@@ -1749,7 +1761,7 @@ export class Strike3D {
     const y = H * 0.42; const bandH = 108 * S;
     ctx.fillStyle = 'rgba(8,10,26,.72)'; ctx.fillRect(0, y - bandH / 2, W, bandH);
     ctx.fillStyle = HUD.lime; ctx.fillRect(0, y - bandH / 2, W, 3); ctx.fillRect(0, y + bandH / 2 - 3, W, 3);
-    const m = `${t('games.shooter.m.min', { n: this.minutes })} · ${t(`games.shooter.m.lv${this.diff}`)} · FTP ${this.coach.ftp} W`;
+    const m = `${this.wk ? this.wk.name : t('games.shooter.m.min', { n: this.minutes })} · ${t(`games.shooter.m.lv${this.diff}`)} · FTP ${this.coach.ftp} W`;
     txt(ctx, m, W / 2, y - 22 * S, { size: fitSize(ctx, m, W - 30, 17 * S), align: 'center', color: HUD.gold });
     const nm = t(this.L.name); txt(ctx, nm, W / 2, y + 18 * S, { size: fitSize(ctx, nm, W - 30, 44 * S), align: 'center', color: '#ffffff', italic: true });
     const sub = t('games.shooter.introSub'); txt(ctx, sub, W / 2, y + 42 * S, { size: fitSize(ctx, sub, W - 30, 15 * S), align: 'center', color: '#dfe3f0' });
@@ -1777,7 +1789,11 @@ export class Strike3D {
       else if (R.next) lines.push(t('games.shooter.res.next', { n: R.next.stars - this.starsTotal, name: t(`games.shooter.hero.${R.next.id}.name`) }));
       this.results.draw(ctx, W, H, {
         title: t('games.shooter.res.title'), stars: R.stars,
-        criteria: [
+        criteria: R.wk ? [
+          { ok: true, label: t('games.wk.res.done') },
+          { ok: R.band >= 0.85, label: t('games.wk.res.band', { p: Math.round(R.band * 100) }) },
+          { ok: this.bossDown, label: t('games.shooter.res.c3') },
+        ] : [
           { ok: true, label: t('games.shooter.res.c1') },
           { ok: R.okRate >= 0.6, label: t('games.shooter.res.c2', { ok: R.ok, n: R.n }) },
           { ok: R.stars >= 3, label: `${t('games.shooter.res.c3')}${this.bossDown ? '' : ` (${t('games.shooter.res.noBoss')})`}` },

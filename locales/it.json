@@ -1461,6 +1461,8 @@
   "games.menu.start": "+  VIA",
   "games.menu.keys": "−  durata    +  livello    tieni +  via",
   "games.menu.pedal": "oppure inizia a pedalare",
+  "games.wk.charge": "Segui il bersaglio per caricare",
+  "games.wk.finalPhase": "FASE FINALE!",
   "games.menu.wkLine": "Il tuo allenamento: {name} · {n} min",
   "games.menu.wkHold": "Il rullo tiene i watt: tu pedala",
   "games.menu.wkKeys": "+  livello    tieni +  via",
