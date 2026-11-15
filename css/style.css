@@ -962,3 +962,5 @@ body:not(.riding) .metrics dt { overflow: hidden; text-overflow: ellipsis; lette
 .cc-box [data-primary] { border: 0; border-radius: var(--r-btn); background: var(--accent); color: var(--accent-ink); font-weight: 700; box-shadow: var(--shadow-cta); }
 .game-panel:has(#gameMenu:not([hidden])) .game-bar { background: var(--bg); }
 @media (min-width: 1024px) { body:not(.riding) .readout { grid-template-columns: 1fr; gap: 8px; } body:not(.riding) .metrics { grid-template-columns: repeat(4, auto); justify-content: space-between; } }
+#consentSheet .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+#consentSheet .consent-btn { min-height: 56px; width: 100%; }
