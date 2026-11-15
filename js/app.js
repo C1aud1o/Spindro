@@ -1595,33 +1595,37 @@ const clickNav = createClickNav({
   // il primo tasto del menu è quello principale della scheda "Oggi" (nel cruscotto: Pausa/Riprendi)
   prefer: () => (!trainer.connected ? ($('welcomeConnect') && !$('welcome').hidden ? $('welcomeConnect') : $('deviceBar')) : ($('today').classList.contains('plan-due') && !isRiding() ? document.querySelector('#planCard [data-pl-start]') || $('startStop') : $('startStop'))),
   onChange: (on) => document.body.classList.toggle('click-nav', on),
+  // voci del menu Click, in ordine di utilità: prima ciò che serve adesso (avviare / mettere in pausa), poi il resto
   menuItems: () => {
-    const rec = { label: state.ride.running ? t('clickmenu.pause') : t('clickmenu.start'), run: () => $('startStop').click() };
-    const music = GarminBridge && $('musicOn').checked ? [{ label: t('clickmenu.music'), run: () => GarminBridge.mediaKey({ key: 'playpause' }).then(() => toast(t('music.playPause'))).catch((err) => log(`Music: ${err.message}`)) }] : [];
+    const rec = { icon: state.ride.running ? 'pause' : 'play', label: t(state.ride.running ? 'clickmenu.pause' : state.ride.log.length ? 'clickmenu.resume' : 'clickmenu.start'), run: () => $('startStop').click() };
+    const music = GarminBridge && $('musicOn').checked ? [{ icon: 'music', label: t('clickmenu.music'), run: () => GarminBridge.mediaKey({ key: 'playpause' }).then(() => toast(t('music.playPause'))).catch((err) => log(`Music: ${err.message}`)) }] : [];
+    const check = { icon: 'controller', label: t('clickmenu.check'), run: () => clickCheck.open() };
+    const devices = { icon: 'trainer', label: t('clickmenu.devices'), run: () => devicesUi.open() };
+    const settings = { icon: 'settings', label: t('clickmenu.settings'), run: () => $('openSettings').click() };
+    const workouts = { icon: 'workouts', label: t('clickmenu.workouts'), run: () => $('openWorkouts').click() };
+    const games = { icon: 'games', label: t('clickmenu.games'), run: () => openGame() };
+    const video = { icon: 'video', label: t('clickmenu.video'), run: () => { openGame(); startGame('video'); } };
+    const history = { icon: 'history', label: t('clickmenu.history'), run: () => openHistory() };
+    const home = { icon: 'home', label: t('clickmenu.home'), run: () => closeEverything() };
     if (inGame()) {
       return [
-        { label: t('clickmenu.resumeGame'), run: () => {} },
-        { label: t('clickmenu.exitGame'), run: () => closeGame() },
-        { label: t('clickmenu.home'), run: () => { closeGame(); closeGame(); } },
-        { label: gameAudio.muted ? t('clickmenu.audioOn') : t('clickmenu.audioOff'), run: () => $('muteGame').click() },
+        { icon: 'play', label: t('clickmenu.resumeGame'), run: () => {} },
+        { icon: gameAudio.muted ? 'soundOn' : 'soundOff', label: gameAudio.muted ? t('clickmenu.audioOn') : t('clickmenu.audioOff'), run: () => $('muteGame').click() },
         rec, ...music,
-        { label: t('clickmenu.check'), run: () => clickCheck.open() },
+        { icon: 'exit', label: t('clickmenu.exitGame'), run: () => closeGame() },
+        { icon: 'home', label: t('clickmenu.home'), run: () => { closeGame(); closeGame(); } },
+        check,
       ];
     }
-    return [
-      rec, ...music,
-      ...(workout ? [{ label: t('clickmenu.endWorkout'), run: () => $('wkStop').click() }] : []),
-      ...(state.ride.log.length ? [{ label: t('clickmenu.finish'), run: () => $('finishRide').click() }] : []),
-      { label: t('clickmenu.devices'), run: () => devicesUi.open() },
-      { label: t('clickmenu.workouts'), run: () => $('openWorkouts').click() },
-      { label: t('clickmenu.games'), run: () => openGame() },
-      { label: t('clickmenu.video'), run: () => { openGame(); startGame('video'); } },
-      { label: t('clickmenu.history'), run: () => openHistory() },
-      { label: t('clickmenu.settings'), run: () => $('openSettings').click() },
-      ...(overlayOpen() ? [{ label: t('clickmenu.home'), run: () => closeEverything() }] : []),
-      { label: t('clickmenu.check'), run: () => clickCheck.open() },
-      { label: t('clickmenu.close'), run: () => clickNav.stop() },
-    ];
+    const open = overlayOpen();
+    const finish = state.ride.log.length ? [{ icon: 'flag', label: t('clickmenu.finish'), run: () => $('finishRide').click() }] : [];
+    const endWk = workout ? [{ icon: 'stop', label: t('clickmenu.endWorkout'), run: () => $('wkStop').click() }] : [];
+    const close = { icon: 'close', label: t('clickmenu.close'), run: () => clickNav.stop() };
+    if (isRiding() || workout) { // in uscita: pausa e fine per prime, poi cosa si può fare mentre si pedala
+      return [rec, ...finish, ...endWk, ...(open ? [home] : []), ...music, games, video, workouts, devices, settings, history, check, close];
+    }
+    // a riposo: senza rullo il primo bisogno è collegarlo; poi partire, scegliere cosa fare, il resto
+    return [...(trainer.connected ? [rec] : [devices, rec]), ...(open ? [home] : []), workouts, games, video, history, ...(trainer.connected ? [devices] : []), settings, check, close];
   },
 });
 // Verifica tasti ("Controlla il tuo controller"): si apre da sola al primo collegamento, dal pannello Dispositivi e dal menu Click
