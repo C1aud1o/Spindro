@@ -326,7 +326,7 @@
   "games.gruppetto.lane": "¡Ponte en su carril!",
   "games.gruppetto.lblScore": "PUNTOS",
   "games.gruppetto.level": "Nivel",
-  "games.gruppetto.lineSub": "Grupo de {n}",
+  "games.gruppetto.lineSub": "+{b} · Grupo de {n}",
   "games.gruppetto.lv.easy": "Fácil",
   "games.gruppetto.lv.hard": "Difícil",
   "games.gruppetto.lv.normal": "Normal",

@@ -326,7 +326,7 @@
   "games.gruppetto.lane": "Wechsle in seine Spur!",
   "games.gruppetto.lblScore": "PUNKTE",
   "games.gruppetto.level": "Stufe",
-  "games.gruppetto.lineSub": "Gruppe von {n}",
+  "games.gruppetto.lineSub": "+{b} · Gruppe von {n}",
   "games.gruppetto.lv.easy": "Leicht",
   "games.gruppetto.lv.hard": "Schwer",
   "games.gruppetto.lv.normal": "Normal",

@@ -326,7 +326,7 @@
   "games.gruppetto.lane": "Get in his lane!",
   "games.gruppetto.lblScore": "SCORE",
   "games.gruppetto.level": "Level",
-  "games.gruppetto.lineSub": "Group of {n}",
+  "games.gruppetto.lineSub": "+{b} · Group of {n}",
   "games.gruppetto.lv.easy": "Easy",
   "games.gruppetto.lv.hard": "Hard",
   "games.gruppetto.lv.normal": "Normal",

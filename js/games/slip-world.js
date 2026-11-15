@@ -46,7 +46,7 @@ export class Road {
     this.scene = scene;
     // prato di fondo (grande, a tinta unita: il resto lo fanno la nebbia e i campi)
     this.ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), toonMaterial({ color: '#86b84f' }));
-    this.ground.rotation.x = -Math.PI / 2; this.ground.position.y = -0.04; this.ground.receiveShadow = false; scene.add(this.ground);
+    this.ground.rotation.x = -Math.PI / 2; this.ground.position.y = -0.1; this.ground.receiveShadow = false; scene.add(this.ground);
     // strada: una piastrella che segue il giocatore a scatti di TILE metri (il disegno si ripete: nessun salto visibile)
     const geo = new THREE.PlaneGeometry(ROAD_SPAN, 360); geo.rotateX(-Math.PI / 2);
     const rep = 360 / TILE; const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setY(i, uv.getY(i) * rep);
@@ -57,7 +57,7 @@ export class Road {
     const fg = new THREE.PlaneGeometry(1, 1); fg.rotateX(-Math.PI / 2);
     const fuv = fg.attributes.uv; for (let i = 0; i < fuv.count; i++) fuv.setXY(i, fuv.getX(i) * 6, fuv.getY(i) * 6);
     this.fieldMesh = new THREE.InstancedMesh(fg, toonMaterial({ map: stripeTexture() }), this.N);
-    this.fieldMesh.frustumCulled = false; this.fieldMesh.receiveShadow = false; this.fieldMesh.position.y = 0.01; scene.add(this.fieldMesh);
+    this.fieldMesh.frustumCulled = false; this.fieldMesh.receiveShadow = false; this.fieldMesh.position.y = 0.05; scene.add(this.fieldMesh);
     this.m4 = new THREE.Matrix4(); this.col = new THREE.Color(); this.hidden = new THREE.Matrix4().makeScale(0, 0, 0);
     this.nextZ = [-90, -90]; // fine dell'ultimo campo posato, per lato
     for (let i = 0; i < this.N; i++) { this.fieldMesh.setMatrixAt(i, this.hidden); this.fieldMesh.setColorAt(i, this.col.set('#ffffff')); }

@@ -326,7 +326,7 @@
   "games.gruppetto.lane": "Mettiti nella sua corsia!",
   "games.gruppetto.lblScore": "PUNTI",
   "games.gruppetto.level": "Livello",
-  "games.gruppetto.lineSub": "Gruppo da {n}",
+  "games.gruppetto.lineSub": "+{b} · Gruppo da {n}",
   "games.gruppetto.lv.easy": "Facile",
   "games.gruppetto.lv.hard": "Difficile",
   "games.gruppetto.lv.normal": "Normale",

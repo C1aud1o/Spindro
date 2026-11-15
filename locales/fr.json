@@ -326,7 +326,7 @@
   "games.gruppetto.lane": "Va dans sa voie !",
   "games.gruppetto.lblScore": "POINTS",
   "games.gruppetto.level": "Niveau",
-  "games.gruppetto.lineSub": "Groupe de {n}",
+  "games.gruppetto.lineSub": "+{b} · Groupe de {n}",
   "games.gruppetto.lv.easy": "Facile",
   "games.gruppetto.lv.hard": "Difficile",
   "games.gruppetto.lv.normal": "Normal",
