@@ -16,6 +16,8 @@ import { clamp, lerp } from './engine.js';
 import { txt, HUD, hudView, measure, paragraph, wrapLines, MessageQueue } from './kit/hud.js';
 import { t, fmtDec } from '../i18n.js';
 import { SONGS } from './audio.js';
+import { GameMenu, ResultsView } from './kit/menu.js';
+import { makeRandom } from './kit/rng.js';
 
 const M = 'assets/3d/meshy';
 const RIDER_S = 1.3;
@@ -81,7 +83,6 @@ const GRADE = { warm: 1, effort: 3, rec: 0.5, sprint: 2, mini: 3.5, boss: 4, coo
 
 const OD_TIME = 7;
 const v3 = new THREE.Vector3();
-const MENU_ROWS = ['start', 'dur', 'level', 'world', 'hero'];
 
 // materiale dei robot: le parti verdi del modello prendono il colore della fazione; lampo bianco quando vengono colpiti
 function foeMaterial(tpl, color) {
@@ -146,7 +147,8 @@ function ringTexture() {
 
 // ---------- effetti: onde d'urto, detriti, lampi di luce ----------
 class Blast {
-  constructor(scene) {
+  constructor(scene, rnd = Math.random) {
+    this.rnd = rnd;
     this.fx = new Effects(scene, 260);
     const ringMat = () => new THREE.MeshBasicMaterial({ map: fxTexture('circle_05'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
     const flat = new THREE.PlaneGeometry(1, 1); flat.rotateX(-Math.PI / 2);
@@ -167,7 +169,7 @@ class Blast {
   chunks(x, y, z, n, colors, power = 1) {
     for (let i = 0; i < n; i++) {
       if (this.bits.length >= this.N) this.bits.shift();
-      this.bits.push({ x, y, z, vx: (Math.random() - 0.3) * 9 * power, vy: 3 + Math.random() * 7 * power, vz: (Math.random() - 0.5) * 7 * power, r: Math.random() * 6, vr: (Math.random() - 0.5) * 16, s: 0.12 + Math.random() * 0.22 * power, t: 0, life: 1.2 + Math.random() * 0.8, c: colors[i % colors.length] });
+      this.bits.push({ x, y, z, vx: (this.rnd() - 0.3) * 9 * power, vy: 3 + this.rnd() * 7 * power, vz: (this.rnd() - 0.5) * 7 * power, r: this.rnd() * 6, vr: (this.rnd() - 0.5) * 16, s: 0.12 + this.rnd() * 0.22 * power, t: 0, life: 1.2 + this.rnd() * 0.8, c: colors[i % colors.length] });
     }
   }
   flashLight(x, y, z, color = '#ffb060', power = 1) { this.light.position.set(x, y, z); this.light.color.set(color); this.light.intensity = 140 * power; this.lightT = 0.25; }
@@ -229,7 +231,19 @@ export class Strike3D {
     this.minutes = DURATIONS.includes(Number(localStorage.getItem('strikeMin'))) ? Number(localStorage.getItem('strikeMin')) : 5;
     this.diff = clamp(Number(localStorage.getItem('strikeDiff') ?? 1), 0, 2);
     this.worldIx = clamp(Number(localStorage.getItem('strikeWorld')) || 0, 0, LEVELS.length - 1);
-    this.row = 0;
+    this.seed = null; this.rnd = makeRandom(this.seed); // il caso è nostro: con un seme (prove) la partita si ripete uguale
+    this.bestStars = JSON.parse(localStorage.getItem('strikeBestStars') || '{}');
+    // menu e risultati comuni a tutti i giochi; durata e livello restano nelle chiavi di sempre (strikeMin, strikeDiff)
+    this.menu = new GameMenu({
+      id: 'shooter', title: () => t('games.shooter.hud.title'), pitch: () => t('games.shooter.hud.tagline'),
+      howto: () => [t('games.shooter.how1'), t('games.shooter.how2'), t('games.shooter.how3')],
+      best: (d, l) => { const k = `${DURATIONS[d]}`; return { stars: this.bestStars[k] || 0, text: this.best[k] ? String(this.best[k]) : null }; },
+      load: () => ({ durIdx: Math.max(0, DURATIONS.indexOf(this.minutes)), level: this.diff }),
+      save: ({ durIdx, level }) => { this.minutes = DURATIONS[durIdx]; this.diff = level; try { localStorage.setItem('strikeMin', this.minutes); localStorage.setItem('strikeDiff', this.diff); } catch { /* niente storage */ } },
+      onStart: (d, l) => { this.minutes = DURATIONS[d]; this.diff = l; this.begin(); },
+      sfx: (k) => this.audio.sfx(k), ready: () => this.state === 'menu',
+    });
+    this.results = new ResultsView({ onAgain: () => this.begin(), onBack: () => this.hooks.close?.(), sfx: (k) => this.audio.sfx(k) });
     this.loop = this.loop.bind(this);
   }
   unlocked(i) { return this.starsTotal >= HEROES[i].stars; }
@@ -264,19 +278,22 @@ export class Strike3D {
       }
       if (!this.active) return;
       this.build();
-      this.state = 'menu'; this.stateT = 0;
+      this.state = 'menu'; this.stateT = 0; this.menu.reset();
+      const size = () => ({ W: this.stage.W, H: this.stage.H });
+      this.detachMenu = this.menu.attach(this.hudCanvas, size, () => this.state === 'menu');
+      this.detachResults = this.results.attach(this.hudCanvas, size, () => this.state === 'results');
     } catch (err) { console.error(err); this.state = 'error'; this.error = err.message; }
   }
 
   stop() {
-    this.active = false; this.audio.stopSong(); this.audio.transpose = 0; this.hooks.setGrade(null);
+    this.active = false; this.detachMenu?.(); this.detachResults?.(); this.audio.stopSong(); this.audio.transpose = 0; this.hooks.setGrade(null);
     this.stage?.dispose(); this.stage = null;
   }
 
   build() {
     const { scene } = this.stage;
-    this.world = new World(scene, this.m, this.quality);
-    this.blast = new Blast(scene);
+    this.world = new World(scene, this.m, this.quality, () => this.rnd());
+    this.blast = new Blast(scene, () => this.rnd());
     this.bulletPool = new Pool(scene, () => tracer(), 120);
     this.boltPool = new Pool(scene, () => { const tr = tracer('#ff3b4d'); tr.shape(1.6, 0.5); return tr; }, 40);
     this.wind = new WindLines(scene, 36);
@@ -374,7 +391,7 @@ export class Strike3D {
     this.mountGun(this.player, 'blaster');
     this.stage.scene.add(this.player.root);
     this.camInit = false; this.idle = 0;
-    if (menu) { this.state = 'menu'; this.stateT = 0; }
+    if (menu) { this.state = 'menu'; this.stateT = 0; this.menu.reset(); }
   }
 
   // nuova partita: allenamento, allenatore, punteggi
@@ -393,44 +410,17 @@ export class Strike3D {
 
   // ---------- comandi ----------
   // gioco: + corsia a destra, − corsia a sinistra (una sola funzione per tutta la partita)
-  // menu: − passa alla riga dopo, + cambia la riga scelta (o parte)
+  // menu e risultati: i comandi comuni (kit/menu.js); hold() serve al menu per la pressione lunga di +
   input(dir) {
     this.audio.ensure();
     this.idle = 0; this.manual = true;
-    if (this.state === 'menu') {
-      if (this.stateT < 0.35) return;
-      if (dir < 0) { this.row = (this.row + 1) % MENU_ROWS.length; this.audio.sfx('select'); return; }
-      const r = MENU_ROWS[this.row];
-      if (r === 'start') { this.audio.sfx('pickup'); this.begin(); return; }
-      if (r === 'dur') { this.minutes = DURATIONS[(DURATIONS.indexOf(this.minutes) + 1) % DURATIONS.length]; localStorage.setItem('strikeMin', this.minutes); }
-      if (r === 'level') { this.diff = (this.diff + 1) % 3; localStorage.setItem('strikeDiff', this.diff); }
-      if (r === 'world') { this.worldIx = (this.worldIx + 1) % LEVELS.length; localStorage.setItem('strikeWorld', this.worldIx); this.setupWorld(this.worldIx, true); this.stateT = 0.4; }
-      if (r === 'hero') {
-        let n = this.heroIndex; do { n = (n + 1) % HEROES.length; } while (!this.unlocked(n) && n !== this.heroIndex);
-        if (n !== this.heroIndex) { this.heroIndex = n; localStorage.setItem('strikeHero', n); this.swapHero(); } else this.say(t('games.shooter.locked', { n: HEROES[(n + 1) % HEROES.length].stars }), HUD.gold, 1.6);
-      }
-      this.audio.sfx('select');
-      return;
-    }
+    if (this.state === 'menu') { this.menu.input(dir); return; }
     if (this.state === 'intro') { if (dir > 0 && this.stateT > 0.6) this.stateT = 99; return; }
-    if (this.state === 'results') {
-      if (this.stateT < 1.5) return;
-      if (dir > 0) this.begin(); else { this.setupWorld(this.worldIx, true); this.audio.playSong(SONGS.menu); }
-      return;
-    }
+    if (this.state === 'results') { this.results.input(dir); return; }
     if (this.state !== 'play') return;
     this.changeLane(dir > 0 ? -1 : 1);
   }
-  hold() { /* le corsie sono a scatti: niente pressione continua */ }
-
-  swapHero() {
-    this.stage.scene.remove(this.player.root);
-    this.player = new Cyclist(this.tpl, makeKit(this.hero.jersey, this.heroIndex), { shadows: this.quality.cfg.shadows });
-    this.player.root.scale.setScalar(RIDER_S);
-    this.mountGun(this.player, 'blaster');
-    this.stage.scene.add(this.player.root);
-    this.blast.fx.spawn(this.px, 1.2, this.laneZ, { tex: 'spark', size: 3, life: 0.4, color: this.hero.jersey });
-  }
+  hold(dir) { if (this.state === 'menu') this.menu.hold(dir); /* in gioco le corsie sono a scatti: niente pressione continua */ }
 
   // indice di corsia: 0 = destra (z +), 2 = sinistra (z −)
   changeLane(d) {
@@ -440,6 +430,7 @@ export class Strike3D {
   }
 
   begin() {
+    this.rnd = makeRandom(this.seed);
     this.newSession();
     this.setupWorld(this.worldIx);
     this.state = 'intro'; this.stateT = 0;
@@ -468,7 +459,7 @@ export class Strike3D {
   spawnFoe(type, x, lane, extra = {}) {
     const def = FOES[type]; const z = LANES[lane];
     const hpK = 1 + 0.12 * this.diff + (this.coach?.adapt || 0);
-    const e = { type, def, x, lane, z, hp: def.hp * hpK, maxHp: 0, dead: false, deadT: 0, flash: 0, t: Math.random() * 3, born: 0, fireT: 0.6 + Math.random() * 0.8, tele: 0, size: def.size || 1, extra: [], ...extra };
+    const e = { type, def, x, lane, z, hp: def.hp * hpK, maxHp: 0, dead: false, deadT: 0, flash: 0, t: this.rnd() * 3, born: 0, fireT: 0.6 + this.rnd() * 0.8, tele: 0, size: def.size || 1, extra: [], ...extra };
     e.maxHp = e.hp;
     const scene = this.stage.scene;
     if (def.kit) {
@@ -532,7 +523,7 @@ export class Strike3D {
 
   // un gruppo di nemici davanti, nella foschia
   spawnPattern(kind) {
-    const x = this.px + SPAWN; const L = Math.floor(Math.random() * 3); const o = (k) => (L + k) % 3;
+    const x = this.px + SPAWN; const L = Math.floor(this.rnd() * 3); const o = (k) => (L + k) % 3;
     switch (kind) {
       case 'trooper': this.spawnFoe('trooper', x, L); break;
       case 'pair': this.spawnFoe('trooper', x, L); this.spawnFoe('trooper', x + 4, o(1)); break;
@@ -561,14 +552,14 @@ export class Strike3D {
     const max = bossy ? 4 : b.kind === 'sprint' ? 14 : b.kind === 'effort' ? 7 : 6;
     if ((this.dirT <= 0 || alive === 0) && alive < max) {
       const pool = POOLS[b.kind] || POOLS.rec;
-      this.spawnPattern(pool[Math.floor(Math.random() * pool.length)]);
-      this.dirT = GAP[b.kind] * (0.85 + Math.random() * 0.3) * (1 - 0.08 * this.diff);
+      this.spawnPattern(pool[Math.floor(this.rnd() * pool.length)]);
+      this.dirT = GAP[b.kind] * (0.85 + this.rnd() * 0.3) * (1 - 0.08 * this.diff);
     }
     // gabbie nei recuperi (+ compagno), casse quando non ne cade una da un po'
     this.cageT -= dt;
-    if (this.cageT <= 0 && (b.kind === 'rec' || b.kind === 'warm')) { this.spawnCage(this.px + SPAWN + 4, Math.floor(Math.random() * 3)); this.cageT = 32 + Math.random() * 12; }
+    if (this.cageT <= 0 && (b.kind === 'rec' || b.kind === 'warm')) { this.spawnCage(this.px + SPAWN + 4, Math.floor(this.rnd() * 3)); this.cageT = 32 + this.rnd() * 12; }
     this.dropT -= dt;
-    if (this.dropT < -6) { this.spawnPickup(DROPS[Math.floor(Math.random() * DROPS.length)], this.px + SPAWN, Math.floor(Math.random() * 3)); this.dropT = 16; }
+    if (this.dropT < -6) { this.spawnPickup(DROPS[Math.floor(this.rnd() * DROPS.length)], this.px + SPAWN, Math.floor(this.rnd() * 3)); this.dropT = 16; }
   }
 
   // ---------- prigionieri e potenziamenti ----------
@@ -597,7 +588,7 @@ export class Strike3D {
     ring.scale.setScalar(2.2); ring.position.y = 0.05; root.add(ring);
     root.position.set(x, 0, z); this.stage.scene.add(root);
     root.scale.setScalar(0.001);
-    this.pickups.push({ root, model, kind, x, lane, z, t: Math.random() * 3, col, y0: 0, born: 0 });
+    this.pickups.push({ root, model, kind, x, lane, z, t: this.rnd() * 3, col, y0: 0, born: 0 });
   }
 
   freeCage(c) {
@@ -673,7 +664,7 @@ export class Strike3D {
     this.blast.update(dt);
     this.confetti.update(dt);
     this.speed = clamp(2.2 + (kmh / 3.6) * 0.48, 3.2, 10.5);
-    if (this.state === 'menu') { this.px += dt * 3; this.animate(dt); return; }
+    if (this.state === 'menu') { this.menu.update(realDt, { connected, power: st.power || 0 }); this.px += dt * 3; this.animate(dt); return; }
     // sprint: soglia dello scatto in % della FTP (135 %, scalata dal livello)
     this.sprintW = this.coach ? this.coach.target({ kind: 'sprint', pct: 1.35 }) : Math.round(ftp * 1.35);
     this.sprinting = this.power >= this.sprintW * TOL;
@@ -689,6 +680,7 @@ export class Strike3D {
       this.px += this.speed * dt * (this.state === 'results' ? 0.3 : 0.6);
       this.updateFoes(dt); this.updateBullets(dt); this.updateBolts(dt); this.updateWingmen(dt); this.animate(dt);
       this.updateResults(realDt);
+      if (this.state === 'results') this.results.update(realDt);
       return;
     }
     if (this.state !== 'play') return;
@@ -786,6 +778,7 @@ export class Strike3D {
     const key = `${this.minutes}`; const prev = this.best[key] || 0;
     const newBest = this.score > prev;
     if (newBest) { this.best[key] = Math.round(this.score); localStorage.setItem('strikeBest5', JSON.stringify(this.best)); }
+    if (stars > (this.bestStars[key] || 0)) { this.bestStars[key] = stars; localStorage.setItem('strikeBestStars', JSON.stringify(this.bestStars)); }
     const before = this.starsTotal; this.starsTotal += stars; localStorage.setItem('strikeStars', this.starsTotal);
     const unlock = HEROES.find((h) => before < h.stars && this.starsTotal >= h.stars) || null;
     const next = HEROES.find((h) => this.starsTotal < h.stars) || null;
@@ -805,8 +798,8 @@ export class Strike3D {
     if (R.revealT <= 0 && R.shown < 3) { R.shown++; R.revealT = 1.1; if (R.shown <= R.stars) { this.audio.sfx('coin'); this.shakeK.add(0.12); this.firework(); } this.logEvent('star'); }
     if (this.state === 'cool') {
       this.fwT = (this.fwT ?? 1) - dt;
-      if (this.fwT <= 0 && R.shown >= 3) { this.fwT = 2.2 + Math.random() * 0.8; this.firework(); this.logEvent('firework'); }
-      if (this.st >= this.blocks.total) { this.state = 'results'; this.stateT = 0; this.player.standUp(true); for (const w of this.wingmen) w.r.standUp(true); }
+      if (this.fwT <= 0 && R.shown >= 3) { this.fwT = 2.2 + this.rnd() * 0.8; this.firework(); this.logEvent('firework'); }
+      if (this.st >= this.blocks.total) { this.state = 'results'; this.stateT = 0; this.results.reset(); this.player.standUp(true); for (const w of this.wingmen) w.r.standUp(true); }
     }
   }
 
@@ -917,7 +910,7 @@ export class Strike3D {
     if (w.splash) mesh.shape(1.6, 0.5); else if (w.pierce) mesh.shape(5, 0.2); else mesh.shape(full || od ? 2.8 : 2.2, od ? 0.34 : full ? 0.32 : 0.24);
     const tx = tg ? (tg.boss ? tg.x - tg.halfW * 0.4 : tg.x) : from.x + 30; const ty = tg ? (tg.boss ? tg.aimY : centerY(tg)) : 1.4; const tzz = tg ? (tg.boss ? tg.z + (tz - tg.z) * 0.6 : tg.z) : tz;
     const dx = tx - from.x; const dy = ty - from.y; const dz = tzz - from.z; const d = Math.hypot(dx, dy, dz) || 1;
-    const spr = w.spread ? (Math.random() - 0.5) * w.spread : 0;
+    const spr = w.spread ? (this.rnd() - 0.5) * w.spread : 0;
     const vx = (dx / d) * w.speed; const vy = (dy / d) * w.speed + spr * 2; const vz = (dz / d) * w.speed + spr;
     mesh.position.copy(from);
     mesh.lookAt(from.x + vx, from.y + vy, from.z + vz);
@@ -947,7 +940,7 @@ export class Strike3D {
     // scudo: rimbalza se la potenza non basta
     if (e.def.shielded && !this.shieldsDown()) {
       this.blast.fx.spawn(b.x - 0.6, b.y, b.z, { tex: 'blue', size: 0.9, life: 0.1, grow: 1 });
-      e.domeHit = 1; if (Math.random() < 0.3) this.audio.sfx('clank');
+      e.domeHit = 1; if (this.rnd() < 0.3) this.audio.sfx('clank');
       return;
     }
     if (b.splash) {
@@ -958,7 +951,7 @@ export class Strike3D {
     } else {
       this.damageFoe(e, b.dmg);
       this.blast.fx.spawn(b.x, b.y, b.z, { tex: 'spark', size: 0.75, life: 0.07, grow: 1 });
-      for (let q = 0; q < 2; q++) this.blast.fx.spawn(b.x, b.y, b.z, { tex: 'spark', size: 0.25, life: 0.3, vx: -3 + Math.random() * 6, vy: 2 + Math.random() * 4, vz: (Math.random() - 0.5) * 4, grow: 0 });
+      for (let q = 0; q < 2; q++) this.blast.fx.spawn(b.x, b.y, b.z, { tex: 'spark', size: 0.25, life: 0.3, vx: -3 + this.rnd() * 6, vy: 2 + this.rnd() * 4, vz: (this.rnd() - 0.5) * 4, grow: 0 });
     }
   }
 
@@ -996,7 +989,7 @@ export class Strike3D {
       this.odMeter = Math.min(1, this.odMeter + 0.08); this.audio.sfx('coin'); this.logEvent('combo');
     }
     // potenziamento che cade dal robot
-    if (this.dropT <= 0 && e.type !== 'barrier') { this.spawnPickup(DROPS[Math.floor(Math.random() * DROPS.length)], e.x + 1, e.lane); this.dropT = 14 + Math.random() * 8; }
+    if (this.dropT <= 0 && e.type !== 'barrier') { this.spawnPickup(DROPS[Math.floor(this.rnd() * DROPS.length)], e.x + 1, e.lane); this.dropT = 14 + this.rnd() * 8; }
     if (e.type === 'drone') { e.vy = 0; e.spin = 8; }
     this.logEvent('kill');
   }
@@ -1049,7 +1042,7 @@ export class Strike3D {
         if (dx > hold) e.x -= 6 * dt; else e.x += this.speed * dt * 0.98 + (hold - dx) * dt * 0.5;
         e.fireT -= dt;
         if (live && e.fireT <= 0 && !e.tele && dx < 32) { e.tele = 0.7; e.w.lungeDur = 0.7; e.w.lunge = 0.7; this.teleLine(e); }
-        if (e.tele > 0) { e.tele -= dt; if (e.tele <= 0) { e.tele = 0; this.fireBolt(e); e.shots = (e.shots || 0) + 1; e.fireT = 2.2 + Math.random() * 1.2 - 0.2 * this.diff; } }
+        if (e.tele > 0) { e.tele -= dt; if (e.tele <= 0) { e.tele = 0; this.fireBolt(e); e.shots = (e.shots || 0) + 1; e.fireT = 2.2 + this.rnd() * 1.2 - 0.2 * this.diff; } }
         if (e.shots >= 3 && !e.tele) e.leaving = true;
         if (e.leaving) { e.x += this.speed * dt * 0.8; e.hoverY = (e.hoverY || 0) + dt * 3; if (e.hoverY > 6) this.poof(e); }
         style = 'walk';
@@ -1065,7 +1058,7 @@ export class Strike3D {
         e.y += ((FOES.drone.fly + Math.sin(e.t * 3) * 0.3) - e.y) * Math.min(1, dt * 2);
         e.root.position.y = e.y; e.root.rotation.z = Math.sin(e.t * 2) * 0.15;
         e.fireT -= dt;
-        if (live && e.fireT <= 0 && dx < 22) { e.fireT = 3 + Math.random() * 1.4 - this.diff * 0.3; e.bombs = (e.bombs || 0) + 1; this.mortar([{ lane: this.lane, dx: (Math.random() - 0.5) * 1.5 }], 1.15, 'bomb', e); }
+        if (live && e.fireT <= 0 && dx < 22) { e.fireT = 3 + this.rnd() * 1.4 - this.diff * 0.3; e.bombs = (e.bombs || 0) + 1; this.mortar([{ lane: this.lane, dx: (this.rnd() - 0.5) * 1.5 }], 1.15, 'bomb', e); }
         e.z += (LANES[this.lane] - e.z) * dt * 0.5;
         if (e.bombs >= 3) { e.x += this.speed * dt * 0.6; e.y += dt * 4; if (e.y > 9) this.poof(e); }
       } else if (e.type === 'barrier') {
@@ -1313,9 +1306,9 @@ export class Strike3D {
 
   hitBoss(b) {
     const B = this.boss;
-    if (B.shieldUp) { this.blast.fx.spawn(b.x - 1, b.y, b.z, { tex: 'blue', size: 1.1, life: 0.1, grow: 1 }); B.domeHit = 1; if (Math.random() < 0.25) this.audio.sfx('clank'); return; }
+    if (B.shieldUp) { this.blast.fx.spawn(b.x - 1, b.y, b.z, { tex: 'blue', size: 1.1, life: 0.1, grow: 1 }); B.domeHit = 1; if (this.rnd() < 0.25) this.audio.sfx('clank'); return; }
     if (b.splash) { this.blast.boom(b.x, b.y, b.z, 1, { colors: [this.L.foe, '#3a3f4a'] }); this.audio.sfx('boom'); }
-    else { this.blast.fx.spawn(b.x, b.y, b.z, { tex: 'spark', size: 0.9, life: 0.08, grow: 1 }); if (Math.random() < 0.3) this.blast.chunks(b.x, b.y, b.z, 2, [this.L.foeDark, this.L.foe], 0.6); }
+    else { this.blast.fx.spawn(b.x, b.y, b.z, { tex: 'spark', size: 0.9, life: 0.08, grow: 1 }); if (this.rnd() < 0.3) this.blast.chunks(b.x, b.y, b.z, 2, [this.L.foeDark, this.L.foe], 0.6); }
     this.damageBoss(b.dmg);
   }
 
@@ -1379,7 +1372,7 @@ export class Strike3D {
     }
     if (B.dead) {
       B.deadT += dt;
-      if (B.deadT < 2 && Math.random() < dt * 14) this.blast.boom(B.x + (Math.random() - 0.5) * B.halfW * 2, B.y0 + Math.random() * B.h, B.z + (Math.random() - 0.5) * 2, 0.9 + Math.random() * 0.6);
+      if (B.deadT < 2 && this.rnd() < dt * 14) this.blast.boom(B.x + (this.rnd() - 0.5) * B.halfW * 2, B.y0 + this.rnd() * B.h, B.z + (this.rnd() - 0.5) * 2, 0.9 + this.rnd() * 0.6);
       if (B.deadT > 2 && !B.final) {
         B.final = true;
         this.blast.boom(B.x, B.aimY, B.z, 3.2); this.blast.ring(B.x, B.z, 30, '#ffffff', 0.9); this.blast.airRing(B.x, B.aimY, B.z, 22, '#fff4d0', 0.6);
@@ -1443,15 +1436,15 @@ export class Strike3D {
 
   bossAttack(a, phase) {
     const tele = [0, 1.4, 1.2, 1.0][phase];
-    const other = () => (this.lane + 1 + Math.floor(Math.random() * 2)) % 3;
+    const other = () => (this.lane + 1 + Math.floor(this.rnd() * 2)) % 3;
     switch (a) {
       case 'shells': case 'bombs': this.laneStrike(phase >= 2 ? [this.lane, other()] : [this.lane], tele, a); break;
       case 'laser': this.laneStrike(phase >= 3 ? [this.lane, (this.lane + 1) % 3] : [this.lane], tele, 'laser'); break;
       case 'stomp': this.laneStrike([this.lane, other()], tele + 0.2, 'stomp'); break;
-      case 'bolts': { const B = this.boss; for (let k = 0; k < 3; k++) this.chain.push({ t: k * 0.35, bolt: { x: B.x - 2, lane: k === 1 ? this.lane : Math.floor(Math.random() * 3) } }); this.logEvent('tele'); break; }
+      case 'bolts': { const B = this.boss; for (let k = 0; k < 3; k++) this.chain.push({ t: k * 0.35, bolt: { x: B.x - 2, lane: k === 1 ? this.lane : Math.floor(this.rnd() * 3) } }); this.logEvent('tele'); break; }
       case 'mortar': case 'missiles': {
         const n = 1 + phase; const list = [];
-        for (let i = 0; i < n; i++) list.push({ lane: i === 0 ? this.lane : Math.floor(Math.random() * 3), dx: i === 0 ? 0 : -2 + Math.random() * 7 });
+        for (let i = 0; i < n; i++) list.push({ lane: i === 0 ? this.lane : Math.floor(this.rnd() * 3), dx: i === 0 ? 0 : -2 + this.rnd() * 7 });
         this.mortar(list, tele + 0.2, 'bomb'); this.audio.sfx('rocket');
         break;
       }
@@ -1462,8 +1455,8 @@ export class Strike3D {
   }
 
   firework() {
-    const x = this.px + 20 + Math.random() * 30; const y = 10 + Math.random() * 8; const z = (Math.random() - 0.5) * 30;
-    const col = ['#ff4d9d', '#4de3ff', '#ffd166', '#7dff6a', '#c77dff'][Math.floor(Math.random() * 5)];
+    const x = this.px + 20 + this.rnd() * 30; const y = 10 + this.rnd() * 8; const z = (this.rnd() - 0.5) * 30;
+    const col = ['#ff4d9d', '#4de3ff', '#ffd166', '#7dff6a', '#c77dff'][Math.floor(this.rnd() * 5)];
     for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2; this.blast.fx.spawn(x, y, z, { tex: 'spark', size: 0.9, life: 1.1, vx: 0, vy: Math.sin(a) * 7, vz: Math.cos(a) * 7, grow: 0, color: col }); }
     this.blast.fx.spawn(x, y, z, { tex: 'flash', size: 6, life: 0.3, color: col });
     this.audio.sfx('boom');
@@ -1485,7 +1478,7 @@ export class Strike3D {
     this.aura.material.opacity += ((od ? 0.45 : 0) - this.aura.material.opacity) * Math.min(1, dt * 6);
     this.aura.material.rotation += dt * 2;
     this.heroDome.visible = this.puShield > 0; if (this.puShield > 0) { this.heroDome.position.set(this.px, 0, this.laneZ); this.heroDome.scale.set(1.6, 2.4, 1.6); this.heroDome.material.opacity = this.puShield < 2 ? 0.25 + 0.25 * Math.sin(this.t * 20) : 0.35; this.heroDome.material.map.offset.y += dt * 0.3; }
-    if (od && Math.random() < dt * 18) this.blast.fx.spawn(this.px - 0.8, 0.5 + Math.random(), this.laneZ + (Math.random() - 0.5), { tex: 'blue', size: 0.5, life: 0.35, vx: -this.speed * 0.6, grow: -0.5 });
+    if (od && this.rnd() < dt * 18) this.blast.fx.spawn(this.px - 0.8, 0.5 + this.rnd(), this.laneZ + (this.rnd() - 0.5), { tex: 'blue', size: 0.5, life: 0.35, vx: -this.speed * 0.6, grow: -0.5 });
     this.windAnchor = this.windAnchor || new THREE.Object3D();
     this.windAnchor.position.set(this.px + 5, 0, this.laneZ); this.windAnchor.rotation.y = -Math.PI / 2;
     this.wind.update(dt, this.windAnchor, od ? 1 : this.sprinting ? 0.5 : 0);
@@ -1510,11 +1503,26 @@ export class Strike3D {
     fov += this.fovKick || 0;
     this.visW = 30; this.visRight = RANGE;
     this.camZ = this.camZ == null || !this.camInit ? this.laneZ : this.camZ + (this.laneZ - this.camZ) * Math.min(1, dt * 5);
-    if (menu || end) { // di fronte all'eroe, più vicino
+    if (menu) { // di fronte all'eroe; sta nella fascia libera tra testi e tasto VIA (verticale) o a destra della colonna dei testi (orizzontale)
+      const land = W > H * 1.15; const fv = 40; const tanM = Math.tan(THREE.MathUtils.degToRad(fv / 2));
+      let axT; let ayT; let hPx;
+      if (land) { const colEnd = 24 + Math.min(W * 0.38, 440 * H / 600) + 30; axT = ((colEnd + W) / 2) / W * 2 - 1; ayT = -0.05; hPx = H * 0.6; }
+      else { const top = this.menu.contentBottom || H * 0.5; const bot = this.menu.startTop || H * 0.8; axT = 0; ayT = 1 - (top + bot) / H; hPx = Math.max(60, bot - top) * 0.85; }
+      const dist = clamp((2.6 * H / hPx) / 2 / tanM, 5, 18);
+      const pos = v3.set(this.px + Math.sin(0.75) * dist, 1.3 + dist * 0.12, this.laneZ + Math.cos(0.75) * dist);
+      if (!this.camInit) { this.camBase = pos.clone(); this.camInit = true; }
+      this.camBase.lerp(pos, Math.min(1, dt * 4)); this.camBase.x = pos.x;
+      cam.position.copy(this.camBase); cam.lookAt(this.px, 1.2, this.laneZ);
+      cam.rotateY(-Math.atan(-axT * tanM * a)); cam.rotateX(Math.atan(-ayT * tanM));
+      cam.fov += (fv - cam.fov) * Math.min(1, dt * 5); cam.far = 900; cam.updateProjectionMatrix();
+      this.shakeK.apply(cam);
+      return;
+    }
+    if (end) { // di fronte all'eroe, più vicino
       const pos = v3.set(this.px + Math.sin(0.75) * lerp(7.5, 7, k), lerp(2.6, 2, k), this.laneZ + Math.cos(0.75) * lerp(7.5, 7, k));
       if (!this.camInit) { this.camBase = pos.clone(); this.camInit = true; }
       this.camBase.lerp(pos, Math.min(1, dt * 4)); this.camBase.x = pos.x;
-      cam.position.copy(this.camBase); cam.lookAt(this.px, end ? lerp(2.7, 1.8, k) : lerp(-0.25, 1.2, k), this.laneZ);
+      cam.position.copy(this.camBase); cam.lookAt(this.px, lerp(2.7, 1.8, k), this.laneZ);
       cam.fov += (lerp(52, 42, k) - cam.fov) * Math.min(1, dt * 5); cam.far = 900; cam.updateProjectionMatrix();
       this.shakeK.apply(cam);
       return;
@@ -1560,7 +1568,7 @@ export class Strike3D {
     }
     ctx.drawImage(this.backCanvas, 0, 0, W, H);
     if (this.overdrive > 0) { const k = Math.min(1, this.overdrive / 0.6); ctx.fillStyle = `rgba(77,227,255,${0.1 * k})`; ctx.fillRect(0, 0, W, H); }
-    if (this.state === 'menu') return this.drawMenu(ctx, W, H, S, dt);
+    if (this.state === 'menu') { this.menu.draw(ctx, W, H, { connected: this.hooks.connected() }); this.hooks.progress?.drawToasts(ctx, W, dt); return; }
     const pad = 10; const top = 60;
     // riga in alto: punteggio · tempo e blocco · cuori
     ctx.fillStyle = 'rgba(8,10,26,.62)'; rr(ctx, pad, top, W - 2 * pad, 40 * S, 12); ctx.fill();
@@ -1734,53 +1742,6 @@ export class Strike3D {
     ctx.restore();
   }
 
-  drawMenu(ctx, W, H, S, dt) {
-    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, 'rgba(8,10,28,.85)'); g.addColorStop(0.3, 'rgba(8,10,28,.05)'); g.addColorStop(0.5, 'rgba(8,10,28,.15)'); g.addColorStop(1, 'rgba(8,10,28,.94)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    const ty = 66 + 48 * S;
-    const title = t('games.shooter.hud.title');
-    txt(ctx, title, W / 2, ty, { size: fitSize(ctx, title, W - 30, 58 * S), align: 'center', color: HUD.lime, italic: true });
-    const tag = t('games.shooter.hud.tagline');
-    txt(ctx, tag, W / 2, ty + 26 * S, { size: fitSize(ctx, tag, W - 30, 15 * S), align: 'center', color: '#e8e8f4' });
-    // righe: parti · durata · livello · mondo · eroe (− passa alla riga dopo, + cambia)
-    const rows = MENU_ROWS.map((r) => {
-      if (r === 'start') return [t('games.shooter.m.start'), ''];
-      if (r === 'dur') return [t('games.shooter.m.dur'), t('games.shooter.m.min', { n: this.minutes })];
-      if (r === 'level') return [t('games.shooter.m.level'), t(`games.shooter.m.lv${this.diff}`)];
-      if (r === 'world') return [t('games.shooter.m.world'), t(LEVELS[this.worldIx].name)];
-      return [t('games.shooter.m.hero'), t(`games.shooter.hero.${this.hero.id}.name`)];
-    });
-    const rh = 36 * S; const cw = Math.min(W - 24, 440 * S); const x0 = (W - cw) / 2;
-    // dal basso: tasti, regole, record, dote dell'eroe, righe del menu (niente sovrapposizioni)
-    const keysY = H - 24; const rmw = Math.min(W - 28, 560); const fs = 12.5 * S;
-    const rules = [t('games.shooter.rule1', { ftp: this.ftp() }), t('games.shooter.rule3')];
-    const rulesH = rules.reduce((a, l) => a + Math.min(2, wrapLines(ctx, l, rmw, fs, { font: 'text' }).length) * fs * 1.25 + 4, 0);
-    const rulesTop = keysY - 26 * S - rulesH;
-    const y0 = rulesTop - 44 * S - rows.length * (rh + 5);
-    rows.forEach(([lab, val], i) => {
-      const y = y0 + i * (rh + 5); const on = i === this.row; const start = MENU_ROWS[i] === 'start';
-      ctx.fillStyle = start ? (on ? HUD.lime : 'rgba(217,255,61,.25)') : 'rgba(12,14,34,.86)'; rr(ctx, x0, y, cw, rh, 10); ctx.fill();
-      if (on) { ctx.strokeStyle = start ? '#ffffff' : HUD.lime; ctx.lineWidth = 3; ctx.stroke(); }
-      if (start) txt(ctx, `▶ ${lab}`, W / 2, y + rh * 0.7, { size: 22 * S, align: 'center', color: on ? '#15141b' : HUD.lime, stroke: on ? null : undefined, italic: true });
-      else {
-        txt(ctx, lab, x0 + 14, y + rh * 0.66, { size: 14 * S, color: '#b8bdd6', font: 'text' });
-        txt(ctx, val, x0 + cw - 14, y + rh * 0.7, { size: fitSize(ctx, val, cw * 0.6, 19 * S), align: 'right', color: on ? HUD.lime : '#ffffff' });
-      }
-    });
-    let y = y0 + rows.length * (rh + 5) + 14 * S;
-    const perk = t(`games.shooter.hero.${this.hero.id}.perk`);
-    txt(ctx, perk, W / 2, y, { size: fitSize(ctx, perk, W - 30, 14 * S), align: 'center', color: this.hero.jersey });
-    const best = this.best[`${this.minutes}`] || 0;
-    const bl = `${t('games.common.best', { n: best })} · ★ ${this.starsTotal}`;
-    txt(ctx, bl, W / 2, y + 19 * S, { size: 13 * S, align: 'center', color: '#b8b8cc', font: 'text' });
-    y = rulesTop;
-    for (const l of rules) y = paragraph(ctx, l, W / 2, y, { size: fs, maxW: rmw, lineK: 1.25, maxLines: 2, color: '#dfe3f0' }).bottom + 4;
-    const keys = t('games.shooter.m.keys');
-    txt(ctx, keys, W / 2, keysY, { size: fitSize(ctx, keys, W - 30, 20 * S), align: 'center', color: HUD.lime });
-    this.hooks.progress?.drawToasts(ctx, W, dt);
-    this.msgs.draw(ctx, W, H, { u: S, y: H * 0.42 });
-  }
-
   drawIntro(ctx, W, H, S) {
     const k = this.stateT; const a = clamp(Math.min(k * 3, (3.2 - k) * 3), 0, 1);
     ctx.globalAlpha = a;
@@ -1806,29 +1767,32 @@ export class Strike3D {
     return y;
   }
 
-  // riepilogo: stelle con i criteri, punti, record, sblocchi
+  // fine partita: durante il defaticamento le stelle si accendono una alla volta; poi il riepilogo comune (kit/menu.js)
   drawResults(ctx, W, H, S) {
     const R = this.result; if (!R || this.stateT < 0.5) return;
-    const lines = [];
-    const mark = (ok) => (ok ? '✓' : '✗');
-    lines.push(`${mark(true)} ${t('games.shooter.res.c1')}`);
-    lines.push(`${mark(R.okRate >= 0.6)} ${t('games.shooter.res.c2', { ok: R.ok, n: R.n })}`);
-    lines.push(`${mark(R.stars >= 3)} ${t('games.shooter.res.c3')}${this.bossDown ? '' : ` (${t('games.shooter.res.noBoss')})`}`);
-    lines.push(`${t('games.shooter.points', { n: Math.round(this.score) })}${R.newBest ? t('games.shooter.newBest') : ''}`);
-    lines.push(t('games.shooter.res.stats', { k: this.kills, c: this.maxCombo, r: this.rescued }));
-    if (R.unlock) lines.push(t('games.shooter.res.unlock', { name: t(`games.shooter.hero.${R.unlock.id}.name`) }));
-    else if (R.next) lines.push(t('games.shooter.res.next', { n: R.next.stars - this.starsTotal, name: t(`games.shooter.hero.${R.next.id}.name`) }));
-    const keys = this.state === 'results' && this.stateT > 1.5 ? t('games.shooter.res.keys') : null;
-    const title = this.state === 'cool' ? t('games.shooter.res.title') : t('games.shooter.res.done');
-    const extra = 62 * S;
-    const y = this.drawCard(ctx, W, H, S, title, HUD.lime, lines, keys, { y0: Math.max(112 * S, 104), extra });
-    // stelle grandi che si accendono una alla volta
+    if (this.state === 'results') {
+      const lines = [t('games.shooter.res.stats', { k: this.kills, c: this.maxCombo, r: this.rescued })];
+      if (R.unlock) lines.push(t('games.shooter.res.unlock', { name: t(`games.shooter.hero.${R.unlock.id}.name`) }));
+      else if (R.next) lines.push(t('games.shooter.res.next', { n: R.next.stars - this.starsTotal, name: t(`games.shooter.hero.${R.next.id}.name`) }));
+      this.results.draw(ctx, W, H, {
+        title: t('games.shooter.res.title'), stars: R.stars,
+        criteria: [
+          { ok: true, label: t('games.shooter.res.c1') },
+          { ok: R.okRate >= 0.6, label: t('games.shooter.res.c2', { ok: R.ok, n: R.n }) },
+          { ok: R.stars >= 3, label: `${t('games.shooter.res.c3')}${this.bossDown ? '' : ` (${t('games.shooter.res.noBoss')})`}` },
+        ],
+        score: Math.round(this.score), best: R.best ? String(R.best) : null, newBest: R.newBest, lines,
+      });
+      return;
+    }
+    const y = 150 * S;
+    txt(ctx, t('games.shooter.res.title'), W / 2, y, { size: fitSize(ctx, t('games.shooter.res.title'), W - 30, 40 * S), align: 'center', color: HUD.lime, italic: true });
     for (let i = 0; i < 3; i++) {
       const on = i < Math.min(R.shown, R.stars); const lit = i < R.shown;
       const pulse = on && i === R.shown - 1 ? 1 + 0.25 * Math.max(0, R.revealT - 0.6) : 1;
-      txt(ctx, '★', W / 2 + (i - 1) * 56 * S, y + 64 * S + extra * 0.5, { size: 54 * S * pulse, align: 'center', color: on ? '#ffd34d' : lit ? '#4a4c66' : '#2a2c44', stroke: on ? undefined : null });
+      txt(ctx, '★', W / 2 + (i - 1) * 56 * S, y + 64 * S, { size: 54 * S * pulse, align: 'center', color: on ? '#ffd34d' : lit ? '#4a4c66' : '#2a2c44', stroke: on ? undefined : null });
     }
-    if (this.state === 'cool') { const s = t('games.shooter.res.cool'); txt(ctx, s, W / 2, H - 150 * S, { size: fitSize(ctx, s, W - 30, 16 * S), align: 'center', color: HUD.lime }); }
+    const s = t('games.shooter.res.cool'); txt(ctx, s, W / 2, H - 150 * S, { size: fitSize(ctx, s, W - 30, 16 * S), align: 'center', color: HUD.lime });
   }
 
   loop(now) {
