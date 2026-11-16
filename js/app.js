@@ -1,4 +1,4 @@
-import './storage-guard.js'; // primissimo: se il localStorage è vietato, ripiega su una memoria temporanea prima che gli altri moduli lo leggano
+import { strictSet } from './storage-guard.js'; // primissimo: se il localStorage è vietato, ripiega su una memoria temporanea prima che gli altri moduli lo leggano
 import { t, LANGS, setLang, getLang, fmtDate, fmtDec, fmtNum } from './i18n.js'; // per primo: carica le traduzioni prima del render
 import { isNative, GarminBridge } from './native.js'; // nell'app installa il Bluetooth nativo
 import { Trainer } from './trainers/index.js';
@@ -777,6 +777,8 @@ function render() {
 // ---------- Registrazione e file FIT ----------
 const STORE = 'ride-freedom-session';
 let wiped = false; // dopo "Cancella tutti i dati" nulla deve riscrivere l'uscita in corso (la pagina si ricarica e chiama pagehide)
+let storageWarned = false;
+window.addEventListener('storagefull', () => { if (!storageWarned) { storageWarned = true; toast(t('storage.full')); } });
 function persist() {
   if (wiped) return;
   try {
@@ -890,7 +892,7 @@ function history() { try { return JSON.parse(localStorage.getItem('rideHistory')
 function saveHistory(h) {
   // se lo spazio finisce, si tengono le serie solo delle uscite più recenti
   for (let keep = h.length; keep >= 0; keep -= 20) {
-    try { localStorage.setItem('rideHistory', JSON.stringify(h.map((x, i) => (i < h.length - keep ? { ...x, series: undefined } : x)))); return; } catch { /* pieno */ }
+    if (strictSet('rideHistory', JSON.stringify(h.map((x, i) => (i < h.length - keep ? { ...x, series: undefined } : x))))) return; // se è pieno: via le serie dalle uscite più vecchie
   }
 }
 function openHistory() {
@@ -909,7 +911,8 @@ function renderChallenges(hist, riding) {
   el.hidden = false;
   el.innerHTML = `<h2>${t('challenges.title', { month })}</h2><ul class="ch-list">${list.map((c) => {
     const left = c.metric === 'z2' ? t('challenges.valueMin', { done: Math.round(c.value), target: c.target }) : t('challenges.value', { done: fmtNum(Math.round(c.value)), target: c.target });
-    return `<li class="${c.done ? 'done' : ''}" data-ch="${c.id}"><span class="ch-name">${c.done ? '🏅 ' : ''}${t(`challenges.${c.metric}`, { n: c.metric === 'z2' ? c.target / 60 : c.target })}</span><small>${c.done ? t('challenges.completed') : left}</small><span class="goal-bar" role="progressbar" aria-valuenow="${c.pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${c.pct}%"></i></span></li>`;
+    const chName = t(`challenges.${c.metric}`, { n: c.metric === 'z2' ? c.target / 60 : c.target });
+    return `<li class="${c.done ? 'done' : ''}" data-ch="${c.id}"><span class="ch-name">${c.done ? '🏅 ' : ''}${chName}</span><small>${c.done ? t('challenges.completed') : left}</small><span class="goal-bar" role="progressbar" aria-label="${chName}" aria-valuenow="${c.pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${c.pct}%"></i></span></li>`;
   }).join('')}</ul>${medals ? `<p class="fine">${t('challenges.medals', { count: medals })}</p>` : ''}`;
 }
 function renderWelcome() {

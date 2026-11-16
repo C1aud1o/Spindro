@@ -965,6 +965,7 @@
   "status.connecting": "Verbinde…",
   "status.notConnected": "nicht verbunden",
   "status.off": "aus",
+  "storage.full": "Auf diesem Gerät ist der Speicher voll: Deine letzten Änderungen werden eventuell nicht gesichert. Gib Browser-Speicher frei oder exportiere ein Backup.",
   "strava.activityDesc": "Training auf dem Rollentrainer mit Spindro. Durchschnittsleistung {watts} W, {kj} kJ, {km} km.",
   "strava.activityName": "Rollentrainer-Fahrt · {time} · {watts} W",
   "strava.already": "Bereits hochgeladen: <a href=\"{url}\" target=\"_blank\" rel=\"noopener\">View on Strava</a>",

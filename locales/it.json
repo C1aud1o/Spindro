@@ -965,6 +965,7 @@
   "status.connecting": "Connessione…",
   "status.notConnected": "non collegato",
   "status.off": "spento",
+  "storage.full": "Spazio esaurito su questo dispositivo: le ultime modifiche potrebbero non essere salvate. Libera spazio dal browser o esporta un backup.",
   "strava.activityDesc": "Allenamento sul rullo con Spindro. Potenza media {watts} W, {kj} kJ, {km} km.",
   "strava.activityName": "Rullo · {time} · {watts} W",
   "strava.already": "Già caricato: <a href=\"{url}\" target=\"_blank\" rel=\"noopener\">View on Strava</a>",

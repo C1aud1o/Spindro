@@ -965,6 +965,7 @@
   "status.connecting": "Conectando…",
   "status.notConnected": "no conectado",
   "status.off": "desactivado",
+  "storage.full": "Este dispositivo se ha quedado sin espacio: tus últimos cambios podrían no guardarse. Libera espacio del navegador o exporta una copia de seguridad.",
   "strava.activityDesc": "Entrenamiento en rodillo con Spindro. Potencia media {watts} W, {kj} kJ, {km} km.",
   "strava.activityName": "Salida en rodillo · {time} · {watts} W",
   "strava.already": "Ya subido: <a href=\"{url}\" target=\"_blank\" rel=\"noopener\">View on Strava</a>",

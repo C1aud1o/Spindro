@@ -158,7 +158,7 @@ test('the app still starts when the browser blocks localStorage (blocked cookies
 test('with a full storage the safety notice is acknowledged for the session and the ride can start', async ({ browser }) => {
   const ctx = await browser.newContext({ serviceWorkers: 'block' });
   const page = await ctx.newPage(); const errs = []; page.on('pageerror', (e) => errs.push(e.message));
-  await page.addInitScript(() => { Storage.prototype.setItem = function () { throw new DOMException('full', 'QuotaExceededError'); }; });
+  await page.addInitScript(() => { try { localStorage.removeItem('safetyAck'); localStorage.removeItem('analytics'); } catch { /* */ } Storage.prototype.setItem = function () { throw new DOMException('full', 'QuotaExceededError'); }; }); // il file di configurazione precarica safetyAck: qui si parte da zero
   await page.addInitScript({ path: FAKE_BLE });
   await page.goto('/index.html');
   await expect(page.locator('#consentSheet')).toBeVisible();
@@ -238,4 +238,14 @@ test('a 9-hour ride time fits its cell on a 360 px screen in French and German',
     expect(m.sw, lang).toBeLessThanOrEqual(m.cw); expect(m.page, lang).toBeLessThanOrEqual(m.vw);
     await page.evaluate(() => localStorage.clear());
   }
+});
+
+test('with a full storage a settings change does not throw: the app keeps working and warns once', async ({ page }) => {
+  await page.addInitScript(() => { const real = Storage.prototype.setItem; Storage.prototype.setItem = function (k, v) { if (k === '__seeded' || k === 'analytics' || k === 'lang' || k === 'ftp' && !window.__full) return real.call(this, k, v); throw new DOMException('full', 'QuotaExceededError'); }; window.__full = false; });
+  await page.goto('/index.html');
+  await page.evaluate(() => { window.__full = true; });
+  await page.click('#openSettings');
+  await page.fill('#ftp', '260'); await page.press('#ftp', 'Tab');
+  await expect(page.locator('#ftp')).toHaveValue('260');
+  await expect(page.locator('#toast')).toContainText('out of storage space');
 });
