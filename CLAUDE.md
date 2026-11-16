@@ -26,6 +26,6 @@ Every file listed in `ASSETS` in `sw.js` must exist; bump the cache name when sh
 
 ## Product rules
 - User-facing text goes through `js/i18n.js` and must exist in all five `locales/*.json`.
-- Games follow `docs/giochi-design.md` (session = workout in % of FTP, always something to do, verified with bots and frame strips).
+- Games follow `docs/games/DESIGN-RULES.md` (session = workout in % of FTP, always something to do, verified with bots and frame strips).
 - Never claim a device is "verified" unless it was tested on real hardware (`site/data/compatibility.json`).
 - Assets must have a clear licence (CC0/MIT/OFL or generated for the project) and be credited in `README.md` and `docs/legal/licenses.*.md`.

@@ -1,0 +1,65 @@
+name: Game idea
+description: Propose a new game for the trainer: what you pedal, what you do, what the workout is.
+title: "[Game] "
+labels: ["game", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A Spindro game is a workout with a shape: targets in % of FTP, something to do every few seconds, + / − as the only buttons.
+        Read the [design rules](https://github.com/C1aud1o/Spindro/blob/beta/docs/games/DESIGN-RULES.md) first. Want to build it yourself?
+        [Create a game in 15 minutes](https://github.com/C1aud1o/Spindro/blob/beta/docs/games/CREATE-A-GAME.md).
+        Please do not propose a copy of an existing commercial game: a genre or a mechanic is fine, a clone is not.
+  - type: input
+    id: name
+    attributes:
+      label: Name
+      description: One or two words.
+    validations:
+      required: true
+  - type: textarea
+    id: pitch
+    attributes:
+      label: Pitch
+      description: What is the game, in two sentences? What does the rider see?
+    validations:
+      required: true
+  - type: textarea
+    id: workout
+    attributes:
+      label: The workout
+      description: How watts and cadence play the game. What are the efforts and the recoveries (in % of FTP)? How long is a run?
+    validations:
+      required: true
+  - type: input
+    id: controls
+    attributes:
+      label: What + and − do
+      description: One thing, in one line.
+    validations:
+      required: true
+  - type: dropdown
+    id: dimension
+    attributes:
+      label: Look
+      options:
+        - 2D canvas
+        - 3D (three.js)
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: who
+    attributes:
+      label: Who builds it?
+      options:
+        - I want to build it
+        - I would like help building it
+        - It is only an idea
+    validations:
+      required: true
+  - type: textarea
+    id: assets
+    attributes:
+      label: Art and sound
+      description: What would it need? Everything must have a clear licence (CC0 / MIT / OFL, or made for the project).

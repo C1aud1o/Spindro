@@ -110,18 +110,20 @@ Bluetooth.
 
 ## How to add a game (`js/games/`)
 
-1. **Write the game** as a new file in `js/games/`, for example `js/games/mygame.js`. Look at `planata.js`
-   (3D, based on `base3d.js`) or `horde.js` for the pattern. Use the shared helpers in `engine.js` and
-   `kit3d.js` instead of copying them. Games receive the canvas, the game hooks and the audio object, and use
-   power, cadence and gradient from the trainer.
-2. **Register it** in `js/app.js`: add the `import`, then an entry in the `games` map with `game`, `title` and
-   `help` (the one-line control hint). Keep the title and hint short.
-3. **Test it**: add a smoke check to `tests/smoke.spec.mjs` that opens the game and checks it starts without
-   errors.
-4. **Describe it** in `docs/giochi.md` (design notes), briefly.
+<!-- games:begin (maintained by the games SDK work; keep this block short) -->
+A game is **one folder, one registry entry in `js/games/registry.js`, and its strings in `locales/*.json`**. Run `npm run dev`,
+open `http://127.0.0.1:5173/index.html?game=tempo&demo=1` (the template game with a simulated rider, no trainer needed), copy
+`js/games/template/` and you have a running game in about 15 minutes. `npm run game:check -- <id>` plays it with bots and checks the
+design rules.
 
-Use only original art and sounds, or assets with a licence that allows redistribution. Add the licence and
-source of any new asset next to it (`License.txt`), and to the licences page.
+- Step by step, from clone to pull request: [docs/games/CREATE-A-GAME.md](docs/games/CREATE-A-GAME.md)
+- The interface a game implements (lifecycle, hooks, what a game must never do): [docs/games/API.md](docs/games/API.md)
+- Design rules and the review checklist: [docs/games/DESIGN-RULES.md](docs/games/DESIGN-RULES.md)
+- Have an idea but do not want to code it? Open a "Game idea" issue.
+
+Use only original art and sounds, or assets with a licence that allows redistribution (credited in `README.md` and
+`docs/legal/licenses.*.md`), and do not recreate an existing commercial game.
+<!-- games:end -->
 
 ## Translations (coming soon)
 

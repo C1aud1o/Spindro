@@ -10,7 +10,9 @@
     "android:apk": "npm run android:sync && cd android && ./gradlew assembleFossDebug",
     "test": "node tests/i18n-check.mjs && playwright test --trace off",
     "test:i18n": "node tests/i18n-check.mjs",
-    "test:install": "playwright install --with-deps chromium"
+    "test:install": "playwright install --with-deps chromium",
+    "dev": "node scripts/dev.mjs",
+    "game:check": "node scripts/game-check.mjs"
   },
   "dependencies": {
     "@capacitor-community/bluetooth-le": "7.3.2",

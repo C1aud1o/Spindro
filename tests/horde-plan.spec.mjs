@@ -1,4 +1,4 @@
-// Horde Run: la forma dell'allenamento (js/games/horde-plan.js) rispetta docs/giochi-design.md §1. Logica pura, senza browser.
+// Horde Run: la forma dell'allenamento (js/games/horde-plan.js) rispetta docs/games/DESIGN-RULES.md §1. Logica pura, senza browser.
 import { test, expect } from '@playwright/test';
 import { DURATIONS, LEVELS, WARM_S, COOL_S, buildPlan, targetPct, Adapter, starsFor } from '../js/games/horde-plan.js';
 

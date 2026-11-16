@@ -1,4 +1,4 @@
-// Bot di Pedal Strike (docs/giochi-design.md, verifica 1): partita da 5 minuti a livello Normale, FTP 200,
+// Bot di Pedal Strike (docs/games/DESIGN-RULES.md, verifica 1): partita da 5 minuti a livello Normale, FTP 200,
 // potenza fissa a 0,6 / 0,8 / 1,0 / 1,2 × FTP. Per ognuno: stelle, tempo al primo evento, intervallo più lungo senza
 // eventi, eventi al minuto (e sforzi riusciti, boss, colpi presi).
 //   node tests/serve.mjs &

@@ -41,7 +41,7 @@ async function botRun({ id, startAt, steps, ftp }) {
   stopLoop();
   const reqW = window.__wkReq; const timeOf = (x) => (x.st != null && x.block !== undefined ? x.st : (x.el ?? x.wc?.el));
   const bad = []; const seen = new Set(); let n = 0; let first = null; const dt = 1 / 30; let played = 0;
-  while (g.state !== 'over' && g.state !== 'results' && n < 600 * 30) {
+  while (g.state !== 'results' && n < 600 * 30) {
     const b = window.__wkBot?.(g); if (b) g.input(b);
     clock += dt; g.update(dt, dt); n++;
     const got0 = reqW(g);
@@ -79,7 +79,7 @@ for (const G of GAMES) {
     console.log(`${G.id} wk: ${JSON.stringify({ ...r, bad: r.bad.slice(0, 3) })}`);
     expect(r.wkFlag).toBe(true);
     expect(r.nBad, JSON.stringify(r.bad)).toBe(0);
-    expect(['over', 'results']).toContain(r.state);
+    expect(r.state).toBe('results');
     expect(r.secs, 'finisce con l’allenamento (360 s, il riepilogo di qualcuno compare dopo)').toBeGreaterThanOrEqual(359); expect(r.secs).toBeLessThanOrEqual(366);
     expect(r.played, 'il bersaglio è stato chiesto per quasi tutta la partita').toBeGreaterThanOrEqual(350);
     expect(r.grade, 'setGrade mai chiamato').toBe(0);
@@ -94,6 +94,6 @@ for (const G of GAMES) {
     expect(r.first.w, 'primo bersaglio = sforzo 105 %').toBe(210);
     expect(r.nBad, JSON.stringify(r.bad)).toBe(0);
     expect(r.secs, 'restano 210 s').toBeGreaterThanOrEqual(209); expect(r.secs).toBeLessThanOrEqual(216);
-    expect(['over', 'results']).toContain(r.state); expect(r.grade).toBe(0);
+    expect(r.state).toBe('results'); expect(r.grade).toBe(0);
   });
 }

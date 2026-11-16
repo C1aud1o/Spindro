@@ -449,35 +449,8 @@
       <h2 class="menu-title"><img class="ico" src="assets/icons/games.webp" width="256" height="256" alt="" decoding="async" aria-hidden="true"><span data-i18n="games.choose"></span></h2>
       <div id="progressPanel" class="prog"></div>
       <div id="boardPanel" class="boards" hidden></div>
-      <button class="game-card" data-game="racer">
-        <span class="game-emoji" aria-hidden="true">01</span>
-        <span><b data-i18n="games.racer.name"></b><small data-i18n="games.racer.desc"></small></span>
-      </button>
-      <button class="game-card" data-game="horde">
-        <span class="game-emoji" aria-hidden="true">02</span>
-        <span><b data-i18n="games.horde.name"></b><small data-i18n="games.horde.desc"></small></span>
-      </button>
-      <button class="game-card" data-game="gruppetto">
-        <span class="game-emoji" aria-hidden="true">03</span>
-        <span><b data-i18n="games.gruppetto.name"></b><small data-i18n="games.gruppetto.desc"></small></span>
-      </button>
-      <button class="game-card video-card" data-game="video">
-        <span class="game-emoji" aria-hidden="true">▶</span>
-        <span><b data-i18n="games.video.name"></b><small data-i18n="games.video.desc"></small></span>
-      </button>
-      <!-- giochi in officina: visibili solo in modalità sviluppatore finché non raggiungono il livello degli altri -->
-      <button class="game-card" data-game="planata">
-        <span class="game-emoji" aria-hidden="true">L1</span>
-        <span><b data-i18n="games.planata.name"></b><small data-i18n="games.planata.desc"></small></span>
-      </button>
-      <button class="game-card" data-game="mattoni">
-        <span class="game-emoji" aria-hidden="true">L2</span>
-        <span><b data-i18n="games.mattoni.name"></b><small data-i18n="games.mattoni.desc"></small></span>
-      </button>
-      <button class="game-card" data-game="shooter">
-        <span class="game-emoji" aria-hidden="true">L3</span>
-        <span><b data-i18n="games.shooter.name"></b><small data-i18n="games.shooter.desc"></small></span>
-      </button>
+      <!-- one card per game, rendered from js/games/registry.js (js/games/list.js) -->
+      <div id="gameList" class="game-list"></div>
       <label class="switch"><input type="checkbox" id="gameGlow"><span data-i18n="games.glow"></span></label>
       <label class="lang-pick"><span class="fine" data-i18n="games.quality"></span>
         <select id="gameQuality" data-i18n-attr="aria-label:games.quality"><option value="auto" data-i18n="games.quality.auto"></option><option value="high" data-i18n="games.quality.high"></option><option value="medium" data-i18n="games.quality.medium"></option><option value="low" data-i18n="games.quality.low"></option></select></label>
