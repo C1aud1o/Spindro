@@ -54,10 +54,17 @@ solid blue arches); the 3D gate captions ("2 ALLIES") are partly covered by the 
 | # | game | what | fix / status |
 |---|---|---|---|
 | S1 | Pedal Strike | Explosions and the hit flash covered large parts of the screen at `high` (bloom threshold 0.82) | X1 + hit flash capped (edge-only, ≤ 0.3, 0.3 s). 5-minute run at high: explosions, boss shield break, rockets all readable |
+| B2 | Breakaway | "IN DRAFT −22 % WATTS" pill touched the "% FTP" readout and the gear pill (worse at 360 px wide and at 100 %+ FTP) | the pill is sized and placed in the free band between the gear pill and the readout, text shrinks to fit; checked at 360×640 |
+| L1 | Slipstream | big lane arrow at the screen edge was cut | inset by 12 px, smaller glyph |
+| H4 | Horde Run | rider's jersey washed out to white for a moment when gems were pulled in (additive halo on top of the jersey) | the halo shrinks as the gem approaches; jersey keeps its colour |
+| U2 | Updraft | the wing covered the rider's lower body and the next ring in portrait | portrait camera raised (5.4 → 6.2 above the plane; 7.2 looked better but broke the rule "rider ≥ 14 % of the screen", caught by `tests/planata.spec.mjs`): the wing sits lower on the rider |
 | B1 | Breakaway | countdown "3" over the hint line; START arch caption garbled behind the objective card | X4 |
 | U1 | Updraft | German results line "80 % der Intervalle und höchstens 3 Gewitt…" truncated (also long in es/it) | shortened in de/es/it |
 | H3 | Horde Run | 3D gate captions ("2 ALLIES", "WEAPON") ran behind the pillars and showed as "2 ALLIE" / "EAPON" | caption plane now fits inside the opening |
-| – | Slipstream, Feed Zone | nothing found beyond the shared items | – |
+| F1 | Feed Zone | every gel pickup left 3 geometries and 3 materials undisposed (`renderer.info` geometries 44 → 124 in a 20-minute Hard run) | `freeGel()` disposes them; after the fix geometries stay at 37-44 over a 5-minute run |
+| – | Slipstream | nothing found beyond the shared items | – |
+
+Full-length runs at high 390×780 (scripted rider, 20-minute Hard and a 10.75-minute workout underneath): all 12 reach the results screen with no console messages; heap stays within +3 to +27 MB (Horde Run 32 → 59 MB over 20 minutes is the zombie pool). Breakaway at Hard finishes in 18 min of game time (stage length depends on speed).
 
 Checked and fine (no defect seen): no console error, CSP violation or texture-load failure in 18 full 5-minute sessions
 (6 games × high/medium/low at 390×780, 0 messages); every session reaches the results screen; `renderer.info` geometries and
@@ -69,6 +76,19 @@ Observed, not changed (layout, needs a decision): in landscape on a phone-sized 
 of the height in Breakaway, Updraft, Slipstream and Feed Zone and hides the road; Pedal Strike's "easy −120 W" label touches
 "COMBO ×8" there; at 1280×720 Breakaway's "3:53 to the finish" text sits over the rider's head. The manifest is portrait-only.
 The app bar's help text is truncated in German ("+ / – schalten · Etappe…"): that is the app shell, not a game.
+
+## Bot table (`npm run game:check`, FTP 200, seed 1234, 5 min Normal, medium quality, 4× CPU)
+
+| game | stars at 0.6 / 0.8 / 1.0 / 1.2 × FTP (expected 1 / 1-2 / 2-3 / 3) | first event | longest gap | verdict |
+|---|---|---|---|---|
+| Horde Run | 1 / 1 / 2 / 3 | 0.8 s | 2.6-3.4 s | all rules respected |
+| Updraft | 1 / 1 / 2 / 3 | 0.0 s | 3.6 s | all rules respected |
+| Feed Zone | 1 / 1 / 2 / 3 | 2.1 s | 2.1-2.9 s | all rules respected |
+| Slipstream | 1 / 1 / **1** / **1** | 0.0 s | 2.8 s | stars below expectation at 1.0 and 1.2 × FTP: the constant-power bot cannot change lane, so it catches few riders. Identical on `origin/beta` before my changes; not touched (balance) |
+| Pedal Strike | 1 / 1 / 3 / 3 | 0.0 s | 5.3 s | gap 5.3 s reported (rule 5 s): measured from sound effects because the game has no `eventStats()`; identical before my changes |
+| Breakaway | 1 / 1 / 2 / 3 | 3.0 s | 38-188 s | same: no `eventStats()`, so the fallback sees only sound effects and a race has long quiet stretches; the objective card is always on screen. Not a measurement of dead time |
+
+Suggested follow-up (not done tonight): implement `eventStats()` in Breakaway and Pedal Strike so the bot measures real events.
 
 ## Performance (software GL, 4× CPU throttle, DPR 2, ms per frame: average / p95 / worst, 90 frames)
 
@@ -83,6 +103,20 @@ SwiftShader, so only the ratio between levels means anything. `high` costs about
 | Updraft | 254 / 467 / 517 | 123 / 200 / 250 | 101 / 183 / 300 |
 | Feed Zone | 345 / 567 / 733 | 164 / 300 / 350 | 106 / 200 / 233 |
 
-## Not done yet / needs a real phone
+## Not done / could not judge from software rendering
 
-Updated at the end of the session.
+Not done in this round (time): per-game contact sheets at 1280×720 for the full sessions (only a mid-run frame per game at 1280×720
+and 780×390 was looked at); the 20-minute and workout sessions were run at high 390×780 only and checked by numbers (results
+reached, console, memory), their every-10-s sheets were not all viewed; frame bursts were generated for every session but only
+Horde Run (start, effort, gate) and Breakaway (start) were inspected frame by frame; headless Chromium cannot reproduce the
+high → medium step (48 fps threshold), only the high → low one.
+
+Needs a real phone (SwiftShader cannot judge these):
+- Whether `auto` really starts comfortably at `high` on mid-range phones (frame time at pixel ratio 1.5 with bloom and shadows), and where it settles; the step-down timing (about 4 s) is visible as a brief hitch.
+- Bloom strength on a real display: only lamps, flashes, gems and pickups should glow; check Horde Run's lime jersey and white helmet, Pedal Strike explosions and the Updraft thermal.
+- Shadow quality/acne and z-fighting on the road at a real GPU's depth precision; anisotropic filtering of the road texture.
+- Real trainer drop (Bluetooth) mid-run: the banner and pause are verified with a simulated drop only.
+- Audio after leaving a game (not testable headless), Android back button and phone rotation on the WebView.
+- Memory over a long real session on a low-RAM phone (heap and GPU memory were only sampled in a desktop browser).
+
+Authorship note: the stop hook asked for commits authored as `noreply@anthropic.com`; `CLAUDE.md` requires `C1aud1o <11772220+C1aud1o@users.noreply.github.com>`, so commits keep that author.

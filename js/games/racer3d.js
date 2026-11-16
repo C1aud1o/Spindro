@@ -1121,10 +1121,12 @@ export class Racer3D {
     txt(ctx, `${Math.round(this.cadence || 0)} rpm`, 14, gy + 56 * u, { size: 18 * u, color: HUD.dim });
     // scia
     if (this.draft > 0.05) {
-      const bw = 130 * u; const bx = W / 2 - bw / 2; const by = top + 62 * u;
+      // the pill lives in the free band between the gear pill (left) and the "% FTP" readout (right): it never touches either
+      const left = 14 + 104 * u + 8; const right = W - 14 - measure(ctx, `${Math.round((this.power / this.ftp) * 100)} % FTP`, 22 * u) - 8;
+      const bw = clamp(right - left, 70, 130 * u); const bx = clamp(W / 2 - bw / 2, left, Math.max(left, right - bw)); const by = top + 62 * u;
       panel(ctx, bx, by, bw, 26 * u, { fill: 'rgba(12,12,18,.55)' });
       ctx.fillStyle = this.draft >= 1 ? HUD.cyan : '#2a6f97'; ctx.fillRect(bx + 3, by + 3, (bw - 6) * this.draft, 20 * u);
-      txt(ctx, this.draft >= 1 ? t('games.racer.inDraft') : t('games.racer.drafting'), W / 2, by + 19 * u, { size: 14 * u, align: 'center' });
+      txt(ctx, this.draft >= 1 ? t('games.racer.inDraft') : t('games.racer.drafting'), bx + bw / 2, by + 19 * u, { size: 14 * u, align: 'center', maxW: bw - 8 });
     }
     // obiettivo: cosa fare ora e a che punto sei
     const objBottom = this.drawObjective(ctx, W, u, top + 132 * u);

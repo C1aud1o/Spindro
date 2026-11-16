@@ -114,6 +114,8 @@ function gelObject(color) {
   tear.scale.set(1, 1, 0.3); tear.position.y = 0.5; tear.rotation.y = Math.PI / 4; g.add(tear);
   g.rotation.z = Math.PI / 2; const w = new THREE.Group(); w.add(g); w.scale.setScalar(2.1); return w;
 }
+// every gel owns its three small geometries and materials (made in gelObject): free them when it is gone
+function disposeObject(o) { o.traverse((c) => { if (c.isMesh) { c.geometry.dispose(); (Array.isArray(c.material) ? c.material : [c.material]).forEach((m) => m.dispose()); } }); }
 function buntingMesh(list) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute([-0.26, 0, 0, 0.26, 0, 0, 0, -0.55, 0], 3));
@@ -320,7 +322,7 @@ export class Mattoni {
 
   reset() {
     const { scene } = this.stage;
-    for (const g of this.gels || []) scene.remove(g.mesh);
+    for (const g of this.gels || []) this.freeGel(g.mesh);
     if (this.player) scene.remove(this.player.root);
     this.rand = makeRandom(this.seed); // il caso è nostro: con un seme (this.seed o window.__spindroSeed) la partita si ripete uguale (test)
     this.configure(this.durIdx, this.lvlIdx);
@@ -342,6 +344,7 @@ export class Mattoni {
   }
 
   // ---------- eventi: tutto ciò che chiede o premia qualcosa (si misura nel test) ----------
+  freeGel(mesh) { this.scene.remove(mesh); disposeObject(mesh); }
   ev(kind) { if (this.evLog.length < 20000) this.evLog.push({ t: this.el, k: kind }); }
   eventStats() {
     const end = this.total - COOL_S; const ts = this.evLog.filter((e) => e.t <= end).map((e) => e.t).sort((a, b) => a - b);
@@ -548,7 +551,7 @@ export class Mattoni {
       g.t += dt; g.z -= 5.5 * dt; g.mesh.position.set(g.x, 1.1 + Math.sin(g.t * 7) * 0.15, g.z); g.mesh.rotation.y += dt * 3;
       if (g.z < PZ + 0.7 && g.z > PZ - 0.7 && Math.abs(g.x - this.x) < this.stripW / 2 + 0.6) { g.done = true; this.takeGel(g); }
       else if (g.z < PZ - 0.9) { g.done = true; this.fx.spawn(g.x, 0.8, g.z, { tex: 'smoke', size: 1.4, life: 0.4, additive: false }); }
-      if (g.done) this.scene.remove(g.mesh);
+      if (g.done) this.freeGel(g.mesh);
     }
     this.gels = this.gels.filter((g) => !g.done);
   }
