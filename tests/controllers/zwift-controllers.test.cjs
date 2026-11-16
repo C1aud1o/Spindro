@@ -155,7 +155,8 @@ const ok = (cond, msg) => { console.log(`${cond ? '  ✓' : '  ✗'} ${msg}`); i
   await page.evaluate(() => window.__bt.devices.pr.gatt.disconnect());
   ok((await status()) === 'Zwift Play', `un controller scollegato: "${await status()}"`);
   await page.evaluate(() => window.__bt.devices.pl.gatt.disconnect());
-  ok((await status()) === '—', 'entrambi scollegati');
+  // un dispositivo caduto si ritenta da solo (js/devices.js): la riga di stato dice "Ricollego…" invece del trattino
+  ok(/^(—|Reconnecting…|Ricollego…)$/.test(await status()), `entrambi scollegati: "${await status()}"`);
 
   // ---- Zwift Ride
   console.log('Zwift Ride');
