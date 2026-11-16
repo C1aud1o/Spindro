@@ -27,7 +27,7 @@ jobs:
       - run: npm test
         env:
           CI: 'true'
-      - name: Carica il report (solo se fallisce)
+      - name: Upload the report (only on failure)
         if: failure()
         uses: actions/upload-artifact@v4
         with:

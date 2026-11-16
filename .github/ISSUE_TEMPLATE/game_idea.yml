@@ -1,5 +1,5 @@
 name: Game idea
-description: Propose a new game for the trainer: what you pedal, what you do, what the workout is.
+description: "Propose a new game for the trainer: what you pedal, what you do, what the workout is."
 title: "[Game] "
 labels: ["game", "enhancement"]
 body:

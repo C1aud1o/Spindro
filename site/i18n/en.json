@@ -43,7 +43,7 @@
       },
       {
         "q": "Which trainers work?",
-        "a": "Spindro talks FTMS, the standard Bluetooth protocol most smart trainers of recent years use. We have ridden one trainer for real. The compatibility page says what is verified, what should work, and how to report yours."
+        "a": "Spindro speaks FTMS, the standard Bluetooth protocol used by most recent smart trainers. We have ridden one trainer for real. The compatibility page says what is verified, what should work, and how to report yours."
       },
       {
         "q": "Is it a Zwift replacement?",
@@ -74,9 +74,9 @@
         "id": "connect",
         "nav": "Connect",
         "title": "Add a device, then ride",
-        "text": "The home is built around ERG: a Today card with a target in watts, − and + to change it, and one big Start button. One “Add device” button pairs a trainer, a Zwift controller, a heart rate strap, a power meter or a cadence sensor, and the app works out what each one is for.",
+        "text": "The home screen is built around ERG: a Today card with a target in watts, − and + to change it, and one big Start button. One “Add device” button pairs a trainer, a Zwift controller, a heart-rate strap, a power meter or a cadence sensor, and the app works out what each one is for.",
         "img": "devices",
-        "alt": "The Devices sheet listing a connected Van Rysel D100 trainer and a heart rate strap, each with a Disconnect button, and the Add another device button.",
+        "alt": "The Devices sheet listing a connected Van Rysel D100 trainer and a heart-rate strap, each with a Disconnect button, and the Add another device button.",
         "rows": [
           [
             "Protocols",
@@ -84,11 +84,11 @@
           ],
           [
             "Modes",
-            "ERG · Virtual gears · Slope · Resistance"
+            "ERG · Virtual gears · Gradient · Resistance"
           ],
           [
             "Controllers",
-            "Zwift Click, Play and Ride as shifters and remote"
+            "Zwift Click, Play and Ride as shifters and remotes"
           ],
           [
             "Key check",
@@ -130,7 +130,7 @@
         "id": "play",
         "nav": "Play",
         "title": "Games that are workouts",
-        "text": "Six 3D games, each one a structured workout in percent of your FTP: 5, 10 or 20 minutes, three levels, efforts and recoveries, something to do every few seconds. They share one menu, so you learn it once."
+        "text": "Six 3D games, each one a structured workout as a percentage of your FTP: 5, 10 or 20 minutes, three levels, efforts and recoveries, something to do every few seconds. They share one menu, so you learn it once."
       },
       {
         "id": "record",
@@ -193,8 +193,8 @@
     ],
     "gamesMore": "The games menu also plays any YouTube ride video, or a video of your own, at your own speed.",
     "gamesAlt": [
-      "Breakaway: the rider in pink leads a pack toward the sea, with the gear, the climb goal and a profile of the stage on screen.",
-      "Horde Run: a rider on a night road firing at a horde of zombies, with wave counter and shots per second.",
+      "Breakaway: the rider in pink leads the bunch towards the sea, with the gear, the climb goal and a profile of the stage on screen.",
+      "Horde Run: a rider on a night road firing at a horde of zombies, with a wave counter and shots per second.",
       "Pedal Strike: a rider on a harbour road facing a shielded mini-boss, with the score, the workout step bar and the overdrive meter.",
       "Slipstream: a rider on a country road collecting bottles, with the next rider 45 metres ahead.",
       "Updraft: a yellow plane carrying the rider through a ring, with an altitude gauge.",
@@ -311,7 +311,7 @@
     "privacy": "Privacy",
     "terms": "Terms",
     "account-deletion": "Delete account",
-    "licenses": "Licenses",
+    "licenses": "Licences",
     "trademarks": "Trademarks"
   },
   "footer": {
@@ -398,7 +398,7 @@
     "checkText": "The check plays your game at 0.6, 0.8, 1.0 and 1.2 times FTP with the demo rider. It prints the stars earned, the time to the first event, the longest gap without an event, events per minute and milliseconds per frame, and when a rule is broken it says which one and how to fix it.",
     "rulesTitle": "The rules a game follows",
     "rules": [
-      "A run is a workout of 5, 10 or 20 minutes, with intensity in percent of the rider's FTP, so it is fair at 120 W and at 320 W.",
+      "A run is a workout of 5, 10 or 20 minutes, with intensity as a percentage of the rider's FTP, so it is fair at 120 W and at 320 W.",
       "Three levels (easy, normal, hard) and a difficulty that adapts a little after failed or successful efforts.",
       "Something to do within eight seconds, and never more than five seconds without an event that asks or rewards something.",
       "Playable without touching the screen: watts and cadence do the work, + and − do one thing.",
