@@ -14,4 +14,5 @@ Left / to redo at the end
 - Check `docs/games/CREATE-A-GAME.md` and `js/games/kit/workout-plan.js` after merging `origin/beta`; rebuild.
 - Links to docs on GitHub point at `main`: they work after `beta` is promoted.
 - axe-core runs through `tests/a11y.spec.mjs` (added on beta); the site passes.
-- Merged beta (CSP, fonts, legal): conflicts resolved; screenshots regenerated against the merged build. Known: Horde Run captures look washed out under the software renderer; check on a real device and re-run the script.
+
+- Merged beta (CSP, fonts, legal). Game screenshots are taken in an effort phase at 135 s of game time (`SHOT_T` overrides it). `scripts/site-shots.mjs` fails if the page logs a Content-Security-Policy violation or a texture load error.
