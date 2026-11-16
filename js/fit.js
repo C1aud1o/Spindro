@@ -76,7 +76,11 @@ const fitTime = (ms) => Math.round(ms / 1000) - FIT_EPOCH;
  * samples: [{ t: ms Unix, power, cadence, hr, speed (m/s), distance (m) }]
  * Restituisce un Uint8Array con il file .FIT.
  */
-export function encodeFit(samples) {
+export function encodeFit(all) {
+  // al più un campione per secondo, in ordine: dopo una pausa o un ripristino il primo campione può cadere nello stesso secondo dell'ultimo
+  // (due "record" con lo stesso orario fanno rifiutare il file a Strava) e un orario non valido farebbe un file corrotto
+  const samples = []; let lastTs = -Infinity;
+  for (const s of all) { const ts = fitTime(s.t); if (Number.isFinite(ts) && ts > lastTs) { samples.push(s); lastTs = ts; } }
   if (!samples.length) throw new Error('No data recorded');
   const w = new Writer();
   const start = samples[0].t; const end = samples[samples.length - 1].t;

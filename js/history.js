@@ -32,17 +32,23 @@ export function rideStats(log) {
 const fmtDate = (ms) => fmtD(new Date(ms), { weekday: 'short', day: 'numeric', month: 'short' });
 const weekStart = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getTime(); };
 
+// ultime 8 settimane (lunedì-domenica, ora locale), dalla più vecchia alla corrente
+export function weekBuckets(hist, nowTs = Date.now()) {
+  const now = weekStart(nowTs); const weeks = [];
+  for (let k = 7; k >= 0; k--) {
+    const wd = new Date(now); wd.setDate(wd.getDate() - k * 7); const ws = wd.getTime(); // per data, non in millisecondi: con il cambio d'ora una settimana dura 167 o 169 ore
+    const rides = hist.filter((h) => weekStart(h.t) === ws);
+    weeks.push({ ws, min: Math.round(rides.reduce((a, h) => a + h.dur, 0) / 60), n: rides.length, kj: rides.reduce((a, h) => a + (h.kj || 0), 0) });
+  }
+  return weeks;
+}
+
 export function renderHistory(el, hist, ftp) {
   if (!hist.length) {
     el.innerHTML = `<p class="fine hs-empty">${t('history.empty')}</p>`;
     return;
   }
-  // settimane (ultime 8)
-  const now = weekStart(Date.now()); const weeks = [];
-  for (let k = 7; k >= 0; k--) {
-    const ws = now - k * 7 * 864e5; const rides = hist.filter((h) => weekStart(h.t) === ws);
-    weeks.push({ ws, min: Math.round(rides.reduce((a, h) => a + h.dur, 0) / 60), n: rides.length, kj: rides.reduce((a, h) => a + (h.kj || 0), 0) });
-  }
+  const weeks = weekBuckets(hist);
   const thisWeek = weeks[weeks.length - 1];
   // record di sempre e degli ultimi 30 giorni
   const rec = (filter) => Object.fromEntries(BESTS.map(([d]) => [d, Math.max(0, ...hist.filter(filter).map((h) => h.best?.[d] || 0))]));

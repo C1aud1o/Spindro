@@ -274,12 +274,14 @@ const keyDir = (k) => (['ArrowRight', 'ArrowUp', 'PageUp', '+', '=', ' ', 'd', '
 // tastiera = stessi ruoli del controller: frecce, Invio = ok, Esc = back, + / − = plus / minus
 const keyRole = (k) => ({ ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', Enter: 'ok', Escape: 'back', '+': 'plus', '=': 'plus', '-': 'minus', PageUp: 'plus', PageDown: 'minus' })[k] || null;
 window.addEventListener('keyup', (e) => { const r = keyRole(e.key); if (clickNav.active && r) { clickNav.key(r, false); return; } if (activeGame?.active && keyDir(e.key)) activeGame.hold?.(0); });
+const layerOpen = () => !!document.querySelector('.sheet:not([hidden]), .calib') || !$('gamePanel').hidden || !$('debugPanel').hidden;
 window.addEventListener('keydown', (e) => {
   if (clickCheck.isOpen()) { if (e.key === 'Escape') clickCheck.close(); return; }
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') { if (e.key === 'Escape') e.target.blur(); return; }
   clickNav.sync();
   const role = keyRole(e.key);
   if (clickNav.active && role) { e.preventDefault(); if (!e.repeat) clickNav.key(role, true); return; }
+  if (e.key === 'Escape' && !activeGame?.active && !e.repeat && layerOpen()) { e.preventDefault(); closeTopLayer(); return; }
   if (e.key === 'Escape' && playingNow() && !activeGame?.active) { e.preventDefault(); clickNav.back(); return; }
   if (activeGame?.active) {
     const d = keyDir(e.key);
@@ -287,6 +289,7 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeGame();
     return;
   }
+  if (layerOpen()) return; // pannello o dialogo aperto: le frecce scorrono/si muovono lì, non cambiano marcia o watt dietro
   if (['ArrowUp', 'ArrowRight', 'PageUp', '+', '='].includes(e.key)) { e.preventDefault(); step(+1); }
   if (['ArrowDown', 'ArrowLeft', 'PageDown', '-'].includes(e.key)) { e.preventDefault(); step(-1); }
   // scorciatoie da PC (solo se nessun pannello è aperto e non si sta scrivendo)
@@ -408,7 +411,7 @@ $('startStop').addEventListener('click', () => {
 $('reset').addEventListener('click', async () => {
   if (!state.ride.saved && !(await ask(t('finish.confirmReset')))) return;
   if (workout) finishWorkout(false); // senza uscita non c'è più un allenamento in corso
-  Object.assign(state.ride, { running: false, elapsed: 0, distance: 0, energy: 0, powerSum: 0, samples: 0, log: [], saved: true, stravaUrl: null, historySaved: false });
+  Object.assign(state.ride, { running: false, elapsed: 0, distance: 0, energy: 0, powerSum: 0, samples: 0, log: [], saved: true, stravaUrl: null, historySaved: false, lastMilestone: 0, lastKm: 0 });
   renderWelcome();
   stravaMsg('');
   persist();
@@ -675,8 +678,26 @@ const cassetteEls = GEARS.map((_, i) => {
 });
 
 // ---------- Pannelli ----------
-function openSheet(id) { $(id).hidden = false; document.body.style.overflow = 'hidden'; }
-function closeSheet(id) { $(id).hidden = true; document.body.style.overflow = ''; }
+// Pannelli: aperti uno sopra l'altro (es. Impostazioni → Storico). Il fondo resta bloccato finché ce n'è uno aperto,
+// la pagina dietro è "inert" (niente Tab né lettori di schermo dietro il pannello) e alla chiusura il focus torna a chi l'ha aperto.
+const sheetOpener = new Map();
+const openSheets = () => [...document.querySelectorAll('.sheet')].filter((x) => !x.hidden);
+function syncSheetLock() {
+  const any = openSheets().length > 0;
+  document.body.style.overflow = any ? 'hidden' : '';
+  for (const el of document.querySelectorAll('body > header.top, body > main')) el.inert = any;
+}
+function openSheet(id) {
+  const el = $(id);
+  if (el.hidden) { const a = document.activeElement; if (a && a !== document.body && !a.closest('.sheet')) sheetOpener.set(id, a); else if (a && a.closest('.sheet')) sheetOpener.set(id, a); }
+  el.hidden = false; syncSheetLock();
+}
+function closeSheet(id) {
+  const el = $(id); const was = !el.hidden;
+  el.hidden = true; syncSheetLock();
+  const o = sheetOpener.get(id); sheetOpener.delete(id);
+  if (was && o && o.isConnected && !o.closest('[hidden]') && !o.closest('[inert]')) { try { o.focus({ preventScroll: true }); } catch { /* */ } }
+}
 document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => closeSheet(b.dataset.close)));
 document.querySelectorAll('.sheet').forEach((sh) => sh.addEventListener('click', (e) => { if (e.target === sh) closeSheet(sh.id); }));
 $('openSettings').addEventListener('click', () => openSheet('settingsSheet'));
@@ -706,7 +727,9 @@ function updateView() {
 }
 function render() {
   const d = state.data; const r = state.ride;
-  $('power').textContent = Math.round($('smooth3').checked && powerBuf.length ? powerBuf.reduce((a, b) => a + b, 0) / powerBuf.length : d.power || 0);
+  const shownW = Math.round($('smooth3').checked && powerBuf.length ? powerBuf.reduce((a, b) => a + b, 0) / powerBuf.length : d.power || 0) || 0;
+  $('power').textContent = shownW;
+  $('power').parentElement.dataset.digits = String(String(shownW).length); // 4 cifre (≥ 1000 W) non stanno nella scheda: il CSS le rimpicciolisce
   $('cadence').textContent = hasRealCadence() ? Math.round(d.cadence || 0) : trainer.connected ? `~${Math.round(currentCadence())}` : '0';
   const speed = state.mode === 'gears' ? currentVirtualSpeed() * 3.6 : d.speed || 0;
   $('speed').textContent = fmtDec(speed, 1);
@@ -749,7 +772,9 @@ function render() {
 
 // ---------- Registrazione e file FIT ----------
 const STORE = 'ride-freedom-session';
+let wiped = false; // dopo "Cancella tutti i dati" nulla deve riscrivere l'uscita in corso (la pagina si ricarica e chiama pagehide)
 function persist() {
+  if (wiped) return;
   try {
     const r = state.ride;
     localStorage.setItem(STORE, JSON.stringify({ elapsed: r.elapsed, distance: r.distance, energy: r.energy,
@@ -761,6 +786,7 @@ function restore() {
     const saved = JSON.parse(localStorage.getItem(STORE) || 'null');
     if (saved?.log?.length) {
       Object.assign(state.ride, saved, { running: false });
+      state.ride.lastMilestone = Math.floor(saved.elapsed / 600); state.ride.lastKm = Math.floor(saved.distance / 5000); // i traguardi già passati non si annunciano di nuovo
       log(`Previous session restored (${fmtTime(saved.elapsed)}). Press Start to continue or save it as .FIT.`);
     }
   } catch { /* ignora */ }
@@ -1394,7 +1420,7 @@ $('finishRide').addEventListener('click', () => {
   const week = hist.filter((h) => Date.now() - h.t < 7 * 864e5).length;
   const mins = Math.round(r.elapsed / 60);
   $('finishTitle').textContent = mins >= 60 ? t('finish.titleLong') : mins >= 30 ? t('finish.titleMid') : r.elapsed >= 60 ? t('finish.titleShort') : t('finish.titleTiny');
-  $('finishPraise').textContent = r.elapsed >= 60 ? `${t('finish.praise', { mins, kj: Math.round(r.energy) })} ${week > 1 ? t('finish.praiseWeek', { n: week }) : t('finish.praiseStart')}` : '';
+  $('finishPraise').textContent = r.elapsed >= 60 ? `${t('finish.praise', { mins, count: mins, kj: Math.round(r.energy) })} ${week > 1 ? t('finish.praiseWeek', { n: week }) : t('finish.praiseStart')}` : '';
   $('finishCompare').textContent = prev && r.elapsed >= 60 && prev.avgW ? (avgW > prev.avgW ? t('finish.compareMore', { delta: avgW - prev.avgW }) : avgW === prev.avgW ? t('finish.compareSame') : '') : '';
   const gl = goalState(hist);
   $('finishNudge').textContent = gl ? (gl.done >= gl.goal ? t('finish.goalDone', { done: gl.done, goal: gl.goal }) : t('finish.goalLeft', { done: gl.done, goal: gl.goal, left: gl.goal - gl.done })) : t('finish.nudge');
@@ -1461,7 +1487,7 @@ $('shareImg').addEventListener('click', async () => {
   if (st.best[1200]) stats.push([t('share.best20'), st.best[1200], 'W']); else if (st.best[60]) stats.push([t('share.best1'), st.best[60], 'W']);
   const { shareCard } = await import('./sharecard.js');
   const res = await shareCard({
-    title: $('finishTitle').textContent || t('share.title', { mins }),
+    title: $('finishTitle').textContent || t('share.title', { mins, count: mins }),
     date: fmtDate(new Date()),
     stats, series: st.series, ftp: state.ftp, route: route?.name || lastRouteName,
   });
@@ -1503,6 +1529,7 @@ $('wipeData').addEventListener('click', async () => {
   if (!await ask(t('wipe.confirm'), { ok: t('wipe.go'), danger: true })) return;
   try { const sy = await import('./account/sync.js'); sy.stopSync(); sy.resetSyncState(); } catch { /* account non attivo */ }
   try { strava.disconnect(); } catch { /* niente */ }
+  wiped = true;
   try { localStorage.clear(); sessionStorage.clear(); } catch { /* niente storage */ }
   toast(t('wipe.done'));
   setTimeout(() => location.reload(), 900);
@@ -1661,15 +1688,20 @@ function closeEverything() { // torna alla home da qualsiasi schermata
 
 // tasto indietro (Android e browser): chiude ciò che è aperto; per uscire va premuto due volte
 let backArmed = 0;
-window.rfBack = () => {
-  if (clickCheck.isOpen()) { clickCheck.close(); return 'ok'; }
-  if (clickNav.menuOpen()) { clickNav.closeMenu(); return 'ok'; }
+// chiude lo strato più in alto (verifica del Click, menu, dialogo, pannello, debug, giochi); false se non c'è nulla da chiudere
+function closeTopLayer() {
+  if (clickCheck.isOpen()) { clickCheck.close(); return true; }
+  if (clickNav.menuOpen()) { clickNav.closeMenu(); return true; }
   const dlg = [...document.querySelectorAll('.calib')].pop();
-  if (dlg) { const c = dlg.querySelector('.calib-cancel'); if (dlg._cancel) dlg._cancel(); else if (c) c.click(); else dlg.remove(); return 'ok'; }
-  const sheets = [...document.querySelectorAll('.sheet')].filter((x) => !x.hidden);
-  if (sheets.length) { closeSheet(sheets[sheets.length - 1].id); return 'ok'; }
-  if (!$('debugPanel').hidden) { $('closeDebug').click(); return 'ok'; }
-  if (!$('gamePanel').hidden) { closeGame(); return 'ok'; }
+  if (dlg) { const c = dlg.querySelector('.calib-cancel'); if (dlg._cancel) dlg._cancel(); else if (c) c.click(); else dlg.remove(); return true; }
+  const sheets = openSheets();
+  if (sheets.length) { closeSheet(sheets[sheets.length - 1].id); return true; }
+  if (!$('debugPanel').hidden) { $('closeDebug').click(); return true; }
+  if (!$('gamePanel').hidden) { closeGame(); return true; }
+  return false;
+}
+window.rfBack = () => {
+  if (closeTopLayer()) return 'ok';
   if (Date.now() - backArmed < 2500) return state.ride.running ? 'background' : 'exit';
   backArmed = Date.now();
   toast(state.ride.running ? t('back.background') : t('back.exit'));

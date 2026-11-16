@@ -1,0 +1,144 @@
+// QA q1 (app): regressioni trovate nel giro di collaudo di tutta l'app (docs/qa/q1-app.md).
+import { test, expect } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
+
+const FAKE_BLE = fileURLToPath(new URL('./fake-ble.js', import.meta.url));
+
+test.beforeEach(async ({ page }) => {
+  page.errors = [];
+  page.on('pageerror', (e) => page.errors.push(e.message));
+  await page.addInitScript(() => { try { if (!localStorage.getItem('__seeded')) { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('lang', 'en'); localStorage.setItem('ftp', '200'); } } catch { /* */ } });
+  await page.addInitScript({ path: FAKE_BLE });
+});
+test.afterEach(async ({ page }) => { expect(page.errors, 'JavaScript errors').toEqual([]); });
+
+test('Esc closes the top layer and the arrow keys do not change the target behind a sheet', async ({ page }) => {
+  await page.goto('/index.html');
+  const before = await page.locator('#controlValue').textContent();
+  await page.click('#openSettings');
+  await page.keyboard.press('ArrowDown'); await page.keyboard.press('PageUp'); await page.keyboard.press('ArrowUp');
+  await expect(page.locator('#controlValue')).toHaveText(before);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#settingsSheet')).toBeHidden();
+  await expect(page.locator('#openSettings')).toBeFocused(); // il focus torna a chi aveva aperto il pannello
+  expect(await page.evaluate(() => document.body.style.overflow)).toBe('');
+  expect(await page.evaluate(() => document.querySelector('main').inert)).toBe(false);
+});
+
+test('while a sheet is open the page behind is inert and the scroll lock follows the sheets', async ({ page }) => {
+  await page.goto('/index.html');
+  await page.click('#openSettings');
+  expect(await page.evaluate(() => document.querySelector('main').inert && document.querySelector('header.top').inert)).toBe(true);
+  await page.click('#openHistory'); // Storico sostituisce Impostazioni: il blocco resta
+  expect(await page.evaluate(() => document.body.style.overflow)).toBe('hidden');
+  await page.click('[data-close="historySheet"]');
+  expect(await page.evaluate(() => document.body.style.overflow)).toBe('');
+  expect(await page.evaluate(() => document.querySelector('main').inert)).toBe(false);
+});
+
+test('weekly bars: with a DST change each of the last 8 weeks still counts its ride', async ({ browser }) => {
+  for (const timezoneId of ['Europe/Rome', 'America/New_York', 'Australia/Lord_Howe']) {
+    const ctx = await browser.newContext({ timezoneId, serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    await page.goto('/index.html');
+    const counts = await page.evaluate(async () => {
+      const { weekBuckets } = await import('./js/history.js');
+      const now = new Date(2026, 10, 15, 12).getTime(); // domenica 15 novembre 2026
+      const hist = [];
+      for (let k = 7; k >= 0; k--) { const d = new Date(now); d.setDate(d.getDate() - 5 - k * 7); hist.push({ t: d.getTime(), dur: 1800 }); } // un'uscita per settimana, mercoledì a mezzogiorno
+      return weekBuckets(hist, now).map((w) => w.n);
+    });
+    expect(counts, timezoneId).toEqual([1, 1, 1, 1, 1, 1, 1, 1]);
+    await ctx.close();
+  }
+});
+
+test('a 4-digit wattage fits the ride card at 360 px (no horizontal scroll)', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await page.goto('/index.html');
+  await page.evaluate(async () => { while (!window.rfDevices) await new Promise((r) => setTimeout(r, 50)); await window.rfDevices.add(); });
+  await page.click('#startStop');
+  await page.evaluate(() => window.__fakeBle.setPower(1234));
+  await expect(page.locator('#power')).toHaveText('1234');
+  const m = await page.evaluate(() => { const r = document.getElementById('power').getBoundingClientRect(); return { right: r.right, left: r.left, sw: document.documentElement.scrollWidth, vw: document.documentElement.clientWidth }; });
+  expect(m.right).toBeLessThanOrEqual(m.vw); expect(m.left).toBeGreaterThanOrEqual(0); expect(m.sw).toBeLessThanOrEqual(m.vw);
+});
+
+test('history sheet never overflows the viewport (German, FTP 450, 40 rides)', async ({ page }) => {
+  await page.addInitScript(() => { if (!localStorage.getItem('__h')) { localStorage.setItem('__h', '1'); localStorage.setItem('lang', 'de'); localStorage.setItem('ftp', '450');
+    const rides = Array.from({ length: 40 }, (_, i) => ({ t: Date.now() - (40 - i) * 2e8, dur: 1800 + i * 300, km: 14 + i, avgW: 150 + i, kj: 270 + i * 60, np: 170, maxW: 400, best: { 5: 520, 60: 300, 300: 240, 1200: 200 + i }, avgHr: 140 }));
+    localStorage.setItem('rideHistory', JSON.stringify(rides)); } });
+  await page.setViewportSize({ width: 360, height: 640 });
+  await page.goto('/index.html');
+  await page.click('#openHistoryCard');
+  await expect(page.locator('#historySheet')).toBeVisible();
+  await page.locator('#historySheet summary').first().click();
+  const m = await page.evaluate(() => { const b = document.querySelector('#historySheet .sheet-body'); return { sw: b.scrollWidth, cw: b.clientWidth }; });
+  expect(m.sw).toBeLessThanOrEqual(m.cw);
+});
+
+// ---- FIT: file valido (CRC, lunghezza) e orari strettamente crescenti anche dopo pausa/ripristino ----
+function decodeFit(bytes) {
+  const crc = (b, c = 0) => { const T = [0x0000, 0xcc01, 0xd801, 0x1400, 0xf001, 0x3c00, 0x2800, 0xe401, 0xa001, 0x6c00, 0x7800, 0xb401, 0x5000, 0x9c01, 0x8801, 0x4400];
+    for (const x of b) { let t = T[c & 0xf]; c = (c >> 4) & 0xfff; c = c ^ t ^ T[x & 0xf]; t = T[c & 0xf]; c = (c >> 4) & 0xfff; c = c ^ t ^ T[(x >> 4) & 0xf]; } return c; };
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const hl = bytes[0]; const dataSize = dv.getUint32(4, true);
+  const out = { headerCrcOk: crc(bytes.subarray(0, 12)) === dv.getUint16(12, true), fileCrcOk: crc(bytes.subarray(0, bytes.length - 2)) === dv.getUint16(bytes.length - 2, true), sizeOk: bytes.length === hl + dataSize + 2, recordTs: [], msgs: [] };
+  const defs = {}; let p = hl;
+  while (p < hl + dataSize) {
+    const h = bytes[p++];
+    if (h & 0x40) { const local = h & 0xf; p += 2; const global = dv.getUint16(p, true); p += 2; const n = bytes[p++]; const f = []; for (let i = 0; i < n; i++) { f.push([bytes[p], bytes[p + 1]]); p += 3; } defs[local] = { global, f }; }
+    else { const d = defs[h & 0xf]; const vals = {}; for (const [num, size] of d.f) { vals[num] = size === 4 ? dv.getUint32(p, true) : size === 2 ? dv.getUint16(p, true) : bytes[p]; p += size; } out.msgs.push(d.global); if (d.global === 20) out.recordTs.push(vals[253]); }
+  }
+  out.consumedAll = p === hl + dataSize;
+  return out;
+}
+test('FIT: valid file; two samples in the same second (after pause or restore) are not both written', async ({ page }) => {
+  await page.goto('/index.html');
+  const bytes = await page.evaluate(async () => {
+    const { encodeFit } = await import('./js/fit.js');
+    const t0 = Date.UTC(2026, 10, 14, 9, 0, 0);
+    const log = []; for (let i = 0; i < 30; i++) log.push({ t: t0 + i * 1000, power: 150 + i, cadence: 85, hr: 140, speed: 8.3, distance: i * 8 });
+    log.push({ t: t0 + 29 * 1000 + 400, power: 200, cadence: 85, hr: 141, speed: 8.3, distance: 240 }); // ripresa dopo pausa a meno di 1 s dall'ultimo
+    for (let i = 0; i < 20; i++) log.push({ t: t0 + 600000 + i * 1000, power: 180, cadence: 80, hr: null, speed: 7, distance: 250 + i * 7 }); // dopo 10 minuti di pausa
+    return [...encodeFit(log)];
+  });
+  const d = decodeFit(Uint8Array.from(bytes));
+  expect(d.headerCrcOk && d.fileCrcOk && d.sizeOk && d.consumedAll).toBe(true);
+  expect(d.recordTs.length).toBe(50);
+  for (let i = 1; i < d.recordTs.length; i++) expect(d.recordTs[i]).toBeGreaterThan(d.recordTs[i - 1]);
+  expect(d.msgs.filter((m) => m === 18).length).toBe(1); // una sola sessione
+});
+
+test('.zwo import: a hostile Repeat value and a very long name are capped', async ({ page }) => {
+  await page.goto('/index.html');
+  const r = await page.evaluate(async () => {
+    const { parseZwo } = await import('./js/workouts.js');
+    const w = parseZwo(`<workout_file><name>${'N'.repeat(300)}</name><workout><IntervalsT Repeat="99999999" OnDuration="30" OnPower="1.1" OffDuration="30" OffPower="0.5"/></workout></workout_file>`, 'x.zwo');
+    return { n: w.steps.length, name: w.name.length };
+  });
+  expect(r.n).toBeLessThanOrEqual(200); expect(r.name).toBeLessThanOrEqual(60);
+});
+
+test('a restored ride resumes without re-announcing the 10-minute and 5-km milestones already passed', async ({ page }) => {
+  await page.addInitScript(() => { if (!localStorage.getItem('__r')) { localStorage.setItem('__r', '1'); localStorage.setItem('mode', 'gears');
+    const t0 = Date.now() - 2200000; const log = Array.from({ length: 20 }, (_, i) => ({ t: t0 + i * 1000, power: 150, cadence: 80, hr: null, speed: 8, distance: 15000 + i * 8 }));
+    localStorage.setItem('ride-freedom-session', JSON.stringify({ elapsed: 2100, distance: 15000, energy: 300, powerSum: 3000, samples: 20, log, saved: false, stravaUrl: null, historySaved: false })); } });
+  await page.goto('/index.html');
+  await page.evaluate(async () => { while (!window.rfDevices) await new Promise((r) => setTimeout(r, 50)); await window.rfDevices.add(); });
+  await expect(page.locator('#time')).toHaveText('35:00');
+  await page.click('#startStop');
+  await page.waitForTimeout(2600);
+  expect(await page.locator('#toast').textContent()).not.toMatch(/30|35|15 ?km|10 ?km|5 ?km/);
+});
+
+test('"Delete all data" leaves nothing behind: the closing page does not write the session key back', async ({ page }) => {
+  await page.goto('/index.html');
+  await page.click('#openSettings');
+  await page.locator('#wipeData').scrollIntoViewIfNeeded();
+  await page.click('#wipeData');
+  await Promise.all([page.waitForEvent('framenavigated'), page.locator('.dlg [data-ok]').click()]); // la pagina si ricarica dopo il messaggio
+  await page.waitForLoadState('load');
+  await expect(page.locator('#openSettings')).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('ride-freedom-session'))).toBeNull();
+});
