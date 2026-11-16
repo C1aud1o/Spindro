@@ -39,7 +39,7 @@
       },
       {
         "q": "Quale browser e quale dispositivo servono?",
-        "a": "Android: Chrome, oppure l'app Android. PC, Mac, Linux e ChromeOS: Chrome o Edge con il Bluetooth. La pagina deve essere servita in HTTPS."
+        "a": "Android: Chrome, oppure l'app Android. PC, Mac, Linux e ChromeOS: Chrome o Edge con il Bluetooth. La pagina deve essere servita in HTTPS. La web app si può anche installare dal menu del browser e propone di ricaricarsi quando c'è una nuova versione. Lo schermo resta acceso mentre pedali."
       },
       {
         "q": "Quali rulli funzionano?",
@@ -74,7 +74,7 @@
         "id": "connect",
         "nav": "Collega",
         "title": "Aggiungi un dispositivo e pedala",
-        "text": "La home ruota attorno all'ERG: una scheda Oggi con l'obiettivo in watt, − e + per cambiarlo e un grande tasto Avvia. Un solo pulsante «Aggiungi dispositivo» abbina rullo, controller Zwift, fascia cardio, misuratore di potenza o sensore di cadenza, e l'app capisce a cosa serve ciascuno.",
+        "text": "La home ruota attorno all'ERG: una scheda Oggi con l'obiettivo in watt, − e + per cambiarlo e un grande tasto Avvia. Un solo pulsante «Aggiungi dispositivo» abbina rullo, controller Zwift, fascia cardio, misuratore di potenza o sensore di cadenza, e l'app capisce a cosa serve ciascuno, poi propone il successivo. I dispositivi già noti si ricollegano da soli.",
         "img": "devices",
         "alt": "Il foglio Dispositivi con un rullo Van Rysel D100 collegato e una fascia cardio, ciascuno con il tasto Scollega, e il pulsante Aggiungi un altro dispositivo.",
         "rows": [
@@ -93,6 +93,14 @@
           [
             "Verifica tasti",
             "Mostra quale tasto riceve l'app e permette di associarlo"
+          ],
+          [
+            "Cadute",
+            "L'uscita continua a registrare e l'app riprova; un avviso dice quale dispositivo si è staccato"
+          ],
+          [
+            "Prova resistenza",
+            "Senti che il rullo obbedisce prima di partire"
           ]
         ]
       },
@@ -191,7 +199,7 @@
         "Fai rimbalzare una borraccia sui massaggiatori. La cadenza ne decide la velocità, i watt caricano il turbo."
       ]
     ],
-    "gamesMore": "Il menu dei giochi riproduce anche qualsiasi video di un'uscita da YouTube, o un tuo video, alla tua velocità.",
+    "gamesMore": "Il menu dei giochi riproduce anche un video di una salita da YouTube, o un tuo video, alla tua velocità. Se il rullo si stacca durante un gioco, il gioco va in pausa con un messaggio.",
     "gamesAlt": [
       "Breakaway: il corridore in rosa guida un gruppo verso il mare, con la marcia, l'obiettivo della salita e il profilo della tappa sullo schermo.",
       "Horde Run: un ciclista su una strada di notte spara a un'orda di zombie, con il contatore delle ondate e i colpi al secondo.",
@@ -299,7 +307,33 @@
     "reportTitle": "Raccontaci il tuo",
     "reportText": "Hai provato un rullo o un orologio? Nell'app usa “Segnala un problema”, oppure apri una issue su GitHub con il modello, cosa ha funzionato e cosa no. Le segnalazioni trasformano “dovrebbe funzionare” in “segnalato dagli utenti”.",
     "reportBtn": "Apri una segnalazione su GitHub",
-    "note": "Il supporto a Tacx FE-C e Wahoo legacy è stato provato solo con un rullo simulato. Un rullo che accetta una sola connessione Bluetooth non può essere usato da Spindro e da un'altra app nello stesso momento."
+    "note": "Il supporto a Tacx FE-C e Wahoo legacy è stato provato solo con un rullo simulato. Un rullo che accetta una sola connessione Bluetooth non può essere usato da Spindro e da un'altra app nello stesso momento.",
+    "connectTitle": "Come collegarsi",
+    "connectLead": "Spindro richiede il Web Bluetooth, oppure l'app Android. Cosa funziona dove:",
+    "connect": [
+      [
+        "App Android",
+        "Il Bluetooth è integrato. Android chiede una volta «Dispositivi nelle vicinanze»; i dispositivi già noti si ricollegano da soli."
+      ],
+      [
+        "Chrome o Edge su Android",
+        "Web Bluetooth. Bluetooth acceso e il permesso «Dispositivi nelle vicinanze» per il browser."
+      ],
+      [
+        "Chrome, Edge o Opera su Windows, macOS, Linux, ChromeOS",
+        "Web Bluetooth. La pagina deve essere servita in HTTPS."
+      ],
+      [
+        "iPhone e iPad, qualsiasi browser",
+        "Niente Web Bluetooth e non esiste un'app Spindro per iOS. Un browser che lo aggiunge, come Bluefy, dovrebbe funzionare; noi non l'abbiamo provato."
+      ],
+      [
+        "Safari su Mac, Firefox",
+        "Niente Web Bluetooth. Usa Chrome o Edge."
+      ]
+    ],
+    "connectNote": "Il percorso di collegamento (proposta del dispositivo successivo, riconnessione, cadute, «Prova resistenza») è stato provato solo con dispositivi Bluetooth simulati.",
+    "connectLink": "Leggi la guida al collegamento su GitHub"
   },
   "legal": {
     "title": "{title} | Spindro",

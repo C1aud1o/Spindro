@@ -39,7 +39,7 @@
       },
       {
         "q": "Which browser and device do I need?",
-        "a": "Android: Chrome, or the Android app. PC, Mac, Linux and ChromeOS: Chrome or Edge with Bluetooth. The page must be served over HTTPS."
+        "a": "Android: Chrome, or the Android app. PC, Mac, Linux and ChromeOS: Chrome or Edge with Bluetooth. The page must be served over HTTPS. The web app can also be installed from the browser menu, and it offers to reload when a new version is ready. The screen stays on while you ride."
       },
       {
         "q": "Which trainers work?",
@@ -74,7 +74,7 @@
         "id": "connect",
         "nav": "Connect",
         "title": "Add a device, then ride",
-        "text": "The home screen is built around ERG: a Today card with a target in watts, − and + to change it, and one big Start button. One “Add device” button pairs a trainer, a Zwift controller, a heart-rate strap, a power meter or a cadence sensor, and the app works out what each one is for.",
+        "text": "The home is built around ERG: a Today card with a target in watts, − and + to change it, and one big Start button. One “Add device” button pairs a trainer, a Zwift controller, a heart rate strap, a power meter or a cadence sensor, and the app works out what each one is for, then suggests the next one. Known devices reconnect by themselves.",
         "img": "devices",
         "alt": "The Devices sheet listing a connected Van Rysel D100 trainer and a heart-rate strap, each with a Disconnect button, and the Add another device button.",
         "rows": [
@@ -84,15 +84,23 @@
           ],
           [
             "Modes",
-            "ERG · Virtual gears · Gradient · Resistance"
+            "ERG · Virtual gears · Slope · Resistance"
           ],
           [
             "Controllers",
-            "Zwift Click, Play and Ride as shifters and remotes"
+            "Zwift Click, Play and Ride as shifters and remote"
           ],
           [
             "Key check",
             "Shows which key the app receives and lets you map it"
+          ],
+          [
+            "Dropouts",
+            "The ride keeps recording and the app retries; a banner says which device dropped"
+          ],
+          [
+            "Test resistance",
+            "Feel that the trainer obeys before you start"
           ]
         ]
       },
@@ -191,7 +199,7 @@
         "Bounce a bottle off the soigneurs. Cadence sets its speed, watts charge the turbo."
       ]
     ],
-    "gamesMore": "The games menu also plays any YouTube ride video, or a video of your own, at your own speed.",
+    "gamesMore": "The games menu also plays any YouTube ride video, or a video of your own, at your own speed. If the trainer drops during a game, the game pauses with a message.",
     "gamesAlt": [
       "Breakaway: the rider in pink leads the bunch towards the sea, with the gear, the climb goal and a profile of the stage on screen.",
       "Horde Run: a rider on a night road firing at a horde of zombies, with a wave counter and shots per second.",
@@ -299,7 +307,33 @@
     "reportTitle": "Tell us about yours",
     "reportText": "Tried a trainer or watch? In the app, use “Report a problem”, or open an issue on GitHub with the model, what worked and what did not. Reports turn “should work” into “reported by users”.",
     "reportBtn": "Open a report on GitHub",
-    "note": "Tacx FE-C and Wahoo legacy support have been tested only against a simulated trainer. A trainer that accepts only one Bluetooth connection cannot be used by Spindro and another app at the same time."
+    "note": "Tacx FE-C and Wahoo legacy support have been tested only against a simulated trainer. A trainer that accepts only one Bluetooth connection cannot be used by Spindro and another app at the same time.",
+    "connectTitle": "How to connect",
+    "connectLead": "Spindro needs Web Bluetooth, or the Android app. What works where:",
+    "connect": [
+      [
+        "Android app",
+        "Bluetooth is built in. Android asks once for “Nearby devices”; known devices reconnect by themselves."
+      ],
+      [
+        "Chrome or Edge on Android",
+        "Web Bluetooth. Bluetooth on, and the “Nearby devices” permission for the browser."
+      ],
+      [
+        "Chrome, Edge or Opera on Windows, macOS, Linux, ChromeOS",
+        "Web Bluetooth. The page must be served over HTTPS."
+      ],
+      [
+        "iPhone and iPad, any browser",
+        "No Web Bluetooth, and there is no Spindro app for iOS. A browser that adds it, such as Bluefy, should work; we have not tried it."
+      ],
+      [
+        "Safari on Mac, Firefox",
+        "No Web Bluetooth. Use Chrome or Edge."
+      ]
+    ],
+    "connectNote": "The connection flow (suggesting the next device, reconnecting, dropouts, “Test resistance”) has been exercised with simulated Bluetooth devices only.",
+    "connectLink": "Read the connection guide on GitHub"
   },
   "legal": {
     "title": "{title} | Spindro",
