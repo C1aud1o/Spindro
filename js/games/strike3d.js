@@ -1613,7 +1613,7 @@ export class Strike3D {
     this.drawShieldTags(ctx, W, S, y2);
     const hp = this.stage.project(this.px, 3.2, this.laneZ);
     if (this.combo >= 3 && this.state === 'play') {
-      const cy = Math.min(hp.y - 6, H - 190 * S);
+      const cy = Math.max(y2 + 28 * S, Math.min(hp.y - 6, H - 190 * S)); // never inside the HUD panels (short landscape screens)
       txt(ctx, t('games.shooter.combo', { n: this.combo }), hp.x, cy, { size: 22 * S, align: 'center', color: '#ff9f1c' });
       ctx.fillStyle = 'rgba(255,159,28,.85)'; const cw = 70 * S * clamp(this.comboT / 2.6, 0, 1); rr(ctx, hp.x - cw / 2, cy + 5, cw, 4 * S, 2); ctx.fill();
     }
