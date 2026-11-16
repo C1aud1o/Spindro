@@ -556,7 +556,11 @@ setInterval(() => {
   // ogni ~2 s anche se il valore non cambia, così la resistenza segue la cadenza e i watt restano quelli richiesti.
   if ((state.mode === 'erg' || state.mode === 'gears') && performance.now() - state.lastSentAt > 1800) state.lastSent = null;
   if (state.mode === 'gears' || state.mode === 'erg') applyMode();
-  if (workout && r.running) tickWorkout(1);
+  if (workout && r.running) {
+    // secondi veri dall'ultimo passo: se il telefono rallenta i timer in secondo piano l'allenamento recupera, non resta indietro
+    const now = Date.now(); const dt = wkClock ? Math.min(3600, Math.max(0, (now - wkClock) / 1000)) : 1; wkClock = now;
+    tickWorkout(dt);
+  } else wkClock = null;
   if (r.running) autoShiftTick();
   powerBuf.push(d.power || 0); if (powerBuf.length > 3) powerBuf.shift();
   autoPauseCheck();
@@ -565,7 +569,7 @@ setInterval(() => {
 
 // ---------- Allenamenti strutturati ----------
 let ergBeforeWorkout = null; // obiettivo dell'ERG libero, da rimettere quando l'allenamento finisce
-let workout = null; let wkLast = null; let wkPower = []; let wkLowCad = 0;
+let workout = null; let wkLast = null; let wkPower = []; let wkLowCad = 0; let wkClock = null;
 // cambia modalità; con save=true è una scelta dell'utente e si ricorda (le modalità imposte da allenamenti, percorsi e giochi no)
 function setMode(m, save = false) {
   document.querySelector(`[name=mode][value=${m}]`).checked = true;
@@ -641,8 +645,8 @@ $('gpxFile').addEventListener('change', async (e) => {
   try { startRoute(parseGpx(await f.text(), f.name)); } catch (err) { toast(err.message); }
   e.target.value = '';
 });
-function startRoute(rt) {
-  if (workout) finishWorkout(false);
+async function startRoute(rt) {
+  if (workout) { if (!(await ask(t('workout.confirmInterrupt', { name: workout.w.name })))) return; finishWorkout(false); }
   route = rt; routeDist = 0; routeT = 0; routeTrace = [0];
   try { routeGhost = JSON.parse(localStorage.getItem(ghostKey(rt)) || 'null'); } catch { routeGhost = null; }
   if (state.mode !== 'gears' && state.mode !== 'sim') setMode('gears');
@@ -700,6 +704,8 @@ function askFtp(w, opts) {
 // opts.game: dopo l'avvio si apre l'elenco dei giochi; l'allenamento prosegue sotto e comanda il rullo
 async function startWorkout(w, opts = {}) {
   if (!w.test && !localStorage.getItem('ftp')) { closeSheet('workoutSheet'); askFtp(w, opts); return false; }
+  // lo stesso allenamento è già in corso: "Gioca" apre solo i giochi, "Avvia" chiude il pannello; non riparte da capo
+  if (workout && workout.w.id === w.id && !workout.done) { closeSheet('workoutSheet'); if (opts.game && !w.test) { if (activeGame) closeGame(); openGame(); } return true; }
   if (route) stopRoute();
   if (workout && !(await ask(t('workout.confirmInterrupt', { name: workout.w.name })))) return false;
   if (!workout) ergBeforeWorkout = state.erg;
@@ -742,7 +748,8 @@ function tickWorkout(dt) {
 }
 async function finishWorkout(completed) {
   const w = workout?.w; if (!w) return;
-  workout = null; $('workoutCard').hidden = true; document.body.classList.remove('in-workout'); updateGameStrip(null); updateView();
+  workout = null; wkClock = null; $('workoutCard').hidden = true; document.body.classList.remove('in-workout'); updateGameStrip(null); updateView();
+  persist(); // l'allenamento non c'è più neanche nella sessione salvata
   if (w.test) {
     let best = 0;
     for (let i = 60; i <= wkPower.length; i++) best = Math.max(best, wkPower.slice(i - 60, i).reduce((a, b) => a + b, 0) / 60);
@@ -880,7 +887,9 @@ function persist() {
   try {
     const r = state.ride;
     localStorage.setItem(STORE, JSON.stringify({ elapsed: r.elapsed, distance: r.distance, energy: r.energy,
-      powerSum: r.powerSum, samples: r.samples, log: r.log, saved: r.saved, stravaUrl: r.stravaUrl || null, historySaved: !!r.historySaved, historyT: r.historyT || null }));
+      powerSum: r.powerSum, samples: r.samples, log: r.log, saved: r.saved, stravaUrl: r.stravaUrl || null, historySaved: !!r.historySaved, historyT: r.historyT || null,
+      // allenamento in corso (non il test a rampa): dopo un ricaricamento o se il sistema chiude l'app riprende dal punto in cui era
+      workout: workout && !workout.w.test ? { id: workout.w.id, t: workout.t, bias: workout.bias } : null }));
   } catch { /* spazio esaurito o storage non disponibile */ }
 }
 function restore() {
@@ -894,6 +903,24 @@ function restore() {
   } catch { /* ignora */ }
 }
 window.addEventListener('pagehide', persist);
+// Rimette in piedi l'allenamento che era in corso quando la pagina si è chiusa (ricaricamento, app chiusa dal sistema).
+// L'uscita torna in pausa come sempre: premendo Riprendi l'allenamento continua dal suo minuto, non riparte da capo.
+function restoreWorkout() {
+  try {
+    const sw = JSON.parse(localStorage.getItem(STORE) || 'null')?.workout;
+    const w = sw && allWorkouts().find((x) => x.id === sw.id);
+    if (!w || w.test || workout || !state.ride.log.length) return;
+    const runner = new WorkoutRunner(w, state.ftp);
+    if (!(sw.t >= 0) || sw.t >= runner.total - 1) return; // era già finito
+    ergBeforeWorkout = state.erg;
+    workout = runner; workout.t = sw.t; workout.bias = Math.min(1.5, Math.max(0.5, Number(sw.bias) || 1));
+    wkLast = workout.locate()?.i ?? null; wkPower = []; wkLowCad = 0; wkClock = null; // nessun annuncio del passo alla riapertura
+    setMode('erg');
+    document.body.classList.add('in-workout');
+    $('workoutCard').hidden = false; $('wkName').textContent = w.name;
+    tickWorkout(0); updateView();
+  } catch { /* dati vecchi o incompleti: si resta senza allenamento */ }
+}
 
 function fitFile() {
   const bytes = encodeFit(state.ride.log);
@@ -1572,7 +1599,7 @@ strava.handleRedirect().then((res) => {
 }).catch((err) => { stravaMsg(t('strava.linkError', { error: err.message })); renderStrava(); });
 renderStrava();
 
-restore();
+restore(); restoreWorkout();
 setMode(state.mode);
 $('moreModes').open = state.mode !== 'erg'; // chi ha scelto un'altra modalità la ritrova aperta
 renderWelcome();
@@ -1626,7 +1653,8 @@ function autoPauseCheck() {
   const moving = (state.data.power || 0) > 5 || (state.data.speed || 0) > 2;
   const r = state.ride;
   if (r.running && !moving) {
-    if (++idleSec >= 5 && !activeGame?.active) { $('startStop').click(); autoPaused = true; toast(t('auto.paused')); }
+    // Con un allenamento in corso la pausa automatica non scatta: l'allenamento si ferma solo se lo ferma la persona o se finisce.
+    if (++idleSec >= 5 && !activeGame?.active && !workout) { $('startStop').click(); autoPaused = true; toast(t('auto.paused')); }
   } else idleSec = 0;
   if (autoPaused && !r.running && moving) { autoPaused = false; $('startStop').click(); toast(t('auto.resumed')); }
   // partenza automatica: sessione nuova e pedali da 3 secondi
