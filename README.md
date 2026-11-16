@@ -1,48 +1,53 @@
 # Spindro: Smart Trainer Cycling
 
-**Free, open-source indoor cycling app for smart trainers. No subscription, no account needed.**
+**Free, open-source indoor cycling app for smart trainers. No subscription, no account.**
 
-Spindro runs in your browser (Android, PC, Mac) or as an Android app. It connects to your trainer over Bluetooth, gives you virtual gears, structured workouts and games driven by your real power, and can turn your phone into a sensor so the ride lands on your watch.
+Spindro connects to your trainer over Bluetooth and gives you ERG, virtual gears, structured workouts and six games that are workouts, in the browser or as an Android app. Everything stays on your device.
 
 <p>
-<img src="store/screenshots/en/01.png" width="200" alt="Home screen with live power">
-<img src="store/screenshots/en/04.png" width="200" alt="Breakaway stage race">
-<img src="store/screenshots/en/02.png" width="200" alt="Workout library">
-<img src="store/screenshots/en/07.png" width="200" alt="Ride summary with medals">
+<img src="site/assets/shots/home-en.webp" width="150" alt="Home screen: a free ride in ERG with a 130 W target">
+<img src="site/assets/shots/workout-en.webp" width="150" alt="A Sweet spot workout in progress">
+<img src="site/assets/shots/game-racer-en.webp" width="150" alt="Breakaway, the stage-race game">
+<img src="site/assets/shots/game-horde-en.webp" width="150" alt="Horde Run">
+<img src="site/assets/shots/keycheck-en.webp" width="150" alt="Controller key check">
 </p>
 
-- **Website:** https://spindro.fun
+## Try it
+
+- **Website:** https://spindro.fun, with a [blog](https://spindro.fun/blog/) on how it works
 - **Web app:** https://spindro.fun/app/ (Chrome or Edge)
 - **Android APK:** https://spindro.fun/app/spindro.apk
-- **Beta (testers):** https://spindro.fun/beta/ and https://spindro.fun/beta/spindro-beta.apk, see [docs/environments.md](docs/environments.md)
+- **Beta (testers):** https://spindro.fun/beta/ and its APK, see [docs/environments.md](docs/environments.md)
 
-## What it does
+## Features
 
-- **Virtual gears** (24 ratios) on any controllable trainer, like a Zwift Cog setup, plus ERG, slope and resistance modes. Optional auto-shift keeps your cadence.
-- **Zwift Click, Play and Ride** as shifters and as a full remote: you can drive the whole app from the handlebar.
-- **Workouts:** 34 structured workouts, 4 multi-week plans, a ramp FTP test, a block editor, `.zwo` import, export to `.zwo` and Garmin workout `.fit`.
-- **Games in 3D** driven by your watts: a stage race with drafting and climbs that load the trainer, a horde shooter, a peloton builder.
-- **Routes:** load a GPX and the slope follows the course. **Video rides:** a YouTube video or your own file plays at your speed.
+- **ERG first.** The home is a "Today" card: a target in watts, − / +, Start. Slope and resistance modes are one tap away.
+- **Virtual gears:** 24 ratios on a controllable trainer, with optional auto-shift. Where a trainer sends no cadence, the app estimates it from flywheel speed; calibrate it in Settings.
+- **One "Add device"** for a trainer, a Zwift controller, a heart rate strap, a power meter or a cadence sensor.
+- **Zwift Click, Play and Ride** as shifter and remote, with a key check that shows which key the app receives and lets you map it.
+- **Workouts:** 34 structured workouts (24 to 90 minutes), 4 multi-week plans, a ramp FTP test, a block editor, `.zwo` import, export to `.zwo` and Garmin `.fit`, a spoken coach in 5 languages.
+- **Six games that are workouts:** Breakaway, Horde Run, Pedal Strike, Slipstream, Updraft, Feed Zone. 5, 10 or 20 minutes in % of FTP, three levels, one shared menu. A game can also follow the workout you are riding. Plus any YouTube ride video at your speed.
+- **Routes:** load a GPX and the slope follows the course.
 - **Your watch as the head unit** (Android app): the phone broadcasts power, cadence and speed as a Bluetooth sensor.
-- **Records and history**, monthly challenges, a share card, `.fit` export with GPS for Garmin Connect, optional Strava upload.
-- **5 languages:** English, Italian, French, Spanish, German. Voice coach included.
-- **Private by default:** everything stays on your device. The optional account and anonymous statistics are off unless a deployment configures them.
+- **History and records,** a share card, `.fit` export with GPS, optional Strava upload.
+- **5 languages:** English, Italian, French, Spanish, German.
+- **Private by default.** Rides stay on your device. Anonymous usage counting asks for your consent in the app.
 
-## Compatibility
+## Supported devices, honestly
+
+Only what has been ridden on real hardware is called verified. Details and notes: [spindro.fun/compatibility](https://spindro.fun/compatibility/).
 
 | | Status |
 |---|---|
 | Van Rysel D100 (FTMS) | Tested on the real trainer |
-| Other FTMS trainers (most trainers since 2020) | Should work; please report |
-| Tacx FE-C over BLE, Wahoo legacy (old Kickr/Snap/Core firmware) | Implemented, tested only against simulated devices |
 | Zwift Click | Only the + / − keys of one Click v2 were tested on the real device; other keys and firmware not verified |
+| Other FTMS trainers | Should work, never tried; please report |
+| Tacx FE-C over BLE, Wahoo legacy | Implemented, tested only against simulated devices |
 | Zwift Play, Zwift Ride | Implemented, tested only against simulated devices |
 | Garmin watches (sensor bridge) | Implemented as a standard Bluetooth sensor, not yet verified on a real watch; please report your model |
 | Wahoo Elemnt, Coros, Suunto, Polar, Apple Watch | Should work; please report |
 
-Use **Settings → Report your trainer** in the app, or open a [trainer compatibility issue](../../issues/new/choose). Reports are how this table grows.
-
-**Requirements:** Android with Chrome or the app; PC, Mac, Linux or ChromeOS with Chrome or Edge and Bluetooth. iPhone and iPad: Safari has no Web Bluetooth, so use the free Bluefy browser. A trainer accepts one Bluetooth connection at a time: close other apps first.
+**Requirements:** Android with Chrome or the app; PC, Mac, Linux or ChromeOS with Chrome or Edge and Bluetooth. iPhone and iPad: Safari has no Web Bluetooth; a browser that adds it should work, untested. A trainer accepts one Bluetooth connection at a time: close other apps first.
 
 ## Run it locally
 
@@ -51,23 +56,37 @@ npm ci
 node tests/serve.mjs          # http://127.0.0.1:4173
 npm test                      # Playwright tests with a simulated trainer
 node tests/trainers/run.mjs   # trainer protocol tests
+node site/build.mjs           # build the showcase site into site/dist
+node scripts/site-shots.mjs   # regenerate the screenshots used by the site and this file
 ```
 
-No build step: plain ES modules in `js/`, three.js vendored in `vendor/`. The Android app is the same web app in a Capacitor shell (`android/`, see [docs/android.md](docs/android.md)).
+No build step for the app: plain ES modules in `js/`, three.js vendored in `vendor/`. The Android app is the same web app in a Capacitor shell (`android/`, see [docs/android.md](docs/android.md)).
 
-## Contributing
+## Add a game
 
-Trainer support, translations and games are the best places to start: see [CONTRIBUTING.md](CONTRIBUTING.md). Security reports: [SECURITY.md](SECURITY.md).
+A game is one folder, one registry entry and its strings. [docs/games/CREATE-A-GAME.md](docs/games/CREATE-A-GAME.md) goes from a fresh clone to a game on your screen in about 15 minutes; the interface is in [docs/games/API.md](docs/games/API.md) and the rules in [docs/games/DESIGN-RULES.md](docs/games/DESIGN-RULES.md). `npm run game:check -- <id>` checks a game against them. Overview: [Build a game](https://spindro.fun/developers/).
+
+## Report a trainer
+
+Use **Settings → Report your trainer** in the app, or open a [trainer compatibility issue](../../issues/new/choose) with the model, what worked and what did not. Reports are how the table above grows. Other contributions: [CONTRIBUTING.md](CONTRIBUTING.md). Security: [SECURITY.md](SECURITY.md).
+
+<!-- games:begin -->
+## Games
+
+Spindro has six games, all workouts in % of your FTP, played with + / − and the pedals. Adding a seventh is meant to be easy:
+one folder, one registry entry, its strings. Start with [Create a game](docs/games/CREATE-A-GAME.md) (15 minutes, no trainer needed:
+`npm run dev`, then `?game=tempo&demo=1`), the [game API](docs/games/API.md) and the [design rules](docs/games/DESIGN-RULES.md).
+<!-- games:end -->
 
 ## Known limits
 
-- The app replaces Zwift as the trainer controller: both cannot be connected at once.
+- No online world or multiplayer.
 - Garmin Connect has no public upload API: export the `.fit` and import it on the Garmin Connect website, or record on the watch through the sensor bridge.
-- On trainers that do not send cadence (the D100 for one), cadence is estimated from flywheel speed: calibrate it in Settings, or pair a cadence sensor.
+- On trainers that send no cadence (the D100 for one) cadence is estimated; calibrate it or pair a cadence sensor.
 
-## License
+## Licence and trademarks
 
-[GPL-3.0](LICENSE). Zwift, Garmin, Strava, Tacx, Wahoo, Van Rysel and the other names are trademarks of their owners; Spindro is not affiliated with them.
+[GPL-3.0](LICENSE). Zwift, Garmin, Strava, Tacx, Wahoo, Van Rysel, Decathlon, YouTube and the other names are trademarks of their owners; Spindro is not affiliated with them.
 
 ## Credits
 

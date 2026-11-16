@@ -44,13 +44,13 @@ async function runBot(page, mult, durIdx = 0, lvl = 1) {
   return page.evaluate(botRun, { mult, durIdx, lvl, ftp: 200 });
 }
 
-// atteso (docs/giochi-design.md §5): 0,6 × → 1 stella; 0,8 × → 1–2; 1,0 × → 2–3; 1,2 × → 3
+// atteso (docs/games/DESIGN-RULES.md §5): 0,6 × → 1 stella; 0,8 × → 1–2; 1,0 × → 2–3; 1,2 × → 3
 const EXPECT = { 0.6: [1, 1], 0.8: [1, 2], 1.0: [2, 3], 1.2: [3, 3] };
 for (const mult of [0.6, 0.8, 1.0, 1.2]) {
   test(`Updraft: bot a ${mult} × FTP, 5 minuti, livello Normale`, async ({ page }) => {
     const r = await runBot(page, mult);
     console.log(`BOT ${mult}× → stelle ${r.res.stars}, sforzi ${r.res.done}/${r.res.total}, anelli ${r.rings}/${r.ringsTotal}, tempeste prese ${r.hits}, stelle raccolte ${r.coins}, combo max ${r.bestCombo}, primo evento ${r.es.first.toFixed(1)} s, max senza eventi ${r.es.maxGap.toFixed(1)} s, eventi/min ${Math.round(r.es.perMin)}`);
-    expect(r.state, 'la partita finisce da sola').toBe('over');
+    expect(r.state, 'la partita finisce da sola').toBe('results');
     expect(r.secs, 'durata: 5 minuti').toBeGreaterThanOrEqual(299);
     expect(r.secs).toBeLessThanOrEqual(301);
     expect(r.minute1Over, 'nessun game over nel primo minuto').toBe(false);
@@ -173,7 +173,7 @@ test('Updraft: pallone e tempesta nella corsia dell’aereo: il pallone dà punt
 
 test('Updraft: 20 minuti a livello Facile arrivano in fondo con l’atterraggio, 3 livelli cambiano le quote', async ({ page }) => {
   const r = await runBot(page, 0.8, 2, 0);
-  expect(r.state).toBe('over'); expect(r.secs).toBeGreaterThanOrEqual(1199); expect(r.N).toBe(12);
+  expect(r.state).toBe('results'); expect(r.secs).toBeGreaterThanOrEqual(1199); expect(r.N).toBe(12);
   expect(r.res.stars).toBeGreaterThanOrEqual(1); expect(r.es.maxGap).toBeLessThanOrEqual(5);
   console.log(`20 min Facile 0.8× → stelle ${r.res.stars}, sforzi ${r.res.done}/${r.res.total}, anelli ${r.rings}/${r.ringsTotal}, eventi/min ${Math.round(r.es.perMin)}`);
 });

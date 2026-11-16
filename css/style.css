@@ -1000,3 +1000,4 @@ html:not(.ready) body { visibility: hidden; animation: reveal-safety 0s 2.5s for
 @media (prefers-reduced-motion: reduce) { html:not(.ready) body { animation: reveal-safety 0s 2.5s forwards !important; } }
 body.riding .metrics dd[data-long] { font-size: calc(var(--fs-title) * .8); }
 @media (max-width: 380px) { body.riding .metrics dd[data-long] { font-size: calc(var(--fs-title) * .72); } }
+.game-list { display: contents; }

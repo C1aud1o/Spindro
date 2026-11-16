@@ -47,10 +47,11 @@ const stars = (n, of = 3) => '★'.repeat(n) + '☆'.repeat(Math.max(0, of - n))
 export class GameMenu {
   // id: 'racer', …; title/pitch/howto: stringhe già tradotte (o funzioni che le restituiscono); howto: ≤ 3 righe brevi.
   // best(durIdx, level) → { stars: 0–3, text: 'record' | null }; load() → { durIdx, level }; save({ durIdx, level }).
-  constructor({ id, title, pitch, howto = [], best = null, load = null, save = null, onStart = () => {}, sfx = () => {}, ready = () => true, workout = () => null }) {
+  constructor({ id, title, pitch, howto = [], best = null, load = null, save = null, onStart = () => {}, sfx = () => {}, ready = () => true, workout = () => null, lengths = LENGTHS }) {
+    this.lengths = lengths; // minutes of the three length pills: the standard 5 / 10 / 20, or your own (e.g. [1, 2, 3] in the template game)
     this.workout = workout; this.id = id; this.title = title; this.pitch = pitch; this.howto = howto; this.best = best; this.onStart = onStart; this.sfx = sfx; this.ready = ready;
     this.saveFn = save; const s = (load ? load() : this.defaultLoad()) || {};
-    this.durIdx = clampI(s.durIdx ?? 0, 0, LENGTHS.length - 1); this.level = clampI(s.level ?? 1, 0, 2);
+    this.durIdx = clampI(s.durIdx ?? 0, 0, this.lengths.length - 1); this.level = clampI(s.level ?? 1, 0, 2);
     this.zones = []; this.reset();
   }
   defaultLoad() { try { return { durIdx: Number(localStorage.getItem(`${this.id}Dur`)) || 0, level: localStorage.getItem(`${this.id}Level`) == null ? 1 : Number(localStorage.getItem(`${this.id}Level`)) }; } catch { return {}; } }
@@ -58,14 +59,14 @@ export class GameMenu {
     if (this.saveFn) { this.saveFn({ durIdx: this.durIdx, level: this.level }); return; }
     try { localStorage.setItem(`${this.id}Dur`, this.durIdx); localStorage.setItem(`${this.id}Level`, this.level); } catch { /* niente storage */ }
   }
-  get minutes() { return LENGTHS[this.durIdx]; }
+  get minutes() { return this.lengths[this.durIdx]; }
   // da chiamare quando il menu (ri)appare
   reset() { this.age = 0; this.pend = null; this.hd = 0; this.ht = 0; this.fired = false; this.pedT = 0; this.started = false; }
   get fill() { return Math.max(this.hd > 0 && !this.fired ? Math.min(1, this.ht / HOLD_START) : 0, Math.min(1, this.pedT / PEDAL_SECS)); }
 
   // allenamento in corso sotto al gioco: la durata la decide lui (niente scelta 5/10/20)
   get wk() { try { return this.workout() || null; } catch { return null; } }
-  cycleLength() { if (this.wk) return; this.durIdx = (this.durIdx + 1) % LENGTHS.length; this.pedT = 0; this.sfx('select'); this.save(); }
+  cycleLength() { if (this.wk) return; this.durIdx = (this.durIdx + 1) % this.lengths.length; this.pedT = 0; this.sfx('select'); this.save(); }
   cycleLevel() { this.level = (this.level + 1) % 3; this.pedT = 0; this.sfx('select'); this.save(); }
   start() { if (this.started || this.age < SETTLE || !this.ready()) return; this.started = true; this.save(); this.sfx('pickup'); this.onStart(this.durIdx, this.level); }
 
@@ -119,7 +120,7 @@ export class GameMenu {
       txt(ctx, t('games.menu.wkLine', { name: wk.name, n: minutesLeft(wk) }), cx, y + 40 * u * 0.67, { size: 17 * u, align: al, color: ink, stroke: null, maxW: cw * 3 + 16 - 16, minK: 0.6 });
     } else {
     y += 30 * u; txt(ctx, t('games.menu.length'), cx, y, { size: 13 * u, align: al, color: HUD.dim, font: 'text' });
-    y += 8 * u; LENGTHS.forEach((m, i) => { const x = px0 + i * (cw + 8); pill(ctx, x, y, cw, 40 * u, t('games.menu.min', { n: m }), i === this.durIdx, HUD.lime, u); this.zones.push({ kind: 'len', i, x, y, w: cw, h: 40 * u }); });
+    y += 8 * u; this.lengths.forEach((m, i) => { const x = px0 + i * (cw + 8); pill(ctx, x, y, cw, 40 * u, t('games.menu.min', { n: m }), i === this.durIdx, HUD.lime, u); this.zones.push({ kind: 'len', i, x, y, w: cw, h: 40 * u }); });
     }
     y += 62 * u; txt(ctx, t('games.menu.level'), cx, y, { size: 13 * u, align: al, color: HUD.dim, font: 'text' });
     y += 8 * u; LEVEL_KEYS.forEach((k, i) => { const x = px0 + i * (cw + 8); pill(ctx, x, y, cw, 40 * u, t(`games.menu.${k}`), i === this.level, HUD.cyan, u); this.zones.push({ kind: 'lvl', i, x, y, w: cw, h: 40 * u }); });

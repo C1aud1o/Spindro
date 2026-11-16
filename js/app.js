@@ -1,5 +1,5 @@
 import { strictSet } from './storage-guard.js'; // primissimo: se il localStorage è vietato, ripiega su una memoria temporanea prima che gli altri moduli lo leggano
-import { t, LANGS, setLang, getLang, fmtDate, fmtDec, fmtNum } from './i18n.js'; // per primo: carica le traduzioni prima del render
+import { t, applyI18n, LANGS, setLang, getLang, fmtDate, fmtDec, fmtNum } from './i18n.js'; // per primo: carica le traduzioni prima del render
 import { isNative, GarminBridge } from './native.js'; // nell'app installa il Bluetooth nativo
 import { Trainer } from './trainers/index.js';
 import { Devices } from './devices.js';
@@ -34,6 +34,8 @@ import { parseGpx, at as routeAt, SAMPLES as ROUTES, drawElevation, drawMap } fr
 import { workouts, WorkoutRunner, drawProfile, duration, tss, fmtTime as fmtClock, parseZwo } from './workouts.js';
 import { GameAudio } from './games/audio.js';
 import { Progress } from './games/progress.js';
+import { gameById } from './games/registry.js';
+import { renderGameList } from './games/list.js';
 
 const $ = (id) => document.getElementById(id);
 const trainer = new Trainer();
@@ -1182,7 +1184,7 @@ const gameHooks = {
   connected: () => trainer.connected,
   ftp: () => state.ftp, // i giochi chiedono sforzi in % della FTP
   speedKmh: () => (state.mode === 'gears' ? currentVirtualSpeed() * 3.6 : state.data.speed || 0),
-  stats: () => ({ power: Math.round(state.data.power || 0), cadence: Math.round(currentCadence()), gear: state.mode === 'gears' ? state.gear + 1 : null }),
+  stats: () => ({ power: Math.round(state.data.power || 0), cadence: Math.round(currentCadence()), gear: state.mode === 'gears' ? state.gear + 1 : null, heartRate: state.data.hr ? Math.round(state.data.hr) : null }),
   shift: (d) => shift(d),
   close: () => closeGame(), // "− = ai giochi" nella schermata dei risultati: torna all'elenco dei giochi
   runStart: () => { gameRunT0 = Date.now(); },
@@ -1245,20 +1247,12 @@ document.querySelectorAll('#audioMode button').forEach((b) => b.addEventListener
   toast(b.dataset.m === 'auto' ? 'Audio: auto' : b.dataset.m === 'web' ? 'Audio: Web Audio' : 'Audio: system player');
 }));
 renderAudioMode();
-// I giochi (e three.js) si scaricano solo alla prima apertura: l'avvio dell'app resta leggero.
-const GAME_DEFS = {
-  horde: { load: () => import('./games/horde.js').then((m) => m.Horde), title: 'games.horde.name', help: 'games.horde.help' },
-  racer: { load: () => import('./games/racer3d.js').then((m) => m.Racer3D), title: 'games.racer.name', help: 'games.racer.help' },
-  shooter: { load: () => import('./games/strike3d.js').then((m) => m.Strike3D), title: 'games.shooter.title', help: 'games.shooter.help' },
-  gruppetto: { load: () => import('./games/gruppetto.js').then((m) => m.Gruppetto), title: 'games.gruppetto.name', help: 'games.gruppetto.help' },
-  mattoni: { load: () => import('./games/mattoni.js').then((m) => m.Mattoni), title: 'games.mattoni.name', help: 'games.mattoni.help' },
-  planata: { load: () => import('./games/planata.js').then((m) => m.Planata), title: 'games.planata.name', help: 'games.planata.help' },
-  video: { load: () => import('./videoride.js').then((m) => m.VideoRide), title: 'games.video.title', help: 'games.video.help', noAudio: true },
-};
+// I giochi (e three.js) si scaricano solo alla prima apertura: l'elenco e i punti d'ingresso sono in js/games/registry.js.
 const games = {}; // istanze create alla prima apertura
 async function loadGame(kind) {
   if (games[kind]) return games[kind];
-  const d = GAME_DEFS[kind];
+  const d = gameById(kind);
+  if (!d) throw new Error(`unknown game "${kind}"`);
   const Cls = await d.load();
   games[kind] = { ...d, game: d.noAudio ? new Cls($('gameCanvas'), gameHooks) : new Cls($('gameCanvas'), gameHooks, gameAudio) };
   return games[kind];
@@ -1293,8 +1287,8 @@ async function startGame(kind) {
   if (trainer.connected && !state.ride.running) $('startStop').click();
   $('gameMenu').hidden = true;
   activeKind = kind;
-  $('gameTitle').textContent = t(g.title);
-  $('gameHelp').textContent = t(g.help);
+  $('gameTitle').textContent = t(g.name);
+  $('gameHelp').textContent = t(g.controls);
   requestWakeLock();
   if (accountsAvailable && !gameSampler) gameSampler = setInterval(() => { gamePower.push(Math.min(2500, Math.round(state.data.power || 0))); if (gamePower.length > 10800) gamePower.shift(); }, 1000);
   if (kind !== 'video') clickNav.stop(); // nel gioco + e − tornano al gioco
@@ -1315,7 +1309,8 @@ function closeGame() {
   document.body.classList.remove('game-open');
   updateGameStrip(null);
 }
-document.querySelectorAll('.game-card').forEach((b) => b.addEventListener('click', () => startGame(b.dataset.game)));
+applyI18n(renderGameList($('gameList')));
+$('gameList').addEventListener('click', (e) => { const b = e.target.closest('.game-card'); if (b) startGame(b.dataset.game); });
 $('openGame').addEventListener('click', openGame);
 // invito "Accedi per entrare in classifica": chiude i giochi e apre le impostazioni sulla sezione Account
 window.addEventListener('account:open', () => {
@@ -1747,10 +1742,18 @@ window.addEventListener('langchange', () => {
   if (!$('workoutSheet').hidden) { renderWorkoutList(); renderRoutePick(); if (!$('wkPanePlans').hidden) plans.renderPane(); }
   if (!$('historySheet').hidden) openHistory();
   if (!$('gamePanel').hidden) {
-    if (activeGame) { $('gameTitle').textContent = t(GAME_DEFS[activeKind].title); $('gameHelp').textContent = t(GAME_DEFS[activeKind].help); }
+    if (activeGame) { $('gameTitle').textContent = t(gameById(activeKind).name); $('gameHelp').textContent = t(gameById(activeKind).controls); }
     else { $('gameTitle').textContent = t('games.title'); progress.renderMenu($('progressPanel')); }
   }
 });
+
+// ---------- Sviluppo dei giochi: ?game=<id> apre un gioco subito; con &demo=1 lo guida un ciclista simulato (js/games/demo.js) ----------
+(async () => {
+  const q = new URLSearchParams(location.search); const id = q.get('game');
+  if (!id || !gameById(id)) return;
+  if (q.get('demo') === '1') (await import('./games/demo.js')).installDemo(gameHooks, { onInput: (d) => { if (!activeGame?.active) return; if (d) activeGame.input(d); activeGame.hold?.(d); } });
+  openGame(); startGame(id);
+})();
 
 // ---------- Account facoltativo: compare solo se js/config.js ha FIREBASE_CONFIG ----------
 initAccount();

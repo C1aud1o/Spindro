@@ -5,10 +5,8 @@ Sito statico (senza framework, senza tracker) generato da `site/build.mjs` con t
 ```sh
 node site/build.mjs              # scrive site/dist/ (non versionata)
 python3 -m http.server 4400 -d site/dist   # anteprima su http://127.0.0.1:4400
-node site/shots.mjs              # screenshot dei giochi (1280x720 -> WebP 960x540, en e it) -> site/assets/shots/game-*
-node site/app-shots.mjs          # screenshot dell'app (540x960, en e it) -> site/assets/shots/
-node site/make-og.mjs            # anteprima social site/assets/og.png
-node site/make-og.mjs            # immagine social site/assets/og.png (1200x630)
+node scripts/site-shots.mjs      # TUTTI gli screenshot (app e giochi, 390x780 a scala 2, WebP < 120 KB, en e it) -> site/assets/shots/
+node site/make-og.mjs            # immagine social site/assets/og.png (1200x630) dagli screenshot veri
 ```
 
 | Cosa | Dove |
@@ -24,3 +22,7 @@ node site/make-og.mjs            # immagine social site/assets/og.png (1200x630)
 **Compatibilità**: solo il Van Rysel D100 è `verified`. Un modello passa a `reported` quando ci sono segnalazioni degli utenti, a `verified` solo se provato davvero.
 
 I font Barlow sono serviti dal sito stesso (licenza OFL in `assets/fonts/`): nessuna richiesta a Google Fonts.
+
+**Blog**: Markdown in `site/blog/<slug>.<lingua>.md` con intestazione `title`, `description`, `date`, `order`, `image`; `![didascalia](shot:nome)` inserisce uno screenshot di `assets/shots`. `build.mjs` genera `/blog/`, gli articoli (dati strutturati Article) e il feed `blog/feed.xml` per lingua. Le pagine `/developers/` leggono `docs/games/*.md` se esistono; altrimenti dicono che la guida è in arrivo. Il paragrafo «un gioco può seguire il tuo allenamento» compare solo se esiste `js/games/kit/workout-plan.js`.
+
+**Controlli**: `tests/site.spec.mjs` costruisce il sito e verifica link, ancore, immagini, titoli, hreflang, sitemap, feed e contrasti.

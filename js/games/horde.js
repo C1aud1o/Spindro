@@ -108,7 +108,7 @@ export class Horde {
   async start() {
     this.active = true;
     const size = () => ({ W: this.stage.W, H: this.stage.H });
-    this.detach = [this.menu.attach(this.hudCanvas, size, () => this.state === 'menu'), this.results.attach(this.hudCanvas, size, () => this.state === 'over')];
+    this.detach = [this.menu.attach(this.hudCanvas, size, () => this.state === 'menu'), this.results.attach(this.hudCanvas, size, () => this.state === 'results')];
     this.quality = new Quality();
     this.stage = new Stage(this.hudCanvas, { quality: this.quality });
     this.stage.onQuality = (cfg) => this.applyQuality(cfg);
@@ -261,7 +261,7 @@ export class Horde {
     this.band = new BandMeter();
   }
 
-  get ftp() { return Math.max(80, this.hooks.ftp?.() || Number(localStorage.getItem('ftp')) || 200); }
+  get ftp() { return Math.max(80, this.hooks.ftp?.() || 200); }
   recordKey() { return `hordeBest2:${this.total}:${this.level.id}`; }
   recordFor(total, id) { try { return JSON.parse(localStorage.getItem(`hordeBest2:${total}:${id}`) || '{}'); } catch { return {}; } }
   record() { return this.wk ? {} : this.recordFor(this.total, this.level.id); }
@@ -278,7 +278,7 @@ export class Horde {
   input(dir) {
     this.audio.ensure();
     if (this.state === 'menu') { this.menu.input(dir); return; }
-    if (this.state === 'over') { this.results.input(dir); return; }
+    if (this.state === 'results') { this.results.input(dir); return; }
     if (this.state !== 'play' || this.paused) return;
     this.tx = clamp(this.tx - dir * NUDGE, -ROAD, ROAD); // destra sullo schermo = −X (camera rivolta a +Z)
   }
@@ -514,7 +514,7 @@ export class Horde {
     this.fx.update(dt);
     this.stateT += dt;
     if (this.state === 'menu') { this.menuTick(dt, connected); this.animateIdle(dt); return; }
-    if (this.state === 'over') { this.results.update(dt); this.animateIdle(dt); return; }
+    if (this.state === 'results') { this.results.update(dt); this.animateIdle(dt); return; }
 
     // con un allenamento il tempo è quello dell'allenamento (anche se in pausa); finito lui, finisce la partita
     if (this.wk) { this.el = this.wc.tick(dt); if (this.wc.ended) return this.finish(); }
@@ -570,7 +570,7 @@ export class Horde {
 
   finish() {
     if (!this.result) this.finishResult();
-    this.state = 'over'; this.stateT = 0; this.finished = true;
+    this.state = 'results'; this.stateT = 0; this.finished = true;
     this.audio.stopSong(); this.audio.sfx('win'); this.results.reset();
     this.hooks.runEnd?.({ game: 'horde', score: this.score });
     if (!this.wk) this.hooks.setGrade(0);
@@ -926,7 +926,7 @@ export class Horde {
     if (this.state === 'loading') { ctx.fillStyle = '#0f0e0c'; ctx.fillRect(0, 0, W, H); hudText(ctx, t('games.common.loading'), W / 2, H / 2, { size: 22, align: 'center', color: '#d9ff3d' }); hudText(ctx, `${Math.round((this.loadPct || 0) * 100)}%`, W / 2, H / 2 + 28, { size: 14, align: 'center' }); return; }
     if (this.state === 'error') { hudText(ctx, t('ui.error', { error: this.error }), W / 2, H / 2, { size: 14, align: 'center', color: '#ff6b6b' }); return; }
     if (this.state === 'menu') { this.drawMenu(ctx, W, H, dt); return; }
-    if (this.state === 'over' && this.result) { this.drawOver(ctx, W, H, dt); return; }
+    if (this.state === 'results' && this.result) { this.drawOver(ctx, W, H, dt); return; }
     const w = WEAPONS[this.weapon]; const seg = this.seg;
     const pad = 12; const y0 = 84; // sotto la barra del gioco (titolo, audio, esci)
     // riga in alto
@@ -998,7 +998,7 @@ export class Horde {
       hudText(ctx, p.text, clamp((v3.x + 1) / 2 * W + (p.slot ? 34 : -34), 40, W - 40), (1 - v3.y) / 2 * H, { size: 24, align: 'center', color: p.color });
       ctx.globalAlpha = 1;
     }
-    this.pops = this.pops.filter((p) => p.t > 0 && this.state !== 'over');
+    this.pops = this.pops.filter((p) => p.t > 0 && this.state !== 'results');
     if (this.hurtT > 0.9) { ctx.fillStyle = `rgba(255,0,40,${(this.hurtT - 0.9) * 0.55})`; ctx.fillRect(0, 0, W, H); }
     if (this.paused) {
       ctx.fillStyle = 'rgba(8,10,26,.72)'; ctx.fillRect(0, 0, W, H);
@@ -1007,7 +1007,7 @@ export class Horde {
     }
     if (this.result && seg.kind === 'cool') this.drawResult(ctx, W, H);
     // i riquadri dei traguardi non coprono l'azione: durante sforzi e scatti aspettano il recupero
-    if (!['pace', 'effort', 'sprint'].includes(seg.kind) || this.state === 'over') this.hooks.progress?.drawToasts(ctx, W, dt, this.result && seg.kind === 'cool' ? 400 : 206, true);
+    if (!['pace', 'effort', 'sprint'].includes(seg.kind) || this.state === 'results') this.hooks.progress?.drawToasts(ctx, W, dt, this.result && seg.kind === 'cool' ? 400 : 206, true);
   }
 
   drawMenu(ctx, W, H, dt) {

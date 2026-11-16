@@ -94,6 +94,11 @@ export class Progress {
     this.save();
   }
 
+  // Personal bests of one game, in the game's own namespace: localStorage key `<id>Best:<key>` (docs/games/API.md, "Storage").
+  // `key` describes the variant, e.g. '5:normal' (minutes:level). The record is any small JSON object (score, stars...).
+  bestOf(id, key) { try { return JSON.parse(localStorage.getItem(`${id}Best:${key}`) || 'null'); } catch { return null; } }
+  saveBest(id, key, record) { try { localStorage.setItem(`${id}Best:${key}`, JSON.stringify(record)); } catch { /* pieno */ } }
+
   setMax(stat, value) { if ((this.stats[stat] || 0) < value) { this.stats[stat] = value; this.checkAchievements(); this.save(); } }
   addToList(stat, value) { const l = this.stats[stat] || []; if (!l.includes(value)) { l.push(value); this.stats[stat] = l; this.checkAchievements(); this.save(); } }
 
