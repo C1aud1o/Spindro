@@ -90,4 +90,10 @@ One row per concept. When a string uses the concept, use the word in this table.
 Notes:
 - Italian "scatto" is the short hard effort (attack/sprint in a workout); "sprint" is the race finish. Use the same split in the other languages where it exists (fr *démarrage* vs *sprint*, de *Antritt* vs *Sprint*).
 - Zwift Click / Play / Ride are product names; the word "controller" for the device class follows the table.
+- Spelling: English uses British spelling (pedalling, metres, colour, licence, tyre).
+- Gender and forms: FTP is feminine in Italian and French (*la FTP*), masculine in Spanish (*el FTP*). French says *appli* for the app; Spanish and German say *app* / *App*.
+- OVERDRIVE (the sprint power-up of Pedal Strike) stays OVERDRIVE in it/en/es/de; French uses SURRÉGIME.
+- Slipstream "bridge" (closing the gap to a rider who attacks): it *rientro*, fr *jonction*, es *puente*, de *Lücke zufahren*. Team car: it *ammiraglia*. Soigneur: it *massaggiatore*, es *auxiliar*. Bottle: it *borraccia*.
+- German: planned sessions inside training plans are *Einheit*; training load is *Last*; short chip labels may use *Grundlage* for endurance. Workout step is *Abschnitt*.
+- Spanish: recovery week is *semana de descarga*; endurance workouts say *resistencia* (note: the trainer's "Resistance" mode is a different word on screen).
 - Game ids (`planata`, `gruppetto`, `mattoni`, `horde`, `racer`, `shooter`) never change; the display names are Updraft, Slipstream, Feed Zone, Horde Run, Breakaway, Pedal Strike in every language.

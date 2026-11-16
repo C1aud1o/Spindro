@@ -11,6 +11,7 @@ on purpose, because source-code comments refer to them.
 - [legal/](legal/) — Terms, Privacy Notice, account deletion, trademarks and third-party licences (Italian and English).
 
 ## Hardware
+- [connecting-devices.md](connecting-devices.md) — how Spindro connects trainers, controllers, heart-rate straps and sensors; what works where; troubleshooting.
 - [zwift-controller.md](zwift-controller.md) — Zwift Click, Play and Ride: protocol, roles, what is verified and what is not.
 - [click-navigazione.md](click-navigazione.md) — navigating the app with a controller: roles, legend bar, key check.
 
