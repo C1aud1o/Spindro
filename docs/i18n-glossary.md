@@ -1,10 +1,5 @@
 # Translation glossary and guide
 
-<!-- WORKING CHECKLIST (remove at the end)
-Done: workflows, issue templates, docs in English, docs/README.md, glossary (this file).
-Left: review of locales it/en/fr/es/de, site/i18n en+it, unused keys, tests/i18n-check.mjs, merge origin/beta, final tests.
--->
-
 The app is translated in `locales/<lang>.json` (it, en, fr, es, de) and the site in `site/i18n/{en,it}.json`.
 English is the reference for meaning; Italian was the original text. `node tests/i18n-check.mjs` checks missing keys,
 placeholders, unused keys, leftover Italian words and untranslated strings.
@@ -95,5 +90,6 @@ Notes:
 - OVERDRIVE (the sprint power-up of Pedal Strike) stays OVERDRIVE in it/en/es/de; French uses SURRÉGIME.
 - Slipstream "bridge" (closing the gap to a rider who attacks): it *rientro*, fr *jonction*, es *puente*, de *Lücke zufahren*. Team car: it *ammiraglia*. Soigneur: it *massaggiatore*, es *auxiliar*. Bottle: it *borraccia*.
 - German: planned sessions inside training plans are *Einheit*; training load is *Last*; short chip labels may use *Grundlage* for endurance. Workout step is *Abschnitt*.
+- French: the narrow home tile (`quick.workouts`) says *Séances* because *Entraînements* does not fit at 360 px.
 - Spanish: recovery week is *semana de descarga*; endurance workouts say *resistencia* (note: the trainer's "Resistance" mode is a different word on screen).
 - Game ids (`planata`, `gruppetto`, `mattoni`, `horde`, `racer`, `shooter`) never change; the display names are Updraft, Slipstream, Feed Zone, Horde Run, Breakaway, Pedal Strike in every language.
