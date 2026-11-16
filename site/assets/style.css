@@ -256,3 +256,5 @@ details p { margin: 0 0 18px; max-width: 46em; color: #2c2b27; }
 .try .btns { margin-top: 16px; }
 .try .btn.primary:hover { background: var(--paper); }
 .badge.partial { background: var(--lime); border-style: solid; }
+.cmd { margin: 0 0 18px; padding: 16px 18px; background: var(--ink); color: var(--paper); border-radius: 6px; overflow-x: auto; font: .88rem/1.6 var(--mono); }
+.cmd code { background: none; padding: 0; color: inherit; font: inherit; white-space: pre; }

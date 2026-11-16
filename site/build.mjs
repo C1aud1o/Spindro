@@ -314,23 +314,24 @@ for (const lang of cfg.langs) {
 
 
 // ---------- sviluppatori ----------
+// Le guide vivono nel repository (docs/games/*.md); i link ci sono solo per i file che esistono davvero.
+const DEV_COMMANDS = ['git clone https://github.com/C1aud1o/Spindro.git && cd Spindro', 'git checkout -b game/mygame beta', 'npm ci', 'npm run dev', '# then open  http://127.0.0.1:5173/index.html?game=tempo&demo=1', '', 'mkdir js/games/mygame', 'cp js/games/template/tempo.js js/games/mygame/index.js', '# add one line to js/games/registry.js, add games.mygame.* to the 5 locale files', '', 'npm run game:check -- mygame'].join('\n');
 for (const lang of cfg.langs) {
   const d = T[lang].dev;
   const ghBlob = (f) => `${cfg.github}/blob/main/${f}`;
-  const docLinks = [];
-  if (docsGames.includes('CREATE-A-GAME.md')) docLinks.push(`<a class="btn primary" href="${ghBlob('docs/games/CREATE-A-GAME.md')}" rel="noopener">${esc(d.docsGuide)}</a>`);
-  for (const f of docsGames.filter((x) => x !== 'CREATE-A-GAME.md')) docLinks.push(`<a class="btn" href="${ghBlob(`docs/games/${f}`)}" rel="noopener">${esc(/api/i.test(f) ? d.docsApi : f.replace(/\.md$/, ''))}</a>`);
-  const missing = !docsGames.includes('CREATE-A-GAME.md');
-  docLinks.push(`<a class="btn${docLinks.length ? '' : ' primary'}" href="${cfg.github}/tree/main/js/games" rel="noopener">${esc(d.folder)}</a>`);
-  docLinks.push(`<a class="btn ghost" href="${ghBlob('docs/giochi-design.md')}" rel="noopener">${esc(d.designDoc)}</a>`);
+  const DOCS = [['CREATE-A-GAME.md', d.docsGuide], ['API.md', d.docsApi], ['DESIGN-RULES.md', d.docsRules]];
+  const docLinks = DOCS.filter(([f]) => existsSync(join(repo, 'docs/games', f))).map(([f, label], i) => `<a class="btn${i ? '' : ' primary'}" href="${ghBlob(`docs/games/${f}`)}" rel="noopener">${esc(label)}</a>`);
   writePage({
     lang, slug: 'developers', tplName: 'dev', title: d.title, description: d.description,
     jsonld: `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'TechArticle', headline: d.h1, description: d.description, inLanguage: lang, url: abs(pageUrl(lang, 'developers')), publisher: { '@type': 'Organization', name: 'Spindro', url: SITE_URL } }).replace(/</g, '\\u003c')}</script>`,
     extra: {
       kit: d.kit.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join(''),
       rules: d.rules.map((r) => `<li>${esc(r)}</li>`).join(''),
-      steps: d.steps.map((r) => `<li>${esc(r)}</li>`).join(''),
-      docLinks: docLinks.join(''), docsSoon: missing ? `<p class="note">${esc(d.docsSoon)}</p>` : '',
+      three: d.three.map((r) => `<li>${esc(r)}</li>`).join(''),
+      ship: d.ship.map((r) => `<li>${esc(r)}</li>`).join(''),
+      commands: esc(DEV_COMMANDS),
+      docLinks: docLinks.join(''),
+      tempoShot: shotImg('tempo-menu', lang, d.tempoAlt),
     },
   });
 }

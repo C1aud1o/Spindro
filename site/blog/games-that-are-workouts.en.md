@@ -55,4 +55,4 @@ All of this uses simulated trainers. We cannot tell you how a game runs on your 
 
 ## Build one
 
-The games are small JavaScript modules on a shared kit that provides the menu, results, HUD, cyclist, environment and quality settings. If you have an idea for a game that works as a workout, the [Build a game page](/developers/) says what the kit gives you and how to add a game. We would like to see yours.
+The games are small JavaScript modules on a shared kit that provides the menu, results, HUD, cyclist, environment and quality settings. If you have an idea for a game that works as a workout, the [Build a game page](/developers/) shows the three steps: copy the template game, add one registry entry, add your strings. The guide takes about 15 minutes from a fresh clone to your game on screen, and a bot plays it at four power levels and tells you which rule it breaks. We would like to see yours.
