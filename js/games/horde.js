@@ -10,7 +10,7 @@ import { loadMeshyTemplate, CYCLIST_URL, MESHY_FAN_URL, BIKE } from './kit/cycli
 import { Walker, FarCrowd, makeEnemyKit, bakePose, enemyMaterial } from './kit/walkers.js';
 import { buildSky, buildGround, Scenery, LampLights } from './horde-world.js';
 import { clamp, lerp } from './engine.js';
-import { txt as hudText, hudView, paragraph, MessageQueue, loadHudFonts, hurtVignette, HURT_FLASH_S } from './kit/hud.js';
+import { txt as hudText, hudView, paragraph, MessageQueue, loadHudFonts, hurtVignette, HURT_FLASH_S, guardTrainer, trainerLostBanner } from './kit/hud.js';
 import { t, fmtDec } from '../i18n.js';
 import { GameMenu, ResultsView } from './kit/menu.js';
 import { makeRandom } from './kit/rng.js';
@@ -82,7 +82,7 @@ const PAIRS = [
 
 export class Horde {
   constructor(hudCanvas, hooks, audio) {
-    this.hudCanvas = hudCanvas; this.hooks = hooks; this.audio = audio;
+    this.hudCanvas = hudCanvas; this.hooks = guardTrainer(hooks); this.audio = audio;
     this.active = false;
     this.seed = null; this.rnd = makeRandom(this.seed);
     const ls = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
@@ -106,6 +106,7 @@ export class Horde {
   set lvlIdx(v) { this.menu.level = v; }
 
   async start() {
+    this.hooks.reset?.();
     this.active = true;
     const size = () => ({ W: this.stage.W, H: this.stage.H });
     this.detach = [this.menu.attach(this.hudCanvas, size, () => this.state === 'menu'), this.results.attach(this.hudCanvas, size, () => this.state === 'results')];
@@ -1011,6 +1012,7 @@ export class Horde {
       hudText(ctx, t('games.horde.paused'), W / 2, H * 0.42, { size: 42, align: 'center', color: '#ffd34d' });
       paragraph(ctx, t('games.horde.pausedSub'), W / 2, H * 0.42 + 36, { size: 20, maxW: W - 40, color: '#f0f0f0' });
     }
+    if (this.hooks.lost) trainerLostBanner(ctx, W, H, t);
     if (this.result && seg.kind === 'cool') this.drawResult(ctx, W, H);
     // i riquadri dei traguardi non coprono l'azione: durante sforzi e scatti aspettano il recupero
     if (!['pace', 'effort', 'sprint'].includes(seg.kind) || this.state === 'results') this.hooks.progress?.drawToasts(ctx, W, dt, this.result && seg.kind === 'cool' ? 400 : 206, true);

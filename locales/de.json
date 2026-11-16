@@ -328,6 +328,7 @@
   "games.choose": "Wähle ein Spiel",
   "games.common.best": "Bestwert: {n}",
   "games.common.demo": "DEMO: Rollentrainer nicht verbunden",
+  "games.common.trainerLost": "Rollentrainer getrennt: warte auf die Verbindung",
   "games.common.loading": "LÄDT…",
   "games.common.newBest": "  · NEUER BESTWERT!",
   "games.common.retry": "+  NOCHMAL",

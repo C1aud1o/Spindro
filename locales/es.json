@@ -328,6 +328,7 @@
   "games.choose": "Elige un juego",
   "games.common.best": "Mejor: {n}",
   "games.common.demo": "DEMO: rodillo no conectado",
+  "games.common.trainerLost": "Rodillo desconectado: esperando a que vuelva",
   "games.common.loading": "CARGANDO…",
   "games.common.newBest": "  · ¡NUEVO RÉCORD!",
   "games.common.retry": "+  REINTENTAR",

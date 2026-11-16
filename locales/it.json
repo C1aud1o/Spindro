@@ -328,6 +328,7 @@
   "games.choose": "Scegli il gioco",
   "games.common.best": "Record: {n}",
   "games.common.demo": "DEMO: rullo non connesso",
+  "games.common.trainerLost": "Rullo scollegato: in attesa che torni",
   "games.common.loading": "CARICAMENTO…",
   "games.common.newBest": "  · RECORD!",
   "games.common.retry": "+  RIPROVA",

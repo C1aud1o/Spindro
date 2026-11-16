@@ -7,7 +7,7 @@
 import { THREE, Stage, loadAll, Effects, Quality, Cyclist, makeKit, loadCyclistTemplate, toonMaterial, toonify, skyDome, styleLights, styleFog, Shake } from './kit3d.js';
 import { scatterModel, groundModel, prepareModel } from './kit/env.js';
 import { loadMeshyTemplate, CYCLIST_URL } from './kit/cyclist.js';
-import { txt as hudText, hudView, paragraph, wrapLines, MessageQueue, loadHudFonts, HUD, hurtVignette, HURT_FLASH_S } from './kit/hud.js';
+import { txt as hudText, hudView, paragraph, wrapLines, MessageQueue, loadHudFonts, HUD, hurtVignette, HURT_FLASH_S, guardTrainer, trainerLostBanner } from './kit/hud.js';
 import { clamp, lerp } from './engine.js';
 import { t } from '../i18n.js';
 import { SONGS } from './audio.js';
@@ -198,7 +198,7 @@ const smoothstep = (k) => { k = clamp(k, 0, 1); return k * k * (3 - 2 * k); };
 
 export class Planata {
   constructor(hudCanvas, hooks, audio) {
-    this.hudCanvas = hudCanvas; this.hooks = hooks; this.audio = audio;
+    this.hudCanvas = hudCanvas; this.hooks = guardTrainer(hooks); this.audio = audio;
     this.active = false;
     const ls = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
     this.seed = null; this.rnd = makeRandom(this.seed);
@@ -221,6 +221,7 @@ export class Planata {
   set lvlIdx(v) { this.menu.level = v; }
 
   async start() {
+    this.hooks.reset?.();
     this.active = true;
     this.detach = [this.menu.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'menu'), this.results.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'results')];
     this.quality = new Quality();
@@ -907,6 +908,7 @@ export class Planata {
       hudText(ctx, t('games.planata.paused'), W / 2, H * 0.42, { size: 42, align: 'center', color: '#ffd34d' });
       paragraph(ctx, t('games.planata.pausedSub'), W / 2, H * 0.42 + 36, { size: 20, maxW: W - 40, color: '#f0f0f0' });
     }
+    if (this.hooks.lost) trainerLostBanner(ctx, W, H, t);
     if (this.result && seg.kind === 'cool') this.drawResult(ctx, W, H, false); // i riquadri dei traguardi non coprono l'azione: aspettano la fine del volo
   }
 

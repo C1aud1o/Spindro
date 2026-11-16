@@ -328,6 +328,7 @@
   "games.choose": "Choisis un jeu",
   "games.common.best": "Meilleur : {n}",
   "games.common.demo": "DÉMO : home-trainer non connecté",
+  "games.common.trainerLost": "Home-trainer déconnecté : en attente de reconnexion",
   "games.common.loading": "CHARGEMENT…",
   "games.common.newBest": "  · NOUVEAU RECORD !",
   "games.common.retry": "+  RÉESSAYER",

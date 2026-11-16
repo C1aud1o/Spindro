@@ -11,7 +11,7 @@ import { Cyclist, loadCyclistTemplate, loadMeshyTemplate, makeKit, makeCrowdGeom
 import { scatterModel, crowdInstances, prepareModel } from './kit/env.js';
 import { Shake, TimeScale, WindLines, Confetti } from './kit/juice.js';
 import { Quality } from './kit/quality.js';
-import { txt, panel, uiScale, powerColor, gradeColor, HUD, hudView, measure, paragraph, MessageQueue, FONT_DISPLAY } from './kit/hud.js';
+import { txt, panel, uiScale, powerColor, gradeColor, HUD, hudView, measure, paragraph, MessageQueue, FONT_DISPLAY, guardTrainer, trainerLostBanner } from './kit/hud.js';
 import { clamp, lerp, hash } from './engine.js';
 import { SONGS } from './audio.js';
 import { Race, buildTimeline, itemsFromWorkout, LANES, START, COOL } from './racer-sim.js';
@@ -95,7 +95,7 @@ const CAR_YAW = -Math.PI / 2; // nel file l'ammiraglia punta verso +X; nel gioco
 
 export class Racer3D {
   constructor(hudCanvas, hooks, audio) {
-    this.hud = hudCanvas; this.hooks = hooks; this.audio = audio;
+    this.hud = hudCanvas; this.hooks = guardTrainer(hooks); this.audio = audio;
     this.active = false;
     const ls = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : Number(v); } catch { return d; } };
     this.adaptMem = clamp(ls('racerAdapt', 0), -0.15, 0.15);
@@ -115,6 +115,7 @@ export class Racer3D {
 
   // ---------- ciclo di vita ----------
   async start() {
+    this.hooks.reset?.();
     this.active = true; this.rnd = makeRandom(this.seed);
     this.quality = new Quality();
     this.stage = new Stage(this.hud, { quality: this.quality });
@@ -1147,6 +1148,7 @@ export class Racer3D {
       txt(ctx, t('games.racer.paused'), W / 2, H * 0.42 + 2 * u, { size: 30 * u, align: 'center', color: HUD.gold, italic: true, maxW: 280 * u });
       txt(ctx, t('games.racer.pausedHint'), W / 2, H * 0.42 + 32 * u, { size: 15 * u, align: 'center', color: HUD.white, font: 'text', maxW: 280 * u });
     }
+    if (this.hooks.lost) trainerLostBanner(ctx, W, H, t);
     if (this.state === 'countdown') {
       const n = 3 - Math.floor(this.stateT); const f = this.stateT % 1;
       txt(ctx, String(n), W / 2, H * 0.5, { size: (96 - f * 24) * u, align: 'center', color: HUD.lime, italic: true });

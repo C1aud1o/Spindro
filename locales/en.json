@@ -328,6 +328,7 @@
   "games.choose": "Pick a game",
   "games.common.best": "Best: {n}",
   "games.common.demo": "DEMO: trainer not connected",
+  "games.common.trainerLost": "Trainer connection lost: waiting for it to come back",
   "games.common.loading": "LOADING…",
   "games.common.newBest": "  · NEW BEST!",
   "games.common.retry": "+  TRY AGAIN",
