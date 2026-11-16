@@ -98,3 +98,32 @@ Scripts: `scripts/qa/round2.mjs` (welcome card, suggestion banner, Devices sheet
 Checked with no finding: welcome card, suggestion banner, dropout banner, Devices sheet (with "Test resistance" and source pickers) at 360/390/768 in de/fr/en/es/it (no overflow, no clipped text, tap targets ≥ 44 px, no console messages), games list from the registry at 360/390/768/1280 in all languages (Escape closes it), and the `?game=…&demo=1` panels open. Game internals were not audited.
 Left to the install session as instructed: PWA icon colour and `manifest.webmanifest`.
 Remaining from round 1: the "Seen but not fixed" list above, minus the two items fixed here (Settings after a restore, backup consent key).
+
+## Round 3 — the build after the Android/install, language and connection branches
+
+Full matrix re-run on the merged build (5 viewports × 5 languages × every scene, with axe): one finding, fixed (#38). Journeys: `tests/journeys.spec.mjs`
+(set `QA_SHOTS=<folder>` to save a screenshot at every step; they were reviewed as contact sheets). Extra probes: `scripts/qa/updatebar.mjs`, `scripts/qa/round2.mjs`.
+
+| # | Screen | Lang / viewport | What was wrong | Fix |
+|---|--------|-----------------|----------------|-----|
+| 32 | Home banners | all | Connection error, lost device, suggestion, "report your trainer" and the update bar could all show at once | CSS priority: connection error > lost device > suggestion > report hint > update bar; one at a time, the rest wait (test `one banner above the Today card`) |
+| 33 | Update bar | all | Fixed pill over the header and device bar; shown while a ride was paused | now a full-width row at the top of the page flow (nothing covered, no overlap with legend or bottom buttons), 44 px button, never while a ride exists |
+| 34 | Strava / Garmin buttons | all | Orange and blue brand-coloured buttons (compliance D10) | neutral `.ghost` outlined buttons, words only; `docs/compliance-report.md` updated |
+| 35 | Store listing | en, de, es, it, fr | "Accounts and leaderboards are planned for later" | sentence removed from the five `full_description.txt` |
+| 36 | Toasts | all | A long toast (e.g. "Saved to Download/…fit") wrapped in a narrow blob over the logo | `width: max-content`, rounded rectangle |
+| 37 | Home, first connection | all | The "add your controller" suggestion appeared before the very first ride, pushing Start down | suggestions start after the first ride; connect.spec updated |
+| 38 | Home | es / 360 | Device-bar label "Frec. cardiaca" cut (language pass reverted "Pulso") | `home.hr` = "Pulso" |
+| 39 | Cockpit, no trainer or meter | all | Start with nothing connected silently rode at 0 W | note "No trainer or power meter connected: the watts stay at 0" with a Connect button |
+| 40 | Home | all | An app left open past midnight kept yesterday's plan card and weekly goal | the home re-renders when the day changes |
+| 41 | Plan card | fr, de, es, it | "mer. 18 nov.." double full stop | `plans.next` no longer adds a full stop |
+| 42 | Any sheet | all | Esc pressed while focus is in a checkbox/field only blurred it instead of closing the sheet | Esc closes the sheet |
+| 43 | Home, desktop/tablet | all / 768, 1280 | New banners sat in one grid column beside the Today card | full-width in the two-column grid |
+| 44 | First-run card | all | Long Bluetooth-chooser paragraph (round 2 follow-up) | already one line; confirmed at 360 in de/fr |
+
+Journeys (each is a test and passes): (a) it, phone, trainer only: consent → safety → connect → 3-minute ERG ride → pause → resume → end → FIT → share card;
+(b) de, trainer + controller, controller keys only: workout → game on top → back → end workout → finish; (c) en, nothing connected: ride note, games in demo
+("DEMO: trainer not connected" is drawn on the game HUD), workouts; (d) fr, a plan: choose → do the day's workout → "tomorrow" (clock moved, app open) → skip → abandon;
+(e) es, 1280×720, keyboard only: Tab order has names and visible focus, Esc closes, Space/arrows/g/Enter all work.
+
+Seen, not fixed in round 3: in the games menu START ignores taps while the 3D models load (several seconds on slow hardware) without any feedback (games SDK, not touched);
+with a Click that has arrows, the games list can only be left with B (no "Close" item in the selectable order).

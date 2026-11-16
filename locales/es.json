@@ -772,7 +772,7 @@
   "home.gearNote": "Marcha <b id=\"gearNum\">12</b>/24 · desarrollo <b id=\"gearRatio\">-</b> · usa − y + de abajo o el Click",
   "home.grade": "Pendiente",
   "home.heartRate": "Frec. cardiaca",
-  "home.hr": "Frec. cardiaca",
+  "home.hr": "Pulso",
   "home.keyboard": "Teclado: <kbd>←</kbd> <kbd>→</kbd> o <kbd>−</kbd> <kbd>+</kbd> cambian de marcha · <kbd>Espacio</kbd> iniciar / pausar · <kbd>G</kbd> juegos · en los juegos, mantén las flechas para dirigir.",
   "home.live": "Datos en directo",
   "home.modes": "Modo",

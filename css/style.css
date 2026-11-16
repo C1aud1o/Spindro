@@ -1031,3 +1031,5 @@ main:has(#connectHelp:not([hidden]), #dropBanner:not([hidden]), #suggest:not([hi
 main:has(#connectHelp:not([hidden]), #dropBanner:not([hidden]), #suggest:not([hidden]), #reportHint:not([hidden])) .update-bar, body.riding .update-bar { display: none; }
 .update-bar { position: static; transform: none; max-width: none; width: 100%; justify-content: space-between; border-radius: 22px; padding: 6px 6px 6px 16px; }
 .update-bar .ghost { flex: none; min-height: 44px; min-width: 44px; }
+/* avvisi (collegamento, dispositivo perso, suggerimento, nuova versione, nessuna fonte): a tutta larghezza anche nella griglia a due colonne */
+main > #suggest, main > #connectHelp, main > #dropBanner, main > .update-bar, main > #noSource, main > #reportHint, main > #devMsg { grid-column: 1 / -1; }

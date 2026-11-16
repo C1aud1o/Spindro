@@ -271,3 +271,28 @@ test('backup import skips device-specific keys (consent, safety ack, known Bluet
   const s = await page.evaluate(() => ({ analytics: localStorage.getItem('analytics'), devKnown: localStorage.getItem('devKnown'), ftp: localStorage.getItem('ftp') }));
   expect(s.ftp).toBe('287'); expect(s.analytics).toBe('0'); expect(s.devKnown).toBeNull();
 });
+
+test('at most one banner above the Today card: connection error > lost device > suggestion > report hint > update bar', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await page.goto('/index.html');
+  const shown = () => page.evaluate(() => ['connectHelp', 'dropBanner', 'suggest', 'reportHint'].concat(['upd']).filter((id) => { const e = id === 'upd' ? document.querySelector('.update-bar') : document.getElementById(id); return e && !e.hidden && getComputedStyle(e).display !== 'none'; }));
+  await page.evaluate(() => { const b = document.createElement('div'); b.className = 'update-bar'; b.innerHTML = '<span>new</span><button class="ghost">Reload</button>'; document.querySelector('main').prepend(b); for (const id of ['connectHelp', 'dropBanner', 'suggest', 'reportHint']) document.getElementById(id).hidden = false; });
+  expect(await shown()).toEqual(['connectHelp']);
+  await page.evaluate(() => { document.getElementById('connectHelp').hidden = true; });
+  expect(await shown()).toEqual(['dropBanner']);
+  await page.evaluate(() => { document.getElementById('dropBanner').hidden = true; });
+  expect(await shown()).toEqual(['suggest']);
+  await page.evaluate(() => { document.getElementById('suggest').hidden = true; });
+  expect(await shown()).toEqual(['reportHint']);
+  await page.evaluate(() => { document.getElementById('reportHint').hidden = true; });
+  expect(await shown()).toEqual(['upd']);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.evaluate(() => document.body.classList.add('riding')); // never mid-ride
+  expect(await shown()).toEqual([]);
+});
+
+test('the Strava and Garmin buttons use the neutral app style (no brand colours)', async ({ page }) => {
+  await page.goto('/index.html');
+  const r = await page.evaluate(() => ['uploadStrava', 'garminUp', 'stravaConnect', 'stravaPublicConnect'].map((id) => { const e = document.getElementById(id); const cs = getComputedStyle(e); return [id, e.className, cs.backgroundColor]; }));
+  for (const [id, cls, bg] of r) { expect(cls, id).toBe('ghost'); expect(bg, id).not.toMatch(/rgb\((17, 169, 237|252, 82, 0)\)/); }
+});
