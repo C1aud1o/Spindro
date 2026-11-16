@@ -54,6 +54,10 @@ solid blue arches); the 3D gate captions ("2 ALLIES") are partly covered by the 
 | # | game | what | fix / status |
 |---|---|---|---|
 | S1 | Pedal Strike | Explosions and the hit flash covered large parts of the screen at `high` (bloom threshold 0.82) | X1 + hit flash capped (edge-only, ≤ 0.3, 0.3 s). 5-minute run at high: explosions, boss shield break, rockets all readable |
+| B2 | Breakaway | "IN DRAFT −22 % WATTS" pill touched the "% FTP" readout and the gear pill (worse at 360 px wide and at 100 %+ FTP) | the pill is sized and placed in the free band between the gear pill and the readout, text shrinks to fit; checked at 360×640 |
+| L1 | Slipstream | big lane arrow at the screen edge was cut | inset by 12 px, smaller glyph |
+| H4 | Horde Run | rider's jersey washed out to white for a moment when gems were pulled in (additive halo on top of the jersey) | the halo shrinks as the gem approaches; jersey keeps its colour |
+| U2 | Updraft | the wing covered the rider's lower body and the next ring in portrait | portrait camera raised (5.4 → 7.2 above the plane): wing now at the feet, ring above the rider clear |
 | B1 | Breakaway | countdown "3" over the hint line; START arch caption garbled behind the objective card | X4 |
 | U1 | Updraft | German results line "80 % der Intervalle und höchstens 3 Gewitt…" truncated (also long in es/it) | shortened in de/es/it |
 | H3 | Horde Run | 3D gate captions ("2 ALLIES", "WEAPON") ran behind the pillars and showed as "2 ALLIE" / "EAPON" | caption plane now fits inside the opening |
@@ -72,6 +76,19 @@ Observed, not changed (layout, needs a decision): in landscape on a phone-sized 
 of the height in Breakaway, Updraft, Slipstream and Feed Zone and hides the road; Pedal Strike's "easy −120 W" label touches
 "COMBO ×8" there; at 1280×720 Breakaway's "3:53 to the finish" text sits over the rider's head. The manifest is portrait-only.
 The app bar's help text is truncated in German ("+ / – schalten · Etappe…"): that is the app shell, not a game.
+
+## Bot table (`npm run game:check`, FTP 200, seed 1234, 5 min Normal, medium quality, 4× CPU)
+
+| game | stars at 0.6 / 0.8 / 1.0 / 1.2 × FTP (expected 1 / 1-2 / 2-3 / 3) | first event | longest gap | verdict |
+|---|---|---|---|---|
+| Horde Run | 1 / 1 / 2 / 3 | 0.8 s | 2.6-3.4 s | all rules respected |
+| Updraft | 1 / 1 / 2 / 3 | 0.0 s | 3.6 s | all rules respected |
+| Feed Zone | 1 / 1 / 2 / 3 | 2.1 s | 2.1-2.9 s | all rules respected |
+| Slipstream | 1 / 1 / **1** / **1** | 0.0 s | 2.8 s | stars below expectation at 1.0 and 1.2 × FTP: the constant-power bot cannot change lane, so it catches few riders. Identical on `origin/beta` before my changes; not touched (balance) |
+| Pedal Strike | 1 / 1 / 3 / 3 | 0.0 s | 5.3 s | gap 5.3 s reported (rule 5 s): measured from sound effects because the game has no `eventStats()`; identical before my changes |
+| Breakaway | 1 / 1 / 2 / 3 | 3.0 s | 38-188 s | same: no `eventStats()`, so the fallback sees only sound effects and a race has long quiet stretches; the objective card is always on screen. Not a measurement of dead time |
+
+Suggested follow-up (not done tonight): implement `eventStats()` in Breakaway and Pedal Strike so the bot measures real events.
 
 ## Performance (software GL, 4× CPU throttle, DPR 2, ms per frame: average / p95 / worst, 90 frames)
 
