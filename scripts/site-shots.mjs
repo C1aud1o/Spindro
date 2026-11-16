@@ -179,11 +179,11 @@ const GAMES = {
     for (let i = 0; i < 40 && (await page.evaluate(() => window.__game.state)) !== 'race'; i++) await run(page, 0.5);
     await run(page, 150);
   } },
-  horde: { card: 'horde', async scene(page) { await startGame(page); await run(page, T(25)); } },
-  gruppetto: { card: 'gruppetto', async scene(page) { await startGame(page); await run(page, T(60)); } },
-  planata: { card: 'planata', async scene(page) { await startGame(page); await run(page, T(40)); } },
-  mattoni: { card: 'mattoni', async scene(page) { await startGame(page); await run(page, T(45)); } },
-  strike: { card: 'shooter', async scene(page) { await startGame(page); await run(page, T(40)); } },
+  horde: { card: 'horde', async scene(page) { await startGame(page); await run(page, T(135)); } },
+  gruppetto: { card: 'gruppetto', async scene(page) { await startGame(page); await run(page, T(135)); } },
+  planata: { card: 'planata', async scene(page) { await startGame(page); await run(page, T(135)); } },
+  mattoni: { card: 'mattoni', async scene(page) { await startGame(page); await run(page, T(135)); } },
+  strike: { card: 'shooter', async scene(page) { await startGame(page); await run(page, T(135)); } },
   menu: { card: 'racer', async scene(page) { await run(page, 2.5); } },
 };
 for (const [id, G] of Object.entries(GAMES)) {
