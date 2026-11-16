@@ -1,8 +1,8 @@
 # Games: design rules (apply to every game)
 
-Written after two rounds of testing on a phone: the games had graphic defects, the gameplay did not hold attention and
+Written after two rounds of testing on a phone: the games had graphical defects, the gameplay did not hold attention and
 the difficulty was not tuned. Better graphics are not enough. These rules are measured: a game is finished only if it
-respects all of them, with the numbers in the summary. Most are checked for you by `npm run game:check -- <id>` (see §5).
+meets all of them, with the numbers in the summary. Most are checked for you by `npm run game:check -- <id>` (see §5).
 
 (English translation of `docs/giochi-design.md`, the original Italian text, which now points here. This file is the
 reference. The interface a game implements is in [API.md](API.md).)
@@ -22,7 +22,7 @@ New games add their own row here when they are accepted. `tempo` (and the `skele
 
 ## 1. Every run is a workout with a shape
 - The run has a length chosen at the start: **5, 10 or 20 minutes** (+ / − in the game's menu).
-- The intensity follows a curve: 45–60 s of easy start, then **waves of effort and recovery**, a harder finish, 30 s of
+- The intensity follows a curve: an easy start of 45–60 s, then **waves of effort and recovery**, a harder finish, 30 s of
   cool-down with the summary. Never more than 90 s of effort above threshold without a recovery of at least 40 s.
 - Everything is a **percentage of the rider's FTP** (`hooks.ftp()`): recovery 50–65 %, pace 75–90 %, effort 95–110 %,
   sprint 130 %+ for 5–15 s. With no trainer connected the demo simulates 0.8 × FTP with sprints. That way the game is fair to
@@ -42,7 +42,7 @@ New games add their own row here when they are accepted. `tempo` (and the `skele
 ## 3. Bike controls
 - You play **without touching the screen**: watts and cadence do most of it; + / − (Zwift Click) do one single thing per
   game, explained in one line in the menu. A long press of − is a pause (handled by the app).
-- No punishment for pushing harder. No "game over" in the first minute. Whoever stops pedalling pauses, does not lose.
+- No punishment for pushing harder. No "game over" in the first minute. A rider who stops pedalling pauses the game and does not lose.
 
 ## 4. It must look good
 - The character takes **at least 14 %** of the screen height at 390×780; important enemies and targets at least 8 %.
@@ -67,7 +67,7 @@ New games add their own row here when they are accepted. `tempo` (and the `skele
 4. Existing tests green: `npm test`, `node tests/i18n-check.mjs`, `node tests/trainers/run.mjs`,
    `node tests/controllers/zwift-controllers.test.cjs`.
 
-Note for whoever verifies: in a test script pass only `+1` or `-1` to `game.input()`. Any other value breaks the player's
+Note for testers: in a test script pass only `+1` or `-1` to `game.input()`. Any other value breaks the player's
 position and the screen turns black: it is a mistake in the test, not in the game.
 
 ## Review checklist for a new game

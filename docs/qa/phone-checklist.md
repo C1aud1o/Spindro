@@ -11,13 +11,13 @@ Note the phone model, Android version and build number (Settings → About) with
 5. **Stable untouched.** Open the stable app after installing beta. *Its history is unchanged; beta data is separate.*
 6. **PWA install.** Chrome on the phone: open /beta/ → Install. *Installs as "Spindro Beta" (not replacing /app/); opens standalone, dark status bar, correct icon.*
 7. **PWA offline.** Airplane mode, open the installed web app. *It starts and shows the home screen.*
-8. **PWA update.** After a new beta deploy, open the installed web app twice. *Bar "A new version is ready · Reload" appears (not mid-ride); Reload loads the new build.*
+8. **PWA update.** After a new beta deploy, open the installed web app twice. *The "A new version is ready · Reload" bar appears (not mid-ride); Reload loads the new build.*
 
 ## Connection and ride
 9. **First connection.** Fresh install, tap the trainer. *Android asks for "Nearby devices" only (no location on Android 12+); trainer connects; power and cadence appear.*
 10. **Permission denied.** Deny the Bluetooth permission once. *A clear message, and asking again works.*
 11. **Screen stays on 10 minutes.** Ride in ERG without touching the screen. *Screen never dims or locks.*
-12. **Two-hour safety.** Leave a ride running long (or 30 min at least) with the charger. *Timer matches a watch within a second; no crash.*
+12. **Two-hour safety.** Leave a ride running for two hours (or at least 30 min) with the charger connected. *Timer matches a watch within a second; no crash.*
 13. **Background and return.** Mid-ride press Home, wait 2 minutes, come back. *Timer shows the true elapsed time; trainer still connected; ride continues (a gap in the per-second graph is acceptable, wrong time is not).*
 14. **Incoming call.** Mid-ride receive a call, decline or answer, return. *Same as 13; the trainer keeps its resistance.*
 15. **Rotate.** Rotate the phone on the home screen, in a workout and in a game. *Layout adapts, ride is not interrupted or reset.*
@@ -26,15 +26,15 @@ Note the phone model, Android version and build number (Settings → About) with
 18. **Pause releases the screen.** Pause the ride, wait for the screen timeout. *Screen turns off normally.*
 
 ## Data, files, share
-19. **FIT export.** Finish a short ride → Save FIT. *Message with `Download/Spindro/...fit`; the file is in Files → Downloads → Spindro.*
+19. **FIT export.** Finish a short ride → Save FIT. *A message shows `Download/Spindro/...fit`; the file is in Files → Downloads → Spindro.*
 20. **Share / Open with.** Share and "Open with" the FIT. *System sheet appears; Garmin Connect or Files receives a valid file.*
 21. **Garmin bridge.** Turn it on. *Asks for the Bluetooth (advertise) permission; the watch finds "Spindro" and shows watts.*
-22. **Reminders.** Plans → turn reminders on. *Asks for notification permission only now (Android 13+); a test reminder arrives.* Also: never asked before this.
+22. **Reminders.** Plans → turn reminders on. *Asks for notification permission only now (Android 13+); a test reminder arrives.* Also check that the permission was never requested before this point.
 23. **Share from YouTube.** Share a YouTube link to Spindro. *Opens "Ride on a video" with that video.*
 24. **Open links.** Tap Strava / Garmin import / report links. *Open in the browser, not inside the app.*
 
 ## Games and controllers
-25. **Each game one minute at default quality.** Breakaway, Horde Run, Strike, Gruppetto, Mattoni, Planata (and the others in the menu). *Loads, playable, smooth enough, sound works, no black screen; pedal power moves the game.*
+25. **Each game one minute at default quality.** Breakaway, Horde Run, Pedal Strike, Slipstream, Feed Zone, Updraft (and the others in the menu). *Loads, playable, smooth enough, sound works, no black screen; pedal power moves the game.*
 26. **Zwift Click / controller keys.** Pair the controller. *+ and − change gear, A/B navigate menus, keys work in a game too.*
 27. **Video ride.** Start a YouTube ride. *The video plays (no "error 153"/embedding message), + and − still work.*
 
