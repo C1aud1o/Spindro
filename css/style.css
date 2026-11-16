@@ -139,6 +139,10 @@ body:not([data-mode=gears]):not([data-mode=sim]) .only-sim { display: none; }
 .toast { position: fixed; z-index: 12; left: 50%; top: max(16px, env(safe-area-inset-top)); transform: translate(-50%, -140%); max-width: calc(100% - 32px);
   padding: 12px 24px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-weight: 700; box-shadow: var(--shadow-cta); opacity: 0; visibility: hidden; transition: transform .35s cubic-bezier(.2, 1.4, .4, 1), opacity .2s, visibility .2s; }
 .toast.show { transform: translate(-50%, 0); opacity: 1; visibility: visible; }
+/* nuova versione pronta (app installata): in alto sotto l'intestazione, mai sopra i comandi */
+.update-bar { position: fixed; z-index: 11; left: 50%; transform: translateX(-50%); top: calc(max(8px, env(safe-area-inset-top)) + 64px); max-width: calc(100% - 32px); display: flex; align-items: center; gap: 12px;
+  padding: 6px 6px 6px 18px; border-radius: 999px; background: var(--surface-2); color: var(--t1); border: 1px solid var(--accent-line); box-shadow: var(--shadow); font-size: var(--fs-caption); font-weight: 700; }
+.update-bar .ghost { min-height: 40px; border-radius: 999px; }
 
 /* ---------- pannelli ---------- */
 .sheet { position: fixed; inset: 0; z-index: 15; background: rgba(5, 5, 4, .7); display: grid; align-items: end; animation: fade .2s ease-out; }

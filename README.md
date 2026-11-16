@@ -60,7 +60,7 @@ node site/build.mjs           # build the showcase site into site/dist
 node scripts/site-shots.mjs   # regenerate the screenshots used by the site and this file
 ```
 
-No build step for the app: plain ES modules in `js/`, three.js vendored in `vendor/`. The Android app is the same web app in a Capacitor shell (`android/`, see [docs/android.md](docs/android.md)).
+No build step for the app: plain ES modules in `js/`, three.js vendored in `vendor/`. The Android app is the same web app in a Capacitor shell (`android/`, see [docs/android-and-install.md](docs/android-and-install.md)).
 
 ## Add a game
 
