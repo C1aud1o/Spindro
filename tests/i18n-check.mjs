@@ -18,7 +18,7 @@ const strict = process.argv.includes('--strict');
 const walk = (dir) => readdirSync(dir).flatMap((f) => { const p = join(dir, f); return statSync(p).isDirectory() ? walk(p) : [p]; });
 const jsFiles = walk(join(root, 'js')).filter((f) => f.endsWith('.js'));
 // i18n.js has example keys in comments: they do not count as used keys, but they do count for dynamic prefixes (ordinal.*)
-const src = [join(root, 'index.html'), join(root, 'sw.js'), ...jsFiles.filter((f) => !f.endsWith('i18n.js'))].map((f) => readFileSync(f, 'utf8')).join('\n');
+const src = [join(root, 'index.html'), join(root, 'sw.js'), join(root, 'tests/i18n.spec.mjs'), ...jsFiles.filter((f) => !f.endsWith('i18n.js'))].map((f) => readFileSync(f, 'utf8')).join('\n');
 const srcAll = [src, readFileSync(join(root, 'js/i18n.js'), 'utf8')].join('\n');
 
 let errors = 0; let warnings = 0;
