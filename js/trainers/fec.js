@@ -21,6 +21,7 @@
 
 import { SensorDebug } from '../debug.js';
 import { t } from '../i18n.js';
+import { listen } from '../ble-util.js';
 
 export const FEC_SERVICE = '6e40fec1-b5a3-f393-e0a9-e50e24dcca9e';
 export const FEC_RX = '6e40fec2-b5a3-f393-e0a9-e50e24dcca9e'; // notifiche: rullo → app
@@ -161,7 +162,7 @@ export class FecTrainer extends EventTarget {
   // uso diretto (senza scelta automatica del protocollo)
   async connect() {
     this.device = await navigator.bluetooth.requestDevice({ filters: [{ services: [FEC_SERVICE] }, { namePrefix: 'Tacx' }], optionalServices: [FEC_SERVICE] });
-    this.device.addEventListener('gattserverdisconnected', () => { this.dbg.setStatus('Disconnected'); this.emit('disconnected'); });
+    listen(this, 'disc', this.device, 'gattserverdisconnected', () => { this.dbg.setStatus('Disconnected'); this.emit('disconnected'); });
     await this.setup();
     return this.device.name || t('home.trainer');
   }
@@ -179,7 +180,7 @@ export class FecTrainer extends EventTarget {
     this.tx = null; this.sim = null;
     const svc = await server.getPrimaryService(FEC_SERVICE);
     const rx = await svc.getCharacteristic(FEC_RX);
-    rx.addEventListener('characteristicvaluechanged', (e) => { this.dbg.raw('rx', FEC_RX, e.target.value); this.onPacket(e.target.value); });
+    listen(this, 'rx', rx, 'characteristicvaluechanged', (e) => { this.dbg.raw('rx', FEC_RX, e.target.value); this.onPacket(e.target.value); });
     await rx.startNotifications();
     try {
       this.tx = await svc.getCharacteristic(FEC_TX);
