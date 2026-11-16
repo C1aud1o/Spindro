@@ -6,14 +6,14 @@ body:
   - type: markdown
     attributes:
       value: |
-        Translations are planned as JSON files in `locales/`. Until that is in place, use this form to
-        offer a language or to report a wrong or unclear text. Keep the wording consistent with the
-        rest of the app.
+        The app is translated in `locales/*.json` (Italian, English, French, Spanish, German). Use this form to
+        offer a new language or to report a wrong or unclear text. Please check the
+        [glossary](https://github.com/C1aud1o/Spindro/blob/beta/docs/i18n-glossary.md) so the wording stays consistent.
   - type: input
     id: language
     attributes:
       label: Language
-      placeholder: "e.g. German (de), Spanish (es)"
+      placeholder: "e.g. Portuguese (pt), Dutch (nl)"
     validations:
       required: true
   - type: dropdown
