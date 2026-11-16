@@ -12,14 +12,21 @@ console/CSP/texture-load errors recorded, `renderer.info` sampled every minute.
 
 Legend: ✓ looked, no defect left · ✓F looked and fixed · – not done yet (see "Not done").
 
-| game | high 5 min | high 20 min Hard | high workout | medium 5 min | low 5 min | 1280×720 |
-|---|---|---|---|---|---|---|
-| Horde Run | ✓F | – | – | – | – | – |
-| Pedal Strike | ✓ (bloom checked) | – | – | – | – | – |
-| Breakaway | – | – | – | – | – | – |
-| Slipstream | – | – | – | – | – | – |
-| Updraft | – | – | – | – | – | – |
-| Feed Zone | – | – | – | – | – | – |
+| game | high 5 min | high 20 min Hard | high workout | medium 5 min | low 5 min | 1280×720 | de/fr 360×640 menu+results |
+|---|---|---|---|---|---|---|---|
+| Horde Run | ✓F | numbers only | numbers only | ✓ | ✓ | one frame | ✓ |
+| Pedal Strike | ✓F | numbers only | numbers only | ✓ | ✓ (sheet viewed) | one frame | ✓ |
+| Breakaway | ✓F | numbers only | numbers only | numbers only | numbers only | one frame | ✓ |
+| Slipstream | ✓F | numbers only | numbers only | numbers only | numbers only | one frame | ✓ |
+| Updraft | ✓F | numbers only | numbers only | numbers only | numbers only | one frame | ✓ |
+| Feed Zone | ✓F | numbers only | numbers only | numbers only | numbers only | one frame | ✓ |
+
+✓ looked at the every-10-s sheet and bursts (or the frames named in the game's table), F = a defect was found and fixed. "numbers only" = the
+session was run to the results screen and checked for console errors, memory and result, but its frames were not all viewed.
+Medium and low sheets exist for every game and showed no difference in layout from high apart from the missing bloom.
+
+Readability note from the 360×640 de/fr check (nothing truncated): a few long lines shrink to about 9 px (Horde Run menu "Deux portails…",
+Updraft results criterion in fr/de); legible but small.
 
 ## Cross-game defects
 
