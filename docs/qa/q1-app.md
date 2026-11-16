@@ -35,13 +35,13 @@ scenes below with the automatic audit; screenshots were reviewed as contact shee
 - [x] Dialogs and toasts, Escape / back button, focus after closing a sheet
 - [x] Service worker: offline start, update to a new version, stale or broken cache
 - [x] Beta build path (`CHANNEL=beta WEB_DEPLOY=1`): zero CSP violations, `beta:` storage isolation
-- [x] axe on every scene above in en/de/fr/es/it (390 px and desktop), tap-target and contrast scripted checks
+- [x] axe on every scene above: all five languages at 390 px, en/de at 768 and 1280 px; scripted tap-target (≥ 44 px) and overflow checks on the whole matrix
 - [x] Console errors/warnings, CSP violations, unhandled rejections: none on any scene
 
 ## Defects found and fixed
 
 Commit column: `c1` = first QA commit (sheets, DST, FIT, service worker, plurals, narrow layouts), `c2` = second (layout shift, storage, GPX, locale numbers),
-`c3` = third (storage quota, a11y, remaining items). Hashes are in `git log` on the branch.
+`c3` = third (storage quota, a11y), `c4` = manifest colours and the calibration test. Hashes are in `git log` on the branch.
 
 | # | Screen | Lang / viewport | What was wrong | Fix | Commit |
 |---|--------|-----------------|----------------|-----|--------|
@@ -71,8 +71,16 @@ Commit column: `c1` = first QA commit (sheets, DST, FIT, service worker, plurals
 | 24 | Any setting | all | With a full storage every settings change threw inside its handler | `setItem` swallows quota errors and warns once (`storage.full`); history keeps its own trimming via `strictSet` | c3 |
 | 25 | Challenges card | all | Progress bars without an accessible name (axe `aria-progressbar-name`) | `aria-label` | c3 |
 | 26 | Finish, settings | all | White text on the Garmin blue / Strava orange buttons: contrast below 4.5:1 | dark text on the brand fill | c3 |
+| 28 | Web manifest | all | `theme_color` / `background_color` (#0f1115) differed from the page's `theme-color` (#0f0e0c) | aligned | c4 |
 | 27 | Game panel | all | `#muteGame` accessible name ("Audio") did not contain its visible text ("Audio on") | name = visible text | c3 |
 
 ## Seen but not fixed
 
-(see the end of this file — filled in at the final step)
+- **Device name in the home device bar** (e.g. "Van Rysel D100 (finto) · FTMS") is clamped to two lines with "…" on phones. Deliberate in the current design; the full name is in the Devices sheet.
+- **Settings are not reachable while a ride exists** (the header is hidden in the cockpit, also after a reload that restores a paused ride): by design, but a restored ride hides Settings until the user finishes or resets it.
+- **PWA icon** (`icons/icon.svg`) is orange on #0f1115 while the app's accent is lime: a branding mismatch that needs a new asset, not a code fix. The manifest also locks `orientation: portrait` although the app has tablet/desktop layouts.
+- **Session persistence cost**: the whole 1 Hz log is serialised every 10 s (≈ 2–3 MB for a 9-hour ride). Works, but a full storage now only produces the one-time "storage full" toast and the ride is no longer restorable; a chunked store would be needed to fix it properly.
+- **Backup import** copies every key of the file, including the consent choice (`analytics`) and `safetyAck`, from the other device. Left as is to avoid changing the backup format the night before launch.
+- **3D vendor files** (`vendor/three/**`) are not in the service-worker precache (cached at first use, as documented), so a game never opened online will not start offline. Games area, not touched.
+- **Games / device connection internals** (`js/games/**`, `js/devices*.js`) were not audited here, as agreed.
+- Not verifiable here: real Bluetooth hardware, real Android WebView/back button, the YouTube player (needs the network), Safari/iOS, `localStorage` limits on real phones, GoatCounter loading after consent (no DSN in the repo config).
