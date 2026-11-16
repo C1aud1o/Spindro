@@ -1414,6 +1414,8 @@
   "games.mattoni.crit.cars": "Every team car beaten",
   "games.mattoni.crit.flats": "At most 3 flats",
   "games.menu.length": "Length",
+  "games.menu.loading": "Loading… {n} %",
+  "games.menu.loadingQueued": "Starting as soon as it is ready…",
   "games.menu.level": "Level",
   "games.menu.min": "{n} min",
   "games.menu.easy": "Easy",

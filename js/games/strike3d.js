@@ -282,7 +282,7 @@ export class Strike3D {
       this.build();
       this.state = 'menu'; this.stateT = 0; this.menu.reset();
       const size = () => ({ W: this.stage.W, H: this.stage.H });
-      this.detachMenu = this.menu.attach(this.hudCanvas, size, () => this.state === 'menu');
+      this.detachMenu = this.menu.attach(this.hudCanvas, size, () => this.state === 'menu' || this.state === 'loading');
       this.detachResults = this.results.attach(this.hudCanvas, size, () => this.state === 'results');
     } catch (err) { console.error(err); this.state = 'error'; this.error = err.message; }
   }
@@ -410,6 +410,13 @@ export class Strike3D {
     this.ev = []; this.firstSpawn = false; this.ko = 0; this.paused = false; this.stopT = 0;
     this.result = null;
   }
+  // { first, maxGap, perMin, n } in game seconds over the part of the run before the cool-down (docs/games/API.md, "Events")
+  eventStats() {
+    const cool = this.blocks?.find((b) => b.kind === 'cool'); const end = cool ? cool.t0 : (this.blocks?.total || 0);
+    const ts = (this.ev || []).filter((e) => e.t <= end && e.k !== 'cool').map((e) => e.t).sort((a, b) => a - b);
+    let maxGap = 0; let prev = 0; for (const x of ts) { maxGap = Math.max(maxGap, x - prev); prev = x; } maxGap = Math.max(maxGap, end - prev);
+    return { first: ts[0] ?? Infinity, maxGap, perMin: end > 0 ? ts.length / (end / 60) : 0, n: ts.length };
+  }
   logEvent(k) { if (this.st == null || this.state === 'menu') return; this.ev.push({ t: this.st, k }); }
 
   // ---------- comandi ----------
@@ -418,13 +425,13 @@ export class Strike3D {
   input(dir) {
     this.audio.ensure();
     this.idle = 0; this.manual = true;
-    if (this.state === 'menu') { this.menu.input(dir); return; }
+    if (this.state === 'menu' || this.state === 'loading') { this.menu.input(dir); return; }
     if (this.state === 'intro') { if (dir > 0 && this.stateT > 0.6) this.stateT = 99; return; }
     if (this.state === 'results') { this.results.input(dir); return; }
     if (this.state !== 'play') return;
     this.changeLane(dir > 0 ? -1 : 1);
   }
-  hold(dir) { if (this.state === 'menu') this.menu.hold(dir); /* in gioco le corsie sono a scatti: niente pressione continua */ }
+  hold(dir) { if (this.state === 'menu' || this.state === 'loading') this.menu.hold(dir); /* in gioco le corsie sono a scatti: niente pressione continua */ }
 
   // indice di corsia: 0 = destra (z +), 2 = sinistra (z −)
   changeLane(d) {
@@ -656,6 +663,7 @@ export class Strike3D {
     for (const p of this.pops) p.t -= realDt; this.pops = this.pops.filter((p) => p.t > 0);
     this.hurtFlash = Math.max(0, (this.hurtFlash || 0) - realDt); this.whiteFlash = Math.max(0, (this.whiteFlash || 0) - realDt);
     this.fovKick = Math.max(0, (this.fovKick || 0) - realDt * 14);
+    if (this.state === 'loading') this.menu.update(realDt, { connected: false, power: 0 });
     if (this.state === 'loading' || this.state === 'error') return;
     // chi smette di pedalare va in pausa (non perde): riparte da solo quando ricomincia
     if (connected && (this.state === 'play' || this.state === 'intro')) {
@@ -1558,10 +1566,7 @@ export class Strike3D {
     ctx.clearRect(0, 0, W, H); hudView(ctx, W, H);
     if (this.state === 'loading') {
       ctx.fillStyle = '#0d0c14'; ctx.fillRect(0, 0, W, H);
-      txt(ctx, t('games.shooter.hud.title'), W / 2, H / 2 - 30, { size: 44, align: 'center', color: HUD.lime, italic: true });
-      txt(ctx, t('games.common.loading'), W / 2, H / 2 + 12, { size: 18, align: 'center' });
-      ctx.fillStyle = 'rgba(255,255,255,.15)'; rr(ctx, W / 2 - 100, H / 2 + 30, 200, 8, 4); ctx.fill();
-      ctx.fillStyle = HUD.lime; rr(ctx, W / 2 - 100, H / 2 + 30, 200 * clamp(this.loadPct || 0, 0, 1), 8, 4); ctx.fill();
+      this.menu.loadFrac = this.loadPct || 0; this.menu.draw(ctx, W, H, { connected: false });
       return;
     }
     if (this.state === 'error') { txt(ctx, t('ui.error', { error: this.error }), W / 2, H / 2, { size: 16, align: 'center', color: HUD.red }); return; }
@@ -1608,7 +1613,7 @@ export class Strike3D {
     this.drawShieldTags(ctx, W, S, y2);
     const hp = this.stage.project(this.px, 3.2, this.laneZ);
     if (this.combo >= 3 && this.state === 'play') {
-      const cy = Math.min(hp.y - 6, H - 190 * S);
+      const cy = Math.max(y2 + 28 * S, Math.min(hp.y - 6, H - 190 * S)); // never inside the HUD panels (short landscape screens)
       txt(ctx, t('games.shooter.combo', { n: this.combo }), hp.x, cy, { size: 22 * S, align: 'center', color: '#ff9f1c' });
       ctx.fillStyle = 'rgba(255,159,28,.85)'; const cw = 70 * S * clamp(this.comboT / 2.6, 0, 1); rr(ctx, hp.x - cw / 2, cy + 5, cw, 4 * S, 2); ctx.fill();
     }

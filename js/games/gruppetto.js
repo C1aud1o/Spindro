@@ -73,7 +73,7 @@ export class Gruppetto {
     this.stage = new Stage(this.hudCanvas, { quality: this.quality });
     this.stage.onQuality = (cfg) => this.applyQuality(cfg);
     this.state = 'loading'; this.t = 0;
-    this.detach = [this.menu.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'menu'), this.results.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'results')]; this.msgs = new MessageQueue(); this.power = 0; this.pw = 0; this.cadence = 0; this.pops = [];
+    this.detach = [this.menu.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'menu' || this.state === 'loading'), this.results.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'results')]; this.msgs = new MessageQueue(); this.power = 0; this.pw = 0; this.cadence = 0; this.pops = [];
     this.last = performance.now();
     requestAnimationFrame(this.loop);
     this.audio.playSong(SONGS.menu);
@@ -225,14 +225,14 @@ export class Gruppetto {
   // ---------- comandi ----------
   input(dir) {
     this.audio.ensure();
-    if (this.state === 'menu') { this.menu.input(dir); return; }
+    if (this.state === 'menu' || this.state === 'loading') { this.menu.input(dir); return; }
     if (this.state === 'results') { this.results.input(dir); return; }
     if (this.state !== 'play' || this.paused) return;
     // una sola cosa: cambia corsia (+ destra, − sinistra)
     const l = clamp(this.lane + (dir > 0 ? 1 : -1), -1, 1);
     if (l !== this.lane) { this.lane = l; this.audio.sfx('shiftUp'); }
   }
-  hold(dir) { if (this.state === 'menu') this.menu.hold(dir); }
+  hold(dir) { if (this.state === 'menu' || this.state === 'loading') this.menu.hold(dir); }
 
   begin() {
     this.state = 'play'; this.stateT = 0; this.pwInit = true; this.hooks.runStart?.();
@@ -375,6 +375,7 @@ export class Gruppetto {
     this.connected = connected;
     if (this.audio.song) this.audio.setTempo(this.audio.song.bpm * clamp((this.cadence || 85) / 88, 0.85, 1.25));
     this.msgs.update(dt);
+    if (this.state === 'loading') { this.menu.update(dt, { connected: false, power: 0 }); }
     if (this.state === 'loading' || this.state === 'error') return;
     this.fx.update(dt); this.shake.update(dt);
     this.stateT += dt;
@@ -600,7 +601,7 @@ export class Gruppetto {
   drawHud(dt) {
     const { ctx, W, H } = this.stage;
     ctx.clearRect(0, 0, W, H); hudView(ctx, W, H);
-    if (this.state === 'loading') { ctx.fillStyle = '#0f0e0c'; ctx.fillRect(0, 0, W, H); hudText(ctx, t('games.common.loading'), W / 2, H / 2, { size: 22, align: 'center', color: '#d9ff3d' }); hudText(ctx, `${Math.round((this.loadPct || 0) * 100)}%`, W / 2, H / 2 + 28, { size: 14, align: 'center' }); return; }
+    if (this.state === 'loading') { ctx.fillStyle = '#0f0e0c'; ctx.fillRect(0, 0, W, H); this.menu.loadFrac = this.loadPct || 0; this.menu.draw(ctx, W, H, { connected: false }); return; }
     if (this.state === 'error') { hudText(ctx, t('ui.error', { error: this.error }), W / 2, H / 2, { size: 14, align: 'center', color: '#ff6b6b' }); return; }
     if (this.state === 'menu') { this.menu.draw(ctx, W, H, { connected: this.hooks.connected() }); this.hooks.progress?.drawToasts(ctx, W, dt); return; }
     if (this.state === 'results') { this.drawResult(ctx, W, H); this.hooks.progress?.drawToasts(ctx, W, dt); return; }

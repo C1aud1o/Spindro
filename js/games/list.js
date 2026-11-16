@@ -15,5 +15,11 @@ export function renderGameList(el, games = GAMES) {
     text.append(name, pitch); b.append(icon, text);
     el.append(b);
   }
+  // A visible way out that sits in the focus order of the list (a controller with arrows can reach it; before, only B left the list).
+  // Not a `.game-card`: the app opens a game for every `.game-card` click.
+  const back = document.createElement('button'); back.className = 'small game-back'; back.dataset.i18n = 'games.exit'; back.type = 'button';
+  back.style.cssText = 'grid-column:1/-1;justify-self:stretch;margin-top:6px';
+  back.addEventListener('click', () => document.getElementById('closeGame')?.click());
+  el.append(back);
   return el;
 }

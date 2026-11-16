@@ -1413,6 +1413,8 @@
   "games.mattoni.crit.cars": "Todos los coches de equipo superados",
   "games.mattoni.crit.flats": "3 pinchazos como máximo",
   "games.menu.length": "Duración",
+  "games.menu.loading": "Cargando… {n} %",
+  "games.menu.loadingQueued": "Empieza en cuanto esté listo…",
   "games.menu.level": "Nivel",
   "games.menu.min": "{n} min",
   "games.menu.easy": "Fácil",

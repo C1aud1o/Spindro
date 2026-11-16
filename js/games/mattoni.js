@@ -143,7 +143,7 @@ export class Mattoni {
       load: () => ({ durIdx: clamp(Number(ls('feedDur', 0)) || 0, 0, DURATIONS.length - 1), level: clamp(Number(ls('feedLvl', 1)) || 0, 0, LEVELS.length - 1) }),
       save: ({ durIdx, level }) => { try { localStorage.setItem('feedDur', durIdx); localStorage.setItem('feedLvl', level); } catch { /* niente storage */ } },
       best: (d, l) => { try { const r = JSON.parse(localStorage.getItem(`feedBest:${DURATIONS[d]}:${LEVELS[l].id}`) || '{}'); return { stars: r.stars || 0, text: r.score ? String(r.score) : null }; } catch { return { stars: 0, text: null }; } },
-      sfx: (n) => this.audio.sfx(n), workout: () => this.hooks.workout?.(),
+      sfx: (n) => this.audio.sfx(n), ready: () => this.state === 'menu', workout: () => this.hooks.workout?.(),
       onStart: () => { this.reset(); this.begin(); },
     });
     this.results = new ResultsView({ sfx: (n) => this.audio.sfx(n), onAgain: () => { this.reset(); this.begin(); }, onBack: () => this.hooks.close?.() });
@@ -166,7 +166,7 @@ export class Mattoni {
     this.stage.onQuality = (cfg) => this.applyQuality(cfg);
     this.state = 'loading'; this.t = 0; this.msgs = new MessageQueue(); this.power = 0; this.pw = 0; this.cadence = 0; this.pops = [];
     this.last = performance.now();
-    this.detach = [this.menu.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'menu'), this.results.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'results')];
+    this.detach = [this.menu.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'menu' || this.state === 'loading'), this.results.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'results')];
     requestAnimationFrame(this.loop);
     this.audio.playSong(SONGS.menu);
     try {
@@ -357,12 +357,12 @@ export class Mattoni {
   // ---------- comandi: + / − muovono la bici ----------
   input(dir) {
     this.audio.ensure();
-    if (this.state === 'menu') { this.menu.input(dir); return; }
+    if (this.state === 'menu' || this.state === 'loading') { this.menu.input(dir); return; }
     if (this.state === 'results') { this.results.input(dir); return; }
     if (this.state !== 'play' || this.paused) return;
     this.tx = clamp(this.tx - dir * NUDGE, -this.reach(), this.reach()); // destra sullo schermo = −X
   }
-  hold(dir) { if (this.state === 'menu') { this.menu.hold(dir); return; } this.held = dir; this.heldT = 0; }
+  hold(dir) { if (this.state === 'menu' || this.state === 'loading') { this.menu.hold(dir); return; } this.held = dir; this.heldT = 0; }
   reach() { return HW - this.pw2() * 0.7; }
   pw2() { return this.stripW / 2; }
 
@@ -694,6 +694,7 @@ export class Mattoni {
     this.pw += (this.power - this.pw) * Math.min(1, dt / 0.9);
     if (this.audio.song) this.audio.setTempo(this.audio.song.bpm * clamp((this.cadence || 85) / 88, 0.85, 1.25));
     this.msgs.update(dt);
+    if (this.state === 'loading') { this.menu.update(dt, { connected: false, power: 0 }); }
     if (this.state === 'loading' || this.state === 'error') return;
     this.fx.update(dt); this.confetti.update(dt);
     this.stateT += dt;
@@ -858,7 +859,7 @@ export class Mattoni {
   drawHud(dt) {
     const { ctx, W, H } = this.stage;
     ctx.clearRect(0, 0, W, H); hudView(ctx, W, H);
-    if (this.state === 'loading') { ctx.fillStyle = '#0f0e0c'; ctx.fillRect(0, 0, W, H); hudText(ctx, t('games.common.loading'), W / 2, H / 2, { size: 22, align: 'center', color: '#d9ff3d' }); hudText(ctx, `${Math.round((this.loadPct || 0) * 100)}%`, W / 2, H / 2 + 28, { size: 14, align: 'center' }); return; }
+    if (this.state === 'loading') { ctx.fillStyle = '#0f0e0c'; ctx.fillRect(0, 0, W, H); this.menu.loadFrac = this.loadPct || 0; this.menu.draw(ctx, W, H, { connected: false }); return; }
     if (this.state === 'error') { hudText(ctx, t('ui.error', { error: this.error }), W / 2, H / 2, { size: 14, align: 'center', color: '#ff6b6b' }); return; }
     if (this.state === 'menu') { this.drawMenu(ctx, W, H, dt); return; }
     if (this.state === 'results') { this.drawResult(ctx, W, H); this.kitToasts(ctx, W, H, dt, 238, true); return; }

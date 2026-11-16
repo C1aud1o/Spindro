@@ -223,7 +223,7 @@ export class Planata {
   async start() {
     this.hooks.reset?.();
     this.active = true;
-    this.detach = [this.menu.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'menu'), this.results.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'results')];
+    this.detach = [this.menu.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'menu' || this.state === 'loading'), this.results.attach(this.hudCanvas, () => ({ W: this.stage.W, H: this.stage.H }), () => this.state === 'results')];
     this.quality = new Quality();
     this.stage = new Stage(this.hudCanvas, { quality: this.quality });
     this.stage.onQuality = (cfg) => this.applyQuality(cfg);
@@ -463,14 +463,14 @@ export class Planata {
   // ---------- comandi ----------
   input(dir) {
     this.audio.ensure();
-    if (this.state === 'menu') { this.menu.input(dir); return; } // − durata, + livello, + lungo avvia
+    if (this.state === 'menu' || this.state === 'loading') { this.menu.input(dir); return; } // − durata, + livello, + lungo avvia
     if (this.state === 'results') { this.results.input(dir); return; }
     if (this.state !== 'play' || this.paused || this.landing > 0) return;
     // + = destra, − = sinistra: una corsia per volta; il pilota automatico riprende dopo qualche secondo
     const now = this.manualT > 0 ? this.lane : clamp(Math.round(-this.x / LANE_W), -1, 1);
     this.lane = clamp(now + dir, -1, 1); this.manualT = MANUAL_S; this.audio.sfx('select');
   }
-  hold(dir) { if (this.state === 'menu') this.menu.hold(dir); }
+  hold(dir) { if (this.state === 'menu' || this.state === 'loading') this.menu.hold(dir); }
 
   menuTick(dt, connected) {
     this.menu.update(dt, { connected, power: this.power });
@@ -627,6 +627,7 @@ export class Planata {
     this.kmh = connected ? this.hooks.speedKmh() : 28;
     if (this.audio.song) this.audio.setTempo(this.audio.song.bpm * clamp((this.cadence || 85) / 88, 0.85, 1.25));
     this.msgs.update(dt);
+    if (this.state === 'loading') { this.menu.update(dt, { connected: false, power: 0 }); }
     if (this.state === 'loading' || this.state === 'error') return;
     this.fx.update(dt);
     this.stateT += dt;
@@ -838,7 +839,7 @@ export class Planata {
   drawHud(dt) {
     const { ctx, W, H } = this.stage;
     ctx.clearRect(0, 0, W, H); hudView(ctx, W, H);
-    if (this.state === 'loading') { ctx.fillStyle = '#0f0e0c'; ctx.fillRect(0, 0, W, H); hudText(ctx, t('games.common.loading'), W / 2, H / 2, { size: 22, align: 'center', color: '#d9ff3d' }); hudText(ctx, `${Math.round((this.loadPct || 0) * 100)}%`, W / 2, H / 2 + 28, { size: 14, align: 'center' }); return; }
+    if (this.state === 'loading') { ctx.fillStyle = '#0f0e0c'; ctx.fillRect(0, 0, W, H); this.menu.loadFrac = this.loadPct || 0; this.menu.draw(ctx, W, H, { connected: false }); return; }
     if (this.state === 'error') { hudText(ctx, t('ui.error', { error: this.error }), W / 2, H / 2, { size: 14, align: 'center', color: '#ff6b6b' }); return; }
     if (this.state === 'menu') { this.menu.draw(ctx, W, H, { connected: this.hooks.connected() }); this.hooks.progress?.drawToasts(ctx, W, dt); return; }
     if (this.state === 'results') { if (this.result) this.drawResult(ctx, W, H, true); this.hooks.progress?.drawToasts(ctx, W, dt, W > H * 1.15 ? Math.round(H * 0.78) : 330, true); return; }

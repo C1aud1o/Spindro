@@ -127,7 +127,7 @@ export class Racer3D {
     this.audio.playSong(SONGS.menu);
     // tocco su menu e risultati (in cattura, così non parte anche il + / − del tocco a metà schermo)
     const size = () => ({ W: this.W, H: this.H });
-    const d1 = this.menu.attach(this.hud, size, () => this.state === 'menu');
+    const d1 = this.menu.attach(this.hud, size, () => this.state === 'menu' || this.state === 'loading');
     const d2 = this.results.attach(this.hud, size, () => this.state === 'results');
     this.detach = () => { d1(); d2(); };
     try {
@@ -696,7 +696,7 @@ export class Racer3D {
 
   input(dir) {
     this.audio.ensure();
-    if (this.state === 'menu') { this.menu.input(dir); return; }
+    if (this.state === 'menu' || this.state === 'loading') { this.menu.input(dir); return; }
     if (this.state === 'results') { this.results.input(dir); return; }
     if (this.state !== 'race' && this.state !== 'countdown') return;
     // con un allenamento + / − scelgono la corsia (il cambio e l'intensità dell'allenamento non si toccano: il rullo è in ERG)
@@ -707,7 +707,7 @@ export class Racer3D {
     this.gearFlash = 1.2;
   }
 
-  hold(dir) { if (this.state === 'menu') this.menu.hold(dir); }
+  hold(dir) { if (this.state === 'menu' || this.state === 'loading') this.menu.hold(dir); }
 
   // il percorso dipende dalla durata: se serve si ricostruisce, poi si parte
   begin() {
@@ -882,6 +882,14 @@ export class Racer3D {
   }
 
   leader(type) { return this.race?.leader(type) || null; }
+  // { first, maxGap, perMin, n } in race seconds: the director's events (announcements, objective results, gaps, sprints...)
+  eventStats() {
+    const R = this.race; if (!R) return { first: Infinity, maxGap: 0, perMin: 0, n: 0 };
+    let end = R.tl?.race || this.dur; if (Number.isFinite(R.player?.fin)) end = Math.min(end, R.player.fin); // a rider who finishes early: the run ends there
+    const ts = (R.log || []).map((e) => e.t).filter((x) => x <= end).sort((a, b) => a - b);
+    let maxGap = 0; let prev = 0; for (const x of ts) { maxGap = Math.max(maxGap, x - prev); prev = x; } maxGap = Math.max(maxGap, end - prev);
+    return { first: ts[0] ?? Infinity, maxGap, perMin: end > 0 ? ts.length / (end / 60) : 0, n: ts.length };
+  }
   place() { return this.race ? this.race.place() : 8; }
   ranking() { return this.standing || []; }
 
@@ -1081,9 +1089,7 @@ export class Racer3D {
     ctx.clearRect(0, 0, W, H); hudView(ctx, W, H);
     if (this.state === 'loading') {
       ctx.fillStyle = '#0f0e0c'; if (!this.scene) ctx.fillRect(0, 0, W, H);
-      txt(ctx, t('games.common.loading'), W / 2, H / 2, { size: 26, align: 'center', color: HUD.lime });
-      ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fillRect(W / 2 - 90, H / 2 + 18, 180, 8);
-      ctx.fillStyle = HUD.lime; ctx.fillRect(W / 2 - 90, H / 2 + 18, 180 * (this.loadPct || 0), 8);
+      this.menu.loadFrac = this.loadPct || 0; this.menu.update(dt, { connected: false, power: 0 }); this.menu.draw(ctx, W, H, { connected: false });
       return;
     }
     if (this.state === 'error') { txt(ctx, t('ui.error', { error: this.error }), W / 2, H / 2, { size: 15, align: 'center', color: '#ff6b6b' }); return; }

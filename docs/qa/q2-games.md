@@ -12,14 +12,21 @@ console/CSP/texture-load errors recorded, `renderer.info` sampled every minute.
 
 Legend: ✓ looked, no defect left · ✓F looked and fixed · – not done yet (see "Not done").
 
-| game | high 5 min | high 20 min Hard | high workout | medium 5 min | low 5 min | 1280×720 |
-|---|---|---|---|---|---|---|
-| Horde Run | ✓F | – | – | – | – | – |
-| Pedal Strike | ✓ (bloom checked) | – | – | – | – | – |
-| Breakaway | – | – | – | – | – | – |
-| Slipstream | – | – | – | – | – | – |
-| Updraft | – | – | – | – | – | – |
-| Feed Zone | – | – | – | – | – | – |
+| game | high 5 min | high 20 min Hard | high workout | medium 5 min | low 5 min | 1280×720 | de/fr 360×640 menu+results |
+|---|---|---|---|---|---|---|---|
+| Horde Run | ✓F | numbers only | numbers only | ✓ | ✓ | one frame | ✓ |
+| Pedal Strike | ✓F | numbers only | numbers only | ✓ | ✓ (sheet viewed) | one frame | ✓ |
+| Breakaway | ✓F | numbers only | numbers only | numbers only | numbers only | one frame | ✓ |
+| Slipstream | ✓F | numbers only | numbers only | numbers only | numbers only | one frame | ✓ |
+| Updraft | ✓F | numbers only | numbers only | numbers only | numbers only | one frame | ✓ |
+| Feed Zone | ✓F | numbers only | numbers only | numbers only | numbers only | one frame | ✓ |
+
+✓ looked at the every-10-s sheet and bursts (or the frames named in the game's table), F = a defect was found and fixed. "numbers only" = the
+session was run to the results screen and checked for console errors, memory and result, but its frames were not all viewed.
+Medium and low sheets exist for every game and showed no difference in layout from high apart from the missing bloom.
+
+Readability note from the 360×640 de/fr check (nothing truncated): a few long lines shrink to about 9 px (Horde Run menu "Deux portails…",
+Updraft results criterion in fr/de); legible but small.
 
 ## Cross-game defects
 
@@ -29,6 +36,8 @@ Legend: ✓ looked, no defect left · ✓F looked and fixed · – not done yet 
 | X2 | Full-screen red wash for 0.6–1.7 s on every hit / knock-out (Horde Run, Updraft, Feed Zone) hiding rider, horde and road | Horde Run: a fall during an effort wave (`hurtT` 2.6 → alpha up to 0.9 over the whole screen) | New `hurtVignette()` in `kit/hud.js`: 150 ms, edges only (alpha ≤ 0.38), centre never tinted. Pedal Strike's flash (already edge-only) shortened to 0.3 s and capped at 0.3 |
 | X3 | WebGL contexts leaked: every open/close of a game left its context alive; after 10 open/close cycles of 6 games, 16 alive and "Too many active WebGL contexts. Oldest context will be lost." (can blank a game on a phone after a long session) | `leak.mjs` harness: open and close each game 10 times | `Stage.dispose()` calls `renderer.forceContextLoss()`; after: 0 alive, no warning, JS heap +2-8 MB over 10 cycles. Regression test `tests/games-leak.spec.mjs` (fails without the fix: 6 alive) |
 | X5 | Trainer lost mid-run: the games silently switched to the simulated demo rider and carried on (stars and bests earned by nobody) | any game, trainer drops after the run started | `guardTrainer()` in `kit/hud.js`: a drop reads as power 0 / cadence 0, each game's own pause freezes the clock after 2.5 s and a banner says "Trainer connection lost" (5 languages); it resumes when the trainer returns and the rider pedals. Unit test in `tests/games-leak.spec.mjs` |
+| X6 | While a game loads its models, taps and keys on START were ignored with no feedback (the menu was not drawn yet, only a bare "Loading" screen) | any game on a slow connection or `?game=<id>` entry; reproduced by delaying `.glb` files 1.5-2.5 s | The shared menu is drawn during loading: progress bar and "Loading… N %" in place of the key hint, START visibly disabled, length/level can be chosen, a START pressed meanwhile is remembered (`menu.queued`) and the run starts as soon as the game is ready. Feed Zone had no `ready()` guard and would have crashed on an early START: fixed. Tests: `tests/games-loading.spec.mjs` |
+| X7 | The games list could be left only with B on a controller | games list, arrow-key/click-bar navigation | visible "Exit" button (`.game-back`, last in the list, not a `.game-card`) in `js/games/list.js`; test in `games-loading.spec.mjs`. Not checked with a real Zwift Click |
 | X4 | Breakaway countdown: the big "3" overlapped the hint line, and the 3D START arch caption showed as garbled letters behind the objective card | first 3 s of a Breakaway run, 390×780 | digit moved down and smaller; the arch has no caption |
 
 Auto quality (checked in real time, CPU throttled 6× / 2× under SwiftShader): `auto` starts at high, drops to low when under 28 fps
@@ -72,7 +81,7 @@ textures stay bounded (Horde Run's textures grow with its zombie pool: each pool
 stops growing once the peak horde is reached); hidden tab for 90 s (clock jump clamped to 0.05 s); stopping pedalling pauses after
 2.5 s and resumes (all six); resize/rotation to 780×390, 1280×720 and back keeps the canvas and aspect correct.
 
-Observed, not changed (layout, needs a decision): in landscape on a phone-sized window (780×390) the HUD stack takes about half
+Landscape (not done): the shared compact HUD for short viewports was NOT built (too large for the time left). Only Pedal Strike's combo text no longer climbs into the HUD panels. Observed, not changed: in landscape on a phone-sized window (780×390) the HUD stack takes about half
 of the height in Breakaway, Updraft, Slipstream and Feed Zone and hides the road; Pedal Strike's "easy −120 W" label touches
 "COMBO ×8" there; at 1280×720 Breakaway's "3:53 to the finish" text sits over the rider's head. The manifest is portrait-only.
 The app bar's help text is truncated in German ("+ / – schalten · Etappe…"): that is the app shell, not a game.
@@ -88,7 +97,9 @@ The app bar's help text is truncated in German ("+ / – schalten · Etappe…")
 | Pedal Strike | 1 / 1 / 3 / 3 | 0.0 s | 5.3 s | gap 5.3 s reported (rule 5 s): measured from sound effects because the game has no `eventStats()`; identical before my changes |
 | Breakaway | 1 / 1 / 2 / 3 | 3.0 s | 38-188 s | same: no `eventStats()`, so the fallback sees only sound effects and a race has long quiet stretches; the objective card is always on screen. Not a measurement of dead time |
 
-Suggested follow-up (not done tonight): implement `eventStats()` in Breakaway and Pedal Strike so the bot measures real events.
+After implementing `eventStats()` in Breakaway and Pedal Strike (real events instead of sound effects): Pedal Strike longest gap 2.9-4.2 s, 107-114 events/min; Breakaway longest gap 4.0 s, 15-19 events/min (a rider who finishes early is measured up to the finish); both now "all rules respected".
+
+Slipstream with a lane-following bot (scratch harness, not in the repo; constant power, steers to the rider being bridged): 0.6 / 0.8 / 1.0 / 1.2 × FTP → 1 / 1 / **1** / 3 stars. At 1.0 × FTP it catches 1 of 5 bridge riders (4 "escape" events while efforts ask 95-106 % FTP). So 1.0 × is below the rule (2-3 stars) even for a bot that steers; I could not tell whether the fault is the bot's steering or the balance, so no balance change was made. Needs a human look or a better bot; the gap closing is `closingSpeed()` in `slip-plan.js`.
 
 ## Performance (software GL, 4× CPU throttle, DPR 2, ms per frame: average / p95 / worst, 90 frames)
 
