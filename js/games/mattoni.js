@@ -11,7 +11,7 @@ import { skyDome, styleLights, styleFog, toonMaterial, toonify, TIMES, PALETTE }
 import { Cyclist, loadMeshyTemplate, loadCyclistTemplate, makeKit, makeMeshyCrowdGeometry, crowdMaterial, CYCLIST_URL } from './kit/cyclist.js';
 import { scatterModel, groundModel, crowdInstances } from './kit/env.js';
 import { Shake, Confetti } from './kit/juice.js';
-import { txt as hudText, hudView, paragraph, MessageQueue, loadHudFonts, uiScale } from './kit/hud.js';
+import { txt as hudText, hudView, paragraph, MessageQueue, loadHudFonts, uiScale, hurtVignette, HURT_FLASH_S } from './kit/hud.js';
 import { GameMenu, ResultsView } from './kit/menu.js';
 import { makeRandom } from './kit/rng.js';
 import { clamp, lerp } from './engine.js';
@@ -209,7 +209,6 @@ export class Mattoni {
   }
 
   applyQuality(cfg) {
-    if (this.stage.bloom) { this.stage.bloom.threshold = 0.9; this.stage.bloom.strength = 0.5; this.stage.bloom.radius = 0.4; }
     if (this.stage.composer && this.scene) this.stage.composer.passes[0].scene = this.scene;
     for (const i of this.inst || []) { i.setDensity(i.isCrowd ? cfg.crowd : cfg.density); i.cull(0, 0, 0, 0, 1e4); }
     if (this.light) this.light.sun.castShadow = cfg.shadows;
@@ -464,7 +463,7 @@ export class Mattoni {
 
   loseBall(b) {
     this.ballAlive = false; this.combo = 0; this.charge *= 0.5; this.ev('lose');
-    this.audio.sfx('hurt'); this.shake.add(0.35); this.hurtT = 0.8; if (navigator.vibrate) navigator.vibrate(80);
+    this.audio.sfx('hurt'); this.shake.add(0.35); this.hurtT = 0.8; this.hurtFlash = HURT_FLASH_S; if (navigator.vibrate) navigator.vibrate(80);
     this.fx.spawn(b.x, 0.6, PZ - 0.5, { tex: 'smoke', size: 2.4, life: 0.6, additive: false });
     this.fx.spawn(b.x, 0.8, PZ - 0.5, { tex: 'flash', size: 3, life: 0.3, grow: 1, color: '#ff4a4a' });
     this.lives--;
@@ -726,7 +725,7 @@ export class Mattoni {
 
     if (this.held) { this.heldT += dt; if (this.heldT > 0.12) this.tx = clamp(this.tx - this.held * MOVE * dt, -this.reach(), this.reach()); }
     this.x = lerp(this.x, this.tx, 1 - Math.exp(-dt * 12));
-    this.hurtT = Math.max(0, this.hurtT - dt);
+    this.hurtT = Math.max(0, this.hurtT - dt); this.hurtFlash = Math.max(0, (this.hurtFlash || 0) - dt);
     this.stepRows(dt); this.stepBoss(dt); this.stepBall(dt); this.stepGels(dt);
     if (this.pop) { this.pop.t -= dt; this.pop.age += dt; if (this.pop.t <= 0) this.pop = null; }
         this.view(dt);
@@ -929,7 +928,7 @@ export class Mattoni {
       hudText(ctx, `+${p.sum}${p.mult ? ' ' + p.mult : ''}`, clamp(rp.x, 80, W - 80), clamp(rp.y, 300, H - 160) - k * 24, { size: 26 + Math.min(10, p.sum / 120), align: 'center', color: this.combo > 4 ? '#4de3ff' : '#ffd34d', maxW: 160 });
       ctx.globalAlpha = 1;
     }
-    if (this.hurtT > 0.5) { ctx.fillStyle = `rgba(255,0,40,${(this.hurtT - 0.5) * 0.4})`; ctx.fillRect(0, 0, W, H); }
+    hurtVignette(ctx, W, H, (this.hurtFlash || 0) / HURT_FLASH_S);
     if (this.paused) {
       ctx.fillStyle = 'rgba(8,10,26,.72)'; ctx.fillRect(0, 0, W, H);
       hudText(ctx, t('games.horde.paused'), W / 2, H * 0.42, { size: 42, align: 'center', color: '#ffd34d' });

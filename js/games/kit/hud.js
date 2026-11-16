@@ -140,6 +140,15 @@ export class MessageQueue {
   }
 }
 
+// Hit feedback: a short (<= 150 ms) red vignette at the screen edges. The centre (rider, enemies, road) is never tinted.
+// k = 0..1 (how much of the flash is left); call it with a timer that starts at HURT_FLASH_S.
+export const HURT_FLASH_S = 0.15;
+export function hurtVignette(ctx, W, H, k) {
+  if (!(k > 0)) return;
+  const r = Math.hypot(W, H) / 2; const g = ctx.createRadialGradient(W / 2, H / 2, r * 0.55, W / 2, H / 2, r);
+  g.addColorStop(0, 'rgba(255,0,40,0)'); g.addColorStop(1, `rgba(255,0,40,${Math.min(1, k) * 0.38})`);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+}
 export function panel(ctx, x, y, w, h, { r = 10, fill = HUD.ink, border = null } = {}) {
   ctx.beginPath();
   if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h);

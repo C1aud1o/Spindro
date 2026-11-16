@@ -7,7 +7,7 @@
 import { THREE, Stage, loadAll, Effects, Quality, Cyclist, makeKit, loadCyclistTemplate, toonMaterial, toonify, skyDome, styleLights, styleFog, Shake } from './kit3d.js';
 import { scatterModel, groundModel, prepareModel } from './kit/env.js';
 import { loadMeshyTemplate, CYCLIST_URL } from './kit/cyclist.js';
-import { txt as hudText, hudView, paragraph, wrapLines, MessageQueue, loadHudFonts, HUD } from './kit/hud.js';
+import { txt as hudText, hudView, paragraph, wrapLines, MessageQueue, loadHudFonts, HUD, hurtVignette, HURT_FLASH_S } from './kit/hud.js';
 import { clamp, lerp } from './engine.js';
 import { t } from '../i18n.js';
 import { SONGS } from './audio.js';
@@ -330,7 +330,6 @@ export class Planata {
   }
 
   applyQuality(cfg) {
-    if (this.stage.bloom) { this.stage.bloom.threshold = 0.93; this.stage.bloom.strength = 0.4; this.stage.bloom.radius = 0.35; }
     if (this.stage.composer && this.scene) this.stage.composer.passes[0].scene = this.scene;
     for (const l of this.layers || []) { l.inst.setDensity(cfg.density); l.inst.lodDist = l.inst.baseLod * (0.5 + 0.5 * cfg.density); }
     if (this.streaks) this.streakMax = cfg.density > 0.9 ? 56 : cfg.density > 0.5 ? 36 : 18;
@@ -661,7 +660,7 @@ export class Planata {
     this.inTarget = this.pw >= 0.92 * tgt; this.sprinting = seg.kind === 'climb' && this.inTarget;
     const g = seg.kind === 'rest' || seg.kind === 'cool' ? 0 : seg.kind === 'warm' ? 1 : seg.kind === 'pace' ? 2 : 3;
     if (!this.wk && g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade(g); }
-    this.hurtT = Math.max(0, this.hurtT - dt); this.boostT = Math.max(0, this.boostT - dt); this.manualT = Math.max(0, this.manualT - dt);
+    this.hurtT = Math.max(0, this.hurtT - dt); this.hurtFlash = Math.max(0, (this.hurtFlash || 0) - dt); this.boostT = Math.max(0, this.boostT - dt); this.manualT = Math.max(0, this.manualT - dt);
     // quota: la potenza (smussata) è la percentuale di FTP; l'aereo la insegue morbido, come un volo e non un grafico
     // Quota = watt. Con un allenamento il rullo è in ERG e segue da solo il bersaglio: la quota segue il profilo dell'allenamento
     // e i tuoi watt la spostano di poco (al massimo ±10 % della FTP): chi segue l'allenamento passa gli anelli, chi non pedala no.
@@ -745,7 +744,7 @@ export class Planata {
   }
 
   hitStorm(it) {
-    this.hits++; this.combo = 0; this.hurtT = 1.2;
+    this.hits++; this.combo = 0; this.hurtT = 1.2; this.hurtFlash = HURT_FLASH_S;
     this.audio.sfx('hurt'); this.fx.explode(this.x, this.y + 0.5, this.z, 0.9); this.shake.add(0.5);
     this.say(t('games.planata.storm'), '#ff6b6b', 1.6, true, 2, t('games.planata.stormSub'));
     if (navigator.vibrate) navigator.vibrate(120);
@@ -902,7 +901,7 @@ export class Planata {
       ctx.globalAlpha = 1;
     }
     this.pops = this.pops.filter((p) => p.t > 0 && this.state !== 'results');
-    if (this.hurtT > 0.9) { ctx.fillStyle = `rgba(255,0,40,${(this.hurtT - 0.9) * 0.55})`; ctx.fillRect(0, 0, W, H); }
+    hurtVignette(ctx, W, H, (this.hurtFlash || 0) / HURT_FLASH_S);
     if (this.paused) {
       ctx.fillStyle = 'rgba(8,10,26,.72)'; ctx.fillRect(0, 0, W, H);
       hudText(ctx, t('games.planata.paused'), W / 2, H * 0.42, { size: 42, align: 'center', color: '#ffd34d' });

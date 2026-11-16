@@ -202,7 +202,6 @@ export class Racer3D {
 
   applyDensity(cfg) {
     // bagliore misurato: brillano luci e coriandoli, non le maglie chiare
-    if (this.stage.bloom) { this.stage.bloom.threshold = 0.93; this.stage.bloom.strength = 0.45; this.stage.bloom.radius = 0.35; }
     if (this.stage.composer && this.scene) this.stage.composer.passes[0].scene = this.scene;
     if (!this.inst) return;
     for (const i of this.inst) { i.setDensity(i.isCrowd ? cfg.crowd : cfg.density); if (!i.isCrowd) i.setShadows?.(false); }
@@ -527,7 +526,7 @@ export class Racer3D {
       plane.position.set(p.x, p.y + 4.6, p.z); plane.rotation.y = p.h + Math.PI;
       this.scene.add(plane);
     };
-    banner(START + 16, t('games.racer.start'), '#2b2b33');
+    banner(START + 16, '', '#2b2b33'); // no caption: during the countdown the arch sits right behind the HUD cards and its text read as garbled letters
     if (this.models.mFinish) this.finishArch(this.length); else banner(this.length, t('games.racer.finish'), '#d62839');
     for (const ln of this.lines) banner(ln.s, ln.type === 'kom' ? t('games.racer.komBanner') : t('games.racer.sprintBanner'), ln.type === 'kom' ? '#ffffff' : '#2a9d3a', '#fff', ln.type === 'kom' ? 'dots' : 'stripe');
     // ultimi 500 m: striscione rosso ("triangolo rosso") e cartello dei 200 m
@@ -1150,7 +1149,7 @@ export class Racer3D {
     }
     if (this.state === 'countdown') {
       const n = 3 - Math.floor(this.stateT); const f = this.stateT % 1;
-      txt(ctx, String(n), W / 2, H * 0.42, { size: (110 - f * 30) * u, align: 'center', color: HUD.lime, italic: true });
+      txt(ctx, String(n), W / 2, H * 0.5, { size: (96 - f * 24) * u, align: 'center', color: HUD.lime, italic: true });
     }
     if (!this.connected) txt(ctx, t('games.common.demo'), W / 2, H - 70 * u, { size: 13 * u, align: 'center', color: HUD.gold, font: 'text' });
     this.hooks.progress?.drawToasts(ctx, W, dt);

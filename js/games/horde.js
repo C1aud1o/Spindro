@@ -10,7 +10,7 @@ import { loadMeshyTemplate, CYCLIST_URL, MESHY_FAN_URL, BIKE } from './kit/cycli
 import { Walker, FarCrowd, makeEnemyKit, bakePose, enemyMaterial } from './kit/walkers.js';
 import { buildSky, buildGround, Scenery, LampLights } from './horde-world.js';
 import { clamp, lerp } from './engine.js';
-import { txt as hudText, hudView, paragraph, MessageQueue, loadHudFonts } from './kit/hud.js';
+import { txt as hudText, hudView, paragraph, MessageQueue, loadHudFonts, hurtVignette, HURT_FLASH_S } from './kit/hud.js';
 import { t, fmtDec } from '../i18n.js';
 import { GameMenu, ResultsView } from './kit/menu.js';
 import { makeRandom } from './kit/rng.js';
@@ -230,7 +230,7 @@ export class Horde {
     for (const list of Object.values(this.walkers)) for (const w of list) w.root.visible = false;
     for (const c of Object.values(this.far)) { c.begin(); c.end(); }
     for (const a of this.allies || []) scene.remove(a.r.root);
-    for (const g of this.gates || []) scene.remove(g.group);
+    for (const g of this.gates || []) this.dropGate(g, scene);
     for (const gm of this.gems || []) scene.remove(gm.mesh);
     if (this.player) scene.remove(this.player.root);
     for (const b of this.bullets) b.mesh.visible = false;
@@ -549,7 +549,7 @@ export class Horde {
     this.z += v * dt;
     if (this.held) { this.heldT += dt; if (this.heldT > 0.12) this.tx = clamp(this.tx - this.held * STEER * dt, -ROAD, ROAD); }
     this.x = lerp(this.x, this.tx, 1 - Math.exp(-dt * 9));
-    this.shake = Math.max(0, this.shake - dt); this.hurtT = Math.max(0, this.hurtT - dt);
+    this.shake = Math.max(0, this.shake - dt); this.hurtT = Math.max(0, this.hurtT - dt); this.hurtFlash = Math.max(0, (this.hurtFlash || 0) - dt);
     const g = this.bossAlive ? 4 : seg.kind === 'rest' || seg.kind === 'cool' ? 0 : seg.kind === 'warm' ? 1 : seg.kind === 'pace' ? 2 : 3;
     if (!this.wk && g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade(g); } // con un allenamento il rullo resta in ERG: la pendenza non si tocca
 
@@ -627,7 +627,13 @@ export class Horde {
       if (g.fade !== undefined) { g.fade = Math.min(1, g.fade + dt / 0.5); g.panel.material.opacity *= 1 - g.fade; g.group.scale.setScalar(1 - 0.15 * g.fade); if (g.fade >= 1) g.group.visible = false; }
       else if (g.taken) { g.panel.material.opacity = Math.max(0, g.panel.material.opacity - dt * 4); }
     }
-    this.gates = this.gates.filter((g) => { if (g.z < this.z - 12) { this.stage.scene.remove(g.group); return false; } return true; });
+    this.gates = this.gates.filter((g) => { if (g.z < this.z - 12) { this.dropGate(g, this.stage.scene); return false; } return true; });
+  }
+
+  // a gate owns its two plane geometries, two materials and the label texture (the frame parts are shared): free them
+  dropGate(g, scene) {
+    scene.remove(g.group);
+    g.group.traverse((o) => { if (o.isMesh && o.geometry?.type === 'PlaneGeometry') { o.geometry.dispose(); o.material.map?.dispose(); o.material.dispose(); } });
   }
 
   shooters() { return [{ x: this.x, z: this.z, r: this.player, self: true }, ...this.allies.map((a) => ({ x: a.x, z: a.z, r: a.r, ally: a }))]; }
@@ -768,7 +774,7 @@ export class Horde {
   // il giocatore cade: l'orda si ritira un po', ti rialzi con tre cuori. Mai game over.
   knockOut() {
     this.ko++; this.ev('ko');
-    this.hp = 4; this.hurtT = 2.6; this.calm = 8; this.shake = 0.7;
+    this.hp = 4; this.hurtT = 2.6; this.hurtFlash = HURT_FLASH_S; this.calm = 8; this.shake = 0.7;
     this.audio.sfx('boom');
     this.fx.explode(this.x, 1.5, this.z + 2, 2.2);
     for (const e of this.enemies) if (!e.dead && !e.def.boss && Math.hypot(e.x - this.x, e.z - this.z) < 22) this.damage(e, 999);
@@ -824,7 +830,7 @@ export class Horde {
       if (hit(this.x, this.z)) {
         if (this.overdrive > 0 && !e.def.boss) { this.damage(e, 999); continue; }
         if (this.hurtT <= 0) {
-          this.hp -= 1; this.hurtT = 1.5; this.shake = 0.4; this.audio.sfx('hurt'); this.ev('hit');
+          this.hp -= 1; this.hurtT = 1.5; this.hurtFlash = HURT_FLASH_S; this.shake = 0.4; this.audio.sfx('hurt'); this.ev('hit');
           this.calm = Math.max(this.calm, 3); this.pop('−1 ♥', '#ff4d6d', 1); this.pressure = Math.max(0.5, this.pressure * 0.9); this.lastHitT = this.el;
           if (navigator.vibrate) navigator.vibrate(90);
           if (this.hp <= 0 && this.el >= 60) this.knockOut(); else if (this.hp <= 0) this.hp = 1;
@@ -999,7 +1005,7 @@ export class Horde {
       ctx.globalAlpha = 1;
     }
     this.pops = this.pops.filter((p) => p.t > 0 && this.state !== 'results');
-    if (this.hurtT > 0.9) { ctx.fillStyle = `rgba(255,0,40,${(this.hurtT - 0.9) * 0.55})`; ctx.fillRect(0, 0, W, H); }
+    hurtVignette(ctx, W, H, (this.hurtFlash || 0) / HURT_FLASH_S);
     if (this.paused) {
       ctx.fillStyle = 'rgba(8,10,26,.72)'; ctx.fillRect(0, 0, W, H);
       hudText(ctx, t('games.horde.paused'), W / 2, H * 0.42, { size: 42, align: 'center', color: '#ffd34d' });

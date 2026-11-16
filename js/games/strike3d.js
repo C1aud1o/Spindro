@@ -1219,7 +1219,7 @@ export class Strike3D {
     if (this.god || this.overdrive > 0 || this.puShield > 0 || this.invuln > 0 || this.ko > 0 || this.state !== 'play') return;
     this.hp -= n; this.invuln = 1.4; this.hitsTaken++;
     this.combo = 0;
-    this.shakeK.add(0.55); this.ts.hitStop(0.08); this.hurtFlash = 0.45;
+    this.shakeK.add(0.55); this.ts.hitStop(0.08); this.hurtFlash = 0.3;
     this.audio.sfx('hurt'); if (navigator.vibrate) navigator.vibrate(90);
     this.pop(`−${n} ♥`, '#ff4d6d', this.px, 3, this.laneZ, 1);
     this.blast.fx.spawn(this.px, 1.3, this.laneZ, { tex: 'red', size: 3.5, life: 0.35 });
@@ -1622,7 +1622,7 @@ export class Strike3D {
       txt(ctx, p.text, clamp(q.x, 40, W - 40), clamp(q.y, y2 + 10, H - 150), { size: 18 * S, align: 'center', color: p.color });
       ctx.globalAlpha = 1;
     }
-    if (this.hurtFlash > 0) { const rg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.25, W / 2, H / 2, Math.max(W, H) * 0.7); rg.addColorStop(0, 'rgba(255,0,40,0)'); rg.addColorStop(1, `rgba(255,0,40,${this.hurtFlash * 0.7})`); ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H); }
+    if (this.hurtFlash > 0) { const rg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.25, W / 2, H / 2, Math.max(W, H) * 0.7); rg.addColorStop(0, 'rgba(255,0,40,0)'); rg.addColorStop(1, `rgba(255,0,40,${Math.min(0.3, this.hurtFlash)})`); ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H); }
     if (this.whiteFlash > 0) { ctx.fillStyle = `rgba(255,255,255,${this.whiteFlash})`; ctx.fillRect(0, 0, W, H); }
     if (this.state === 'intro') this.drawIntro(ctx, W, H, S);
     if (this.state === 'cool' || this.state === 'results') this.drawResults(ctx, W, H, S);

@@ -134,7 +134,6 @@ export class Gruppetto {
   }
 
   applyQuality(cfg) {
-    if (this.stage.bloom) { this.stage.bloom.threshold = 0.93; this.stage.bloom.strength = 0.45; this.stage.bloom.radius = 0.35; }
     if (this.stage.composer && this.scene) this.stage.composer.passes[0].scene = this.scene;
     for (const i of this.inst || []) { i.setDensity(cfg.density); i.lodDist = i.baseLod * (0.5 + 0.5 * cfg.density); }
     if (this.light) this.light.sun.castShadow = cfg.shadows;
