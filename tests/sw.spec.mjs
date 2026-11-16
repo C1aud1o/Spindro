@@ -29,7 +29,7 @@ test.beforeAll(async () => {
 });
 test.afterAll(() => srv.close());
 
-test('service worker: offline start, no cached errors, update swaps the cache and serves the new content', async ({ page, context }) => {
+test('service worker: offline start, no cached errors, an accepted update swaps the cache and serves the new content', async ({ page, context }) => {
   const errs = []; page.on('pageerror', (e) => errs.push(e.message)); page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
   await context.addInitScript(() => { try { if (!localStorage.getItem('__q')) { localStorage.setItem('__q', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('safetyAck', '1'); localStorage.setItem('lang', 'en'); } } catch { /* */ } });
   await page.goto(base + '/index.html');
@@ -56,6 +56,11 @@ test('service worker: offline start, no cached errors, update swaps the cache an
   await context.setOffline(false); mode.v2 = true;
   await page.goto(base + '/index.html');
   await page.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); await r.update(); });
+  // il nuovo worker NON subentra da solo (una pedalata in corso non cambia versione): aspetta il sì della persona,
+  // che l'app trasmette con il messaggio 'skipWaiting' (invito "nuova versione pronta")
+  await expect.poll(() => page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()).waiting), { timeout: 10_000 }).toBe(true);
+  expect(await page.evaluate(() => caches.keys().then((k) => k.sort().join())), 'finché non si accetta restano entrambe le cache').toBe('spindro-v95,spindro-v999'.replace('v95', await page.evaluate(() => caches.keys().then((k) => k.find((x) => x !== 'spindro-v999').replace('spindro-', '')))));
+  await page.evaluate(async () => { (await navigator.serviceWorker.getRegistration()).waiting.postMessage('skipWaiting'); });
   await expect.poll(() => page.evaluate(() => caches.keys().then((k) => k.join())), { timeout: 10_000 }).toBe('spindro-v999');
   await page.reload(); await expect(page.locator('#openSettings')).toBeVisible();
   await expect(page.locator('#startStop')).toHaveText('Go!');

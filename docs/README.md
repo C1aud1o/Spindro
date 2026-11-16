@@ -5,7 +5,7 @@ on purpose, because source-code comments refer to them.
 
 ## Project and release
 - [environments.md](environments.md) — production and beta: branches, URLs, how beta stays separate, how to promote.
-- [android.md](android.md) — the Android app: native Bluetooth, the Garmin bridge, installing and building.
+- [android-and-install.md](android-and-install.md) — the Android shell, permissions, building both channels, installing as an app.
 - [account-architettura.md](account-architettura.md) — optional account: Firestore model, sync, leaderboards, anti-cheat, costs, open questions.
 - [compliance-report.md](compliance-report.md) — licence and legal compliance review.
 - [legal/](legal/) — Terms, Privacy Notice, account deletion, trademarks and third-party licences (Italian and English).

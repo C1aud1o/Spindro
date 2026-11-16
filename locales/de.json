@@ -1478,8 +1478,5 @@
   "connect.unsupported.other": "Dieser Browser kann Bluetooth nicht nutzen. Auf PC, Mac und Android nimm Chrome oder Edge, oder auf Android die Spindro-App.",
   "connect.unsupported.safari": "Safari unterstützt Bluetooth für Web-Apps nicht. Öffne Spindro in Chrome oder Edge auf deinem Mac oder PC.",
   "update.ready": "Neue Version bereit",
-  "update.reload": "Neu laden",
-  "finish.praise": "{mins} Minuten im Sattel, {kj} kJ Arbeit.",
-  "plans.progress": "Woche {week} von {weeks} · {done} von {total} Einheiten",
-  "share.title": "{mins} Minuten im Sattel"
+  "update.reload": "Neu laden"
 }

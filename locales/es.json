@@ -1478,8 +1478,5 @@
   "connect.unsupported.other": "Este navegador no puede usar Bluetooth. En PC, Mac y Android usa Chrome o Edge, o en Android la app de Spindro.",
   "connect.unsupported.safari": "Safari no admite Bluetooth en apps web. Abre Spindro en Chrome o Edge en tu Mac o PC.",
   "update.ready": "Hay una nueva versión lista",
-  "update.reload": "Recargar",
-  "finish.praise": "{mins} minutos sobre la bici, {kj} kJ de trabajo.",
-  "plans.progress": "Semana {week} de {weeks} · {done} de {total} salidas",
-  "share.title": "{mins} minutos sobre la bici"
+  "update.reload": "Recargar"
 }
