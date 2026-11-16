@@ -1622,7 +1622,7 @@ $('hrMax').value = localStorage.getItem('hrMax') || '';
 $('hrMax').addEventListener('change', (e) => { const v = Math.round(+e.target.value); if (v >= 120 && v <= 220) localStorage.setItem('hrMax', v); else { localStorage.removeItem('hrMax'); e.target.value = ''; } render(); });
 
 // ---------- Backup: esporta / importa i dati tra dispositivi ----------
-const NO_BACKUP = /^(stravaConfig|ride-freedom-session|account:session|sync:.*)$/; // token Strava, uscita in corso, stato dell'account e della sincronizzazione
+const NO_BACKUP = /^(stravaConfig|ride-freedom-session|account:session|sync:.*|analytics|safetyAck|clickCheckSeen|seenTrainers|nativeDevices|devRoles|devKnown|trainerProtocol|__.*)$/; // non viaggiano tra dispositivi: token Strava, uscita in corso, stato dell'account e della sincronizzazione, scelta sul consenso, presa visione, dispositivi Bluetooth visti
 $('backupOut').addEventListener('click', () => {
   const data = {};
   for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!NO_BACKUP.test(k)) data[k] = localStorage.getItem(k); }

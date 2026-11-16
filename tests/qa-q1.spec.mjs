@@ -249,3 +249,25 @@ test('with a full storage a settings change does not throw: the app keeps workin
   await expect(page.locator('#ftp')).toHaveValue('260');
   await expect(page.locator('#toast')).toContainText('out of storage space');
 });
+
+test('a restored (paused) ride still lets you reach Settings', async ({ page }) => {
+  await page.addInitScript(() => { if (!localStorage.getItem('__s')) { localStorage.setItem('__s', '1');
+    const log = [{ t: Date.now() - 1000, power: 150, cadence: 80, hr: null, speed: 8, distance: 1 }];
+    localStorage.setItem('ride-freedom-session', JSON.stringify({ elapsed: 120, distance: 800, energy: 15, powerSum: 15000, samples: 120, log, saved: false, stravaUrl: null, historySaved: false })); } });
+  await page.goto('/index.html');
+  await expect(page.locator('body')).toHaveClass(/paused/);
+  await page.click('#openSettings');
+  await expect(page.locator('#settingsSheet')).toBeVisible();
+});
+
+test('backup import skips device-specific keys (consent, safety ack, known Bluetooth devices)', async ({ page }) => {
+  await page.goto('/index.html');
+  await page.evaluate(() => { localStorage.setItem('analytics', '0'); localStorage.removeItem('devKnown'); });
+  await page.click('#openSettings');
+  const file = JSON.stringify({ app: 'spindro', version: 1, data: { analytics: '1', devKnown: '[{"id":"x"}]', seenTrainers: '["x"]', ftp: '287', rideHistory: '[]' } });
+  await page.setInputFiles('#backupIn', { name: 'b.json', mimeType: 'application/json', buffer: Buffer.from(file) });
+  await page.locator('.dlg [data-ok]').click();
+  await page.waitForLoadState('load'); await page.waitForTimeout(1500);
+  const s = await page.evaluate(() => ({ analytics: localStorage.getItem('analytics'), devKnown: localStorage.getItem('devKnown'), ftp: localStorage.getItem('ftp') }));
+  expect(s.ftp).toBe('287'); expect(s.analytics).toBe('0'); expect(s.devKnown).toBeNull();
+});

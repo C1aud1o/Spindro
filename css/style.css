@@ -1018,3 +1018,6 @@ body.riding .metrics dd[data-long] { font-size: calc(var(--fs-title) * .8); }
 .suggest .cta-sm { min-height: 44px; border: 0; border-radius: var(--r-btn); background: var(--accent); color: var(--accent-ink); font-weight: 700; padding: 0 14px; box-shadow: var(--shadow-cta); }
 #deviceList .cta-sm { min-height: 44px; border: 0; border-radius: var(--r-btn); background: var(--accent); color: var(--accent-ink); font-weight: 700; }
 .game-list { display: contents; }
+/* In pausa (anche dopo il ripristino di un'uscita) l'intestazione torna: le Impostazioni sono sempre raggiungibili */
+body.riding.paused .top { display: flex !important; }
+body.riding.paused main { min-height: calc(100vh - 88px - env(safe-area-inset-bottom)); min-height: calc(100dvh - 88px - env(safe-area-inset-bottom)); }
