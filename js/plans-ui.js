@@ -45,7 +45,7 @@ export function renderHome(riding = false) {
   else if (pr.finished) body = `<p class="pl-today">${t('plans.finished')}</p><button class="ghost" id="plDrop">${t('plans.close')}</button>`;
   else if (!w) {
     const n = P.nextSession(state, today());
-    body = `<p class="pl-today">${t('plans.rest')}${n ? ` ${t('plans.next', { name: esc(wkName(n.wk)), day: dayLabel(n.day) })}` : ''}</p>`;
+    body = `<p class="pl-today">${t('plans.rest')}${n ? ` ${t('plans.next', { name: esc(wkName(n.wk)), day: dayLabel(n.day) })}` : ''}</p>`; // la data abbreviata ("mer.") ha già il suo punto: la frase non ne aggiunge un altro
   } else {
     const mins = Math.round(duration(w) / 60);
     body = `<h3 class="today-title" data-key="${s.key}">${esc(w.name)}</h3>

@@ -304,6 +304,7 @@ function renderSuggest() {
   $('suggest').hidden = !kind || covered;
   if (kind) { $('suggestText').textContent = t(`connect.suggest.${kind}`); $('suggestAdd').textContent = t(`connect.suggest.${kind}Btn`); }
 }
+$('noSourceGo').addEventListener('click', () => primaryConnect());
 $('suggestAdd').addEventListener('click', () => { const k = suggestKind; if (k) addDevice({ kind: k }); });
 $('suggestNever').addEventListener('click', () => {
   try { localStorage.setItem('suggestOff', JSON.stringify([...new Set([...suggestOff(), suggestKind])])); } catch { /* */ }
@@ -368,7 +369,7 @@ window.addEventListener('keyup', (e) => { const r = keyRole(e.key); if (clickNav
 const layerOpen = () => !!document.querySelector('.sheet:not([hidden]), .calib') || !$('gamePanel').hidden || !$('debugPanel').hidden;
 window.addEventListener('keydown', (e) => {
   if (clickCheck.isOpen()) { if (e.key === 'Escape') clickCheck.close(); return; }
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') { if (e.key === 'Escape') e.target.blur(); return; }
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') { if (e.key === 'Escape') { if (layerOpen() && !activeGame?.active) { e.preventDefault(); closeTopLayer(); } else e.target.blur(); } return; } // Esc da un campo dentro di un pannello chiude il pannello
   clickNav.sync();
   const role = keyRole(e.key);
   if (clickNav.active && role) { e.preventDefault(); if (!e.repeat) clickNav.key(role, true); return; }
@@ -824,6 +825,7 @@ function updateView() {
   $('freeTitle').textContent = state.mode === 'erg' ? t('today.freeErg') : t('today.freeMode', { mode: MODE_NAME()[state.mode] });
 }
 function render() {
+  $('noSource').hidden = !(isRiding() && !trainer.connected && !hub.meters.some((m) => m.connected)); // pedalare senza alcuna fonte di watt: lo si dice e si può collegare da qui
   const d = state.data; const r = state.ride;
   const shownW = Math.round($('smooth3').checked && powerBuf.length ? powerBuf.reduce((a, b) => a + b, 0) / powerBuf.length : d.power || 0) || 0;
   $('power').textContent = shownW;
@@ -1159,7 +1161,12 @@ setTimeout(() => { if ('bluetooth' in navigator) hub.reconnectKnown().catch(() =
 document.querySelectorAll('#quickPick [data-open]').forEach((b) => b.addEventListener('click', () => {
   if (b.dataset.open === 'history') openHistory(); else $(b.dataset.open).click();
 }));
-setInterval(() => { $('quickPick').hidden = state.ride.running || !!workout || !!route; renderSuggest(); }, 1000);
+let shownDay = new Date().toDateString();
+setInterval(() => {
+  $('quickPick').hidden = state.ride.running || !!workout || !!route; renderSuggest();
+  // l'app resta aperta oltre la mezzanotte: la scheda "Oggi" del piano e l'obiettivo della settimana passano al giorno nuovo
+  const d = new Date().toDateString(); if (d !== shownDay) { shownDay = d; renderWelcome(); }
+}, 1000);
 
 // ---------- Cambio virtuale: calibrazione della cadenza e durezza ----------
 function renderGearSettings() {
