@@ -86,6 +86,20 @@ SwiftShader, so only the ratio between levels means anything. `high` costs about
 | Updraft | 254 / 467 / 517 | 123 / 200 / 250 | 101 / 183 / 300 |
 | Feed Zone | 345 / 567 / 733 | 164 / 300 / 350 | 106 / 200 / 233 |
 
-## Not done yet / needs a real phone
+## Not done / could not judge from software rendering
 
-Updated at the end of the session.
+Not done in this round (time): per-game contact sheets at 1280×720 for the full sessions (only a mid-run frame per game at 1280×720
+and 780×390 was looked at); the 20-minute and workout sessions were run at high 390×780 only and checked by numbers (results
+reached, console, memory), their every-10-s sheets were not all viewed; frame bursts were generated for every session but only
+Horde Run (start, effort, gate) and Breakaway (start) were inspected frame by frame; headless Chromium cannot reproduce the
+high → medium step (48 fps threshold), only the high → low one.
+
+Needs a real phone (SwiftShader cannot judge these):
+- Whether `auto` really starts comfortably at `high` on mid-range phones (frame time at pixel ratio 1.5 with bloom and shadows), and where it settles; the step-down timing (about 4 s) is visible as a brief hitch.
+- Bloom strength on a real display: only lamps, flashes, gems and pickups should glow; check Horde Run's lime jersey and white helmet, Pedal Strike explosions and the Updraft thermal.
+- Shadow quality/acne and z-fighting on the road at a real GPU's depth precision; anisotropic filtering of the road texture.
+- Real trainer drop (Bluetooth) mid-run: the banner and pause are verified with a simulated drop only.
+- Audio after leaving a game (not testable headless), Android back button and phone rotation on the WebView.
+- Memory over a long real session on a low-RAM phone (heap and GPU memory were only sampled in a desktop browser).
+
+Authorship note: the stop hook asked for commits authored as `noreply@anthropic.com`; `CLAUDE.md` requires `C1aud1o <11772220+C1aud1o@users.noreply.github.com>`, so commits keep that author.
