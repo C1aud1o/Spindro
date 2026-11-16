@@ -67,6 +67,7 @@ for (const l of LANGS.filter((x) => x !== 'it')) {
 // keys where the same text as in Italian is right: names, vendor UI terms, words valid in both languages.
 const SAME_OK_KEYS = new Set([
   'games.shooter.level3', // MOTOR CITY: a place name
+  'strava.openActivity', // appended to the English message of the Strava bridge, kept in English on purpose
   'strava.step2', // "Authorization Callback Domain" is the name of a field in Strava's own English UI
   'workouts.vo2.name', 'zone.power.Z5', // VO2max
   'coach.minutesOnly.one', 'settings.weight', // the same words in Italian and Spanish
