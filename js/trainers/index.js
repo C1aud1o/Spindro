@@ -20,6 +20,7 @@ import { FecTrainer, FEC_SERVICE } from './fec.js';
 import { WahooLegacyTrainer, WAHOO_CONTROL } from './wahoo.js';
 import { SensorDebug } from '../debug.js';
 import { t } from '../i18n.js';
+import { listen } from '../ble-util.js';
 
 const FTMS = 0x1826;
 const CPS = 0x1818;
@@ -86,7 +87,7 @@ export class Trainer extends EventTarget {
         { namePrefix: 'Tacx' }, { namePrefix: 'D100' }, { namePrefix: 'VAN RYSEL' }, { namePrefix: 'Van Rysel' }],
       optionalServices: [FTMS, CPS, CSC, HRS, FEC_SERVICE],
     });
-    this.device.addEventListener('gattserverdisconnected', () => { this.dbg.setStatus('Disconnected'); this.emit('disconnected'); });
+    listen(this, 'disc', this.device, 'gattserverdisconnected', () => { this.dbg.setStatus('Disconnected'); this.emit('disconnected'); });
     await this.setup();
     return this.device.name || t('home.trainer');
   }

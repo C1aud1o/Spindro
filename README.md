@@ -64,7 +64,7 @@ No build step for the app: plain ES modules in `js/`, three.js vendored in `vend
 
 ## Add a game
 
-Games are small modules on a shared kit in [`js/games/`](js/games/), following the rules in [docs/giochi-design.md](docs/giochi-design.md). The [Build a game page](https://spindro.fun/developers/) explains the kit and the steps.
+A game is one folder, one registry entry and its strings. [docs/games/CREATE-A-GAME.md](docs/games/CREATE-A-GAME.md) goes from a fresh clone to a game on your screen in about 15 minutes; the interface is in [docs/games/API.md](docs/games/API.md) and the rules in [docs/games/DESIGN-RULES.md](docs/games/DESIGN-RULES.md). `npm run game:check -- <id>` checks a game against them. Overview: [Build a game](https://spindro.fun/developers/).
 
 ## Report a trainer
 
