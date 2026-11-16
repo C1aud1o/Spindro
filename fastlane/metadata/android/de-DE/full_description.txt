@@ -30,7 +30,7 @@ VERLAUF UND EXPORT
 • Automatischer Start und Pause, Wochenziel, Herzfrequenzzonen, Datensicherung.
 
 OPEN SOURCE
-Der Quellcode ist öffentlich unter der GPL-3.0. Konten und Bestenlisten sind für später geplant und werden optional sein: Die App ist auch ohne sie vollständig.
+Der Quellcode ist öffentlich unter der GPL-3.0.
 
 Tipp: Der Trainer akzeptiert nur eine Bluetooth-Verbindung gleichzeitig – schließe andere Rad-Apps vorher.
 
