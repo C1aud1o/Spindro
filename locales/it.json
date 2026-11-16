@@ -328,7 +328,6 @@
   "games.audioOn": "Audio attivo",
   "games.choose": "Scegli il gioco",
   "games.common.demo": "DEMO: rullo non collegato",
-  "games.common.trainerLost": "Rullo scollegato: in attesa che torni",
   "games.common.loading": "CARICAMENTO…",
   "games.common.newBest": "  · NUOVO RECORD!",
   "games.common.score": "Punti {n}",
@@ -1479,5 +1478,6 @@
   "connect.unsupported.other": "Questo browser non può usare il Bluetooth. Su PC, Mac e Android usa Chrome o Edge, oppure su Android l'app Spindro.",
   "connect.unsupported.safari": "Safari non supporta il Bluetooth per le app web. Apri Spindro con Chrome o Edge sul Mac o sul PC.",
   "update.ready": "Nuova versione pronta",
-  "update.reload": "Ricarica"
+  "update.reload": "Ricarica",
+  "games.common.trainerLost": "Rullo scollegato: in attesa che torni"
 }

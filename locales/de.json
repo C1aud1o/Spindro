@@ -328,7 +328,6 @@
   "games.audioOn": "Ton an",
   "games.choose": "Wähle ein Spiel",
   "games.common.demo": "DEMO: Rollentrainer nicht verbunden",
-  "games.common.trainerLost": "Rollentrainer getrennt: warte auf die Verbindung",
   "games.common.loading": "LÄDT…",
   "games.common.newBest": "  · NEUER BESTWERT!",
   "games.common.score": "Punkte {n}",
@@ -1479,5 +1478,6 @@
   "connect.unsupported.other": "Dieser Browser kann Bluetooth nicht nutzen. Auf PC, Mac und Android nimm Chrome oder Edge, oder auf Android die Spindro-App.",
   "connect.unsupported.safari": "Safari unterstützt Bluetooth für Web-Apps nicht. Öffne Spindro in Chrome oder Edge auf deinem Mac oder PC.",
   "update.ready": "Neue Version bereit",
-  "update.reload": "Neu laden"
+  "update.reload": "Neu laden",
+  "games.common.trainerLost": "Rollentrainer getrennt: warte auf die Verbindung"
 }
