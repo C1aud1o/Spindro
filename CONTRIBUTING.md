@@ -125,15 +125,14 @@ Use only original art and sounds, or assets with a licence that allows redistrib
 `docs/legal/licenses.*.md`), and do not recreate an existing commercial game.
 <!-- games:end -->
 
-## Translations (coming soon)
+## Translations
 
-The app's interface text is currently in Italian, and the English version is in progress. Translations are
-planned as JSON files in `locales/` (for example `locales/en.json`, `locales/de.json`), with one key per
-user-visible string.
-
-Glossary and naming rules (for example how to translate "trainer", "ERG" or "gears") will be in
-`docs/i18n-glossario.md`, which is not in the repository yet. Until it is, ask in an issue or a discussion
-before translating terms like "ERG", "FTMS" or "trainer".
+The app is translated into Italian, English, French, Spanish and German (`locales/*.json`), and the site into
+English and Italian (`site/i18n/`). English is the reference for meaning. Before changing or adding a text, read
+[docs/i18n-glossary.md](docs/i18n-glossary.md): it lists the agreed word for each concept in each language (trainer, ERG, FTP,
+cadence, warm-up…), the style rules (informal address, capitalization, punctuation) and how to add a language.
+`node tests/i18n-check.mjs` checks keys, placeholders and leftovers; it also runs as the first step of `npm test`.
+Native speakers are very welcome to review a language: open an issue with the "Translation" template.
 
 ## Code and commit rules
 
