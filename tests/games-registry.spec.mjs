@@ -111,3 +111,29 @@ test('npm run game:check prints the bot table for a real game and passes', async
   expect(out).toMatch(/\| 1 \| — \| 2-3 \| [\d.]+ \| [\d.]+ \| [\d.]+ \|/);
   expect(out).toContain('all rules respected');
 });
+
+test('3D skeleton: loads the shared stage and cyclist, plays a run and ends on the results screen', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto('/index.html?game=skeleton&demo=1');
+  await expect.poll(() => page.evaluate(() => window.__game?.state), { timeout: 90_000 }).toBe('menu');
+  await page.evaluate(() => { window.__game.menu.age = 1; window.__game.menu.start(); });
+  await expect.poll(() => page.evaluate(() => window.__game.state)).toBe('play');
+  await page.evaluate(() => window.__game.end());
+  await expect.poll(() => page.evaluate(() => window.__game.state)).toBe('results');
+});
+
+test('template game Tempo: workout mode follows the workout under the game (targets, length, stars)', async ({ page }) => {
+  await page.goto('/index.html?game=tempo&demo=1');
+  await expect.poll(() => page.evaluate(() => window.__game?.state)).toBe('menu');
+  const r = await page.evaluate(() => {
+    const g = window.__game; g.active = false; window.__demo.set({ power: 170 });
+    const steps = [{ t0: 0, dur: 45, pct: 0.8, watts: 160, kind: 'pace', w0: 160, w1: 160, label: 'Steady' }, { t0: 45, dur: 45, pct: 0.9, watts: 180, kind: 'effort', w0: 180, w1: 180, label: 'Push' }];
+    g.hooks.workout = () => ({ name: 'Test', total: 90, elapsed: g.clock.el, steps }); // the app reports the elapsed time; here the game's own clock does
+    g.menu.age = 1; g.menu.start();
+    const targets = new Set(); let n = 0;
+    while (g.state === 'play' && n < 30 * 200) { g.update(1 / 30); targets.add(g.target().w); n++; }
+    return { state: g.state, secs: n / 30, stars: g.result.stars, wk: g.result.wk, targets: [...targets] };
+  });
+  expect(r.state).toBe('results'); expect(r.wk).toBe(true); expect(r.secs).toBeGreaterThan(88); expect(r.secs).toBeLessThan(92);
+  expect(r.targets).toEqual([160, 180]); expect(r.stars).toBe(3);
+});

@@ -11,7 +11,7 @@ import { WorkoutClock, wkTarget, workoutStars, BAND, SETTLE_S } from '../kit/wor
 import { makeRandom } from '../kit/rng.js';
 
 const ID = 'tempo';                    // = registry id: strings are games.tempo.*, storage keys start with "tempo"
-const SESSION = 60; const BLOCK = 15;  // a 1-minute session of four 15 s blocks (the menu's minutes are ignored in this tiny example)
+const LENGTHS = [1, 2, 3]; const BLOCK = 15; // session lengths in minutes (the menu shows these instead of 5 / 10 / 20), blocks of 15 s
 const PCTS = [0.75, 0.9, 1.0, 0.85];   // target of each block, fraction of FTP (docs/games/DESIGN-RULES.md, "the five zones")
 const LEVEL_K = [0.9, 1, 1.1];         // the level chosen in the menu (easy / normal / hard) scales the targets
 const STOPPED_W = 12; const STOPPED_S = 2.5; // below 12 W for 2.5 s the rider has stopped: the game waits instead of punishing
@@ -24,7 +24,7 @@ export class Tempo {
     this.clock = new WorkoutClock(hooks); this.evLog = [];
     // The shared menu and results screen are the same in every game: you only describe them.
     this.menu = new GameMenu({
-      id: ID, title: () => t('games.tempo.name'), pitch: () => t('games.tempo.tagline'),
+      id: ID, lengths: LENGTHS, title: () => t('games.tempo.name'), pitch: () => t('games.tempo.tagline'),
       howto: () => [t('games.tempo.help'), t('games.tempo.how1'), t('games.tempo.how2')],
       best: (d, l) => { const r = hooks.progress?.bestOf(ID, `${d}:${l}`); return { stars: r?.stars || 0, text: r?.score ? String(r.score) : null }; },
       onStart: (_d, level) => this.begin(level), sfx: (n) => audio?.sfx(n), ready: () => this.state === 'menu', workout: () => hooks.workout?.(),
@@ -64,15 +64,19 @@ export class Tempo {
   get ftp() { return Math.max(80, this.hooks.ftp?.() || 200); }
   begin(level) {
     this.rnd = makeRandom();            // seeded by window.__spindroSeed in tests: same run every time
-    this.order = PCTS.map((p) => p * (0.98 + this.rnd() * 0.04));  // a touch of variety per run, never harder than +2 %
-    this.k = LEVEL_K[level] ?? 1; this.inT = 0; this.totT = 0; this.evLog = []; this.nextTick = 4; this.lastBlock = -1; this.el = 0; this.fill = 0.3; this.still = 0; this.wait = false;
+    const k = LEVEL_K[level] ?? 1; this.inT = 0; this.totT = 0; this.evLog = []; this.nextTick = 4; this.lastBlock = -1; this.el = 0; this.fill = 0.3; this.still = 0; this.wait = false;
     this.plan = this.clock.begin(this.ftp);                          // workout mode: the plan decides the targets and the length
-    this.total = this.plan ? this.plan.total : SESSION; this.state = 'play'; this.hooks.runStart?.(); this.audio?.sfx('go');
+    this.total = this.plan ? this.plan.total : LENGTHS[this.menu.durIdx] * 60;
+    // the session as a list of blocks { t0, t1, w (target watts), in, tot (seconds in the green / judged) }; a workout's steps in workout mode
+    this.cells = this.plan ? this.plan.segs.map((sg) => ({ t0: sg.t0, t1: sg.t1, seg: sg, w: sg.watts, in: 0, tot: 0, label: sg.label })) : this.makeCells(LENGTHS[this.menu.durIdx] * 60, k, this.rnd);
+    this.state = 'play'; this.hooks.runStart?.(); this.audio?.sfx('go');
+  }
+  makeCells(total, k, rnd = () => 0.5) {                            // a touch of variety per run: ±2 %
+    return Array.from({ length: Math.ceil(total / BLOCK) }, (_, i) => ({ t0: i * BLOCK, t1: (i + 1) * BLOCK, w: r5(this.ftp * PCTS[i % PCTS.length] * (0.98 + rnd() * 0.04) * k), in: 0, tot: 0 }));
   }
   target() {
-    if (this.plan) { const s = this.plan.segs.find((x) => this.el >= x.t0 && this.el < x.t1) || this.plan.segs.at(-1); return { w: wkTarget(s, this.el), since: this.el - s.t0, label: s.label }; }
-    const i = Math.min(PCTS.length - 1, Math.floor(this.el / BLOCK));
-    return { w: r5(this.ftp * this.order[i] * this.k), since: this.el - i * BLOCK, label: null };
+    const i = Math.max(0, this.cells.findIndex((c) => this.el < c.t1)); const c = this.cells[i] || this.cells.at(-1);   // the block we are in
+    return { i, c, w: c.seg ? wkTarget(c.seg, this.el) : c.w, since: this.el - c.t0, label: c.label };
   }
   finish() {
     const ratio = this.totT > 0 ? this.inT / this.totT : 0; const stars = workoutStars(ratio, true);   // same star rule as every game: 60 % / 85 % of the time within ±7 %
@@ -96,10 +100,9 @@ export class Tempo {
     const tg = this.target();
     // The green: from 7 % under the target up. Pushing harder is never punished (docs/games/DESIGN-RULES.md §3); a workout is stricter: ±7 %.
     const inBand = power >= (1 - BAND) * tg.w && (!this.plan || power <= (1 + BAND) * tg.w);
-    if (tg.since >= SETTLE_S) { this.totT += dt; if (inBand) this.inT += dt; }        // the first seconds of a block are not judged
+    if (tg.since >= SETTLE_S) { this.totT += dt; tg.c.tot += dt; if (inBand) { this.inT += dt; tg.c.in += dt; } }        // the first seconds of a block are not judged
     // Something must happen at least every 5 s: a new block, or a reward / a nudge every 4 s. ev() feeds eventStats() (below).
-    const block = this.plan ? this.plan.segs.findIndex((x) => this.el >= x.t0 && this.el < x.t1) : Math.floor(this.el / BLOCK);
-    if (block !== this.lastBlock) { this.lastBlock = block; this.nextTick = this.el + 4; this.ev('block'); this.audio?.sfx('pass'); }
+    if (tg.i !== this.lastBlock) { this.lastBlock = tg.i; this.nextTick = this.el + 4; this.ev('block'); this.audio?.sfx('pass'); }
     else if (this.el >= this.nextTick) { this.nextTick += 4; this.ev('tick'); this.audio?.sfx(inBand ? 'coin' : 'shiftDown'); }
     this.fill = Math.max(0, Math.min(1, this.fill + (inBand ? dt / 8 : -dt / 14)));     // the bar rises in the green, sinks slowly outside
     if (this.el >= this.total || this.clock.ended) this.finish();
@@ -125,29 +128,43 @@ export class Tempo {
     const { ctx, W, H } = this; const u = uiScale(W, H); hudView(ctx, W, H);
     ctx.fillStyle = '#0f1420'; ctx.fillRect(0, 0, W, H);
     if (this.state === 'loading') return txt(ctx, '…', W / 2, H / 2, { size: 40, align: 'center' });
-    if (this.state === 'menu') { this.menu.draw(ctx, W, H, { connected: this.hooks.connected() }); return; }
+    if (this.state === 'menu') {                                   // the menu, and a preview of the session in the space it leaves free
+      this.menu.draw(ctx, W, H, { connected: this.hooks.connected() }); this.el = 0; const y = this.menu.contentBottom + 30 * u;
+      this.cells = this.makeCells(LENGTHS[this.menu.durIdx] * 60, LEVEL_K[this.menu.level]); this.drawProfile(Math.max(20, W / 2 - 210 * u), y, Math.min(W - 40, 420 * u), Math.min(150 * u, this.menu.startTop - y - 40 * u)); return;
+    }
     if (this.state === 'results') { this.drawResults(); return; }
     const { power } = this.hooks.stats(); const tg = this.target(); const cx = W / 2; const bw = Math.min(W - 40, 420 * u);
-    txt(ctx, tg.label || t('games.tempo.target'), cx, 120 * u, { size: 20 * u, align: 'center', color: HUD.dim, font: 'text', maxW: bw });
-    txt(ctx, `${tg.w} W`, cx, 190 * u, { size: 72 * u, align: 'center', color: HUD.lime, maxW: bw });
+    txt(ctx, tg.label || t('games.tempo.target'), cx, 130 * u, { size: 20 * u, align: 'center', color: HUD.dim, font: 'text', maxW: bw });
+    txt(ctx, `${tg.w} W`, cx, 200 * u, { size: 72 * u, align: 'center', color: HUD.lime, maxW: bw });
     // the gauge: green zone = ±7 % of the target, the marker is your power (scale 50 %–150 % of the target)
-    const gy = 250 * u; const x = (w) => cx - bw / 2 + bw * Math.max(0, Math.min(1, (w / tg.w - 0.5)));
+    const gy = 260 * u; const x = (w) => cx - bw / 2 + bw * Math.max(0, Math.min(1, (w / tg.w - 0.5)));
     panel(ctx, cx - bw / 2, gy, bw, 34 * u, { r: 17 * u, fill: 'rgba(255,255,255,.12)' });
     ctx.fillStyle = '#2bd67b'; ctx.fillRect(x(tg.w * 0.93), gy, x(tg.w * 1.07) - x(tg.w * 0.93), 34 * u);
     ctx.fillStyle = '#fff'; ctx.fillRect(x(power) - 3, gy - 8 * u, 6, 50 * u);
     txt(ctx, `${Math.round(power)} W`, cx, gy + 96 * u, { size: 56 * u, align: 'center', maxW: bw });
     panel(ctx, cx - bw / 2, gy + 130 * u, bw, 16 * u, { r: 8 * u, fill: 'rgba(255,255,255,.12)' });                 // the "tempo" bar
     panel(ctx, cx - bw / 2, gy + 130 * u, Math.max(16 * u, bw * this.fill), 16 * u, { r: 8 * u, fill: this.fill > 0.5 ? '#2bd67b' : HUD.gold });
-    const left = Math.max(0, Math.ceil(this.total - this.el)); txt(ctx, `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`, W - 16, 40 * u, { size: 26 * u, align: 'right' });
+    const left = Math.max(0, Math.ceil(this.total - this.el)); txt(ctx, `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`, W - 16, 92 * u, { size: 26 * u, align: 'right' });          // below the app's top bar
+    this.drawProfile(cx - bw / 2, gy + 190 * u, bw, 150 * u);
     if (this.wait) txt(ctx, t('games.tempo.keep'), cx, H - 60 * u, { size: 24 * u, align: 'center', color: HUD.gold, maxW: bw });
     this.hooks.progress?.drawToasts(ctx, W, dt);
   }
+  // the session as bars (height = target watts); green = you held it, gold = missed, white outline = now. Fills the screen with something useful.
+  drawProfile(x, y, w, h) {
+    const { ctx } = this; const cs = this.cells; const max = Math.max(...cs.map((c) => c.w)); const bw = w / cs.length;
+    cs.forEach((c, i) => {
+      const bh = Math.max(6, (h * c.w) / max); const done = c.tot > 0 ? c.in / c.tot >= 0.6 : false; const past = this.el >= c.t1;
+      ctx.fillStyle = past ? (done ? '#2bd67b' : HUD.gold) : 'rgba(255,255,255,.22)'; ctx.fillRect(x + i * bw + 2, y + h - bh, Math.max(2, bw - 4), bh);
+      if (this.state === 'play' && this.el >= c.t0 && this.el < c.t1) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.strokeRect(x + i * bw + 2, y + h - bh, Math.max(2, bw - 4), bh); }
+    });
+  }
   drawResults() {
-    const r = this.result;
+    const r = this.result; const u = uiScale(this.W, this.H); const land = this.W > this.H * 1.15;
+    this.drawProfile(land ? this.W * 0.55 : Math.max(20, this.W / 2 - 210 * u), 190 * u, land ? this.W * 0.38 : Math.min(this.W - 40, 420 * u), 150 * u);   // how each block went
     this.results.draw(this.ctx, this.W, this.H, {
       title: t('games.tempo.res.title'), subtitle: t('games.tempo.name'), stars: r.stars,
       criteria: [{ ok: true, label: t('games.wk.res.done') }, { ok: r.ratio >= 0.6, label: t('games.tempo.crit.zone', { p: 60 }) }, { ok: r.ratio >= 0.85, label: t('games.tempo.crit.zone', { p: 85 }) }],
-      score: r.score, best: r.best ? String(r.best) : null, newBest: r.newBest, lines: [t('games.wk.res.band', { p: Math.round(r.ratio * 100) })],
+      score: r.score, best: r.best ? String(r.best) : null, newBest: r.newBest, lines: r.wk ? [t('games.wk.res.band', { p: Math.round(r.ratio * 100) })] : [],
     });
   }
 }

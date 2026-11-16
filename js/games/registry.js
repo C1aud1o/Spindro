@@ -42,6 +42,7 @@ export const GAMES = [
   defineGame({ id: 'mattoni', icon: 'L2', load: () => import('./mattoni.js').then((m) => m.Mattoni) }),
   defineGame({ id: 'shooter', icon: 'L3', load: () => import('./strike3d.js').then((m) => m.Strike3D) }),
   // Living documentation: the template game (docs/games/CREATE-A-GAME.md). Visible only in developer mode.
+  defineGame({ id: 'skeleton', icon: '3D', dev: true, load: () => import('./template/skeleton3d.js').then((m) => m.Skeleton3D) }),
   defineGame({ id: 'tempo', icon: 'T', dev: true, load: () => import('./template/tempo.js').then((m) => m.Tempo) }),
 ];
 
