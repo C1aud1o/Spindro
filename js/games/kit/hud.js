@@ -140,6 +140,33 @@ export class MessageQueue {
   }
 }
 
+// Hit feedback: a short (<= 150 ms) red vignette at the screen edges. The centre (rider, enemies, road) is never tinted.
+// k = 0..1 (how much of the flash is left); call it with a timer that starts at HURT_FLASH_S.
+export const HURT_FLASH_S = 0.15;
+export function hurtVignette(ctx, W, H, k) {
+  if (!(k > 0)) return;
+  const r = Math.hypot(W, H) / 2; const g = ctx.createRadialGradient(W / 2, H / 2, r * 0.55, W / 2, H / 2, r);
+  g.addColorStop(0, 'rgba(255,0,40,0)'); g.addColorStop(1, `rgba(255,0,40,${Math.min(1, k) * 0.38})`);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+}
+// Trainer lost in the middle of a run: the games must not carry on with the simulated demo rider (stars and bests would be
+// earned by nobody). `guardTrainer(hooks)` wraps the app hooks: once a trainer has been seen, a drop reads as "still
+// connected, power 0, cadence 0", so every game's own pause (below ~12 W for 2.5 s) freezes the clock, and `hooks.lost` is
+// true so the game can say why. When the trainer comes back, the pause ends as soon as the rider pedals. `reset()` on start().
+export function guardTrainer(base) {
+  let seen = false;
+  const h = Object.create(base); h.lost = false;
+  h.connected = () => { const c = base.connected(); if (c) { seen = true; h.lost = false; return true; } if (seen) { h.lost = true; return true; } return false; };
+  h.stats = () => { h.connected(); return h.lost ? { ...base.stats(), power: 0, cadence: 0 } : base.stats(); };
+  h.speedKmh = () => { h.connected(); return h.lost ? 0 : base.speedKmh(); };
+  h.reset = () => { seen = false; h.lost = false; };
+  return h;
+}
+export function trainerLostBanner(ctx, W, H, t) {
+  const u = Math.max(1, Math.min(1.45, Math.min(W, H) / 390)); const w = Math.min(W - 24, 330 * u); const y = H * 0.64;
+  panel(ctx, W / 2 - w / 2, y - 30 * u, w, 60 * u, { r: 12 * u, fill: 'rgba(40,8,12,.88)', border: HUD.red });
+  txt(ctx, t('games.common.trainerLost'), W / 2, y + 7 * u, { size: 19 * u, align: 'center', color: HUD.white, maxW: w - 20 * u, minK: 0.6 });
+}
 export function panel(ctx, x, y, w, h, { r = 10, fill = HUD.ink, border = null } = {}) {
   ctx.beginPath();
   if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h);

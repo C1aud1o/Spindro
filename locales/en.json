@@ -328,6 +328,7 @@
   "games.audioOn": "Audio on",
   "games.choose": "Pick a game",
   "games.common.demo": "DEMO: trainer not connected",
+  "games.common.trainerLost": "Trainer connection lost: waiting for it to come back",
   "games.common.loading": "LOADING…",
   "games.common.newBest": "  · NEW BEST!",
   "games.common.score": "Score {n}",

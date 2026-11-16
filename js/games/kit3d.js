@@ -10,6 +10,10 @@ import { mergeGeometries } from '../../vendor/three/addons/utils/BufferGeometryU
 // bagliore (bloom): colpi, luci, gemme e lampi brillano. Si spegne da solo se il telefono fatica.
 export const glowSetting = { get on() { return localStorage.getItem('gameGlow') !== '0'; }, set on(v) { localStorage.setItem('gameGlow', v ? '1' : '0'); } };
 
+// Parametri del bagliore, uguali per tutti i giochi (un gioco non li cambia: se una scena brilla troppo si abbassa la
+// luminosità dell'oggetto, non si alza la soglia). Misurati con tests QA: lo spazio lineare delle superfici illuminate sta sotto 1.1.
+export const BLOOM = { threshold: 1.2, strength: 0.6, radius: 0.3 };
+
 export { THREE };
 // caricamento con cache e decoder meshopt (js/games/kit/loader.js)
 export { loadGLTF as loadModel, loadAll } from './kit/loader.js';
@@ -52,8 +56,9 @@ export class Stage {
     if (wantBloom && !this.composer) {
       this.composer = new EffectComposer(this.renderer);
       this.composer.addPass(new RenderPass(this.scene, this.camera));
-      // soglia alta: brillano solo le cose davvero luminose (scie, vampate, lune, gemme)
-      this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.7, 0.45, 0.82);
+      // Bagliore solo per le vere sorgenti di luce (lampioni, vampate, gemme, scie). Le superfici illuminate (maglie, caschi,
+      // asfalto) arrivano a ~1.0 nello spazio lineare, le sorgenti sono sprite additivi spinti sopra la soglia (vedi `glow`).
+      this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), BLOOM.strength, BLOOM.radius, BLOOM.threshold);
       this.composer.addPass(this.bloom);
       this.composer.addPass(new OutputPass());
     } else if (!wantBloom && this.composer) { this.composer.dispose?.(); this.composer = null; this.bloom = null; }
@@ -86,6 +91,7 @@ export class Stage {
     this.scene.traverse((o) => { if (o.isInstancedMesh) o.dispose(); });
     this.composer?.dispose?.();
     this.renderer.dispose();
+    this.renderer.forceContextLoss(); // release the GL context now: removed canvases are not collected fast enough (16 live contexts max)
     this.gl.remove();
     this.ctx.setTransform(1, 0, 0, 1, 0, 0); this.ctx.clearRect(0, 0, this.hud.width, this.hud.height);
   }

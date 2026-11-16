@@ -12,7 +12,7 @@ import { loadGLTF } from './kit/loader.js';
 import { loadMeshyTemplate, CYCLIST_URL, MESHY_FAN_URL } from './kit/cyclist.js';
 import { Road, buildScenery, buildArch, LANE_W } from './slip-world.js';
 import { clamp, lerp } from './engine.js';
-import { txt as hudText, hudView, paragraph, MessageQueue, loadHudFonts } from './kit/hud.js';
+import { txt as hudText, hudView, paragraph, MessageQueue, loadHudFonts, guardTrainer, trainerLostBanner } from './kit/hud.js';
 import { t } from '../i18n.js';
 import { SONGS } from './audio.js';
 import { GameMenu, ResultsView } from './kit/menu.js';
@@ -45,7 +45,7 @@ const OPTIONAL = { sheep: `${A}/meshy/sheep.glb`, cow: `${A}/meshy/cow.glb`, tra
 
 export class Gruppetto {
   constructor(hudCanvas, hooks, audio) {
-    this.hudCanvas = hudCanvas; this.hooks = hooks; this.audio = audio; this.active = false;
+    this.hudCanvas = hudCanvas; this.hooks = guardTrainer(hooks); this.audio = audio; this.active = false;
     const ls = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
     this.seed = null; this.state = 'loading';
     // menu e risultati: kit comune; durata e livello restano nelle chiavi di sempre (slipDur / slipLvl)
@@ -67,6 +67,7 @@ export class Gruppetto {
   set lvlIdx(v) { this.menu.level = v; }
 
   async start() {
+    this.hooks.reset?.();
     this.active = true;
     this.quality = new Quality();
     this.stage = new Stage(this.hudCanvas, { quality: this.quality });
@@ -134,7 +135,6 @@ export class Gruppetto {
   }
 
   applyQuality(cfg) {
-    if (this.stage.bloom) { this.stage.bloom.threshold = 0.93; this.stage.bloom.strength = 0.45; this.stage.bloom.radius = 0.35; }
     if (this.stage.composer && this.scene) this.stage.composer.passes[0].scene = this.scene;
     for (const i of this.inst || []) { i.setDensity(cfg.density); i.lodDist = i.baseLod * (0.5 + 0.5 * cfg.density); }
     if (this.light) this.light.sun.castShadow = cfg.shadows;
@@ -681,6 +681,7 @@ export class Gruppetto {
       hudText(ctx, t('games.gruppetto.paused'), W / 2, H * 0.42, { size: 42, align: 'center', color: '#ffd34d' });
       paragraph(ctx, t('games.gruppetto.pausedSub'), W / 2, H * 0.42 + 36, { size: 20, maxW: W - 40, color: '#f0f0f0' });
     }
+    if (this.hooks.lost) trainerLostBanner(ctx, W, H, t);
     if (!['pace', 'effort', 'sprint'].includes(seg.kind)) this.hooks.progress?.drawToasts(ctx, W, dt, 224, true);
   }
 

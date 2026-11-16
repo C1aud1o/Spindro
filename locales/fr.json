@@ -1478,5 +1478,6 @@
   "connect.unsupported.other": "Ce navigateur ne peut pas utiliser le Bluetooth. Sur PC, Mac et Android, utilise Chrome ou Edge, ou sur Android l'appli Spindro.",
   "connect.unsupported.safari": "Safari ne prend pas en charge le Bluetooth pour les applis web. Ouvre Spindro dans Chrome ou Edge sur ton Mac ou ton PC.",
   "update.ready": "Une nouvelle version est prête",
-  "update.reload": "Recharger"
+  "update.reload": "Recharger",
+  "games.common.trainerLost": "Home-trainer déconnecté : en attente de reconnexion"
 }
