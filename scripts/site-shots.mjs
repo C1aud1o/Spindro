@@ -179,7 +179,7 @@ const GAMES = {
     for (let i = 0; i < 40 && (await page.evaluate(() => window.__game.state)) !== 'race'; i++) await run(page, 0.5);
     await run(page, 150);
   } },
-  horde: { card: 'horde', async scene(page) { await startGame(page); await run(page, T(135)); } },
+  horde: { card: 'horde', async scene(page) { await startGame(page); await run(page, T(52)); } },
   gruppetto: { card: 'gruppetto', async scene(page) { await startGame(page); await run(page, T(135)); } },
   planata: { card: 'planata', async scene(page) { await startGame(page); await run(page, T(135)); } },
   mattoni: { card: 'mattoni', async scene(page) { await startGame(page); await run(page, T(135)); } },
