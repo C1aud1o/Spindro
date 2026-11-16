@@ -8,6 +8,7 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0f0f0d",
   "theme_color": "#0f0e0c",
   "categories": ["sports", "health", "fitness"],

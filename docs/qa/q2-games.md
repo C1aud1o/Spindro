@@ -131,3 +131,9 @@ Needs a real phone (SwiftShader cannot judge these):
 - Memory over a long real session on a low-RAM phone (heap and GPU memory were only sampled in a desktop browser).
 
 Authorship note: the stop hook asked for commits authored as `noreply@anthropic.com`; `CLAUDE.md` requires `C1aud1o <11772220+C1aud1o@users.noreply.github.com>`, so commits keep that author.
+
+## Known limitation at launch: phone in landscape
+The game HUD is designed for portrait phones and for wide screens (tablet, desktop). On a phone held sideways (short
+viewports such as 780×390) the HUD panels are too large and cover part of the scene. Until a compact HUD for short
+viewports exists, the installed web app asks for portrait (`"orientation": "portrait"` in `manifest.webmanifest`).
+A browser tab and the Android app can still rotate: play in portrait on a phone.
