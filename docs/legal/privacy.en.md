@@ -25,7 +25,7 @@ The app saves these on your device only, in the browser's local storage (`localS
 
 The web app also keeps a copy of its own files in the browser cache (service worker) so it can work offline. It uses no cookies and no IndexedDB.
 
-If you use the Android app, the system may include this data in your Google backup (`allowBackup` is on). That is a choice of your device, not of Spindro.
+On Android, Spindro's data is **not** included in your Google cloud backup (the app excludes it on purpose, because your ride history is personal). It is only copied when you move directly from one phone to another with Android's device-to-device transfer (cable or setup wizard), so you do not lose your history when you change phone. You can also export any ride as a FIT file at any time.
 
 ## Bluetooth and sensors
 

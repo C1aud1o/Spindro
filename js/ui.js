@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 // Campi numerici in stile vetro con pulsanti − / + (niente frecce di sistema: si usano bene anche col pollice).
 function enhance(input) {
   if (input.dataset.glass) return;
@@ -7,7 +8,7 @@ function enhance(input) {
   box.classList.add('stepper');
   const mk = (dir, text) => {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'step-btn'; b.textContent = text;
-    b.setAttribute('aria-label', dir > 0 ? 'Aumenta' : 'Diminuisci');
+    b.dataset.dir = dir; b.setAttribute('aria-label', t(dir > 0 ? 'ui.increase' : 'ui.decrease'));
     let rep = null;
     const go = () => {
       if (input.disabled) return;
@@ -27,3 +28,4 @@ function enhance(input) {
 export function enhanceInputs(root = document) { root.querySelectorAll('input[type=number]').forEach(enhance); }
 enhanceInputs();
 new MutationObserver(() => enhanceInputs()).observe(document.body, { childList: true, subtree: true });
+window.addEventListener('langchange', () => document.querySelectorAll('.step-btn[data-dir]').forEach((b) => b.setAttribute('aria-label', t(+b.dataset.dir > 0 ? 'ui.increase' : 'ui.decrease'))));

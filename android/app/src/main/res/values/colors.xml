@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- fondo dell'app (--ink in css/style.css): splash, finestra e barre di sistema -->
+    <color name="spindro_bg">#0F0F0D</color>
+    <!-- fondo del livello adattivo dell'icona (come icons/icon.svg) -->
+    <color name="ic_launcher_background">#0F1115</color>
+</resources>

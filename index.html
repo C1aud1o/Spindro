@@ -2,14 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <!-- Solo ciò che l'app usa davvero (docs/compliance-report.md): GoatCounter dopo il consenso, YouTube per i video, Strava se lo colleghi. -->
+  <!-- Solo ciò che l'app usa davvero (docs/compliance-report.md): GoatCounter dopo il consenso, YouTube per i video, Strava se lo colleghi.
+       Nella WebView Capacitor (https://localhost) non serve altro: il ponte nativo è iniettato da codice nativo / prima di questo meta, le chiamate ai plugin non passano dalla rete.
+       blob:/data: (connect-src, img-src) = loader di three.js; 'wasm-unsafe-eval' + worker-src blob: = decoder meshopt. Provato in tests/csp.spec.mjs. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-hj9YLHtXa6XlhEuI0Piw3nIiX7fW9qt8Edtric8vsHM=' 'wasm-unsafe-eval' https://gc.zgo.at https://www.youtube.com https://s.ytimg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://c1laud1o.goatcounter.com; media-src 'self' blob: data:; font-src 'self'; connect-src 'self' blob: data: https://c1laud1o.goatcounter.com https://www.strava.com; frame-src https://www.youtube.com; worker-src 'self' blob:; manifest-src 'self'; base-uri 'self'; form-action 'none'; object-src 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0f0e0c">
   <meta name="description" content="" data-i18n-attr="content:app.description">
   <title>Spindro</title>
   <link rel="manifest" href="manifest.webmanifest">
+  <!-- iOS: "Aggiungi alla schermata Home" (Web Bluetooth non esiste su iOS, ma l'icona e la barra devono essere giuste) -->
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Spindro">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/icon-192.png" type="image/png" sizes="192x192">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body data-mode="erg">
@@ -181,7 +190,7 @@
 
   <!-- Modalità di pedalata durante l'uscita -->
   <div id="modeSheet" class="sheet" hidden>
-    <div class="sheet-body" role="dialog" aria-modal="true" aria-labelledby="modeTitle">
+    <div class="sheet-body" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="modeTitle">
       <div class="sheet-head"><h2 id="modeTitle" data-i18n="home.modes"></h2><button class="close" data-close="modeSheet" data-i18n-attr="aria-label:ui.close">×</button></div>
       <div id="modeList" class="mode-list">
         <button class="ghost" data-pick="erg">ERG</button>
@@ -194,7 +203,7 @@
 
   <!-- Fine allenamento: il momento da ricordare -->
   <div id="finishSheet" class="sheet" hidden>
-    <div class="sheet-body" role="dialog" aria-modal="true" aria-labelledby="finishTitle">
+    <div class="sheet-body" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="finishTitle">
       <button class="close" data-close="finishSheet" data-i18n-attr="aria-label:ui.close">×</button>
       <div class="celebrate">
         <svg class="check" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28" /><path d="M20 33l8 8 16-17" /></svg>
@@ -221,7 +230,7 @@
 
   <!-- Allenamenti e percorsi -->
   <div id="workoutSheet" class="sheet" hidden>
-    <div class="sheet-body" role="dialog" aria-modal="true" aria-labelledby="workoutTitle">
+    <div class="sheet-body" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="workoutTitle">
       <div class="sheet-head"><h2 id="workoutTitle" data-i18n="workouts.title"></h2><button class="close" data-close="workoutSheet" data-i18n-attr="aria-label:ui.close">×</button></div>
       <div class="chips wk-tabs" role="tablist"><button id="tabWk" class="on" role="tab" aria-selected="true" data-i18n="workouts.tab"></button><button id="tabPlans" role="tab" aria-selected="false" data-i18n="plans.tab"></button></div>
       <div id="wkPaneMain">
@@ -242,14 +251,14 @@
   </div>
 
   <div id="editorSheet" class="sheet" hidden>
-    <div class="sheet-body" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
+    <div class="sheet-body" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
       <div class="sheet-head"><h2 id="editorTitle" data-i18n="editor.create"></h2><button class="close" data-close="editorSheet" data-i18n-attr="aria-label:ui.close">×</button></div>
       <div id="editorBody" class="ed-body"></div>
     </div>
   </div>
 
   <div id="historySheet" class="sheet" hidden>
-    <div class="sheet-body" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
+    <div class="sheet-body" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
       <div class="sheet-head"><h2 id="historyTitle" data-i18n="history.title"></h2><button class="close" data-close="historySheet" data-i18n-attr="aria-label:ui.close">×</button></div>
       <div id="historyBody" class="hs-body"></div>
     </div>
@@ -257,7 +266,7 @@
 
   <!-- Consenso alle statistiche anonime (primo avvio) -->
   <div id="consentSheet" class="sheet" hidden>
-    <div class="sheet-body" role="dialog" aria-modal="true" aria-labelledby="consentTitle">
+    <div class="sheet-body" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="consentTitle">
       <div class="sheet-head"><h2 id="consentTitle" data-i18n="privacy.title"></h2></div>
       <p data-i18n="privacy.body"></p>
       <p class="fine" data-i18n="privacy.errors"></p>
@@ -268,7 +277,7 @@
 
   <!-- Avviso di sicurezza: una sola volta, prima della prima uscita -->
   <div id="safetySheet" class="sheet" hidden>
-    <div class="sheet-body" role="dialog" aria-modal="true" aria-labelledby="safetyTitle">
+    <div class="sheet-body" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="safetyTitle">
       <div class="sheet-head"><h2 id="safetyTitle" data-i18n="safety.title"></h2></div>
       <p data-i18n="safety.body"></p>
       <button id="safetyOk" class="cta-sm" data-i18n="safety.ok"></button>
@@ -277,7 +286,7 @@
 
   <!-- Dispositivi Bluetooth -->
   <div id="devicesSheet" class="sheet" hidden>
-    <div class="sheet-body" role="dialog" aria-modal="true" aria-labelledby="devicesTitle">
+    <div class="sheet-body" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="devicesTitle">
       <div class="sheet-head"><h2 id="devicesTitle" data-i18n="devices.title"></h2><button class="close" data-close="devicesSheet" data-i18n-attr="aria-label:ui.close">×</button></div>
       <div id="deviceList" class="dev-list"></div>
       <p id="devMsg" class="hint-box" hidden role="alert"></p>
@@ -298,7 +307,7 @@
 
   <!-- Impostazioni -->
   <div id="settingsSheet" class="sheet" hidden>
-    <div class="sheet-body" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="sheet-body" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
       <div class="sheet-head"><h2 id="settingsTitle" data-i18n="settings.title"></h2><button class="close" data-close="settingsSheet" data-i18n-attr="aria-label:ui.close">×</button></div>
 
       <section class="group">
@@ -441,7 +450,7 @@
       <span id="gameHelp" class="game-help"></span>
       <!-- allenamento in corso sotto al gioco: passo, watt e tempo che restano (prende il posto della guida) -->
       <div id="gameStrip" class="game-strip" hidden><span id="gsLabel"></span><b id="gsTail"></b><i class="gs-bar" aria-hidden="true"><u id="gsFill"></u></i></div>
-      <button id="muteGame" class="small" data-i18n-attr="aria-label:games.audio"></button>
+      <button id="muteGame" class="small"></button>
       <button id="closeGame" class="small" data-i18n="games.exit"></button>
     </div>
     <div id="gameMenu" class="game-menu">

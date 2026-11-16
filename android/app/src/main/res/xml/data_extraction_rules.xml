@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+. Scelta deliberata: lo storico delle uscite (potenza, frequenza cardiaca, FTP) è un dato personale,
+     quindi NON va nel backup cloud di Google. Il trasferimento diretto da telefono a telefono (cavo o configurazione
+     guidata) invece conserva tutto, così chi cambia telefono non perde lo storico. Spindro non ha un server che lo copi. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="root" path="." />
+        <include domain="file" path="." />
+        <include domain="database" path="." />
+        <include domain="sharedpref" path="." />
+    </device-transfer>
+</data-extraction-rules>

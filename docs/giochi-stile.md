@@ -1,202 +1,153 @@
-# Stile dei giochi 3D di Spindro
+# Spindro 3D game style
 
-Un solo stile per tutti i giochi. Si ottiene con modelli **low-poly CC0** (Quaternius, Kenney) e con il codice
-condiviso in `js/games/kit/`. Il gioco di riferimento è **Turbo Pedali** (`js/games/racer3d.js`):
-le foto sono in `docs/giochi-shots/`.
+One style for all games. It comes from **low-poly CC0 models** (Quaternius, Kenney) and from the code shared in
+`js/games/kit/`. The reference game is **Breakaway** (`js/games/racer3d.js`; formerly called Turbo Pedali in older code and comments):
+screenshots are in `docs/giochi-shots/`.
 
 ## 1. Idea
-Giocattolo luminoso, pomeriggio d'estate, corsa vera. Forme semplici, colori pieni, luce calda.
-Mai realistico, mai cupo. Niente loghi, nomi o personaggi di altri giochi.
+A bright toy, a summer afternoon, real racing. Simple shapes, solid colours, warm light.
+Never realistic, never gloomy. No logos, names or characters from other games.
 
 ## 2. Palette (`PALETTE` in `kit/style.js`)
-| Uso | Colori |
+| Use | Colours |
 |---|---|
-| Marchio, giocatore, numeri importanti | lime `#d9ff3d`, inchiostro `#15141b` |
-| Accenti HUD | ciano `#4de3ff` (scia, sprint), oro `#ffd34d` (avvisi), rosso `#ff5a6a` (salita dura, arrivo) |
-| Avversari (maglie) | 10 colori saturi, uno per corridore, mai il lime |
-| Mondo | erba `#86b84f`/`#5f9440`, asfalto `#5a5960`, terra `#c08a5b`, roccia `#a99a8c` |
+| Brand, player, important numbers | lime `#d9ff3d`, ink `#15141b` |
+| HUD accents | cyan `#4de3ff` (slipstream, sprint), gold `#ffd34d` (warnings), red `#ff5a6a` (hard climb, finish) |
+| Opponents (jerseys) | 10 saturated colours, one per rider, never lime |
+| World | grass `#86b84f`/`#5f9440`, asphalt `#5a5960`, dirt `#c08a5b`, rock `#a99a8c` |
 
-Regola: il lime appartiene al giocatore. Nel mondo i colori sono più spenti dei personaggi.
+Rule: lime belongs to the player. In the world the colours are more muted than the characters.
 
-## 3. Luce, cielo, nebbia
-- Tre **ore del giorno** (`TIMES`): `morning`, `golden`, `dusk`. Una per livello.
-- **Cielo a gradiente** con alone del sole (`skyDome`): alto, orizzonte, basso.
-- **Luce**: emisfera (cielo/terra) + un sole con ombre che segue il giocatore (`styleLights`).
-- **Nebbia** lineare del colore dell'orizzonte (`styleFog`, 80–520 m): nasconde il fondo e fa profondità.
+## 3. Light, sky, fog
+- Three **times of day** (`TIMES`): `morning`, `golden`, `dusk`. One per level.
+- **Gradient sky** with a sun halo (`skyDome`): top, horizon, bottom.
+- **Light**: hemisphere (sky/ground) + one sun with shadows that follows the player (`styleLights`).
+- Linear **fog** in the horizon colour (`styleFog`, 80–520 m): hides the far end and gives depth.
 
-## 4. Materiali
-- **Toon** con rampa a 3 toni (`toonMaterial`): il sole fa ombre nette, l'emisfera dà il gradiente leggero.
-- Colori per vertice invece di texture quando possibile: una geometria, un materiale, un draw call.
-- Texture solo piccole (palette 32×32, scritte disegnate al volo).
+## 4. Materials
+- **Toon** with a 3-tone ramp (`toonMaterial`): the sun casts sharp shadows, the hemisphere gives a light gradient.
+- Vertex colours instead of textures whenever possible: one geometry, one material, one draw call.
+- Only small textures (32×32 palette, captions drawn on the fly).
 
 ## 5. Camera
-- FOV 60° (in volata fino a ~75°: la velocità si sente).
-- Inseguimento morbido 5–6 m dietro, 2 m sopra, sguardo 20 m avanti: si vede l'orizzonte.
-- **Stacchi netti** per i momenti speciali (arrivo, podio), non carrellate lente.
-- **Scossa** a trauma (`Shake`): urto 0,55, oggetto 0,35, via 0,3. Mai durante la lettura dei numeri.
+- FOV 60° (up to ~75° in a sprint: you feel the speed).
+- Soft chase 5–6 m behind, 2 m above, looking 20 m ahead: the horizon is visible.
+- **Hard cuts** for special moments (finish, podium), not slow dollies.
+- **Trauma shake** (`Shake`): bump 0.55, item 0.35, whoosh 0.3. Never while the player is reading the numbers.
 
-## 6. HUD (in bici, telefono a 1 m)
-- Numeri chiave **≥ 44 px** (watt e posizione 58 px), etichette ≥ 13 px, font condensato pesante, contorno scuro.
-- Angoli fissi: posizione in alto a sinistra, **watt** in alto a destra (colore = zona), distanza al centro,
-  pendenza in un riquadro colorato, marcia sotto la posizione, profilo in basso.
-- Pannelli semitrasparenti, mai a tutto schermo durante la corsa.
-- Nomi sopra gli avversari vicini: al massimo 4, senza sovrapposizioni.
+## 6. HUD (on the bike, phone at 1 m)
+- Key numbers **≥ 44 px** (watts and position 58 px), labels ≥ 13 px, heavy condensed font, dark outline.
+- Fixed corners: position top left, **watts** top right (colour = zone), distance in the centre,
+  gradient in a coloured box, gear under the position, profile at the bottom.
+- Semi-transparent panels, never full screen during the race.
+- Names above nearby opponents: at most 4, without overlaps.
 
-## 6b. Caratteri e testo che non si sovrappone (kit/hud.js)
-**Caratteri** (OFL, self-hosted in `assets/fonts`, `@font-face` in `css/style.css`, licenze in `docs/legal`):
-- **Lilita One** (`FONT_DISPLAY`): titoli e numeri. Esiste solo in 400: non chiedere il grassetto.
-- **Nunito** 700/900 (`FONT_TEXT`): istruzioni, regole, frasi lunghe. Si sceglie con `font: 'text'`.
-- Niente monospace nei giochi. `hudText` di `engine.js` è ora lo stesso `txt` del kit, quindi anche i giochi che lo usano ereditano font e riduzione.
+## 6b. Fonts and text that does not overlap (kit/hud.js)
+**Fonts** (OFL, self-hosted in `assets/fonts`, `@font-face` in `css/style.css`, licences in `docs/legal`):
+- **Lilita One** (`FONT_DISPLAY`): titles and numbers. It exists only in 400: do not ask for bold.
+- **Nunito** 700/900 (`FONT_TEXT`): instructions, rules, long sentences. Chosen with `font: 'text'`.
+- No monospace in the games. `hudText` in `engine.js` is now the same `txt` as the kit, so the games that use it inherit the font and the shrinking.
 
-**Regole d'uso** (vale per tutti i giochi):
-1. Ogni frame di HUD inizia con `hudView(ctx, W, H)`: dichiara la zona sicura (margine 10 px). Da lì `txt()` si riduce da solo
-   (fino al 60%, poi mette "…") per stare nello spazio fra `x` e il bordo; con `maxW` si impone un limite più stretto (es. dentro un riquadro).
-2. Paragrafi: `paragraph(ctx, testo, x, y, { size, maxW, maxH, maxLines })` va a capo alle parole, spezza le parole troppo lunghe e,
-   se serve, riduce il corpo per stare in `maxH`. Restituisce `{ bottom }` per mettere il blocco dopo. `wrapLines()` per misurare prima.
-3. Messaggi a centro schermo: **mai** una lista propria. `const q = new MessageQueue()`; `q.say(testo, { color, prio, dur, big, sub })`;
-   `q.update(dt)` a ogni passo e `q.draw(ctx, W, H, { u, y })` nell'HUD. Un messaggio alla volta; `prio` 0 chiacchiere, 1 normale, 2 grande,
-   3 arrivo/avvisi importanti; chi ha priorità ≥ +2 interrompe quello in corso; un messaggio che aspetta più di 3 s (`maxWait`) sparisce;
-   lo stesso `key` non si accoda due volte. `Base3D.say(testo, colore, durata, big, prio)` e il `say` di Turbo Pedali e L'Orda lo usano già.
-4. Nomi e etichette agganciati a oggetti 3D: calcola la posizione e blocca la x dentro lo schermo (`clamp`), come `drawTags` in Turbo Pedali.
-5. Verifica: `node scripts/design-shots-games.mjs [racer|horde|gruppetto]` e `node scripts/design-shots-d8.mjs [planata|mattoni|shooter] [--lang=it,de]` fotografa menu e partita a 390×780 e 1280×720 in `docs/design/`.
+**Usage rules** (valid for all games):
+1. Every HUD frame starts with `hudView(ctx, W, H)`: it declares the safe zone (10 px margin). From there `txt()` shrinks itself
+   (down to 60%, then adds "…") to fit between `x` and the edge; `maxW` imposes a tighter limit (e.g. inside a box).
+2. Paragraphs: `paragraph(ctx, text, x, y, { size, maxW, maxH, maxLines })` wraps on words, breaks words that are too long and,
+   if needed, reduces the font size to fit `maxH`. It returns `{ bottom }` so the next block can be placed after it. `wrapLines()` to measure first.
+3. Centre-screen messages: **never** your own list. `const q = new MessageQueue()`; `q.say(text, { color, prio, dur, big, sub })`;
+   `q.update(dt)` on every step and `q.draw(ctx, W, H, { u, y })` in the HUD. One message at a time; `prio` 0 chatter, 1 normal, 2 big,
+   3 finish/important warnings; a message with priority ≥ +2 interrupts the current one; a message that waits more than 3 s (`maxWait`) disappears;
+   the same `key` is not queued twice. `Base3D.say(text, color, duration, big, prio)` and the `say` of Breakaway and Horde Run already use it.
+4. Names and labels attached to 3D objects: compute the position and clamp x inside the screen (`clamp`), like `drawTags` in Breakaway.
+5. Check: `node scripts/design-shots-games.mjs [racer|horde|gruppetto]` and `node scripts/design-shots-d8.mjs [planata|mattoni|shooter] [--lang=it,de]` take screenshots of the menu and the game at 390×780 and 1280×720 in `docs/design/`.
 
-## 7. Juice: ogni evento si vede e si sente
-| Evento | Effetto |
+## 7. Juice: every event is seen and heard
+| Event | Effect |
 |---|---|
-| Moneta | scintilla, testo "+1", suono |
-| Oggetto preso / usato | esplosione di particelle, hit-stop 0,05 s, scossa, FOV più largo |
-| Scia | cuneo chiaro sull'asfalto dietro chi ti precede, linee di vento, "whoosh" |
-| Sorpasso | suono, testo; negli ultimi 400 m un attimo di rallentatore |
-| Ultimi 500 m | striscione, campanella |
-| Arrivo | rallentatore 0,22× per ~2 s, coriandoli, stacco di camera |
-| Podio | ciclisti in piedi, braccia alzate, coriandoli, tifo |
-| + / − | marcia evidenziata nell'HUD, click del cambio |
+| Coin | spark, "+1" text, sound |
+| Item picked up / used | particle burst, hit-stop 0.05 s, shake, wider FOV |
+| Slipstream | light wedge on the asphalt behind the rider ahead, wind lines, "whoosh" |
+| Overtake | sound, text; in the last 400 m a moment of slow motion |
+| Last 500 m | banner, bell |
+| Finish | 0.22× slow motion for ~2 s, confetti, camera cut |
+| Podium | riders standing, arms up, confetti, cheering |
+| + / − | gear highlighted in the HUD, shifter click |
 
-Le particelle usano le texture Kenney di `assets/fx`. I suoni sono sintetizzati in `js/games/audio.js`.
+Particles use the Kenney textures in `assets/fx`. Sounds are synthesised in `js/games/audio.js`.
 
-## 8. Prestazioni
-- Obiettivo **60 fps** su Android medio, **minimo 30**.
-- **Draw call < 150**: istanze per tutto ciò che si ripete (`kit/env.js`), personaggio in una mesh sola.
-- Triangoli in vista < 250k (alta), < 120k (bassa).
-- Modelli **.glb ottimizzati** (gltf-transform: weld, semplificazione, quantizzazione, meshopt). Texture piccole.
-- **Qualità automatica** (`kit/quality.js`): si misura il frame rate nei primi secondi e si scende di livello.
+## 8. Performance
+- Target **60 fps** on an average Android phone, **minimum 30**.
+- **Draw calls < 150**: instances for everything that repeats (`kit/env.js`), the character in a single mesh.
+- Triangles in view < 250k (high), < 120k (low).
+- **Optimised .glb models** (gltf-transform: weld, simplify, quantize, meshopt). Small textures.
+- **Automatic quality** (`kit/quality.js`): the frame rate is measured in the first seconds and the level drops if needed.
 
-| Livello | Pixel ratio | Ombre | Bagliore | Densità oggetti | Pubblico |
+| Level | Pixel ratio | Shadows | Glow | Object density | Crowd |
 |---|---|---|---|---|---|
-| Alta | 1,5 | 1024 | sì | 100% | 100% |
-| Media | 1,0 | 512 | no | 70% | 60% |
-| Bassa | 0,75 | no | no | 40% | 30% |
+| High | 1.5 | 1024 | yes | 100% | 100% |
+| Medium | 1.0 | 512 | no | 70% | 60% |
+| Low | 0.75 | no | no | 40% | 30% |
 
-Si può fissare in *Giochi → Qualità grafica*.
+It can be fixed in *Games → Graphics quality*.
 
-## 9. Asset
-- Solo CC0 / MIT / OFL, con `License.txt` nella cartella e crediti in README e `docs/legal/licenses.*.md`.
-- Personaggi: `assets/3d/quaternius/cyclist.glb` (scheletro vero) e `fan.glb` (versione leggera per il pubblico).
-  Le pose si calcolano sulle ossa (IK delle gambe sui pedali), le maglie si colorano per vertice.
-- Peso dei nuovi asset dei giochi: tenere ogni aggiunta sotto i 6 MB.
+## 9. Assets
+- Only CC0 / MIT / OFL, with a `License.txt` in the folder and credits in the README and `docs/legal/licenses.*.md`.
+- Characters: `assets/3d/quaternius/cyclist.glb` (real skeleton) and `fan.glb` (light version for the crowd).
+  Poses are computed on the bones (leg IK on the pedals), jerseys are coloured per vertex.
+- Weight of new game assets: keep each addition under 6 MB.
 
-## 10. Misure di Turbo Pedali (2026-11-08)
-`PW_CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/game-shots.mjs --fps`: tappa 2, in salita fra il pubblico, CPU rallentata 4x.
-Nel cloud non c'è GPU (SwiftShader disegna nella CPU), quindi gli fps del browser di prova (0,4–3) non dicono nulla del telefono.
-Si misura il costo CPU per fotogramma (logica, pose delle ossa, preparazione del disegno, HUD) e il carico per la GPU.
+## 10. Measuring performance
+`PW_CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/game-shots.mjs --fps` (stage 2, climbing among the crowd, CPU throttled 4×).
+In the cloud there is no GPU (SwiftShader draws on the CPU), so the fps of the test browser (0.4–3) say nothing about a phone.
+What is measured is the CPU cost per frame (logic, bone poses, draw preparation, HUD) and the load on the GPU.
 
-| Schermo | Qualità | CPU ms/fotogramma (4x) | fps massimi dalla CPU | Draw call | Triangoli |
-|---|---|---|---|---|---|
-| 390×844 | alta | 22,9 | ~44 | 117 | 318k |
-| 390×844 | media | 19,6 | ~51 | 102 | 240k |
-| 390×844 | bassa | 11,8 | 60 | 66 | 139k |
-| 1280×720 | media | 23,2 | ~43 | 102 | 240k |
-| 1280×720 | bassa | 17,9 | ~56 | 70 | 141k |
+Reference values for Breakaway (390×844, CPU 4×): high 22.9 ms/frame, 117 draw calls, 318k triangles; medium 19.6 ms, 102, 240k; low 11.8 ms, 66, 139k.
+Draw calls stay under 150. The real frame rate must be checked on an average Android phone: automatic quality drops a level by itself
+if the first seconds run below 48 fps. Each game has its own `scripts/<game>-shots.mjs [--fps]` that prints the same numbers.
 
-Draw call sempre sotto 150. Il frame rate vero va verificato su un Android medio: la qualità automatica scende da sola
-se nei primi secondi si va sotto 48 fps.
+## 11. Per-game visual notes
 
-## 11. L'Orda di notte (2026-11-15)
-Eccezione dichiarata alla regola «mai cupo»: L'Orda è ambientata in un cimitero di notte, ma resta leggibile (luna, nebbia leggera, lampioni, asfalto con bordi chiari).
-- **Nemici** (Meshy, scheletro automatico): vicini con le ossa e animazione procedurale (`kit/walkers.js`: camminata/corsa barcollante, braccia avanti, colpo, caduta all'indietro); lontani istanze in posa cotta da ~1.000 triangoli (`*-lo.glb`), con le gambe che oscillano nel vertex shader. Tetto di nemici con le ossa: alta 26, media 16, bassa 9.
-- **Giocatore e alleati**: ciclista Meshy con la bici (gli alleati col modello leggero `fan-lo.glb`), blaster Meshy sul manubrio che cambia colore e misura a ogni arma.
-- **Mondo** (`horde-world.js`): strada infinita, scenografia istanziata e deterministica (lapidi, cancellata, cripta, alberi secchi, lampioni), 3 luci puntiformi sui lampioni più vicini (1 in qualità bassa), portali con arco di pietra Meshy (energia blu o rossa).
-- **HUD**: una riga in alto (punteggio, ondata, cuori), in basso la potenza con numero da 56–64 px, l'arma e la barra dell'evoluzione. Niente cerchi o anelli sotto i personaggi.
-- Misure e foto: `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/horde-shots.mjs [--fps]` (foto in `docs/giochi-shots/horde-*.png`).
+### Horde Run (graveyard at night)
+A declared exception to the "never gloomy" rule: it is set in a graveyard at night but stays readable (moon, light fog, street lamps, asphalt with light edges).
+- **Enemies** (Meshy, automatic skeleton): near ones have bones and procedural animation (`kit/walkers.js`: staggering walk/run, arms forward, hit, fall backwards); far ones are baked-pose instances of ~1,000 triangles (`*-lo.glb`) whose legs swing in the vertex shader. Cap on enemies with bones: high 26, medium 16, low 9.
+- **Player and allies**: Meshy cyclist with the bike (allies use the light model `fan-lo.glb`), a Meshy blaster on the handlebars that changes colour and size with each weapon.
+- **World** (`horde-world.js`): endless road, instanced deterministic scenery (gravestones, fence, crypt, dead trees, street lamps), 3 point lights on the nearest lamps (1 on low quality), portals with a Meshy stone arch (blue or red energy).
+- **HUD**: one line at the top (score, wave, hearts), at the bottom the power with a 56–64 px number, the weapon and the evolution bar. No circles or rings under the characters.
+- Measurements and screenshots: `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/horde-shots.mjs [--fps]` (screenshots in `docs/giochi-shots/horde-*.png`).
 
-Misure de L'Orda (2026-11-15), 90 nemici in scena, CPU 4x, 390×780 (come sopra: gli fps del browser di prova non dicono nulla del telefono):
+### Updraft (internal id `planata`)
+Same style as the other games; gameplay is watts = altitude, gates, ridges, bridges.
+- **Plane**: Meshy model (`assets/3d/meshy/plane.glb`, 3,200 triangles) with a propeller that spins at the cadence (blades + a blurred disc at high cadence), nose up and down with altitude, shadow on the ground.
+- **World** (`planata.js`): terrain made of recycled chunks with vertex colours (patchwork and striped fields, woods, rock, sandy shore), a flat valley in the middle and hills at the sides, lakes every ~300 m (toon water plane). The shape depends only on position, so it is always the same.
+- **Instances** (one per model, rewritten for each new chunk): Quaternius trees and bushes, cypresses, Meshy houses/church/huts/mill in villages, Meshy clouds (`cloud.glb`) high and low, floating lighthouse islands (`island.glb`). Density and distance of the silhouettes follow the quality level (`kit/quality.js`).
+- **Gates**: ring with white and orange wedges, a luminous film and a beam down to the ground (so the height reads). Hit: green and widens; missed: grey and red. Ridges and bridges: low-poly rock with grass on top.
+- **Speed**: wind lines around the plane (stronger when pushing above your average or in a sprint), wider field of view, shake on impact.
+- **HUD**: three boxes (points, metres, watts ≥ 44 px), hearts, combo, altimeter with the band of watts to ride and a "ring/ridge/bridge in N m" line. Screenshots and measurements: `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/planata-shots.mjs [--fps]`.
 
-| Qualità | Prima: CPU ms · draw call · triangoli | Dopo: CPU ms · draw call · triangoli |
-|---|---|---|
-| alta | 30,2 · 798 · 213k | 23,7 · 108 · 367k |
-| media | 34,2 · 787 · 214k | 15,4 · 57 · 249k |
-| bassa | 24,8 · 464 · 161k | 12,3 · 43 · 182k |
+### Feed Zone (internal id `mattoni`)
+`js/games/mattoni.js`; the workout plan is the one of Horde Run (`horde-plan.js`).
+- **Idea**: you are the cyclist and the bike is the paddle; the bottle bounces off the soigneurs who scroll past in three rows and delivers the musettes. The goal is always visible: "FEED ZONE 3/4" and "MUSETTE 12/22".
+- **Cadence = bottle speed** (8.6 m/s at 85 rpm, from 0.8 to 1.35 times). **Watts in the zone (≥ 92% of the target)** = a turbo that charges (×1…×4 on points); with the turbo half full the next hit is a "SMASH" (flaming bottle). In **rushes** (effort and sprint), while you hold the target the bottle is permanently on fire: it pierces the rows and every delivery counts double.
+- **Soigneurs**: normal musettes (1 hit), crates (2 hits), a gel soigneur (a gel drops: turbo +50% and a life). The rows are rigid chains that go back and forth; a delivered one comes back after 4–6 s growing from zero (nothing pops in).
+- **Zones**: each wave changes the formation (rows of musettes, gel station, side wind, team car); the 4th and the last end with the **team car** (a mini-boss with a life bar, Meshy model `team_car.glb`) that is beaten with flaming hits. If the block ends first it leaves.
+- **Losing the bottle** costs the combo, 50% of the turbo and a life; at zero lives (never in the first minute) there is a "puncture" and you restart with 3 lives. Never a game over. Whoever stops pedalling pauses the game.
+- **Stars** as in Horde Run: 1 = finished; 2 = half of the efforts; 3 = 80% of the efforts, all the cars, at most 3 punctures. Records and stars in `localStorage` (`feedBest:<length>:<level>`).
+- **Tests**: `tests/feedzone.spec.mjs` (deterministic bot at 0.6/0.8/1.0/1.2 × FTP, distracted bot, pause, screen measurements, controls). The game's random seed comes from `game.seed`.
+- Arena and models: Meshy barriers, cheering crowd, cypresses, feed-zone tents, hay bales, finish arch, hills and mountains in the fog; a different time of day for each level (`golden`, `morning`, `dusk`). The Meshy gel model was discarded because its texture has a logo.
+- Measurements and screenshots: `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/mattoni-shots.mjs [--fps] [--levels]` (screenshots in `docs/giochi-shots/mattoni-*.png`).
 
-## 12. Planata (2026-11-15)
-Stesso stile degli altri tre giochi; gameplay invariato (watt = quota, porte, creste, ponti).
-- **Aereo**: modello Meshy (`assets/3d/meshy/plane.glb`, 3.200 triangoli) con elica che gira alla cadenza (pale + disco sfocato a cadenza alta), muso su e giù con la quota, ombra sul terreno.
-- **Mondo** (`planata.js`): terreno a pezzi riciclati con colori per vertice (campi a toppe e strisce, bosco, roccia, riva sabbiosa), valle piatta al centro e colline ai lati, laghi ogni ~300 m (piano d'acqua toon). La forma dipende solo dalla posizione, quindi è sempre uguale.
-- **Istanze** (una per modello, riscritte a ogni pezzo nuovo): alberi e cespugli Quaternius, cipressi, case/chiesa/capanne/mulino Meshy a villaggi, nuvole Meshy (`cloud.glb`) alte e basse, isole col faro (`island.glb`) in aria. Densità e distanza delle sagome seguono la qualità (`kit/quality.js`).
-- **Porte**: anello a spicchi bianchi e arancio, pellicola luminosa e raggio che scende a terra (si legge l'altezza). A segno: verde e si allarga; mancata: grigio e rossa. Creste e ponti: roccia a poligoni con erba sopra.
-- **Velocità**: linee di vento intorno all'aereo (più forti spingendo oltre la tua media o in sprint), campo visivo che si allarga, scossa all'urto.
-- **HUD**: tre riquadri (punti, metri, watt ≥ 44 px), cuori, combo, altimetro con la banda dei watt da fare e riga «anello/cresta/ponte tra N m». Foto e misure: `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/planata-shots.mjs [--fps]`.
-
-Misure di Planata (2026-11-15), demo in volo, CPU 4x, stesso script prima/dopo (gli fps del browser di prova non dicono nulla del telefono):
-
-| Schermo · qualità | Prima: CPU ms · draw call · triangoli | Dopo: CPU ms · draw call · triangoli |
-|---|---|---|
-| 390×780 alta | 7,5 · 144 · 23k | 8,6 · 74 · 196k |
-| 390×780 media | 5,0 · 127 · 21k | 8,9 · 60 · 138k |
-| 390×780 bassa | 4,1 · 99 · 21k | 6,7 · 62 · 93k |
-| 1280×720 alta | 7,4 · 146 · 23k | 10,8 · 76 · 198k |
-| 1280×720 media | 5,8 · 130 · 23k | 11,7 · 62 · 137k |
-| 1280×720 bassa | 4,4 · 98 · 19k | 8,0 · 59 · 96k |
-
-Tutto resta sotto i 16,6 ms (60 fps dalla CPU a 4x); i draw call si dimezzano. I triangoli salgono perché ora c'è un mondo vero.
-## 12. Mattoni (2026-11-15)
-Gameplay invariato (rimbalzi, cadenza = velocità della palla, + / − muovono la racchetta), grafica e tema ciclismo:
-- **Arena**: strada di tappa in prospettiva (asfalto, cordoli rosso-bianchi, traguardo a scacchi), transenne Meshy sui lati, pubblico Meshy che salta, cipressi, tende del ristoro, balle di fieno, arco del traguardo, colline e montagne nella nebbia. Ora del giorno diversa a ogni livello (`golden`, `morning`, `dusk`).
-- **Sfondo animato**: bandierine al vento, nuvole che scorrono, pubblico che salta, ruote che girano.
-- **Racchetta**: ciclista Meshy con bici dietro un assale con due ruote (si allarga col power-up).
-- **Blocchi**: borracce Meshy (tinte ruotate per riga), cartelli di tappa (2 colpi), balle di fieno (3 colpi), transenne indistruttibili. Livelli a forma di salita, ruota, maglia, cuore e muro di fieno.
-- **Power-up**: gel (racchetta larga, palle ×3, palla lenta) e maglia (vita), procedurali. Il gel Meshy è scartato: la texture ha un logo.
-- **Juice**: esplosioni Kenney, coriandoli, scossa, hit-stop 0,03 s sui blocchi, rallentatore 0,25× a fine livello, palla infuocata in sprint.
-- **HUD**: tre riquadri (livello e vite, punti, watt), barra potenza, riga con velocità palla, combo e potenziamenti attivi.
-- Modelli: `bottle.glb` (1.037 triangoli) e `stage_sign.glb` (456) da `decimate.py`; crediti Meshy spesi in questa sessione: 0 (modelli già generati, catalogo `scripts/meshy/catalog-mattoni.json`).
-- Foto e misure: `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/mattoni-shots.mjs [--fps] [--levels]` (foto in `docs/giochi-shots/mattoni-*.png`, 390×780 e 1280×720).
-
-Misure di Mattoni (CPU 4x, 390×780; prima → dopo): alta 6,5 → 10,1 ms · 128 → 140 draw call · 4k → 284k triangoli; media 7,6 → 9,5 ms · 114 → 121 · 4k → 200k; bassa 3,9 → 8,5 ms · 60 → 78 · 2k → 103k. A 1280×720 dopo: 9,2 / 11,9 / 6,4 ms. Sempre sotto i 16 ms di CPU (60 fps); i triangoli di media e bassa superano gli obiettivi, da riprovare su un telefono vero. Il vecchio Mattoni, al primo power-up, andava in errore (`power()` copriva la potenza letta dal rullo): corretto.
-### Feed Zone: gameplay rifatto (le righe sopra descrivono la versione precedente)
-`js/games/mattoni.js` (id `mattoni`, nome **Feed Zone** in tutte le lingue); il piano dell'allenamento è quello di Horde Run (`horde-plan.js`).
-- **Idea**: sei il ciclista e la bici fa da racchetta; la borraccia rimbalza sui soigneur che scorrono in tre file e consegna le musette. Obiettivo sempre visibile: «FEED ZONE 3/4» e «MUSETTE 12/22».
-- **Cadenza = velocità della borraccia** (8,6 m/s a 85 giri, da 0,8 a 1,35 volte). **Watt in zona (≥ 92 % della richiesta)** = turbo che si carica (×1…×4 sui punti); con il turbo a metà il colpo successivo è un «SMASH» (borraccia infuocata). Nei **rush** (sforzo e scatto) tenendo il bersaglio la borraccia è infuocata di continuo: trapassa le file e ogni consegna vale doppio.
-- **Soigneur**: musette normali (1 colpo), casse (2 colpi), soigneur col gel (cade un gel: turbo +50 % e una vita). Le file sono catene rigide che vanno avanti e indietro; chi è consegnato torna dopo 4–6 s crescendo da zero (niente comparse di colpo).
-- **Zone**: ogni ondata cambia formazione (file di musette, stazione gel, vento laterale, auto di squadra); la 4ª e l'ultima chiudono con l'**auto della squadra** (mini-boss con barra vita, modello Meshy `team_car.glb`) che si batte con i colpi infuocati. Se il blocco finisce prima se ne va.
-- **Perdere la borraccia** costa il combo, il 50 % del turbo e una vita; a zero vite (mai nel primo minuto) c'è una «foratura» e si riparte con 3 vite. Mai game over. Chi smette di pedalare va in pausa.
-- **Stelle** come Horde Run: 1 = finita; 2 = metà degli sforzi; 3 = 80 % degli sforzi, tutte le auto, al massimo 3 forature. Record e stelle in `localStorage` (`feedBest:<durata>:<livello>`).
-- **Prove**: `tests/feedzone.spec.mjs` (bot deterministico a 0,6/0,8/1,0/1,2 × FTP, bot distratto, pausa, misure dello schermo, comandi). Il caso del gioco viene da `game.seed`.
-
-## 12. Pedal Strike (2026-11-15, gameplay rifatto il 2026-11-15 sera)
-Sparatutto in corsa in 3D (`js/games/strike3d.js`, mondo in `js/games/strike-world.js`, forma dell'allenamento in `js/games/strike-plan.js`).
-La grafica (porto, passo, Motor City, gru, boss) è quella di prima; sono cambiati inquadratura, ritmo, nemici e difficoltà.
-- **La partita è un allenamento** (regole di `docs/giochi-design.md`): 5, 10 o 20 minuti scelti nel menu, livello Facile/Normale/Difficile (−10 % / 0 / +10 %).
-  Avvio facile 45–60 s al 60 % FTP, ondate di sforzo (95–110 %) e recupero (58 %), scatti di 10 s al 135 % (sempre seguiti da 40 s facili),
-  **mini-boss a metà** e **boss finale** al 105 %, 30 s di defaticamento con il riepilogo. Difficoltà che si adatta: 2 sforzi falliti di fila −5 %, 3 riusciti +5 % (±15 %).
-  Uno sforzo è riuscito se la media del blocco è almeno il 95 % della richiesta. In alto: tempo che manca, profilo dell'allenamento con il segno «sei qui» e gli esiti (✓), scheda del blocco con i watt richiesti e la barra della potenza.
-- **Camera alle spalle, di tre quarti** (non più di lato): il ciclista occupa circa il 30 % dell'altezza a 390×780, la strada e i nemici davanti. La nebbia è più vicina e il paesaggio viene preparato 170 m avanti: gli oggetti nuovi nascono dentro la foschia.
-- **Comandi**: + corsia a destra, − corsia a sinistra (una sola funzione in partita). Nel menu − passa alla riga dopo, + cambia la riga (Parti, Durata, Livello, Mondo, Eroe).
-  Si spara da soli; i watt in % della FTP decidono la cadenza; **in zona** durante uno sforzo i colpi sono pieni (×1,5, scia verde).
-- **Nemici diversi**: soldato a piedi (spara un colpo annunciato), cecchino sul disco volante (tiene la distanza e spara da lontano: si schiva cambiando corsia), bestione (la corsia diventa rossa, poi carica), **robot con lo scudo** (cede solo sopra i watt scritti sopra la sua testa), drone (bombe sul cerchio rosso), sciami di piccoli robot, transenne. Ogni attacco si vede almeno 0,6 s prima.
-- **Boss con fasi legate allo sforzo**: scudo a esagoni che cede solo tenendo i watt richiesti per 10 s (mini-boss) o 15–20 s (boss), poi si spara; sotto metà vita «SCATTO: colpo finale» (l'overdrive si carica più in fretta). Vita tarata sulla FTP: a quella potenza cade in ~9 s (mini) / ~16 s (boss) di fuoco. Se il blocco finisce prima, si ritira (niente stella, nessuna punizione).
-- **Serie di colpi** con traguardi (×5, ×10, ×20…: punti e overdrive), **potenziamenti a tempo** che cadono dai robot (mitraglia, ventaglio, razzi, laser 10–12 s; scudo 8 s; punti ×2 10 s; cuore), gabbie da liberare (compagno che spara per 30 s).
-- **OVERDRIVE** (scatto sopra il 135 %): rallentatore 0,22× per un istante, lampo bianco, onda d'urto, campo visivo che si allarga, tutti i robot vicini saltano in aria a catena, poi 7 s di colpi su tre corsie, invulnerabile.
-- **Fine partita**: 1–3 stelle (★ finita · ★★ almeno il 60 % degli sforzi · ★★★ almeno l'85 % e boss abbattuto), record per durata, eroi sbloccati con le stelle (Vale a 3, Nonno Gino a 6). Niente game over: finiti i cuori ci si rialza dopo 2 s. Chi smette di pedalare va in pausa.
-- **Demo senza rullo**: 0,8 × FTP, segue gli sforzi e fa gli scatti, pilota automatico.
-- Strumenti: `scripts/strike-bot.mjs` (bot a 4 livelli di potenza), `scripts/strike-film.mjs` (fotogrammi a 10 al secondo e strisce `docs/giochi-shots/strike-striscia-*.png`), `scripts/strike-shots.mjs [--fps] [--level=0|1|2]` (foto e misure).
-
-Misure di Pedal Strike dopo il nuovo gameplay (Motor City, sforzo con 11–13 nemici, scudi e gabbia; CPU 4x; come sopra gli fps del browser di prova non contano):
-
-| Schermo | Qualità | CPU ms/fotogramma (4x) | Draw call | Triangoli |
-|---|---|---|---|---|
-| 390×780 | alta | 20,6 | 89 | 177k |
-| 390×780 | media | 17,5 | 77 | 165k |
-| 390×780 | bassa | 20,6 (16,1 in un'altra prova) | 93 | 114k |
-| 1280×720 | media | 20,2 | 73 | 175k |
-| 1280×720 | bassa | 20,9 | 58 | 123k |
-
-Bot (`scripts/strike-bot.mjs`, 5 min, Normale, FTP 200): 0,6 × → ★, 0,8 × → ★, 1,0 × → ★★★, 1,2 × → ★★★; primo evento a 2,4 s, mai più di 4 s senza eventi, 92–119 eventi al minuto.
+### Pedal Strike
+3D run-and-gun shooter (`js/games/strike3d.js`, world in `js/games/strike-world.js`, workout shape in `js/games/strike-plan.js`).
+- **The game is a workout** (rules in `docs/games/DESIGN-RULES.md`): 5, 10 or 20 minutes chosen in the menu, Easy/Normal/Hard level (−10% / 0 / +10%).
+  Easy start 45–60 s at 60% FTP, effort waves (95–110%) and recovery (58%), 10 s sprints at 135% (always followed by 40 s of easy riding),
+  a **mini-boss in the middle** and a **final boss** at 105%, 30 s of cool-down with the summary. Adaptive difficulty: 2 failed efforts in a row −5%, 3 successful +5% (±15%).
+  An effort succeeds if the block average is at least 95% of the target. At the top: time left, workout profile with a "you are here" mark and the results (✓), block card with the watts asked and the power bar.
+- **Camera behind the player, three-quarter view**: the cyclist takes about 30% of the height at 390×780, the road and the enemies ahead. The fog is closer and the scenery is prepared 170 m ahead: new objects are born inside the haze.
+- **Controls**: + lane to the right, − lane to the left (a single function in play). In the menu − goes to the next row, + changes the row (Start, Length, Level, World, Hero).
+  Shooting is automatic; watts in % of FTP set the fire rate; **in the zone** during an effort the shots are full (×1.5, green trail).
+- **Different enemies**: foot soldier (fires one announced shot), sniper on the flying saucer (keeps its distance and fires from afar: dodge by changing lane), brute (the lane turns red, then charges), **shielded robot** (yields only above the watts written over its head), drone (bombs on the red circle), swarms of small robots, barriers. Every attack is visible at least 0.6 s ahead.
+- **Bosses with phases tied to effort**: a hexagon shield that yields only when you hold the watts asked for 10 s (mini-boss) or 15–20 s (boss), then you fire; below half health "SPRINT: final blow" (overdrive charges faster). Health tuned to FTP: at that power it falls in ~9 s (mini) / ~16 s (boss) of fire. If the block ends first, it retreats (no star, no punishment).
+- **Hit streaks** with milestones (×5, ×10, ×20…: points and overdrive), **timed power-ups** dropped by robots (machine gun, fan, rockets, laser 10–12 s; shield 8 s; points ×2 10 s; heart), cages to open (a companion who fires for 30 s).
+- **OVERDRIVE** (sprint above 135%): 0.22× slow motion for an instant, white flash, shock wave, wider field of view, every nearby robot blows up in a chain, then 7 s of shots over three lanes, invulnerable.
+- **End of the game**: 1–3 stars (★ finished · ★★ at least 60% of the efforts · ★★★ at least 85% and boss down), a record per length, heroes unlocked with stars (Vale at 3, Grandpa Gino at 6). No game over: when the hearts run out you get back up after 2 s. Whoever stops pedalling pauses the game.
+- **Demo without a trainer**: 0.8 × FTP, follows the efforts and does the sprints, autopilot.
+- Tools: `scripts/strike-bot.mjs` (bot at 4 power levels), `scripts/strike-film.mjs` (frames at 10 per second and strips `docs/giochi-shots/strike-striscia-*.png`), `scripts/strike-shots.mjs [--fps] [--level=0|1|2]` (screenshots and measurements).

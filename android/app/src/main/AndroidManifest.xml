@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:usesCleartextTraffic="false"
         android:icon="@mipmap/ic_launcher"
         android:label="${appLabel}"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -42,17 +46,23 @@
         </provider>
     </application>
 
-    <!-- Permissions -->
+    <!-- Permessi (docs/android-and-install.md, store/data-safety.md).
+         tools:node="replace" sulle voci che il plugin Bluetooth dichiara a sua volta, in modo che la fusione dei manifest
+         lasci SEMPRE la nostra versione (maxSdkVersion 30, neverForLocation, required) e non quella più larga del plugin. -->
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Bluetooth: rullo, Zwift Click, cardio (client) e ponte verso Garmin (sensore) -->
-    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- Bluetooth Android 12+: cerca e collega rullo, Zwift Click, cardio. La posizione non si usa mai (neverForLocation). -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" tools:targetApi="s" tools:node="replace" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" tools:node="replace" />
+    <!-- Ponte verso Garmin: il telefono si annuncia come sensore (GarminBridgePlugin, advertising BLE) -->
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <!-- Android 11 e precedenti: le vecchie regole del Bluetooth chiedono anche la posizione per cercare. Solo fino all'API 30. -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" tools:node="replace" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" tools:node="replace" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" tools:node="replace" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="30" tools:node="replace" />
     <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
+    <!-- POST_NOTIFICATIONS, RECEIVE_BOOT_COMPLETED e WAKE_LOCK arrivano da @capacitor/local-notifications (promemoria dei piani);
+         il permesso notifiche si chiede solo quando l'utente accende i promemoria (js/plans-ui.js). -->
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" tools:replace="android:required" />
 </manifest>

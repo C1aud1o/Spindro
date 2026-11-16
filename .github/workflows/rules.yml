@@ -1,4 +1,4 @@
-name: Regole Firestore e Cloud Functions
+name: Firestore rules and Cloud Functions
 
 on:
   push:
@@ -30,7 +30,7 @@ concurrency:
 
 jobs:
   regole:
-    name: Test delle regole (emulatore Firestore)
+    name: Rules tests (Firestore emulator)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -38,7 +38,7 @@ jobs:
         working-directory: firebase
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4   # l'emulatore Firestore è un .jar
+      - uses: actions/setup-java@v4   # the Firestore emulator is a .jar
         with:
           distribution: temurin
           java-version: 21
@@ -55,7 +55,7 @@ jobs:
       - run: npm test
 
   functions:
-    name: Cloud Functions (compilazione e test)
+    name: Cloud Functions (build and tests)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -72,12 +72,12 @@ jobs:
       - run: npm test
 
   account:
-    name: Account e sincronizzazione (Playwright + emulatore Auth/Firestore)
+    name: Account and sync (Playwright + Auth/Firestore emulator)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4   # l'emulatore Firestore è un .jar
+      - uses: actions/setup-java@v4   # the Firestore emulator is a .jar
         with:
           distribution: temurin
           java-version: 21
@@ -93,8 +93,8 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm ci
         working-directory: firebase
-      # l'SDK Firebase si scarica da gstatic (versione fissa in js/config.js): serve la rete, che su GitHub c'è
-      - name: Test dell'account contro gli emulatori
+      # the Firebase SDK is downloaded from gstatic (pinned version in js/config.js): this needs network access, which GitHub runners have
+      - name: Account tests against the emulators
         working-directory: firebase
         run: >
           npx firebase emulators:exec --config ../firebase.json --project demo-spindro --only auth,firestore

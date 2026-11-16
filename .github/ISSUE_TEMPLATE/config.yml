@@ -3,6 +3,9 @@ contact_links:
   - name: Try the web app
     url: https://spindro.fun
     about: Use Spindro in your browser, no installation needed.
+  - name: Documentation
+    url: https://github.com/C1aud1o/Spindro/blob/beta/docs/README.md
+    about: Contributor docs - architecture, supported trainers, controllers, games, translations.
   - name: Questions and ideas (Discussions)
     url: https://github.com/C1aud1o/Spindro/discussions
     about: Ask a question, share your setup, or discuss an idea before opening an issue.

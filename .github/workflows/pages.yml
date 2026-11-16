@@ -1,15 +1,15 @@
-name: Pubblica su GitHub Pages
+name: Publish to GitHub Pages
 
-# Un solo deploy contiene sempre entrambi gli ambienti (vedi docs/environments.md):
-#   produzione (ramo main): sito alla radice, app in /app/, APK in /app/spindro.apk
-#   beta (ramo beta):       solo l'app in /beta/, APK in /beta/spindro-beta.apk (noindex)
-# Il deploy parte sempre dal ramo main (l'ambiente "github-pages" accetta solo il ramo predefinito):
-# un push su beta lo avvia tramite pages-beta.yml.
+# One deploy always contains both environments (see docs/environments.md):
+#   production (branch main): site at the root, app in /app/, APK in /app/spindro.apk
+#   beta (branch beta):       app only in /beta/, APK in /beta/spindro-beta.apk (noindex)
+# The deploy always starts from the main branch (the "github-pages" environment only accepts the default branch):
+# a push to beta starts it through pages-beta.yml.
 on:
   push:
     branches: [main]
   workflow_dispatch:
-  # quando è pronto un nuovo APK, ripubblica con il file aggiornato
+  # when a new APK is ready, publish again with the updated file
   workflow_run:
     workflows: ["App Android (APK)"]
     types: [completed]
@@ -26,7 +26,7 @@ concurrency:
 
 jobs:
   deploy:
-    # dopo una build Android, ripubblica solo se era una build riuscita di main o beta
+    # after an Android build, publish again only if it was a successful build of main or beta
     if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && contains(fromJSON('["main","beta"]'), github.event.workflow_run.head_branch))
     runs-on: ubuntu-latest
     environment:
@@ -35,10 +35,10 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Il ramo beta esiste?
+      - name: Does the beta branch exist?
         id: branches
         run: |
-          if gh api "repos/$GITHUB_REPOSITORY/branches/beta" --silent; then echo "beta=true" >> "$GITHUB_OUTPUT"; else echo "beta=false" >> "$GITHUB_OUTPUT"; echo "::notice::Ramo beta assente: pubblico solo la produzione"; fi
+          if gh api "repos/$GITHUB_REPOSITORY/branches/beta" --silent; then echo "beta=true" >> "$GITHUB_OUTPUT"; else echo "beta=false" >> "$GITHUB_OUTPUT"; echo "::notice::No beta branch: publishing production only"; fi
       - uses: actions/checkout@v4
         with:
           ref: main
@@ -53,22 +53,22 @@ jobs:
         with:
           node-version: 22
 
-      # ---- produzione: dal codice di main ----
-      - name: Produzione, app (solo i file web, senza android/)
+      # ---- production: from the code of main ----
+      - name: Production app (web files only, without android/)
         working-directory: main
         run: |
           node scripts/copy-web.mjs
-          [ -f www/sw.js ] || cp sw.js www/   # copy-web di main non ancora aggiornato
+          [ -f www/sw.js ] || cp sw.js www/   # copy-web on main not updated yet
         env:
           CHANNEL: prod
           WEB_DEPLOY: '1'
           VERSION_CODE: web-${{ github.run_number }}
-      - name: Produzione, sito vetrina (site/dist)
+      - name: Production showcase site (site/dist)
         working-directory: main
         run: node site/build.mjs
 
-      # ---- beta: dal codice di beta ----
-      - name: Beta, app
+      # ---- beta: from the code of beta ----
+      - name: Beta app
         if: steps.branches.outputs.beta == 'true'
         working-directory: beta
         run: node scripts/copy-web.mjs
@@ -77,20 +77,20 @@ jobs:
           WEB_DEPLOY: '1'
           VERSION_CODE: web-${{ github.run_number }}
 
-      # Struttura pubblicata. Per cambiare dominio: CNAME di main e "siteUrl" in site/config.json.
-      - name: Assembla pub/
+      # Published layout. To change the domain: CNAME on main and "siteUrl" in site/config.json.
+      - name: Assemble pub/
         run: |
           rm -rf pub && mkdir -p pub/app
           cp -r main/site/dist/. pub/
           cp -r main/www/. pub/app/
-          gh release download app-android -p spindro.apk -D pub/app --repo "$GITHUB_REPOSITORY" || echo "APK non ancora disponibile"
+          gh release download app-android -p spindro.apk -D pub/app --repo "$GITHUB_REPOSITORY" || echo "APK not available yet"
           [ -f pub/app/spindro.apk ] && cp pub/app/spindro.apk pub/app/ride-freedom.apk  # vecchi link
           if [ "${{ steps.branches.outputs.beta }}" = "true" ]; then
             mkdir -p pub/beta
             cp -r beta/www/. pub/beta/
-            gh release download app-android-beta -p spindro-beta.apk -D pub/beta --repo "$GITHUB_REPOSITORY" || echo "APK beta non ancora disponibile"
+            gh release download app-android-beta -p spindro-beta.apk -D pub/beta --repo "$GITHUB_REPOSITORY" || echo "beta APK not available yet"
           fi
-          # /beta/ non va indicizzato (oltre al meta noindex nell'app); vale anche se robots.txt di main è più vecchio
+          # /beta/ must not be indexed (besides the noindex meta in the app); this also holds when the robots.txt on main is older
           grep -q '^Disallow: /beta/' pub/robots.txt || printf 'User-agent: *\nDisallow: /beta/\n' >> pub/robots.txt
           cp main/CNAME pub/CNAME
           touch pub/.nojekyll

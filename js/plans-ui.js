@@ -55,7 +55,7 @@ export function renderHome(riding = false) {
       <span class="pl-act"><button class="link" data-pl-move="${s.key}">${t('plans.moveTomorrow')}</button><button class="link" data-pl-skip="${s.key}">${t('plans.skip')}</button></span>`;
   }
   const label = { done: t('plans.st.done'), skipped: t('plans.st.skipped'), missed: t('plans.st.missed'), today: t('plans.st.today'), late: t('plans.st.late'), future: t('plans.st.future') };
-  el.innerHTML = `<small class="pl-sub">${esc(t(`plans.${plan.id}.name`))}${pr.started ? ` · ${t('plans.progress', { week: pr.week, weeks: pr.weeks, done: pr.done, total: pr.total })}` : ''}${pr.deload ? ` · ${t('plans.deload')}` : ''}</small>
+  el.innerHTML = `<small class="pl-sub">${esc(t(`plans.${plan.id}.name`))}${pr.started ? ` · ${t('plans.progress', { week: pr.week, weeks: pr.weeks, done: pr.done, count: pr.done, total: pr.total })}` : ''}${pr.deload ? ` · ${t('plans.deload')}` : ''}</small>
     ${body}
     ${pr.started ? `<ul class="pl-week" aria-label="${t('plans.thisWeek')}">${pr.inWeek.map((x) => `<li class="${x.status}" aria-label="${esc(`${wkName(x.wk)}, ${dayLabel(x.day)}: ${label[x.status]}`)}"><span class="pl-ico" aria-hidden="true">${ICON[x.status]}</span><span>${dayLabel(x.day)}</span><small>${esc(wkName(x.wk))}</small></li>`).join('')}</ul>` : ''}`;
   if (w) requestAnimationFrame(() => { const c = el.querySelector('.today-profile'); if (c && w.steps) drawProfile(c, w, ctx.ftp ? ctx.ftp() : 200); });
@@ -92,7 +92,7 @@ export function renderPane() {
     const rs = remindSettings();
     const all = P.withStatus(state, today());
     el.innerHTML = `<div class="pl-active"><h3>${esc(t(`plans.${plan.id}.name`))}</h3>
-      <p class="fine">${pr.started ? t('plans.progress', { week: pr.week, weeks: pr.weeks, done: pr.done, total: pr.total }) : t('plans.startsOn', { day: dayLabel(state.start) })}</p>
+      <p class="fine">${pr.started ? t('plans.progress', { week: pr.week, weeks: pr.weeks, done: pr.done, count: pr.done, total: pr.total }) : t('plans.startsOn', { day: dayLabel(state.start) })}</p>
       ${reminderControls(rs)}
       <details class="pl-all"><summary>${t('plans.allSessions')}</summary>${plan.weeks.map((_, w) => `<h4>${t('plans.weekN', { n: w + 1 })}${plan.deload.includes(w + 1) ? ` · ${t('plans.deload')}` : ''}</h4><ul class="pl-list">${all.filter((s) => s.w === w).map((s) => `<li class="${s.status}"><span class="pl-ico" aria-hidden="true">${ICON[s.status]}</span><span>${dayLabel(s.day)}</span><b>${esc(wkName(s.wk))}</b></li>`).join('')}</ul>`).join('')}</details>
       <button class="ghost danger" id="planAbandon">${t('plans.abandon')}</button></div>`;

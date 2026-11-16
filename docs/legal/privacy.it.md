@@ -25,7 +25,7 @@ L'app salva solo sul tuo dispositivo, nella memoria locale del browser (`localSt
 
 L'app web tiene anche una copia dei propri file nella cache del browser (service worker) per funzionare offline. Non usa cookie né IndexedDB.
 
-Con l'app Android, il sistema può includere questi dati nel backup Google (`allowBackup` è attivo). È una scelta del tuo dispositivo, non di Spindro.
+Su Android i dati di Spindro **non** entrano nel backup cloud di Google (l'app li esclude di proposito, perché lo storico delle uscite è personale). Vengono copiati solo quando passi direttamente da un telefono a un altro con il trasferimento di Android (cavo o configurazione guidata), così non perdi lo storico cambiando telefono. Puoi anche esportare ogni uscita come file FIT quando vuoi.
 
 ## Bluetooth e sensori
 
