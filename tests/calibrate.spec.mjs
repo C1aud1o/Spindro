@@ -18,10 +18,10 @@ test('calibrazione: con un sensore di cadenza vero il rapporto è cadenza / velo
   await page.click('#calibrateCad');
   await page.click('.calib-go');
   await page.clock.runFor(23000);
-  await expect(page.locator('.calib-msg')).toContainText('2.86');
+  await expect(page.locator('.calib-msg')).toContainText('2,86');
   expect(await page.evaluate(() => localStorage.getItem('cadFactor'))).toBe('2.86');
   await page.click('.calib-cancel');
-  await expect(page.locator('#cadFactorInfo')).toContainText('2.86');
+  await expect(page.locator('#cadFactorInfo')).toContainText('2,86');
   await page.click('#cadFactorReset');
   await expect(page.locator('#cadFactorInfo')).toContainText('non calibrato');
   expect(errors).toEqual([]);
