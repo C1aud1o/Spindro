@@ -31,7 +31,7 @@ async function openSlip(page) {
 }
 
 // Il bot: tiene una potenza fissa (multiplo della FTP) e va nella corsia del corridore da prendere (solo input +1 / −1).
-// Misure di docs/giochi-design.md §5: stelle, tempo al primo evento, intervallo più lungo senza eventi, eventi al minuto.
+// Misure di docs/games/DESIGN-RULES.md §5: stelle, tempo al primo evento, intervallo più lungo senza eventi, eventi al minuto.
 function botRun({ mult, durIdx, lvl, ftp }) {
   const g = window.__game; g.active = false; g.durIdx = durIdx; g.lvlIdx = lvl; g.reset(); g.begin();
   g.hooks = { ...g.hooks, connected: () => true, ftp: () => ftp, stats: () => ({ power: ftp * mult, cadence: 85 }), speedKmh: () => 30, setGrade() {} };
@@ -52,7 +52,7 @@ async function runBot(page, mult, durIdx = 0, lvl = 1) {
   return page.evaluate(botRun, { mult, durIdx, lvl, ftp: 200 });
 }
 
-// atteso (docs/giochi-design.md §5): 0,6 × → 1 stella; 0,8 × → 1–2; 1,0 × → 2–3; 1,2 × → 3
+// atteso (docs/games/DESIGN-RULES.md §5): 0,6 × → 1 stella; 0,8 × → 1–2; 1,0 × → 2–3; 1,2 × → 3
 const EXPECT = { 0.6: [1, 1], 0.8: [1, 2], 1.0: [2, 3], 1.2: [3, 3] };
 for (const mult of [0.6, 0.8, 1.0, 1.2]) {
   test(`Slipstream: bot a ${mult} × FTP, 5 minuti, livello Normale`, async ({ page }) => {

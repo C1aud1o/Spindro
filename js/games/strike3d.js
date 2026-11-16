@@ -248,7 +248,7 @@ export class Strike3D {
     this.loop = this.loop.bind(this);
   }
   unlocked(i) { return this.starsTotal >= HEROES[i].stars; }
-  ftp() { return Number(this.hooks.ftp?.()) || Number(localStorage.getItem('ftp')) || 200; }
+  ftp() { return Number(this.hooks.ftp?.()) || 200; }
 
   // ---------- caricamento ----------
   async start() {

@@ -11,7 +11,7 @@
 //             games.<id>.help   controls, ONE short line (shown in the bar while playing)
 //             games.<id>.*      anything else the game says, in the same five locales/*.json files
 //   storage   localStorage keys start with `<id>` (e.g. `<id>Dur`, `<id>Best:5:normal`); personal bests: see progress.js
-//   sw.js     every file the game imports goes into ASSETS (tests/games-registry.spec.mjs walks the imports and tells you which)
+//   sw.js     nothing while `dev: true`; when the game ships, every file it imports goes into ASSETS (tests/games-registry.spec.mjs walks the imports and tells you which)
 // Legacy games keep their historical file names (racer → racer3d.js, shooter → strike3d.js...); their ids never change,
 // because scores, leaderboards and saved bests are keyed by them.
 //

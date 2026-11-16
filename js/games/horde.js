@@ -261,7 +261,7 @@ export class Horde {
     this.band = new BandMeter();
   }
 
-  get ftp() { return Math.max(80, this.hooks.ftp?.() || Number(localStorage.getItem('ftp')) || 200); }
+  get ftp() { return Math.max(80, this.hooks.ftp?.() || 200); }
   recordKey() { return `hordeBest2:${this.total}:${this.level.id}`; }
   recordFor(total, id) { try { return JSON.parse(localStorage.getItem(`hordeBest2:${total}:${id}`) || '{}'); } catch { return {}; } }
   record() { return this.wk ? {} : this.recordFor(this.total, this.level.id); }

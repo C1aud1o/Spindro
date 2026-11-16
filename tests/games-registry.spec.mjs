@@ -34,19 +34,23 @@ test('registry: the games list is rendered from the registry, dev games only in 
   expect(await shown()).toEqual(IDS);
 });
 
-test('registry: every file a game imports is in the service worker ASSETS (naming rule)', () => {
+test('registry: every file a shipped game imports is in the service worker ASSETS (naming rule)', () => {
+  // dev-only games (work in progress) are cached at first use by sw.js; a game that ships must be precached
   const sw = readFileSync(join(ROOT, 'sw.js'), 'utf8');
   const assets = new Set([...sw.match(/const ASSETS = \[([^\]]*)\]/)[1].matchAll(/'([^']+)'/g)].map((m) => m[1]));
   const seen = new Set(); const missing = [];
   const walk = (file) => {
     const rel = normalize(file).replace(`${ROOT}`, '');
-    if (seen.has(rel) || !rel.startsWith('js/') || !existsSync(join(ROOT, rel))) return; seen.add(rel); // vendor/ (three.js) is cached at first use by sw.js
+    if (seen.has(rel) || !rel.startsWith('js/') || !existsSync(join(ROOT, rel))) return; seen.add(rel); // vendor/ (three.js) is cached at first use
     if (!assets.has(rel)) missing.push(rel);
     const src = readFileSync(join(ROOT, rel), 'utf8');
     for (const m of src.matchAll(/(?:from\s+|import\()\s*'(\.[^']+\.js)'/g)) walk(join(dirname(rel), m[1]));
   };
-  walk('js/games/registry.js');
-  expect(missing, 'files imported by games but missing from ASSETS in sw.js').toEqual([]);
+  const shipped = registrySrc.split('\n').filter((l) => l.includes('defineGame({ id:') && !l.includes('dev: true'));
+  expect(shipped.length).toBeGreaterThanOrEqual(7);
+  for (const l of shipped) walk(join('js/games', l.match(/import\('([^']+)'\)/)[1]));
+  walk('js/games/registry.js'); walk('js/games/list.js');
+  expect(missing, 'files imported by shipped games but missing from ASSETS in sw.js').toEqual([]);
 });
 
 test('?game=<id>&demo=1 opens the game straight away, driven by the demo rider', async ({ page }) => {

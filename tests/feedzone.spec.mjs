@@ -1,4 +1,4 @@
-// Feed Zone (js/games/mattoni.js): partita a piano di allenamento con un bot a quattro livelli di potenza (docs/giochi-design.md §5),
+// Feed Zone (js/games/mattoni.js): partita a piano di allenamento con un bot a quattro livelli di potenza (docs/games/DESIGN-RULES.md §5),
 // pausa, misure dello schermo a 390×780 e comandi. Il gioco avanza a mano (passi da 1/30 s) con un seme fisso: i numeri sono ripetibili.
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
@@ -58,7 +58,7 @@ async function runBot(page, mult, durIdx = 0, lvl = 1) {
   return page.evaluate(botRun, { mult, durIdx, lvl, ftp: 200, seed: 3 });
 }
 
-// atteso (docs/giochi-design.md §5): 0,6 × → 1 stella; 0,8 × → 1–2; 1,0 × → 2–3; 1,2 × → 3
+// atteso (docs/games/DESIGN-RULES.md §5): 0,6 × → 1 stella; 0,8 × → 1–2; 1,0 × → 2–3; 1,2 × → 3
 const EXPECT = { 0.6: [1, 1], 0.8: [1, 2], 1.0: [2, 3], 1.2: [3, 3] };
 for (const mult of [0.6, 0.8, 1.0, 1.2]) {
   test(`Feed Zone: bot a ${mult} × FTP, 5 minuti, livello Normale`, async ({ page }) => {

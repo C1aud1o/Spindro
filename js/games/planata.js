@@ -394,7 +394,7 @@ export class Planata {
   }
 
   // ---------- partita ----------
-  get ftp() { return Math.max(80, this.hooks.ftp?.() || Number(localStorage.getItem('ftp')) || 200); }
+  get ftp() { return Math.max(80, this.hooks.ftp?.() || 200); }
   recordKey() { return `planataBest2:${this.total}:${this.level.id}`; }
   record(total = this.total, lvl = this.level?.id) { if (this.wk) return {}; try { return JSON.parse(localStorage.getItem(`planataBest2:${total}:${lvl}`) || '{}'); } catch { return {}; } }
 

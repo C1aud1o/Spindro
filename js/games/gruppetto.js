@@ -204,7 +204,7 @@ export class Gruppetto {
     this.band = new BandMeter();
   }
 
-  get ftp() { return Math.max(80, this.hooks.ftp?.() || Number(localStorage.getItem('ftp')) || 200); }
+  get ftp() { return Math.max(80, this.hooks.ftp?.() || 200); }
   recordKey() { return `slipBest:${this.total}:${this.level.id}`; }
   recordOf(total, id) { try { return JSON.parse(localStorage.getItem(`slipBest:${total}:${id}`) || '{}'); } catch { return {}; } }
   record() { return this.wk ? {} : this.recordOf(this.total, this.level.id); }

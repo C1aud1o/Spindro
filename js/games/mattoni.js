@@ -154,7 +154,7 @@ export class Mattoni {
   get lvlIdx() { return this.menu.level; }
   set lvlIdx(v) { this.menu.level = v; }
 
-  get ftp() { return Math.max(80, this.hooks.ftp?.() || Number(localStorage.getItem('ftp')) || 200); }
+  get ftp() { return Math.max(80, this.hooks.ftp?.() || 200); }
 
   async start() {
     this.active = true;
