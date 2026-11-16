@@ -50,9 +50,17 @@
       const dev = this;
       this.gatt = {
         connected: false, device: dev,
-        async connect() { this.connected = true; return this; },
+        async connect() {
+          const fb = window.__fakeBle;
+          if (fb?.connectDelay) await new Promise((r) => setTimeout(r, fb.connectDelay));
+          if (fb?.failConnect > 0) { fb.failConnect--; throw new DOMException('Connection attempt failed', 'NetworkError'); } // p.es. rullo già in uso da un'altra app
+          fb.connects = (fb.connects || 0) + 1;
+          this.connected = true; return this;
+        },
         disconnect() { if (!this.connected) return; this.connected = false; dev.dispatchEvent(new Event('gattserverdisconnected')); },
         async getPrimaryService(u) {
+          const fb = window.__fakeBle;
+          if (fb?.dropAt > 0 && --fb.dropAt === 0) { this.disconnect(); throw new DOMException('GATT Server is disconnected', 'NetworkError'); } // cade a metà della stretta di mano
           const s = dev.services.find((x) => x.uuid === norm(u));
           if (!s) throw new DOMException('Servizio non trovato', 'NotFoundError');
           return s;
@@ -120,9 +128,19 @@
   };
   const sendNums = (nums) => zAsync.push(msgFor(protoNow(), nums));
   const NAMES = { click: 'Zwift Click', play: 'Zwift Play', ride: 'Zwift Ride' };
-  const make = (kind) => {
+  const cache = {};
+  const make = (kind) => { // come Chrome: lo stesso dispositivo scelto due volte è lo stesso oggetto
+    const key = kind === 'click' ? `click:${window.__fakeBle.clickModel || 'click'}` : kind;
+    return (cache[key] ||= make1(kind));
+  };
+  const weirdSvc = new Service(0x1234, [new Char(0x2a99, { notify: true })]);
+  const make1 = (kind) => {
     const mk = (id, name, svcs) => new Device(id, name, [...svcs, batSvc]);
-    if (kind === 'click') { state.click = mk('fake-click', NAMES[window.__fakeBle.clickModel || 'click'], [zwift]); return state.click; }
+    if (kind === 'weird') return mk('fake-weird', 'Mystery Gadget', [weirdSvc]);
+    if (kind === 'trainer-hr') { state.trainer = mk('fake-trainer-hr', 'Fake Combo Trainer', [ftms, hrSvc]); return state.trainer; }
+    if (kind === 'hr2') return mk('fake-hr2', 'Fake HRM 2', [hrSvc]);
+    if (kind === 'dumb') return mk('fake-dumb', 'Old Spin Bike', [cscSvc]);
+    if (kind === 'click') { state.click = mk(window.__fakeBle.clickModel && window.__fakeBle.clickModel !== 'click' ? `fake-click-${window.__fakeBle.clickModel}` : 'fake-click', NAMES[window.__fakeBle.clickModel || 'click'], [zwift]); return state.click; }
     if (kind === 'hr') return mk('fake-hr', 'Fake HRM', [hrSvc]);
     if (kind === 'csc') return mk('fake-csc', 'Fake RPM Sensor', [cscSvc]);
     if (kind === 'cps') return mk('fake-cps', 'Fake Power Pedals', [cpsSvc]);
@@ -173,6 +191,10 @@
       cpsChar.push([...u16(crank ? 0x20 : 0), ...u16(power & 0xffff), ...(crank ? [...u16(crank.revs), ...u16(crank.t)] : [])]);
     },
     disconnectTrainer() { state.trainer?.gatt.disconnect(); },
+    /** Fa cadere un dispositivo (kind come in `next`) come se si allontanasse o si spegnesse. */
+    drop(kind) { make(kind).gatt.disconnect(); },
+    /** Cade durante la stretta di mano: dopo n chiamate a getPrimaryService. Rifiuta i prossimi n collegamenti: failConnect. connectDelay: ritardo in ms. */
+    dropAt: 0, failConnect: 0, connectDelay: 0,
   };
 
   navigator.bluetooth = {

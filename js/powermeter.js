@@ -4,6 +4,7 @@
 // Il ruolo (potenza o cadenza) lo decide js/devices.js; qui si legge solo il servizio presente.
 import { SensorDebug } from './debug.js';
 import { t } from './i18n.js';
+import { listen } from './ble-util.js';
 
 const CPS = 0x1818;
 const CSC = 0x1816;
@@ -47,7 +48,7 @@ export class PowerMeter extends EventTarget {
   /** `device`: già scelto da js/devices.js; senza, apre da solo la scelta Bluetooth (uso diretto/test). */
   async connect(device, { kind } = {}) {
     this.device = device || await navigator.bluetooth.requestDevice({ filters: [{ services: [CPS] }, { services: [CSC] }], optionalServices: [CPS, CSC, 0x180f] });
-    this.device.addEventListener('gattserverdisconnected', () => { clearInterval(this.staleTimer); this.dbg.setStatus('Disconnected'); this.dispatchEvent(new Event('disconnected')); });
+    listen(this, 'disc', this.device, 'gattserverdisconnected', () => { clearInterval(this.staleTimer); this.dbg.setStatus('Disconnected'); this.dispatchEvent(new Event('disconnected')); });
     this.dbg.setStatus('Connecting…');
     const server = await this.device.gatt.connect();
     await this.dbg.describe(this.device, server);
@@ -56,12 +57,12 @@ export class PowerMeter extends EventTarget {
     if (svc) {
       this.kind = 'power';
       const c = await svc.getCharacteristic(0x2a63);
-      c.addEventListener('characteristicvaluechanged', (e) => this.onData(e.target.value));
+      listen(this, 'ch', c, 'characteristicvaluechanged', (e) => this.onData(e.target.value));
       await c.startNotifications();
     } else {
       this.kind = 'csc';
       const c = await (await server.getPrimaryService(CSC)).getCharacteristic(0x2a5b);
-      c.addEventListener('characteristicvaluechanged', (e) => this.onCsc(e.target.value));
+      listen(this, 'ch', c, 'characteristicvaluechanged', (e) => this.onCsc(e.target.value));
       await c.startNotifications();
     }
     // alcuni sensori smettono di notificare quando la pedivella è ferma: dopo 2,5 s la cadenza torna a 0

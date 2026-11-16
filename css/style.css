@@ -1000,4 +1000,21 @@ html:not(.ready) body { visibility: hidden; animation: reveal-safety 0s 2.5s for
 @media (prefers-reduced-motion: reduce) { html:not(.ready) body { animation: reveal-safety 0s 2.5s forwards !important; } }
 body.riding .metrics dd[data-long] { font-size: calc(var(--fs-title) * .8); }
 @media (max-width: 380px) { body.riding .metrics dd[data-long] { font-size: calc(var(--fs-title) * .72); } }
+/* Collegare i dispositivi (D1): avviso di caduta, suggerimento, stato per dispositivo */
+.drop-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border-color: rgba(255, 212, 58, .5); }
+.drop-banner span { flex: 1 1 14ch; min-width: 0; overflow-wrap: anywhere; }
+.suggest { display: grid; gap: 8px; border-color: var(--accent-line); background: var(--accent-5); }
+.suggest p { margin: 0; color: var(--t1); }
+.suggest .row2 { display: flex; flex-wrap: wrap; gap: 8px; }
+.suggest button, .drop-banner button { min-height: 44px; }
+.dev-down { border-style: dashed; opacity: .92; }
+.dev-why, .dev-meta { margin: 0; }
+.dev-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.dev-life.live { color: var(--accent); }
+.dev-life.stale { color: #f2c230; }
+.dev-test-note { margin: 0; }
+#deviceList [data-test], #deviceList [data-remove], #deviceList [data-forget], #reconnectDevice { min-height: 44px; }
+#unsupported { overflow-wrap: anywhere; }
+.suggest .cta-sm { min-height: 44px; border: 0; border-radius: var(--r-btn); background: var(--accent); color: var(--accent-ink); font-weight: 700; padding: 0 14px; box-shadow: var(--shadow-cta); }
+#deviceList .cta-sm { min-height: 44px; border: 0; border-radius: var(--r-btn); background: var(--accent); color: var(--accent-ink); font-weight: 700; }
 .game-list { display: contents; }

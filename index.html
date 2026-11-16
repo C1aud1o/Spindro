@@ -33,16 +33,11 @@
       <svg class="dv-go" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
     </button>
     <p id="unsupported" class="warn" hidden data-i18n-html="home.unsupported"></p>
-    <div id="connectHelp" class="hint-box connect-help" hidden role="alert">
-      <b data-i18n="connectHelp.title"></b>
-      <ul>
-        <li data-i18n="connectHelp.bluetooth"></li>
-        <li data-i18n="connectHelp.wake"></li>
-        <li data-i18n="connectHelp.apps"></li>
-        <li data-i18n="connectHelp.near"></li>
-      </ul>
-      <div class="row2"><button id="connectHelpRetry" class="ghost" data-i18n="connectHelp.retry"></button><button id="connectHelpReport" class="ghost" data-i18n="trainerReport.button"></button></div>
-    </div>
+    <div id="connectHelp" class="hint-box connect-help" hidden role="alert"></div>
+    <!-- un dispositivo è caduto mentre si pedala: avviso che non blocca nulla; la registrazione continua -->
+    <div id="dropBanner" class="hint-box drop-banner" hidden role="status" aria-live="polite"><span id="dropText"></span> <button id="dropRetry" class="ghost" hidden data-i18n="devices.retryNow"></button></div>
+    <!-- un solo suggerimento alla volta: il prossimo dispositivo probabile -->
+    <div id="suggest" class="hint-box suggest" hidden><p id="suggestText"></p><div class="row2"><button id="suggestAdd" class="cta-sm"></button><button id="suggestNever" class="ghost" data-i18n="connect.suggest.never"></button></div></div>
 
     <!-- stato vuoto: benvenuto (utente nuovo) o riga "bentornato" (utente che torna, rullo non collegato) -->
     <section id="welcome" class="card welcome" hidden></section>
@@ -286,12 +281,16 @@
       <div class="sheet-head"><h2 id="devicesTitle" data-i18n="devices.title"></h2><button class="close" data-close="devicesSheet" data-i18n-attr="aria-label:ui.close">×</button></div>
       <div id="deviceList" class="dev-list"></div>
       <p id="devMsg" class="hint-box" hidden role="alert"></p>
+      <button id="reconnectDevice" class="cta" data-primary hidden></button>
       <button id="addDevice" class="cta" data-primary data-i18n="devices.add"></button>
+      <p class="fine" id="pickHint"></p>
       <p class="fine" data-i18n="devices.addHint"></p>
       <section class="group" id="sourcesGroup">
         <h3 data-i18n="devices.sources"></h3>
         <label class="lang-pick"><span data-i18n="home.power"></span><select id="srcPower" data-i18n-attr="aria-label:home.power"></select></label>
+        <p class="fine" data-i18n="devices.srcPowerHelp"></p>
         <label class="lang-pick"><span data-i18n="home.cadence"></span><select id="srcCadence" data-i18n-attr="aria-label:home.cadence"></select></label>
+        <p class="fine" data-i18n="devices.srcCadenceHelp"></p>
         <p class="fine" id="srcNote"></p>
       </section>
     </div>
