@@ -14,11 +14,15 @@ export function parseGpx(text, name = t('routes.defaultName')) {
   const doc = new DOMParser().parseFromString(text, 'application/xml');
   if (doc.querySelector('parsererror')) throw new Error(t('route.errInvalid'));
   let pts = [...doc.querySelectorAll('trkpt')]; if (!pts.length) pts = [...doc.querySelectorAll('rtept')];
-  const raw = pts.map((p) => ({ lat: +p.getAttribute('lat'), lon: +p.getAttribute('lon'), ele: p.querySelector('ele') ? +p.querySelector('ele').textContent : null }))
-    .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon));
+  // parseFloat e non "+": un attributo vuoto o mancante darebbe 0 (un punto in mezzo all'oceano) e una quota non numerica darebbe NaN
+  const num = (v) => { const x = parseFloat(v); return Number.isFinite(x) ? x : null; };
+  const raw = pts.map((p) => ({ lat: num(p.getAttribute('lat')), lon: num(p.getAttribute('lon')), ele: num(p.querySelector('ele')?.textContent) }))
+    .filter((p) => p.lat != null && p.lon != null && Math.abs(p.lat) <= 90 && Math.abs(p.lon) <= 180);
   if (raw.length < 2) throw new Error(t('route.errNoTrack'));
-  const title = doc.querySelector('trk > name, metadata > name, rte > name')?.textContent?.trim() || name.replace(/\.gpx$/i, '');
-  return build(title, raw);
+  const title = (doc.querySelector('trk > name, metadata > name, rte > name')?.textContent?.trim() || name.replace(/\.gpx$/i, '')).slice(0, 60);
+  const route = build(title, raw);
+  if (route.pts.length < 2 || route.total < 100) throw new Error(t('route.errNoTrack')); // tutti i punti nello stesso posto: nessun percorso
+  return route;
 }
 
 // costruisce distanze cumulative e pendenze levigate (il GPS è rumoroso)
@@ -74,7 +78,8 @@ function synth(name, len, eleFn, lat0, lon0) {
 export function drawElevation(canvas, route, dist = null) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2); const W = canvas.clientWidth || 300; const H = canvas.clientHeight || 70;
   canvas.width = W * dpr; canvas.height = H * dpr; const g = canvas.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const es = route.pts.map((p) => p.e); const lo = Math.min(...es); const hi = Math.max(lo + 30, ...es);
+  let lo = Infinity; let top = -Infinity; for (const p of route.pts) { if (p.e < lo) lo = p.e; if (p.e > top) top = p.e; } // niente Math.min(...) su migliaia di punti: un GPX lungo supera il limite degli argomenti
+  const hi = Math.max(lo + 30, top);
   const x = (d) => (d / route.total) * W; const y = (e) => H - 4 - ((e - lo) / (hi - lo)) * (H - 12);
   g.beginPath(); g.moveTo(0, H); route.pts.forEach((p) => g.lineTo(x(p.d), y(p.e))); g.lineTo(W, H); g.closePath();
   g.fillStyle = 'rgba(255,255,255,.12)'; g.fill();
@@ -90,9 +95,10 @@ export function drawElevation(canvas, route, dist = null) {
 export function drawMap(canvas, route, dist = null) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2); const W = canvas.clientWidth || 120; const H = canvas.clientHeight || 120;
   canvas.width = W * dpr; canvas.height = H * dpr; const g = canvas.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const lats = route.pts.map((p) => p.lat); const lons = route.pts.map((p) => p.lon);
-  const k = Math.cos((lats[0] * Math.PI) / 180);
-  const minX = Math.min(...lons) * k; const maxX = Math.max(...lons) * k; const minY = Math.min(...lats); const maxY = Math.max(...lats);
+  const k = Math.cos((route.pts[0].lat * Math.PI) / 180);
+  let minLon = Infinity; let maxLon = -Infinity; let minY = Infinity; let maxY = -Infinity;
+  for (const p of route.pts) { if (p.lon < minLon) minLon = p.lon; if (p.lon > maxLon) maxLon = p.lon; if (p.lat < minY) minY = p.lat; if (p.lat > maxY) maxY = p.lat; }
+  const minX = minLon * k; const maxX = maxLon * k;
   const s = Math.min((W - 16) / (maxX - minX || 1e-6), (H - 16) / (maxY - minY || 1e-6));
   const px = (p) => [8 + (p.lon * k - minX) * s + (W - 16 - (maxX - minX) * s) / 2, H - 8 - (p.lat - minY) * s - (H - 16 - (maxY - minY) * s) / 2];
   g.lineWidth = 3; g.lineJoin = 'round'; g.strokeStyle = 'rgba(255,255,255,.3)';

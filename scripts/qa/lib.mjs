@@ -27,7 +27,7 @@ export async function newPage(browser, { vp = 's390', lang = 'en', seed = {}, bl
   await page.addInitScript((s) => { try { if (!localStorage.getItem('__qa')) { localStorage.setItem('__qa', '1'); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)); } } catch { /* */ } }, s);
   if (ble) await page.addInitScript({ path: FAKE_BLE });
   await page.goto(base + path);
-  await page.waitForSelector('#openSettings', { state: 'visible' });
+  await page.waitForSelector('html.ready', { state: 'attached' });
   await page.waitForTimeout(400);
   return page;
 }
@@ -65,6 +65,8 @@ export function audit(page, label = '') {
       if (cs.textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth + 1) out.push(`${label} ellipsised (check intent): ${desc(el)} "${el.textContent.trim().slice(0, 40)}"`);
       if (['BUTTON', 'A', 'SELECT', 'INPUT', 'SUMMARY'].includes(el.tagName) || el.getAttribute('role') === 'button') {
         if (el.type === 'hidden' || el.type === 'file') continue;
+        // links inside a running sentence are exempt (WCAG 2.5.8 inline exception)
+        if (el.tagName === 'A' && getComputedStyle(el).display === 'inline' && el.parentElement && [...el.parentElement.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim().length > 8)) continue;
         if ((r.width < 44 || r.height < 44) && !(el.type === 'checkbox' || el.type === 'radio')) out.push(`${label} tap target ${Math.round(r.width)}x${Math.round(r.height)}: ${desc(el)} "${(el.textContent || el.getAttribute('aria-label') || '').trim().slice(0, 30)}"`);
       }
     }

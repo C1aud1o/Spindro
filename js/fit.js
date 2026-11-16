@@ -92,7 +92,7 @@ export function encodeFit(all) {
   const hrs = samples.map((s) => s.hr).filter(Boolean);
   const cads = samples.map((s) => s.cadence).filter((c) => c > 0);
   const avg = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
-  const max = (a) => (a.length ? Math.max(...a) : null);
+  const max = (a) => (a.length ? a.reduce((m, x) => (x > m ? x : m), -Infinity) : null); // niente Math.max(...a): un'uscita lunghissima supera il limite degli argomenti
   const kj = pw.reduce((x, y) => x + y, 0) / 1000;
   const kcal = kj; // ~ efficienza umana 24% => kcal ≈ kJ
   const dist = samples[samples.length - 1].distance || 0;

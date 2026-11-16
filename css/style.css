@@ -982,6 +982,21 @@ body.riding .power-value[data-digits="4"] { zoom: .72; }
 .hs-kpis small, .hs-bests small { overflow-wrap: anywhere; }
 @media (max-width: 400px) {
   .fields { grid-template-columns: minmax(0, 1fr); } /* peso, FTP e pulsazioni una sotto l'altra: i campi numerici restano larghi almeno 44 px */
-  body:not(.riding) .metrics dt { font-size: 11px; letter-spacing: 0; }
 }
 .unit-input input { min-width: 44px; }
+.sheet-body:focus { outline: none; }
+/* riga dei valori in home: le etichette vanno a capo invece di troncarsi, e con poco spazio le colonne scendono su due righe */
+body:not(.riding) .metrics { grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); row-gap: 12px; }
+body:not(.riding) .metrics dt { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.15; letter-spacing: .02em; }
+.more-modes .chips { grid-template-columns: repeat(auto-fit, minmax(48px, 1fr)); } /* colonna stretta (tablet, desktop): i tasti vanno su due righe invece di scendere sotto 44 px */
+/* titolo lungo + dati (durata · carico): i dati vanno sotto il titolo invece di spezzarsi su tre righe a destra */
+.wk-item .row { flex-wrap: wrap; }
+.wk-item .row b { flex: 1 1 12ch; min-width: 0; overflow-wrap: anywhere; }
+.wk-item .row small { flex: 0 1 auto; margin-left: auto; text-align: right; }
+/* Primo avvio: la pagina compare quando l'app ha tradotto i testi e disegnato le schede (js/app.js aggiunge .ready), non a pezzi.
+   Se il codice non parte, dopo 2,5 s la pagina si mostra comunque (solo CSS, anche con "riduci animazioni"). */
+html:not(.ready) body { visibility: hidden; animation: reveal-safety 0s 2.5s forwards; }
+@keyframes reveal-safety { to { visibility: visible; } }
+@media (prefers-reduced-motion: reduce) { html:not(.ready) body { animation: reveal-safety 0s 2.5s forwards !important; } }
+body.riding .metrics dd[data-long] { font-size: calc(var(--fs-title) * .8); }
+@media (max-width: 380px) { body.riding .metrics dd[data-long] { font-size: calc(var(--fs-title) * .72); } }

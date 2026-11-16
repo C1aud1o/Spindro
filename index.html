@@ -186,7 +186,7 @@
 
   <!-- Modalità di pedalata durante l'uscita -->
   <div id="modeSheet" class="sheet" hidden>
-    <div class="sheet-body" role="dialog" aria-modal="true" aria-labelledby="modeTitle">
+    <div class="sheet-body" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="modeTitle">
       <div class="sheet-head"><h2 id="modeTitle" data-i18n="home.modes"></h2><button class="close" data-close="modeSheet" data-i18n-attr="aria-label:ui.close">×</button></div>
       <div id="modeList" class="mode-list">
         <button class="ghost" data-pick="erg">ERG</button>
@@ -199,7 +199,7 @@
 
   <!-- Fine allenamento: il momento da ricordare -->
   <div id="finishSheet" class="sheet" hidden>
-    <div class="sheet-body" role="dialog" aria-modal="true" aria-labelledby="finishTitle">
+    <div class="sheet-body" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="finishTitle">
       <button class="close" data-close="finishSheet" data-i18n-attr="aria-label:ui.close">×</button>
       <div class="celebrate">
         <svg class="check" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28" /><path d="M20 33l8 8 16-17" /></svg>
@@ -226,7 +226,7 @@
 
   <!-- Allenamenti e percorsi -->
   <div id="workoutSheet" class="sheet" hidden>
-    <div class="sheet-body" role="dialog" aria-modal="true" aria-labelledby="workoutTitle">
+    <div class="sheet-body" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="workoutTitle">
       <div class="sheet-head"><h2 id="workoutTitle" data-i18n="workouts.title"></h2><button class="close" data-close="workoutSheet" data-i18n-attr="aria-label:ui.close">×</button></div>
       <div class="chips wk-tabs" role="tablist"><button id="tabWk" class="on" role="tab" aria-selected="true" data-i18n="workouts.tab"></button><button id="tabPlans" role="tab" aria-selected="false" data-i18n="plans.tab"></button></div>
       <div id="wkPaneMain">
@@ -247,14 +247,14 @@
   </div>
 
   <div id="editorSheet" class="sheet" hidden>
-    <div class="sheet-body" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
+    <div class="sheet-body" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
       <div class="sheet-head"><h2 id="editorTitle" data-i18n="editor.create"></h2><button class="close" data-close="editorSheet" data-i18n-attr="aria-label:ui.close">×</button></div>
       <div id="editorBody" class="ed-body"></div>
     </div>
   </div>
 
   <div id="historySheet" class="sheet" hidden>
-    <div class="sheet-body" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
+    <div class="sheet-body" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
       <div class="sheet-head"><h2 id="historyTitle" data-i18n="history.title"></h2><button class="close" data-close="historySheet" data-i18n-attr="aria-label:ui.close">×</button></div>
       <div id="historyBody" class="hs-body"></div>
     </div>
@@ -262,7 +262,7 @@
 
   <!-- Consenso alle statistiche anonime (primo avvio) -->
   <div id="consentSheet" class="sheet" hidden>
-    <div class="sheet-body" role="dialog" aria-modal="true" aria-labelledby="consentTitle">
+    <div class="sheet-body" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="consentTitle">
       <div class="sheet-head"><h2 id="consentTitle" data-i18n="privacy.title"></h2></div>
       <p data-i18n="privacy.body"></p>
       <p class="fine" data-i18n="privacy.errors"></p>
@@ -273,7 +273,7 @@
 
   <!-- Avviso di sicurezza: una sola volta, prima della prima uscita -->
   <div id="safetySheet" class="sheet" hidden>
-    <div class="sheet-body" role="dialog" aria-modal="true" aria-labelledby="safetyTitle">
+    <div class="sheet-body" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="safetyTitle">
       <div class="sheet-head"><h2 id="safetyTitle" data-i18n="safety.title"></h2></div>
       <p data-i18n="safety.body"></p>
       <button id="safetyOk" class="cta-sm" data-i18n="safety.ok"></button>
@@ -282,7 +282,7 @@
 
   <!-- Dispositivi Bluetooth -->
   <div id="devicesSheet" class="sheet" hidden>
-    <div class="sheet-body" role="dialog" aria-modal="true" aria-labelledby="devicesTitle">
+    <div class="sheet-body" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="devicesTitle">
       <div class="sheet-head"><h2 id="devicesTitle" data-i18n="devices.title"></h2><button class="close" data-close="devicesSheet" data-i18n-attr="aria-label:ui.close">×</button></div>
       <div id="deviceList" class="dev-list"></div>
       <p id="devMsg" class="hint-box" hidden role="alert"></p>
@@ -299,7 +299,7 @@
 
   <!-- Impostazioni -->
   <div id="settingsSheet" class="sheet" hidden>
-    <div class="sheet-body" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="sheet-body" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
       <div class="sheet-head"><h2 id="settingsTitle" data-i18n="settings.title"></h2><button class="close" data-close="settingsSheet" data-i18n-attr="aria-label:ui.close">×</button></div>
 
       <section class="group">

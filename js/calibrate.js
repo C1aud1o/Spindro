@@ -2,7 +2,7 @@
 // La cadenza viene stimata dalla velocità del volano: rpm = km/h × fattore. Il fattore dipende dalla
 // corona usata sulla bici, quindi lo si misura: l'utente pedala a tempo con un metronomo (85 rpm) per
 // qualche secondo, mentre il rullo tiene una resistenza leggera e costante.
-import { t } from './i18n.js';
+import { t, fmtDec } from './i18n.js';
 
 export const DEFAULT_FACTOR = 7.37;
 const BPM = 85; // un bip per ogni giro di pedale
@@ -70,7 +70,7 @@ export function runCalibration(hooks) {
       if (!f) { msg.textContent = t('calib.failed'); count.textContent = ''; go.disabled = false; go.textContent = t('calib.retry'); return; }
       try { localStorage.setItem('cadFactor', String(f)); } catch { /* */ }
       hooks.onDone(f);
-      msg.textContent = t('calib.done', { f: f.toFixed(2) }); count.textContent = '';
+      msg.textContent = t('calib.done', { f: fmtDec(f, 2) }); count.textContent = '';
       go.hidden = true; box.querySelector('.calib-cancel').textContent = t('ui.close');
     }, 1000);
   });

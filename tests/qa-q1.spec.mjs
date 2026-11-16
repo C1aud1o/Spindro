@@ -142,3 +142,100 @@ test('"Delete all data" leaves nothing behind: the closing page does not write t
   await expect(page.locator('#openSettings')).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('ride-freedom-session'))).toBeNull();
 });
+
+test('the app still starts when the browser blocks localStorage (blocked cookies)', async ({ browser }) => {
+  const ctx = await browser.newContext({ serviceWorkers: 'block' });
+  const page = await ctx.newPage(); const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+  await page.addInitScript(() => { for (const n of ['localStorage', 'sessionStorage']) Object.defineProperty(window, n, { get() { throw new DOMException('The operation is insecure.', 'SecurityError'); } }); });
+  await page.addInitScript({ path: FAKE_BLE });
+  await page.goto('/index.html');
+  await page.evaluate(async () => { while (!window.rfDevices) await new Promise((r) => setTimeout(r, 50)); await window.rfDevices.add(); });
+  await expect(page.locator('#power')).toHaveText('150'); // il codice dell'app è vivo
+  expect(errs).toEqual([]);
+  await ctx.close();
+});
+
+test('with a full storage the safety notice is acknowledged for the session and the ride can start', async ({ browser }) => {
+  const ctx = await browser.newContext({ serviceWorkers: 'block' });
+  const page = await ctx.newPage(); const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+  await page.addInitScript(() => { Storage.prototype.setItem = function () { throw new DOMException('full', 'QuotaExceededError'); }; });
+  await page.addInitScript({ path: FAKE_BLE });
+  await page.goto('/index.html');
+  await expect(page.locator('#consentSheet')).toBeVisible();
+  await page.click('#consentNo');
+  await expect(page.locator('#consentSheet')).toBeHidden(); // anche se la scelta non si può salvare
+  await page.evaluate(async () => { while (!window.rfDevices) await new Promise((r) => setTimeout(r, 50)); await window.rfDevices.add(); });
+  await page.click('#startStop');
+  await page.click('#safetyOk');
+  await expect(page.locator('body')).toHaveClass(/riding/);
+  await page.waitForTimeout(2200); // il salvataggio della sessione fallisce a ogni passo: nessun errore deve uscire
+  expect(errs).toEqual([]);
+  await ctx.close();
+});
+
+test('GPX: empty coordinates, non-numeric elevation, a stationary track and a very long track do not break the route', async ({ page }) => {
+  await page.goto('/index.html');
+  const r = await page.evaluate(async () => {
+    const { parseGpx, at } = await import('./js/route.js');
+    const gpx = (pts, name = 'x') => `<gpx><trk><name>${name}</name><trkseg>${pts}</trkseg></trk></gpx>`;
+    const out = {};
+    const pt = (lat, lon, ele) => `<trkpt lat="${lat}" lon="${lon}">${ele === undefined ? '' : `<ele>${ele}</ele>`}</trkpt>`;
+    // quota non numerica: la pendenza resta un numero
+    const a = parseGpx(gpx(Array.from({ length: 50 }, (_, i) => pt(45 + i * 0.001, 9, i === 10 ? 'n/a' : 100 + i)).join('')));
+    out.gradeFinite = Number.isFinite(at(a, 500).grade) && Number.isFinite(a.gain);
+    // coordinate vuote = punti scartati (non (0,0))
+    const b = parseGpx(gpx(`<trkpt lat="" lon=""/>` + Array.from({ length: 50 }, (_, i) => pt(45 + i * 0.001, 9, 100)).join('')));
+    out.noOcean = b.pts.every((p) => p.lat > 40);
+    // fermo: nessun percorso
+    try { parseGpx(gpx(Array.from({ length: 20 }, () => pt(45, 9, 100)).join(''))); out.stationary = 'accepted'; } catch { out.stationary = 'rejected'; }
+    // 200 000 punti (più degli argomenti ammessi da Math.min(...)): il disegno non deve lanciare
+    const big = parseGpx(gpx(Array.from({ length: 200000 }, (_, i) => pt(45 + i * 0.00002, 9 + (i % 7) * 1e-5, 100 + (i % 50))).join('')));
+    const c1 = document.createElement('canvas'); const c2 = document.createElement('canvas');
+    const { drawElevation, drawMap } = await import('./js/route.js');
+    try { drawElevation(c1, big, 1000); drawMap(c2, big, 1000); out.bigDraw = 'ok'; } catch (e) { out.bigDraw = e.message; }
+    out.name = parseGpx(gpx(pt(45, 9) + pt(45.01, 9), 'N'.repeat(200))).name.length;
+    return out;
+  });
+  expect(r).toEqual({ gradeFinite: true, noOcean: true, stationary: 'rejected', bigDraw: 'ok', name: 60 });
+});
+
+test('finish → resume → finish again updates the same history entry (no lost minutes, no duplicate)', async ({ page }) => {
+  await page.addInitScript(() => { if (!localStorage.getItem('__f')) { localStorage.setItem('__f', '1'); localStorage.setItem('mode', 'gears');
+    const t0 = Date.now() - 200000; const log = Array.from({ length: 100 }, (_, i) => ({ t: t0 + i * 1000, power: 150, cadence: 80, hr: null, speed: 8, distance: i * 8 }));
+    localStorage.setItem('ride-freedom-session', JSON.stringify({ elapsed: 100, distance: 800, energy: 15, powerSum: 15000, samples: 100, log, saved: false, stravaUrl: null, historySaved: false })); } });
+  await page.goto('/index.html');
+  await page.evaluate(async () => { while (!window.rfDevices) await new Promise((r) => setTimeout(r, 50)); await window.rfDevices.add(); });
+  await page.click('#finishRide');
+  const hist = () => page.evaluate(() => JSON.parse(localStorage.getItem('rideHistory') || '[]').map((h) => ({ t: h.t, dur: h.dur })));
+  const first = await hist(); expect(first).toHaveLength(1); expect(first[0].dur).toBeGreaterThanOrEqual(100);
+  await page.click('[data-close="finishSheet"]');
+  await page.click('#startStop'); await page.waitForTimeout(2600);
+  await page.click('#finishRide');
+  const second = await hist();
+  expect(second).toHaveLength(1);
+  expect(second[0].t).toBe(first[0].t);
+  expect(second[0].dur).toBeGreaterThan(first[0].dur);
+});
+
+test('no layout shift on load, even when the translations arrive late', async ({ page }) => {
+  await page.route('**/locales/*.json', async (route) => { await new Promise((r) => setTimeout(r, 300)); await route.continue(); });
+  await page.addInitScript(() => { window.__cls = 0; new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) window.__cls += e.value; }).observe({ type: 'layout-shift', buffered: true }); });
+  await page.goto('/index.html');
+  await expect(page.locator('#openSettings')).toBeVisible();
+  await page.waitForTimeout(800);
+  expect(await page.evaluate(() => window.__cls)).toBeLessThan(0.05);
+});
+
+test('a 9-hour ride time fits its cell on a 360 px screen in French and German', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  for (const lang of ['fr', 'de']) {
+    await page.addInitScript((lang) => { if (!localStorage.getItem('__9' + lang)) { localStorage.setItem('__9' + lang, '1'); localStorage.setItem('lang', lang);
+      const log = [{ t: Date.now() - 1000, power: 150, cadence: 80, hr: null, speed: 8, distance: 1 }];
+      localStorage.setItem('ride-freedom-session', JSON.stringify({ elapsed: 32400, distance: 268920, energy: 5100, powerSum: 5832000, samples: 32400, log, saved: false, stravaUrl: null, historySaved: false })); } }, lang);
+    await page.goto('/index.html');
+    await expect(page.locator('#time')).toHaveText('9:00:00');
+    const m = await page.evaluate(() => { const e = document.getElementById('time'); return { sw: e.scrollWidth, cw: e.clientWidth, page: document.documentElement.scrollWidth, vw: document.documentElement.clientWidth }; });
+    expect(m.sw, lang).toBeLessThanOrEqual(m.cw); expect(m.page, lang).toBeLessThanOrEqual(m.vw);
+    await page.evaluate(() => localStorage.clear());
+  }
+});

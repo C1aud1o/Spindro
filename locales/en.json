@@ -785,7 +785,7 @@
   "home.gearNote": "Gear <b id=\"gearNum\">12</b>/24 · ratio <b id=\"gearRatio\">-</b> · use − and + below or the Click",
   "home.grade": "Grade",
   "home.heartRate": "Heart rate",
-  "home.hr": "Heart rate",
+  "home.hr": "HR",
   "home.keyboard": "Keyboard: <kbd>←</kbd> <kbd>→</kbd> or <kbd>−</kbd> <kbd>+</kbd> change gear · <kbd>Space</kbd> start / pause · <kbd>G</kbd> games · in games, hold the arrows to steer.",
   "home.live": "Live data",
   "home.modes": "Mode",

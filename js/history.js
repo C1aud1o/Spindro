@@ -26,7 +26,7 @@ export function rideStats(log) {
   // serie compatta per il grafico: una media ogni 10 s
   const series = [];
   for (let i = 0; i < p.length; i += 10) { const c = p.slice(i, i + 10); series.push(Math.round(c.reduce((a, b) => a + b, 0) / c.length)); }
-  return { np, maxW: Math.round(Math.max(0, ...p)), best, maxHr: hrs.length ? Math.max(...hrs) : null, avgHr: hrs.length ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : null, series: series.slice(0, 720) };
+  return { np, maxW: Math.round(p.reduce((m, x) => (x > m ? x : m), 0)), best, maxHr: hrs.length ? Math.max(...hrs) : null, avgHr: hrs.length ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : null, series: series.slice(0, 720) };
 }
 
 const fmtDate = (ms) => fmtD(new Date(ms), { weekday: 'short', day: 'numeric', month: 'short' });
@@ -74,7 +74,7 @@ export function renderHistory(el, hist, ftp) {
     <section class="hs-block">
       <h3>${t('history.rides')}</h3>
       <div class="hs-list">${[...hist].reverse().map((h, i) => `<details class="hs-ride">
-        <summary><span><b>${fmtDate(h.t)}</b><small>${t('history.rideLine', { min: Math.round(h.dur / 60), km: h.km, w: h.avgW })}${h.np ? ` · NP ${h.np}` : ''}</small></span>${h.series ? `<canvas data-spark="${hist.length - 1 - i}" class="hs-spark"></canvas>` : ''}</summary>
+        <summary><span><b>${fmtDate(h.t)}</b><small>${t('history.rideLine', { min: Math.round(h.dur / 60), km: fmtDec(h.km || 0, 1), w: h.avgW })}${h.np ? ` · NP ${h.np}` : ''}</small></span>${h.series ? `<canvas data-spark="${hist.length - 1 - i}" class="hs-spark"></canvas>` : ''}</summary>
         ${h.series ? `<canvas data-big="${hist.length - 1 - i}" class="hs-big"></canvas>` : ''}
         <dl class="hs-dl">
           <div><dt>${t('history.energy')}</dt><dd>${h.kj} kJ</dd></div>

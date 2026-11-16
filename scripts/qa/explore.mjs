@@ -2,6 +2,9 @@
 // Usage: node tests/serve.mjs &  then  node scripts/qa/explore.mjs [--vp s360,s390] [--lang de,en] [--scene home,settings]
 // Screenshots go to $QA_OUT (default /tmp/qa-shots), never into the repo.
 import * as L from './lib.mjs';
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+const AXE = process.argv.includes('--axe') ? readFileSync(createRequire(import.meta.url).resolve('axe-core/axe.min.js'), 'utf8') : null;
 
 const arg = (n, d) => { const i = process.argv.indexOf('--' + n); return i > 0 ? process.argv[i + 1].split(',') : d; };
 const VPS = arg('vp', Object.keys(L.VIEWPORTS)); const LANGS = arg('lang', L.LANGS); const ONLY = arg('scene', null);
@@ -57,6 +60,7 @@ for (const vp of VPS) for (const lang of LANGS) for (const [name, fn] of Object.
   if (name === 'consent') { await page.evaluate(() => localStorage.removeItem('analytics')); await page.reload(); await page.waitForTimeout(600); }
   let res = [];
   try { res = await fn(page, `${vp}_${lang}`); } catch (e) { res = [`SCENE ERROR ${name}: ${e.message.split('\n')[0]}`]; }
+  if (AXE) { try { await page.evaluate(AXE); const v = await page.evaluate(() => window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] } }).then((r) => r.violations.map((x) => `axe ${x.id}: ${x.nodes.slice(0, 3).map((n) => n.target.join(' ')).join(' | ')}`))); res = [...res, ...v.map((m) => `${name} ${m}`)]; } catch (e) { res.push('axe failed ' + e.message.split('\n')[0]); } }
   const log = page.qaLog.filter((l) => !/Service Worker registration blocked/.test(l));
   for (const m of [...res, ...log]) (findings[m.replace(/^\S+ /, '').replace(/\d+x\d+|\d+/g, '#')] ||= { msg: m, where: [] }).where.push(`${vp}/${lang}/${name}`);
   await page.context().close();
