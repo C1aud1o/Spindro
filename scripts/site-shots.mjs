@@ -72,6 +72,9 @@ function startServer() {
 async function newPage(browser, lang, { extra = {}, size = { width: 390, height: 780 }, keepClickCheck = false } = {}) {
   const ctx = await browser.newContext({ viewport: size, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: lang, serviceWorkers: 'block' });
   const page = await ctx.newPage(); page.errors = []; page.on('pageerror', (e) => page.errors.push(e.message));
+  // guard: a Content-Security-Policy violation or a texture that did not load makes models render white or black: fail the shot
+  page.violations = [];
+  page.on('console', (m) => { const t = m.text(); if (/Content[- ]Security[- ]Policy|Refused to|Couldn't load texture|Could not load texture|THREE\.GLTFLoader: Couldn't/i.test(t)) page.violations.push(t.slice(0, 200)); });
   await page.addInitScript((s) => { try { if (localStorage.getItem('__shots')) return; localStorage.clear(); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); localStorage.setItem('__shots', '1'); } catch { /* no storage */ } }, seed(lang, extra));
   await page.addInitScript({ path: join(ROOT, 'tests/fake-ble.js') });
   await page.addInitScript((keep) => {
@@ -169,17 +172,18 @@ const startGame = async (page) => {
   await run(page, 0.8);
   await page.evaluate(() => { const g = window.__game; if (g.menu?.start) { g.menu.age = 1; g.menu.start(); } else { g.stateT = 1; g.input(1); } });
 };
+const T = (d) => Number(process.env.SHOT_T) || d; // SHOT_T=<seconds> overrides the play time, to look for a good moment
 const GAMES = {
   racer: { card: 'racer', async scene(page) {
     await startGame(page);
     for (let i = 0; i < 40 && (await page.evaluate(() => window.__game.state)) !== 'race'; i++) await run(page, 0.5);
     await run(page, 150);
   } },
-  horde: { card: 'horde', async scene(page) { await startGame(page); await run(page, 25); } },
-  gruppetto: { card: 'gruppetto', async scene(page) { await startGame(page); await run(page, 60); } },
-  planata: { card: 'planata', async scene(page) { await startGame(page); await run(page, 40); } },
-  mattoni: { card: 'mattoni', async scene(page) { await startGame(page); await run(page, 45); } },
-  strike: { card: 'shooter', async scene(page) { await startGame(page); await run(page, 40); } },
+  horde: { card: 'horde', async scene(page) { await startGame(page); await run(page, T(25)); } },
+  gruppetto: { card: 'gruppetto', async scene(page) { await startGame(page); await run(page, T(60)); } },
+  planata: { card: 'planata', async scene(page) { await startGame(page); await run(page, T(40)); } },
+  mattoni: { card: 'mattoni', async scene(page) { await startGame(page); await run(page, T(45)); } },
+  strike: { card: 'shooter', async scene(page) { await startGame(page); await run(page, T(40)); } },
   menu: { card: 'racer', async scene(page) { await run(page, 2.5); } },
 };
 for (const [id, G] of Object.entries(GAMES)) {
@@ -205,6 +209,7 @@ try {
       await page.evaluate(() => document.getElementById('toast')?.classList.remove('show')); await sleep(400); // no transient toasts in a screenshot
       const png = join(tmp, `${name}-${lang}.png`);
       await page.screenshot({ path: png });
+      if (page.violations.length) throw new Error(`CSP / texture problems while shooting: ${[...new Set(page.violations)].join(' | ')}`);
       if (page.errors.length) console.warn(`  ! ${name}/${lang} JS errors: ${page.errors.join(' | ')}`);
       save(png, name, lang);
     } catch (e) { failed++; console.error(`ERR ${name}/${lang}: ${e.message}`); } finally { await page?.context().close(); }
