@@ -156,7 +156,7 @@ async function reconnect() {
   }
 }
 const primaryConnect = () => (hub.needsTap.length ? reconnect() : addDevice());
-window.rfDevices = { add: addDevice, reconnect, disconnectAll: () => hub.disconnectAll(), hub }; // anche per i test
+window.rfDevices = { add: addDevice, reconnect, disconnectAll: () => hub.disconnectAll(), hub, ride: () => ({ running: state.ride.running, samples: state.ride.log.length, last: state.ride.log[state.ride.log.length - 1] || null }) }; // anche per i test
 
 trainer.addEventListener('connected', (e) => {
   const { name, ftms, protocol, features } = e.detail;
@@ -1558,7 +1558,7 @@ function autoPauseCheck() {
   } else idleSec = 0;
   if (autoPaused && !r.running && moving) { autoPaused = false; $('startStop').click(); toast(t('auto.resumed')); }
   // partenza automatica: sessione nuova e pedali da 3 secondi
-  if (!r.running && !autoPaused && r.elapsed === 0 && moving) { if (++moveSec >= 3) { $('startStop').click(); toast(t('auto.started')); } } else moveSec = 0;
+  if (!r.running && !autoPaused && r.elapsed === 0 && moving && !testingTrainer) { if (++moveSec >= 3) { $('startStop').click(); toast(t('auto.started')); } } else moveSec = 0;
   if (r.running) autoPaused = autoPaused && !r.running;
 }
 $('startStop').addEventListener('click', () => { if (state.ride.running) idleSec = 0; });

@@ -90,7 +90,7 @@ export function initDevicesUi({ hub, trainer, hrm, click, src, prefs, setPref, a
       const isTrainer = e.roles.includes('trainer') && trainer.device === e.device;
       const canTest = up && isTrainer && trainer.controllable;
       const test = canTest ? `<button class="ghost" data-test="${i}"${testing || !idle ? ' disabled' : ''}>${esc(t('devices.test.button'))}</button>
-        <p class="fine dev-test-note">${esc(testStatus || t(idle ? 'devices.test.note' : 'devices.test.ride'))}</p>` : '';
+        <p class="fine dev-test-note">${esc(idle ? testStatus || t('devices.test.note') : t('devices.test.ride'))}</p>` : '';
       const retry = e.state === 'lost' ? `<button class="cta-sm" data-retrylost="1">${esc(t('devices.retryNow'))}</button>` : '';
       return `<div class="dev-card ${up ? '' : 'dev-down'}"><div class="dev-top"><b class="dev-name">${esc(e.name || t('devices.unnamed'))}</b>${bat}</div>
         <div class="dev-roles">${roles}<span class="dev-state">${esc(stateText(e))}</span></div>

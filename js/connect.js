@@ -26,6 +26,7 @@ export function explainError(err, { afterPick = false } = {}) {
   const name = err?.name || '';
   const msg = String(err?.message || err || '');
   if (err?.unsupported) return 'unsupportedDevice';
+  if (/gesture/i.test(msg)) return 'unknown'; // "Must be handling a user gesture": non è il permesso del sito
   if (/already connected/i.test(msg)) return 'already';
   if (/bluetooth.*(off|disabled|not enabled|not available|unavailable)|adapter|powered off|not enabled|is disabled|turned off/i.test(msg)) return 'off';
   if (/permission|denied|blocked/i.test(msg) || name === 'SecurityError' || (name === 'NotAllowedError' && !/gesture/i.test(msg))) return 'permission';
