@@ -142,3 +142,8 @@ Re-run: five journeys (pass), the full matrix of round 3 (the games SDK round ch
 - **Flaky tests:** runs 1 and 2 each had one failure in a different test (`devices.spec.mjs` "solo Cycling Power…" and `connect.spec.mjs` "due fonti di battito…"), both while
   my own screenshot scripts were using the CPU; run 3 and the later runs were clean, and each of the two tests passed 8 of 8 when repeated alone. They depend on timing under load
   (device-connection code, not changed here); no deterministic fix was found without touching that area.
+  Five full runs in total: 309 passed ×3 (runs 3, 4 and a clean one), and one failure each in runs 1, 2 and 5 — `devices.spec.mjs:93` twice and `connect.spec.mjs:436` once. Run 5 had no other load on the machine, so `devices.spec.mjs:93`
+  ("solo Cycling Power…", the card is still listed after "Disconnect") is a real, rare race in the device list; it passes 8/8 alone. Also, `devices.spec.mjs:129` ("cadenza…") fails 6/6 when run with 6 parallel workers (`page.click('#deviceBar')` never becomes clickable) although it passes with the default 2 workers.
+  Both are in the device-connection area and are reported to its owner rather than patched here.
+
+Matrix re-run at 360 px (all scenes, all languages, axe) on the final build: nothing new. The five journeys pass in every full run.
