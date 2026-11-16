@@ -29,8 +29,14 @@ on purpose, because source-code comments refer to them.
 - [slipstream.md](slipstream.md) — Slipstream: bridging, slipstream group, tuning.
 - [giochi-shots/](giochi-shots/) — reference screenshots and frame strips.
 
+## Quality assurance
+- [qa/phone-checklist.md](qa/phone-checklist.md) — checks to run on a real phone and trainer before promoting `beta` to `main`.
+- [qa/q1-app.md](qa/q1-app.md) — QA round 1: the whole app except the 3D games and device connection.
+- [qa/q2-games.md](qa/q2-games.md) — QA round 2: the six 3D games.
+
 ## Language
 - [i18n-glossary.md](i18n-glossary.md) — how to translate, how to add a language, and the agreed word for each concept in each language.
 
 ## Design
-- [design/](design/) — design notes and screenshots.
+- [design/](design/) — design notes and screenshots (site launch checklist, home and connection mock-ups).
+- [legal/future/](legal/future/) — drafts of the legal texts for the version with accounts.
