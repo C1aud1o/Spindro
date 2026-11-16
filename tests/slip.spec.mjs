@@ -31,7 +31,7 @@ async function openSlip(page) {
 }
 
 // Il bot: tiene una potenza fissa (multiplo della FTP) e va nella corsia del corridore da prendere (solo input +1 / −1).
-// Misure di docs/giochi-design.md §5: stelle, tempo al primo evento, intervallo più lungo senza eventi, eventi al minuto.
+// Misure di docs/games/DESIGN-RULES.md §5: stelle, tempo al primo evento, intervallo più lungo senza eventi, eventi al minuto.
 function botRun({ mult, durIdx, lvl, ftp }) {
   const g = window.__game; g.active = false; g.durIdx = durIdx; g.lvlIdx = lvl; g.reset(); g.begin();
   g.hooks = { ...g.hooks, connected: () => true, ftp: () => ftp, stats: () => ({ power: ftp * mult, cadence: 85 }), speedKmh: () => 30, setGrade() {} };
@@ -52,13 +52,13 @@ async function runBot(page, mult, durIdx = 0, lvl = 1) {
   return page.evaluate(botRun, { mult, durIdx, lvl, ftp: 200 });
 }
 
-// atteso (docs/giochi-design.md §5): 0,6 × → 1 stella; 0,8 × → 1–2; 1,0 × → 2–3; 1,2 × → 3
+// atteso (docs/games/DESIGN-RULES.md §5): 0,6 × → 1 stella; 0,8 × → 1–2; 1,0 × → 2–3; 1,2 × → 3
 const EXPECT = { 0.6: [1, 1], 0.8: [1, 2], 1.0: [2, 3], 1.2: [3, 3] };
 for (const mult of [0.6, 0.8, 1.0, 1.2]) {
   test(`Slipstream: bot a ${mult} × FTP, 5 minuti, livello Normale`, async ({ page }) => {
     const r = await runBot(page, mult);
     console.log(`BOT ${mult}× → stelle ${r.res.stars}, ponti ${r.res.done}/${r.res.total}, corridori ${r.res.caught}/${r.res.riders}, persi ${r.res.dropped}, volata finale ${r.res.finalWon ? 'sì' : 'no'}, punti ${r.res.score}, primo evento ${r.es.first.toFixed(1)} s, max senza eventi ${r.es.maxGap.toFixed(1)} s, eventi/min ${Math.round(r.es.perMin)}, tipi ${JSON.stringify(r.kinds)}`);
-    expect(r.state, 'la partita finisce da sola').toBe('over');
+    expect(r.state, 'la partita finisce da sola').toBe('results');
     expect(r.secs, 'durata: 5 minuti').toBeGreaterThanOrEqual(299);
     expect(r.secs).toBeLessThanOrEqual(301);
     expect(r.res.stars, 'stelle').toBeGreaterThanOrEqual(EXPECT[mult][0]);

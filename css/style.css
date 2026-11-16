@@ -993,3 +993,4 @@ body:not(.riding) .metrics dt { overflow: hidden; text-overflow: ellipsis; lette
 #unsupported { overflow-wrap: anywhere; }
 .suggest .cta-sm { min-height: 44px; border: 0; border-radius: var(--r-btn); background: var(--accent); color: var(--accent-ink); font-weight: 700; padding: 0 14px; box-shadow: var(--shadow-cta); }
 #deviceList .cta-sm { min-height: 44px; border: 0; border-radius: var(--r-btn); background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.game-list { display: contents; }

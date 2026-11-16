@@ -125,8 +125,8 @@ test.describe('giochi', () => {
   test('la lista dei giochi nella pagina coincide con quella testata', async ({ page }) => {
     await page.click('#openGame');
     const ids = await page.$$eval('.game-card', (els) => els.map((e) => e.dataset.game));
-    expect(ids.sort()).toEqual([...GAMES].sort());
-    // tutti i giochi sono visibili anche fuori dalla modalità sviluppatore
+    expect(ids.sort()).toEqual(expect.arrayContaining([...GAMES].sort())); // più i giochi modello, solo in modalità sviluppatore (js/games/registry.js)
+    // tutti i giochi sono visibili anche fuori dalla modalità sviluppatore: gli altri (dev) no
     const shown = await page.$$eval('.game-card', (els) => els.filter((e) => e.offsetParent).map((e) => e.dataset.game));
     expect(shown.sort()).toEqual([...GAMES].sort());
   });

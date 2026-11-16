@@ -51,8 +51,8 @@ test('sfide: una sfida si completa una volta sola, dall\'uscita che la porta olt
 test('le sfide del server coincidono con quelle dell\'app e ogni gioco ha i suoi limiti', () => {
   const ts = read('functions/src/challenges.ts');
   for (const c of ch.CHALLENGES.filter((x) => x.metric !== 'z2')) expect(ts).toContain(`{ id: '${c.id}', metric: '${c.metric}', target: ${c.target} }`);
-  const app = read('js/app.js');
-  const keys = [...app.slice(app.indexOf('\nconst GAME_DEFS = {')).split('\n};')[0].matchAll(/^  (\w+): \{ load:/gm)].map((m) => m[1]).filter((k) => k !== 'video');
+  const reg = read('js/games/registry.js'); // i giochi veri (non quelli modello, solo dev) hanno limiti sul server
+  const keys = reg.split('\n').filter((l) => l.includes('defineGame({ id:') && !l.includes('dev: true')).map((l) => l.match(/id: '(\w+)'/)[1]).filter((k) => k !== 'video');
   expect(keys.length).toBeGreaterThanOrEqual(6);
   const rules = read('functions/src/games.ts');
   for (const k of keys) expect(rules, `limiti anti-cheat per ${k}`).toMatch(new RegExp(`^  ${k}: \\{`, 'm'));

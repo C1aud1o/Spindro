@@ -111,7 +111,7 @@ test('Pedal Strike: allenamento a tempo, + / − cambiano corsia, scudo del boss
 });
 
 // Il bot: avanza il gioco a mano (1/30 s) con una potenza fissa (multiplo della FTP), pilota automatico per le corsie, caso con seme.
-// Misure di docs/giochi-design.md §5: stelle, tempo al primo evento, intervallo più lungo senza eventi.
+// Misure di docs/games/DESIGN-RULES.md §5: stelle, tempo al primo evento, intervallo più lungo senza eventi.
 function strikeBot({ mult, ftp }) {
   const g = window.__game; g.seed = 7; g.auto = true; g.minutes = 5; g.diff = 1;
   g.hooks = { ...g.hooks, connected: () => true, ftp: () => ftp, stats: () => ({ power: ftp * mult, cadence: 85 }), speedKmh: () => 30, setGrade() {}, runStart() {}, runEnd() {} };
@@ -123,7 +123,7 @@ function strikeBot({ mult, ftp }) {
   let maxGap = 0; for (let i = 1; i < ts.length; i++) maxGap = Math.max(maxGap, ts[i] - ts[i - 1]);
   return { state: g.state, secs: n / 30, stars: g.result.stars, ok: g.result.ok, n: g.result.n, kills: g.kills, bossDown: g.bossDown, score: Math.round(g.score), first: ts[0] ?? 99, maxGap, nev: ts.length };
 }
-// atteso (docs/giochi-design.md §5): 0,6 × → 1 stella; 0,8 × → 1–2; 1,0 × → 2–3; 1,2 × → 3
+// atteso (docs/games/DESIGN-RULES.md §5): 0,6 × → 1 stella; 0,8 × → 1–2; 1,0 × → 2–3; 1,2 × → 3
 const STRIKE_EXPECT = { 0.6: [1, 1], 0.8: [1, 2], 1.0: [2, 3], 1.2: [3, 3] };
 for (const mult of [0.6, 0.8, 1.0, 1.2]) {
   test(`Pedal Strike: bot a ${mult} × FTP, 5 minuti, livello Normale`, async ({ page }) => {

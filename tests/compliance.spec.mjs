@@ -166,3 +166,23 @@ test('sito: CSP in ogni pagina, nessun Google Fonts, link legali ovunque', async
     expect(h, f).toContain('github.com/C1aud1o/Spindro');
   }
 });
+
+// I modelli 3D hanno le texture dentro il file: il caricatore le apre come blob:. Una CSP senza blob: in connect-src li lascia
+// senza texture (personaggi bianchi o neri) senza far fallire nient'altro: questo test lo impedisce, per tutti i giochi.
+for (const game of ['racer', 'horde', 'shooter', 'gruppetto', 'planata', 'mattoni']) {
+  test(`CSP: ${game} loads its 3D models and textures with no violation`, async ({ page }) => {
+    test.setTimeout(150_000);
+    const violations = []; const bad = [];
+    page.on('console', (m) => { const s = m.text(); if (/Content Security Policy/i.test(s)) violations.push(s.slice(0, 160)); if (/Couldn't load texture|GLTFLoader.*(error|fail)/i.test(s)) bad.push(s.slice(0, 160)); });
+    await page.addInitScript(() => { try { localStorage.setItem('analytics', '0'); localStorage.setItem('lang', 'en'); localStorage.setItem('gameQuality', 'low'); } catch { /* */ } });
+    await page.addInitScript({ path: FAKE_BLE });
+    await page.goto('/index.html');
+    await page.evaluate(async () => { while (!window.rfDevices) await new Promise((r) => setTimeout(r, 50)); return window.rfDevices.add(); });
+    await page.click('#openGame');
+    await page.click(`[data-game=${game}]`);
+    await expect.poll(() => page.evaluate(() => window.__game?.state), { timeout: 120_000 }).not.toBe('loading');
+    await page.waitForTimeout(1500);
+    expect(violations, 'Content-Security-Policy violations').toEqual([]);
+    expect(bad, 'textures that failed to load').toEqual([]);
+  });
+}

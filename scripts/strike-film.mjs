@@ -1,4 +1,4 @@
-// Filmati di Pedal Strike per cercare i difetti in movimento (docs/giochi-design.md, verifica 2).
+// Filmati di Pedal Strike per cercare i difetti in movimento (docs/games/DESIGN-RULES.md, verifica 2).
 // Fotogrammi a 10 al secondo a 390×780 (il tempo di gioco avanza a passi di 1/30 s), poi strisce di 12 fotogrammi consecutivi.
 //   node tests/serve.mjs &
 //   PW_CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/strike-film.mjs [--scenes=avvio,sforzo,miniboss,overdrive,boss,fine]

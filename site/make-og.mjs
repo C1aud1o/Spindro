@@ -18,19 +18,21 @@ const html = `<!doctype html><meta charset="utf-8"><style>
 body{width:1200px;height:630px;background:#f1efe6;color:#131311;position:relative;overflow:hidden;font-family:B,sans-serif}
 .wm{position:absolute;left:70px;top:52px;font:italic 700 56px/1 BC,sans-serif;text-transform:uppercase}
 .wm b{background:#d9ff3d;padding:0 8px;margin-left:2px}
-h1{position:absolute;left:70px;top:200px;font:italic 700 104px/1 BC,sans-serif;text-transform:uppercase;white-space:nowrap}
+h1{position:absolute;left:70px;top:200px;font:italic 700 80px/1 BC,sans-serif;text-transform:uppercase;white-space:nowrap}
 h1 mark{background:#d9ff3d;color:#131311;padding:0 14px;margin-left:-14px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
 .k{position:absolute;left:70px;bottom:52px;font:700 22px/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.1em;text-transform:uppercase;color:#5d5c53}
-.phone{position:absolute;right:110px;top:70px;width:290px;height:516px;border:4px solid #131311;border-radius:34px;overflow:hidden;transform:rotate(7deg);box-shadow:12px 14px 0 #131311;background:#131311}
+.phone{position:absolute;right:60px;top:56px;width:250px;height:500px;border:4px solid #131311;border-radius:34px;overflow:hidden;transform:rotate(7deg);box-shadow:12px 14px 0 #131311;background:#131311}
+.phone.b{right:330px;top:96px;transform:rotate(-5deg);width:230px;height:460px}
 .phone img{width:100%;height:100%;object-fit:cover;display:block}
-.st{position:absolute;right:340px;top:408px;width:176px;height:176px;border-radius:50%;background:#d9ff3d;border:3px solid #131311;box-shadow:6px 7px 0 #131311;transform:rotate(-12deg);display:grid;place-content:center;text-align:center}
-.st b{font:italic 700 74px/.85 BC,sans-serif;display:block}
+.st{position:absolute;right:490px;top:430px;width:150px;height:150px;border-radius:50%;background:#d9ff3d;border:3px solid #131311;box-shadow:6px 7px 0 #131311;transform:rotate(-12deg);display:grid;place-content:center;text-align:center}
+.st b{font:italic 700 62px/.85 BC,sans-serif;display:block}
 .st span{font:700 17px/1.1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;display:block;margin-top:6px}
 </style>
 <div class="wm">Spin<b>dro</b></div>
 <h1>Your trainer.<br><mark>No subscription.</mark></h1>
 <div class="k">Free · Open source</div>
-<div class="phone"><img src="${b64('assets/shots/ride-en.webp', 'image/webp')}"></div>
+<div class="phone b"><img src="${b64('assets/shots/home-en.webp', 'image/webp')}"></div>
+<div class="phone"><img src="${b64('assets/shots/game-racer-en.webp', 'image/webp')}"></div>
 <div class="st"><b>0 €</b><span>per month</span></div>`;
 
 const browser = await chromium.launch(launchOptions);

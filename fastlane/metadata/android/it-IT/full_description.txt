@@ -1,19 +1,19 @@
 Spindro trasforma il telefono in un'app da ciclismo gratuita e open source per il tuo rullo smart. Nessun abbonamento, nessun account obbligatorio. I tuoi dati restano sul dispositivo.
 
 COLLEGA IL RULLO
-• Bluetooth con scelta automatica del protocollo: FTMS (quasi tutti i rulli smart dal 2020 circa), Tacx FE-C su Bluetooth e Wahoo legacy (sperimentali: finora provati solo con un rullo simulato, non con rulli veri) oppure sola lettura Cycling Power / Speed & Cadence.
+• Bluetooth con scelta automatica del protocollo: FTMS (il protocollo Bluetooth standard usato dalla maggior parte dei rulli smart recenti), Tacx FE-C su Bluetooth e Wahoo legacy (sperimentali: finora provati solo con un rullo simulato, non con rulli veri) oppure sola lettura Cycling Power / Speed & Cadence.
 • Potenza, cadenza, velocità e frequenza cardiaca in tempo reale (fascia Bluetooth o orologio che trasmette il battito).
-• Sviluppata e provata soprattutto con il Van Rysel D100. Il tuo rullo non va? C'è il pulsante "Segnala un problema": ogni segnalazione migliora l'elenco dei rulli compatibili.
+• Provata davvero finora su un solo rullo, il Van Rysel D100. Il tuo rullo non va? C'è il pulsante "Segnala un problema": ogni segnalazione migliora l'elenco dei rulli compatibili.
 
 QUATTRO MODI DI PEDALARE
 • Cambio: 24 marce virtuali. Un modello fisico (cadenza, rapporto, pendenza, peso) calcola la potenza ERG, quindi cambiare marcia cambia davvero la resistenza. Il cambio automatico opzionale mantiene la cadenza scelta.
 • ERG: potenza fissa.
 • Pendenza: salite simulate.
 • Resistenza: livello in %.
-Cambi con i pulsanti a schermo, la tastiera o telecomandi Bluetooth, oppure con uno Zwift Click (supporto sperimentale; riconosciuti anche Zwift Play e Zwift Ride).
+Cambi con i pulsanti a schermo, la tastiera o telecomandi Bluetooth, oppure con uno Zwift Click (sperimentale: solo i tasti + e − sono stati provati su hardware vero; riconosciuti anche Zwift Play e Zwift Ride, e una verifica tasti mostra cosa riceve l'app).
 
 GIOCHI CHE SI GIOCANO CON LE GAMBE
-Giochi 3D a pedali: una tappa in linea con otto avversari, uno sparatutto a scorrimento, uno sparatutto a orde, un aereo che vola a watt, un gioco di scia e uno di mattoni. Più watt = più velocità o più colpi; le salite arrivano sul rullo come pendenza reale.
+Sei giochi 3D che sono allenamenti: Breakaway (una corsa a tappe), Horde Run, Pedal Strike, Slipstream, Updraft e Feed Zone. Ognuno è una sessione da 5, 10 o 20 minuti in percentuale della tua FTP, con tre livelli e un solo menu. Le salite di Breakaway arrivano sul rullo come pendenza reale.
 
 ALLENAMENTI STRUTTURATI
 • Allenamenti ERG calcolati sulla tua FTP (sweet spot, soglia, VO2max, piramide, 30/30…) e test FTP a rampa.

@@ -10,7 +10,9 @@
     "faq": "FAQ",
     "skip": "Skip to content",
     "lang": "Language",
-    "open": "Open app"
+    "open": "Open app",
+    "blog": "Blog",
+    "developers": "Build a game"
   },
   "cta": {
     "app": "Open web app",
@@ -20,8 +22,8 @@
     "soon": "Google Play: coming soon"
   },
   "home": {
-    "title": "Spindro: Smart Trainer Cycling | Free, open-source Zwift alternative",
-    "description": "Free, open-source smart trainer app. No subscription. Virtual gears, 3D games, workouts, GPX routes and your watch as a bike computer. Works with Van Rysel D100, Elite, Wahoo, Tacx and more.",
+    "title": "Spindro: free, open-source indoor cycling app for smart trainers",
+    "description": "Free, open-source indoor cycling app. ERG and virtual gears for your smart trainer, structured workouts and six games that are workouts. No subscription, no account. Browser and Android.",
     "faq": [
       {
         "q": "Is it really free?",
@@ -33,7 +35,7 @@
       },
       {
         "q": "Does it work on iPhone and iPad?",
-        "a": "Not in Safari: Apple does not allow Web Bluetooth there. Install the free Bluefy browser from the App Store and open Spindro in it. A native iOS app may come later."
+        "a": "Not in Safari: Apple does not allow Web Bluetooth there. A browser that adds Web Bluetooth, such as Bluefy, should work; we have not tested it. A native iOS app may come later."
       },
       {
         "q": "Which browser and device do I need?",
@@ -41,23 +43,27 @@
       },
       {
         "q": "Which trainers work?",
-        "a": "Most smart trainers from the last few years speak FTMS. See the compatibility page for what is verified, what is expected, and how to report yours."
+        "a": "Spindro talks FTMS, the standard Bluetooth protocol most smart trainers of recent years use. We have ridden one trainer for real. The compatibility page says what is verified, what should work, and how to report yours."
       },
       {
         "q": "Is it a Zwift replacement?",
-        "a": "It replaces Zwift for controlling your trainer, structured training and having fun on the bike. It is not an online virtual world: there is no multiplayer. The trainer accepts one Bluetooth connection at a time, so close Zwift first."
+        "a": "It does the trainer side: ERG, virtual gears, structured workouts and games. It is not an online virtual world: there is no multiplayer. A trainer accepts one Bluetooth connection at a time, so close other apps first."
+      },
+      {
+        "q": "Can I write my own game?",
+        "a": "Yes. The games share a kit and a set of design rules. Start from the Build a game page."
       },
       {
         "q": "What happens to my data and privacy?",
-        "a": "This website has no cookies and no ads, and its fonts are served from the same site. We count visits anonymously with GoatCounter, with no cookies and no personal data. In the app, ride data stays on your device. Data leaves it only if you use Strava (it sends the ride to Strava), play a YouTube video (Google's player loads) or export a file. Read the privacy policy for the details."
+        "a": "This website has no cookies and no ads, and its fonts are served from the same site. We count visits anonymously with GoatCounter, with no cookies and no personal data. In the app, ride data stays on your device, and anonymous usage counting only starts if you agree. Data leaves the device only if you use Strava (it sends the ride to Strava), play a YouTube video (Google's player loads) or export a file. Read the privacy policy for the details."
       }
     ],
     "kicker": "Indoor cycling app · free and open source",
     "h1a": "Your trainer.",
     "h1b": "No subscription.",
-    "lead": "Spindro connects to your smart trainer over Bluetooth and gives you virtual gears, structured workouts and games that run on your real watts. It works in the browser and on Android, with no account.",
+    "lead": "Spindro connects to your smart trainer over Bluetooth. Start a ride in ERG, follow a structured workout, or play games that run on your real watts. It works in the browser and on Android, with no account.",
     "heroNote": "Android: Chrome or the app. PC and Mac: Chrome or Edge. iPhone: the Bluefy browser.",
-    "heroAlt": "The Spindro ride screen: 214 watts, cadence, speed and virtual gear 14.",
+    "heroAlt": "The Spindro home screen with a trainer connected: a free ride in ERG with a 130 W target and a Start button, and shortcuts to workouts, games and history.",
     "stickerTop": "0 €",
     "stickerBottom": "per month, forever",
     "routeTitle": "The route",
@@ -67,26 +73,26 @@
       {
         "id": "connect",
         "nav": "Connect",
-        "title": "Connect and shift",
-        "text": "Pick your trainer from the list and pedal. Spindro gives it 24 virtual gears, like a Zwift Cog setup, or holds a fixed power in ERG mode.",
-        "img": "connect",
-        "alt": "Spindro home with the trainer connected and the Start button.",
+        "title": "Add a device, then ride",
+        "text": "The home is built around ERG: a Today card with a target in watts, − and + to change it, and one big Start button. One “Add device” button pairs a trainer, a Zwift controller, a heart rate strap, a power meter or a cadence sensor, and the app works out what each one is for.",
+        "img": "devices",
+        "alt": "The Devices sheet listing a connected Van Rysel D100 trainer and a heart rate strap, each with a Disconnect button, and the Add another device button.",
         "rows": [
           [
             "Protocols",
-            "FTMS · Tacx FE-C · Wahoo"
+            "FTMS first; Tacx FE-C and Wahoo legacy as fallbacks"
           ],
           [
             "Modes",
-            "Gears · ERG · Slope · Resistance"
+            "ERG · Virtual gears · Slope · Resistance"
           ],
           [
-            "Shifters",
-            "Zwift Click, Play and Ride"
+            "Controllers",
+            "Zwift Click, Play and Ride as shifters and remote"
           ],
           [
-            "Hands-free",
-            "The Click drives the whole app"
+            "Key check",
+            "Shows which key the app receives and lets you map it"
           ]
         ]
       },
@@ -94,13 +100,13 @@
         "id": "train",
         "nav": "Train",
         "title": "Train with a plan",
-        "text": "Structured workouts and multi-week plans, scaled to your FTP. If you do not know it, a ramp test measures it in about twenty minutes.",
-        "img": "workouts",
-        "alt": "Workout library with power profiles.",
+        "text": "Structured workouts and multi-week plans, scaled to your FTP. If you do not know it, a ramp test estimates it. While a workout runs, the cockpit shows the current step, the time left and the next one.",
+        "img": "workout",
+        "alt": "A workout in progress: 196 watts, a Sweet spot 3×10 workout in its warm-up with the step profile and the next step.",
         "rows": [
           [
             "Workouts",
-            "34, from 20 to 90 minutes"
+            "34, from 24 to 90 minutes"
           ],
           [
             "Plans",
@@ -116,23 +122,23 @@
           ],
           [
             "Voice coach",
-            "In 5 languages"
+            "Spoken cues in 5 languages"
           ]
         ]
       },
       {
         "id": "play",
         "nav": "Play",
-        "title": "Play on your watts",
-        "text": "3D games where the harder you push, the more happens. In the stage race the climbs load the trainer for real."
+        "title": "Games that are workouts",
+        "text": "Six 3D games, each one a structured workout in percent of your FTP: 5, 10 or 20 minutes, three levels, efforts and recoveries, something to do every few seconds. They share one menu, so you learn it once."
       },
       {
         "id": "record",
         "nav": "Record",
         "title": "Your watch keeps the ride",
-        "text": "On Android the phone broadcasts power, cadence and speed as a Bluetooth sensor. Your watch records the ride and syncs it the way it always does.",
+        "text": "On Android the phone can broadcast power, cadence and speed as a Bluetooth sensor, so your watch records the ride and syncs it the way it always does. The app also keeps its own history.",
         "img": "finish",
-        "alt": "Ride summary with time, distance, average power and medals.",
+        "alt": "Ride summary with time, distance, average power, kilojoules and power records.",
         "rows": [
           [
             "Watch",
@@ -140,7 +146,7 @@
           ],
           [
             "File",
-            ".fit with the GPS track of your route"
+            ".fit with the GPS track of a loaded route"
           ],
           [
             "Strava",
@@ -161,38 +167,38 @@
     ],
     "games": [
       [
-        "Pedal Strike 3D",
-        "Side-scrolling shooter: your watts fire the gun, a sprint unleashes overdrive against giant bosses."
-      ],
-      [
         "Breakaway",
-        "A stage race with drafting, climbs and a sprint finish. The climbs load your trainer."
+        "A timed stage: breakaway, intermediate sprint, climb and final sprint. Climbs load your trainer."
       ],
       [
         "Horde Run",
-        "Hold the road against a zombie horde: more watts, more shots."
+        "Hold the road against waves of zombies. More watts, more shots."
+      ],
+      [
+        "Pedal Strike",
+        "A runner shooter. Shields break only at the right watts; a sprint unleashes overdrive."
       ],
       [
         "Slipstream",
-        "Sweep up the dropped riders and tow them in your slipstream."
+        "Bridge to the riders who attack and tow them into your slipstream."
       ],
       [
         "Updraft",
-        "A pedal-powered plane: watts are your altitude. Fly through rings and over ridges."
+        "A pedal-powered plane: your watts are your altitude. Fly the rings that draw your workout."
       ],
       [
         "Feed Zone",
-        "3D brick breaker: your bike is the paddle, cadence sets the ball's speed."
+        "Bounce a bottle off the soigneurs. Cadence sets its speed, watts charge the turbo."
       ]
     ],
-    "gamesMore": "And any YouTube ride video, played at your own speed.",
+    "gamesMore": "The games menu also plays any YouTube ride video, or a video of your own, at your own speed.",
     "gamesAlt": [
-      "Side view of a rider on a harbour road shooting at an orange robot, with a combo counter.",
-      "Stage race on a climb with the pack ahead and spectators by the road.",
-      "Night graveyard road with a horde of zombies and the rider's shots.",
-      "Top view of a long line of riders in the countryside.",
-      "A yellow plane flying toward a rocky ridge and a ring.",
-      "A paddle bike at the end of a road, aiming at colourful bricks."
+      "Breakaway: the rider in pink leads a pack toward the sea, with the gear, the climb goal and a profile of the stage on screen.",
+      "Horde Run: a rider on a night road firing at a horde of zombies, with wave counter and shots per second.",
+      "Pedal Strike: a rider on a road lined with shipping containers, with score, timer, hearts, the workout step bar and the overdrive meter.",
+      "Slipstream: a rider on a country road collecting bottles, with the next rider 45 metres ahead.",
+      "Updraft: a yellow plane carrying the rider through a ring, with an altitude gauge.",
+      "Feed Zone: a rider bouncing a bottle off a line of fans holding buckets."
     ],
     "ownBig": "0 €",
     "ownUnit": "per month",
@@ -200,11 +206,12 @@
       "No subscription, no ads, no in-app purchases.",
       "No account. Your rides stay on your device.",
       "GPL-3.0: the code is public and stays public.",
-      "Five languages. Works offline once loaded."
+      "Five languages. Works offline once loaded.",
+      "Visits to this site are counted anonymously; the app asks before it counts anything."
     ],
     "ownBtn": "Read the source",
     "compatTitle": "Works with",
-    "compatLead": "An honest table. One trainer has been ridden for real; the rest is built from public specifications and tested against simulated devices.",
+    "compatLead": "An honest table. One trainer has been ridden for real, and so have the + and − keys of one Zwift Click. The rest is built from public specifications and tested against simulated devices.",
     "compatRows": [
       [
         "Van Rysel D100",
@@ -222,23 +229,23 @@
         "Tacx FE-C · Wahoo legacy",
         "Older firmware",
         "sim",
-        "Tested on simulators"
+        "Simulators only"
       ],
       [
-        "Zwift Click",
-        "Shifter and remote",
+        "Zwift Click (v2)",
+        "+ and − keys",
         "ok",
-        "Used for real"
+        "Ridden for real"
       ],
       [
-        "Zwift Play · Ride",
-        "Shifter and remote",
+        "Zwift Click arrows, Play, Ride",
+        "Remote and shifter",
         "sim",
-        "Tested on simulators"
+        "Simulators only"
       ],
       [
-        "Garmin watches",
-        "Sensor bridge",
+        "Garmin and other watches",
+        "Sensor bridge, Android",
         "maybe",
         "Should work"
       ]
@@ -247,23 +254,38 @@
     "compatReport": "Report your trainer",
     "faqTitle": "Questions",
     "finalTitle": "Clip in.",
-    "finalText": "Open the web app, connect the trainer, ride. It takes about a minute."
+    "finalText": "Open the web app, connect the trainer, ride. It takes about a minute.",
+    "gamesFollow": "A game can also follow the workout you are riding: its efforts become the waves of the game, and the stars measure how long you stay within 7% of the target watts.",
+    "devTitle": "Build a game",
+    "devLead": "Every Spindro game is a small JavaScript module on a shared kit: 3D scene, power and cadence, one menu, results, audio and progress. No bundler, no build step. If you can write a canvas or three.js game, you can add one.",
+    "devPoints": [
+      "A game kit: menu, results, HUD, cyclist, environment, quality settings.",
+      "Power and cadence from the trainer, or a demo rider when none is connected.",
+      "Design rules that keep a game a workout: sessions in % of FTP, three levels."
+    ],
+    "devBtn": "Start building",
+    "blogTitle": "From the blog",
+    "blogLead": "Why we built it, how it works, and what we learned.",
+    "blogAll": "All articles",
+    "gamesAria": "Screenshots of the six games"
   },
   "compat": {
     "title": "Compatible trainers and watches | Spindro",
-    "description": "Smart trainers, Zwift Click controllers and watches that work with Spindro: FTMS, Tacx FE-C, Wahoo, Cycling Power. Honest status: verified, should work, reported by users.",
+    "description": "Smart trainers, Zwift controllers and watches that work with Spindro, and how sure we are: ridden for real, should work, reported by users. Only one trainer has been tested on real hardware.",
     "h1": "Compatible trainers and watches",
     "lead": "Spindro picks the protocol on its own: FTMS, then Tacx FE-C over Bluetooth, then Wahoo legacy, then read-only Cycling Power or Speed & Cadence. Below is what we support and how sure we are.",
     "legendTitle": "What the labels mean",
     "status": {
       "verified": "Verified",
       "expected": "Should work, not yet verified",
-      "reported": "Reported by users"
+      "reported": "Reported by users",
+      "partial": "Partly verified"
     },
     "statusDesc": {
       "verified": "Tested on the real device by the author.",
       "expected": "The protocol is supported by the code, but this model has never been tried.",
-      "reported": "Users told us it works. No report has been collected yet."
+      "reported": "Users told us it works. No report has been collected yet.",
+      "partial": "Some functions were tested on the real device; the rest was not."
     },
     "trainers": "Smart trainers and sensors",
     "controllers": "Controllers and heart rate",
@@ -282,7 +304,8 @@
   "legal": {
     "title": "{title} | Spindro",
     "draft": "Draft: this text is still being reviewed and has placeholders in square brackets.",
-    "back": "Back to home"
+    "back": "Back to home",
+    "description": "{title}: legal information about Spindro, the free and open-source indoor cycling app."
   },
   "legalNames": {
     "privacy": "Privacy",
@@ -297,14 +320,89 @@
     "trademark": "Zwift, Garmin, Strava, Tacx, Wahoo, Van Rysel, Decathlon, YouTube, Google Play, Android and Bluetooth are trademarks of their respective owners. Spindro is not affiliated with these companies.",
     "madeBy": "Free and open source. Made by a cyclist with a cheap trainer.",
     "source": "Source code",
-    "issues": "Report an issue"
+    "issues": "Report an issue",
+    "blog": "Blog",
+    "developers": "Build a game",
+    "rss": "RSS feed"
   },
   "og": {
-    "alt": "Spindro: free, open-source smart trainer app"
+    "alt": "Spindro: free, open-source indoor cycling app. Phone screens from a ride and a game."
   },
   "notFound": {
     "title": "Page not found",
     "text": "This page does not exist.",
     "home": "Go to the home page"
+  },
+  "blog": {
+    "title": "Blog: notes on building a free indoor-cycling app | Spindro",
+    "description": "Why we built Spindro, how virtual gears and ERG mode work on a budget trainer, and how games can be workouts.",
+    "h1": "Blog",
+    "lead": "Notes from building a free indoor-cycling app: the reasons, the technical details, and the design rules we hold ourselves to.",
+    "read": "Read",
+    "minutes": "min read",
+    "published": "Published",
+    "back": "All articles",
+    "tryTitle": "Try it",
+    "tryText": "Open the web app, connect the trainer, ride.",
+    "more": "Keep reading",
+    "rss": "RSS feed"
+  },
+  "dev": {
+    "title": "Build a game for Spindro | Spindro",
+    "description": "How to add a game to Spindro: the game kit, the design rules, the steps to follow and where the code lives. Open source, plain JavaScript, no build step.",
+    "h1": "Build a game",
+    "lead": "Spindro's games are small JavaScript modules on a shared kit. This page says what the kit gives you, what rules a game follows, and how to add one. It does not document an API: the code is the reference, and a written guide is on its way.",
+    "kitTitle": "What the kit gives you",
+    "kit": [
+      [
+        "Power and cadence",
+        "Live watts and cadence from the trainer or sensors, smoothed for you. With no trainer connected, a demo rider keeps the game playable."
+      ],
+      [
+        "One menu, one results screen",
+        "Length (5, 10 or 20 minutes), level (easy, normal, hard), start by key, touch or pedalling; stars and personal bests at the end."
+      ],
+      [
+        "HUD",
+        "Text, panels and messages that do not overlap and stay readable at arm's length."
+      ],
+      [
+        "Riders and environment",
+        "A 3D cyclist, scenery helpers, audio, particle effects and an automatic quality setting."
+      ],
+      [
+        "Controller input",
+        "+ and − from a Zwift Click or the keyboard reach your game as a single input(±1) call."
+      ],
+      [
+        "Progress",
+        "Experience points, records and achievements shared across games."
+      ]
+    ],
+    "rulesTitle": "The rules a game follows",
+    "rules": [
+      "A session is a workout: 5, 10 or 20 minutes, with intensity in percent of the player's FTP, so it is fair at 120 W and at 320 W.",
+      "Three levels (easy, normal, hard) and a difficulty that adapts a little after failed or successful efforts.",
+      "Something to do within eight seconds, and never more than five seconds without an event that asks or rewards something.",
+      "Playable without touching the screen: watts and cadence do the work, + and − do one thing, spelled out in the menu.",
+      "Whoever stops pedalling pauses the game; nobody is punished for pushing harder."
+    ],
+    "stepsTitle": "Adding a game, step by step",
+    "steps": [
+      "Read the existing games in the js/games folder: each is one module plus a small plan file that describes its workout.",
+      "Copy the closest one, and give your game its own id and its own i18n keys in all five locales.",
+      "Describe the workout as a plan in percent of FTP, and let the kit's menu and results screen handle the rest.",
+      "Register the game in js/app.js so it appears in the games list, and add its files to the ASSETS list in sw.js.",
+      "Test it with the simulated trainer in tests/fake-ble.js, at several power levels, then run the whole test suite.",
+      "Send a pull request on GitHub."
+    ],
+    "docsTitle": "Documentation",
+    "docsGuide": "Step-by-step guide: Create a game",
+    "docsApi": "API reference",
+    "docsSoon": "The written guide and API reference are still being written and are not in the repository yet. Until then, the games folder is the reference.",
+    "folder": "Browse the games folder on GitHub",
+    "designDoc": "Game design rules (Italian)",
+    "legalTitle": "Before you start",
+    "legal": "Assets must have a clear licence (CC0, MIT, OFL, or generated for the project) and be credited. User-facing text goes through the translation files. The project is GPL-3.0."
   }
 }
