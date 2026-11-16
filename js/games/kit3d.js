@@ -91,6 +91,7 @@ export class Stage {
     this.scene.traverse((o) => { if (o.isInstancedMesh) o.dispose(); });
     this.composer?.dispose?.();
     this.renderer.dispose();
+    this.renderer.forceContextLoss(); // release the GL context now: removed canvases are not collected fast enough (16 live contexts max)
     this.gl.remove();
     this.ctx.setTransform(1, 0, 0, 1, 0, 0); this.ctx.clearRect(0, 0, this.hud.width, this.hud.height);
   }
