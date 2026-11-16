@@ -739,7 +739,7 @@ export class Horde {
     const jewel = this.m.jewel.scene.clone(true); jewel.scale.setScalar(this.gemScale); mesh.add(jewel);
     const halo = new THREE.Sprite(this.gemGlow); halo.scale.setScalar(1.6); halo.position.y = 0.35; mesh.add(halo);
     mesh.position.set(x, 0.6, z);
-    this.stage.scene.add(mesh); this.gems.push({ mesh, t: this.rnd() * 3, trail });
+    this.stage.scene.add(mesh); this.gems.push({ mesh, halo, t: this.rnd() * 3, trail });
   }
   dropGem(x, z, n) {
     for (let i = 0; i < n; i++) this.addGem(clamp(x + (this.rnd() - 0.5) * (n > 1 ? 4 : 0.5), -ROAD, ROAD), z + (this.rnd() - 0.5) * (n > 1 ? 4 : 0.5));
@@ -759,6 +759,7 @@ export class Horde {
       // restano a terra: le prendi passandoci vicino (il magnete ha raggio 4 m)
       if (d < (g.trail ? 2.6 : 4) || g.pull) {
         g.pull = true;
+        g.halo.scale.setScalar(1.6 * clamp((d - 0.6) / 3, 0.12, 1)); // the additive halo shrinks while the gem is pulled in: it used to wash the rider's jersey out to white
         const step = Math.min(d, 26 * dt);
         g.mesh.position.x += (dx / d) * step; g.mesh.position.z += (dz / d) * step;
         if (d < 1.1) {

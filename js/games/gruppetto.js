@@ -662,7 +662,7 @@ export class Gruppetto {
     const b = this.bridge;
     if (b && b.state === 'attack' && Math.abs(this.x - b.riders[0].x) > 1.35 && b.gap < 14) {
       const dir = b.lane > this.lane ? 1 : -1; const k = 0.7 + 0.3 * Math.sin(this.t * 10);
-      ctx.save(); ctx.globalAlpha = k; hudText(ctx, dir > 0 ? '▶' : '◀', dir > 0 ? W - 34 : 34, H * 0.5, { size: 64, align: 'center', color: '#4de3ff' }); ctx.restore();
+      ctx.save(); ctx.globalAlpha = k; hudText(ctx, dir > 0 ? '▶' : '◀', dir > 0 ? W - 46 : 46, H * 0.5, { size: 52, align: 'center', color: '#4de3ff' }); ctx.restore();
     }
     // richiesta di più watt: sotto la barra dell'obiettivo, solo se non c'è un messaggio al centro
     if (this.hint && !this.msgs.cur) hudText(ctx, this.hint.text, W / 2, goalBottom + 30, { size: 22, align: 'center', color: '#ffd34d', maxW: W - 40 });

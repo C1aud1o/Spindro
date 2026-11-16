@@ -21,7 +21,7 @@ const RIDER_S = 1.75;       // scala del ciclista (più grande del vero: si legg
 const RIDER_Z = -0.6;       // posizione lungo la fusoliera
 const GUST_DROP = 1.0;      // di quanto spinge giù una raffica (m)
 const LAND_S = 6;           // secondi di discesa finale
-const CAM_BACK = 10; const CAM_UP = 5.0; const CAM_BACK_T = 9; const CAM_UP_T = 5.4;
+const CAM_BACK = 10; const CAM_UP = 5.0; const CAM_BACK_T = 9; const CAM_UP_T = 7.2;
 // la pista: i laghi e gli alberi la lasciano libera
 let RUNWAY_Z = null;
 function setRunway(z) { RUNWAY_Z = z; }
