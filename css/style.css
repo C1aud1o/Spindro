@@ -271,7 +271,7 @@ body.game-open { overflow: hidden; }
 .game-panel canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .game-bar { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 10px; padding: max(8px, env(safe-area-inset-top)) 12px 8px; background: linear-gradient(rgba(0,0,0,.6), transparent); color: #fff; }
 .game-bar strong { font-size: 1rem; }
-.game-help { flex: 1; font-size: .75rem; color: #c9cfdb; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.game-help { flex: 1; min-width: 0; font-size: .75rem; line-height: 1.2; color: #c9cfdb; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; } /* fino a due righe: il testo breve dei comandi non si taglia più sui telefoni stretti */
 
 .game-menu { position: absolute; inset: 0; display: grid; align-content: start; overflow-y: auto; gap: 16px; padding: 80px 16px 24px; max-width: 560px; margin: 0 auto; background: var(--bg); }
 .game-menu[hidden] { display: none; }
@@ -1033,3 +1033,9 @@ main:has(#connectHelp:not([hidden]), #dropBanner:not([hidden]), #suggest:not([hi
 .update-bar .ghost { flex: none; min-height: 44px; min-width: 44px; }
 /* avvisi (collegamento, dispositivo perso, suggerimento, nuova versione, nessuna fonte): a tutta larghezza anche nella griglia a due colonne */
 main > #suggest, main > #connectHelp, main > #dropBanner, main > .update-bar, main > #noSource, main > #reportHint, main > #devMsg { grid-column: 1 / -1; }
+/* barra dei giochi su telefono: titolo intero e pulsanti su una riga; i comandi li spiega già il menu del gioco, quindi il testo d'aiuto si nasconde sotto i 480 px */
+@media (max-width: 480px) {
+  .game-help { display: none; }
+  .game-bar strong { flex: 1 1 auto; }
+  .game-bar button { white-space: nowrap; flex: none; }
+}
