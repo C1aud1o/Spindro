@@ -48,7 +48,7 @@ function todayRide() {
 }
 function history() {
   const rand = rng(7); const out = [];
-  [[49, 30, 122], [44, 40, 126], [40, 45, 128], [34, 38, 132], [30, 50, 136], [27, 32, 138], [22, 45, 140], [18, 50, 142], [13, 36, 146], [8, 45, 150], [4, 52, 152], [2, 38, 154]].forEach(([ago, mins, base], i) => {
+  [[49, 30, 122], [44, 40, 126], [40, 45, 128], [34, 38, 132], [30, 50, 136], [27, 32, 138], [22, 45, 140], [18, 50, 142], [13, 36, 146], [8, 45, 150], [4, 52, 152], [2, 38, 154], [0, 40, 156]].forEach(([ago, mins, base], i) => {
     const { p, hr } = makeRide(rand, mins, base, [{ at: 6, len: 10, w: base + 55 }]);
     const avg = Math.round(p.reduce((a, b) => a + b, 0) / p.length);
     const best = {}; for (const dd of [5, 60, 300, 1200]) { if (p.length < dd) continue; let s = p.slice(0, dd).reduce((a, b) => a + b, 0); let m = s; for (let k = dd; k < p.length; k++) { s += p[k] - p[k - dd]; if (s > m) m = s; } best[dd] = Math.round(m / dd); }
@@ -179,7 +179,7 @@ const GAMES = {
     for (let i = 0; i < 40 && (await page.evaluate(() => window.__game.state)) !== 'race'; i++) await run(page, 0.5);
     await run(page, 150);
   } },
-  horde: { card: 'horde', async scene(page) { await startGame(page); await run(page, T(52)); } },
+  horde: { card: 'horde', async scene(page) { await startGame(page); await run(page, T(135)); } },
   gruppetto: { card: 'gruppetto', async scene(page) { await startGame(page); await run(page, T(135)); } },
   planata: { card: 'planata', async scene(page) { await startGame(page); await run(page, T(135)); } },
   mattoni: { card: 'mattoni', async scene(page) { await startGame(page); await run(page, T(135)); } },
