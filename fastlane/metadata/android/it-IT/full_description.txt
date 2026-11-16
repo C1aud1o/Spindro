@@ -31,7 +31,7 @@ STORICO ED ESPORTAZIONE
 • Coach vocale nella lingua dell'app: annuncia tratti, watt, ultimi secondi e salite in arrivo.
 
 OPEN SOURCE
-Il codice è pubblico con licenza GPL-3.0. Account e classifiche sono in arrivo, saranno facoltativi: l'app è già completa senza.
+Il codice è pubblico con licenza GPL-3.0.
 
 Consiglio: il rullo accetta una sola connessione Bluetooth alla volta, quindi chiudi le altre app di ciclismo.
 

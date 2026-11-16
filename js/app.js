@@ -1582,7 +1582,7 @@ if ('serviceWorker' in navigator) {
     const msg = document.createElement('span'); msg.textContent = t('update.ready');
     const btn = document.createElement('button'); btn.className = 'ghost'; btn.textContent = t('update.reload');
     btn.addEventListener('click', () => { reloadAsked = true; pendingUpdate.postMessage('skipWaiting'); });
-    updateBar.append(msg, btn); document.body.append(updateBar);
+    updateBar.append(msg, btn); document.querySelector('main').prepend(updateBar); // nel flusso della pagina, sopra le altre schede: non copre nulla
   };
   // il ricaricamento parte solo dopo il tocco sul pulsante (la prima installazione, senza controller, non conta)
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (reloadAsked) location.reload(); });
@@ -1593,7 +1593,7 @@ if ('serviceWorker' in navigator) {
       const w = reg.installing;
       w?.addEventListener('statechange', () => { if (w.state === 'installed') offer(); });
     });
-    setInterval(() => { if (pendingUpdate && !updateBar && !state.ride.running) showUpdateBar(); }, 5000);
+    setInterval(() => { if (pendingUpdate && !updateBar && !isRiding()) showUpdateBar(); }, 5000);
     // un'app installata resta aperta per giorni: ricontrolla quando torna in primo piano
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
   }).catch(() => {});
