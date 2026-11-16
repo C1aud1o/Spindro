@@ -109,7 +109,7 @@ export class Horde {
     this.hooks.reset?.();
     this.active = true;
     const size = () => ({ W: this.stage.W, H: this.stage.H });
-    this.detach = [this.menu.attach(this.hudCanvas, size, () => this.state === 'menu'), this.results.attach(this.hudCanvas, size, () => this.state === 'results')];
+    this.detach = [this.menu.attach(this.hudCanvas, size, () => this.state === 'menu' || this.state === 'loading'), this.results.attach(this.hudCanvas, size, () => this.state === 'results')];
     this.quality = new Quality();
     this.stage = new Stage(this.hudCanvas, { quality: this.quality });
     this.stage.onQuality = (cfg) => this.applyQuality(cfg);
@@ -278,14 +278,14 @@ export class Horde {
   // ---------- gioco ----------
   input(dir) {
     this.audio.ensure();
-    if (this.state === 'menu') { this.menu.input(dir); return; }
+    if (this.state === 'menu' || this.state === 'loading') { this.menu.input(dir); return; }
     if (this.state === 'results') { this.results.input(dir); return; }
     if (this.state !== 'play' || this.paused) return;
     this.tx = clamp(this.tx - dir * NUDGE, -ROAD, ROAD); // destra sullo schermo = −X (camera rivolta a +Z)
   }
 
   // tenuto premuto: sterzata continua (nel menu: dopo 0,8 s inizia la partita)
-  hold(dir) { if (this.state === 'menu') { this.menu.hold(dir); return; } this.held = dir; this.heldT = 0; }
+  hold(dir) { if (this.state === 'menu' || this.state === 'loading') { this.menu.hold(dir); return; } this.held = dir; this.heldT = 0; }
 
   begin() {
     this.state = 'play'; this.stateT = 0; this.hooks.runStart?.();
@@ -511,6 +511,7 @@ export class Horde {
     const kmh = connected ? this.hooks.speedKmh() : 28;
     if (this.audio.song) this.audio.setTempo(this.audio.song.bpm * clamp((this.cadence || 85) / 88, 0.85, 1.25));
     this.msgs.update(dt);
+    if (this.state === 'loading') { this.menu.update(dt, { connected: false, power: 0 }); }
     if (this.state === 'loading' || this.state === 'error') return;
     this.fx.update(dt);
     this.stateT += dt;
@@ -931,7 +932,7 @@ export class Horde {
   drawHud(dt) {
     const { ctx, W, H } = this.stage;
     ctx.clearRect(0, 0, W, H); hudView(ctx, W, H);
-    if (this.state === 'loading') { ctx.fillStyle = '#0f0e0c'; ctx.fillRect(0, 0, W, H); hudText(ctx, t('games.common.loading'), W / 2, H / 2, { size: 22, align: 'center', color: '#d9ff3d' }); hudText(ctx, `${Math.round((this.loadPct || 0) * 100)}%`, W / 2, H / 2 + 28, { size: 14, align: 'center' }); return; }
+    if (this.state === 'loading') { ctx.fillStyle = '#0f0e0c'; ctx.fillRect(0, 0, W, H); this.menu.loadFrac = this.loadPct || 0; this.menu.draw(ctx, W, H, { connected: false }); return; }
     if (this.state === 'error') { hudText(ctx, t('ui.error', { error: this.error }), W / 2, H / 2, { size: 14, align: 'center', color: '#ff6b6b' }); return; }
     if (this.state === 'menu') { this.drawMenu(ctx, W, H, dt); return; }
     if (this.state === 'results' && this.result) { this.drawOver(ctx, W, H, dt); return; }

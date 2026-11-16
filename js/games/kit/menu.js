@@ -61,14 +61,20 @@ export class GameMenu {
   }
   get minutes() { return this.lengths[this.durIdx]; }
   // da chiamare quando il menu (ri)appare
-  reset() { this.age = 0; this.pend = null; this.hd = 0; this.ht = 0; this.fired = false; this.pedT = 0; this.started = false; }
+  // `queued`: START was pressed while the game was still loading; it survives reset() and starts the run as soon as the menu is ready.
+  // `loadFrac` (0..1) is set by the game every frame while it loads: the menu is then drawn with a progress bar and a disabled START.
+  reset() { this.age = 0; this.pend = null; this.hd = 0; this.ht = 0; this.fired = false; this.pedT = 0; this.started = false; this.loadFrac = null; }
+  get loading() { return this.loadFrac != null && !this.ready(); }
   get fill() { return Math.max(this.hd > 0 && !this.fired ? Math.min(1, this.ht / HOLD_START) : 0, Math.min(1, this.pedT / PEDAL_SECS)); }
 
   // allenamento in corso sotto al gioco: la durata la decide lui (niente scelta 5/10/20)
   get wk() { try { return this.workout() || null; } catch { return null; } }
   cycleLength() { if (this.wk) return; this.durIdx = (this.durIdx + 1) % this.lengths.length; this.pedT = 0; this.sfx('select'); this.save(); }
   cycleLevel() { this.level = (this.level + 1) % 3; this.pedT = 0; this.sfx('select'); this.save(); }
-  start() { if (this.started || this.age < SETTLE || !this.ready()) return; this.started = true; this.save(); this.sfx('pickup'); this.onStart(this.durIdx, this.level); }
+  start() {
+    if (this.started || this.age < SETTLE) return;
+    if (!this.ready()) { if (this.loadFrac != null && !this.queued) { this.queued = true; this.sfx('select'); } return; } // still loading: remember the press
+    this.queued = false; this.started = true; this.save(); this.sfx('pickup'); this.onStart(this.durIdx, this.level); }
 
   // + / − (pressione, subito): la pressione breve agisce al rilascio; se hold() non arriva (prove, tastiere senza rilascio) agisce dopo 60 ms
   input(dir) { if (!dir || this.age < SETTLE) return; this.pend = { dir, t: 0, held: false }; }
@@ -81,6 +87,7 @@ export class GameMenu {
   act(dir) { if (dir < 0) this.cycleLength(); else this.cycleLevel(); }
   update(dt, { connected = false, power = 0 } = {}) {
     this.age += dt;
+    if (this.queued && this.ready()) this.start(); // START was pressed during loading
     if (this.pend && !this.pend.held) { this.pend.t += dt; if (this.pend.t >= 0.06) { const d = this.pend.dir; this.pend = null; this.act(d); } }
     if (this.hd > 0 && !this.fired) { this.ht += dt; if (this.ht >= HOLD_START) { this.fired = true; this.pend = null; this.start(); } }
     if (connected && power > PEDAL_WATTS && this.age >= SETTLE) { this.pedT += dt; if (this.pedT >= PEDAL_SECS) this.start(); } else this.pedT = Math.max(0, this.pedT - dt * 2);
@@ -134,13 +141,17 @@ export class GameMenu {
     // tasto VIA con barra di pressione lunga; sotto, il suggerimento dei tasti
     const bw = Math.min(inner, 300 * u); const bh = 46 * u; const bx = cx - bw / 2; const by = L.land ? Math.max(y + 24 * u, H - 120 * u) : H - 96 * u;
     this.startTop = by - 22 * u;
-    txt(ctx, t(wk ? 'games.menu.wkKeys' : 'games.menu.keys'), cx, by - 8 * u, { size: 14 * u, align: al, color: HUD.lime, font: 'text', maxW: inner, minK: 0.7 });
-    panel(ctx, bx, by, bw, bh, { r: 14 * u, fill: 'rgba(12,12,18,.78)', border: HUD.lime });
-    const f = this.fill;
+    const loading = this.loading; const lf = Math.max(0, Math.min(1, this.loadFrac || 0));
+    txt(ctx, loading ? (this.queued ? t('games.menu.loadingQueued') : t('games.menu.loading', { n: Math.round(lf * 100) })) : t(wk ? 'games.menu.wkKeys' : 'games.menu.keys'), cx, by - 8 * u, { size: 14 * u, align: al, color: loading ? HUD.white : HUD.lime, font: 'text', maxW: inner, minK: 0.7 });
+    panel(ctx, bx, by, bw, bh, { r: 14 * u, fill: 'rgba(12,12,18,.78)', border: loading ? 'rgba(217,255,61,.35)' : HUD.lime });
+    if (loading) { ctx.save(); ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, by, bw, bh, 14 * u) : ctx.rect(bx, by, bw, bh); ctx.clip(); ctx.fillStyle = 'rgba(217,255,61,.28)'; ctx.fillRect(bx, by, bw * lf, bh); ctx.restore(); }
+    const f = loading ? 0 : this.fill;
     if (f > 0) { ctx.save(); ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, by, bw, bh, 14 * u) : ctx.rect(bx, by, bw, bh); ctx.clip(); ctx.fillStyle = HUD.lime; ctx.fillRect(bx, by, bw * f, bh); ctx.restore(); }
+    ctx.save(); if (loading) ctx.globalAlpha = 0.5;
     txt(ctx, t('games.menu.start'), cx, by + bh * 0.67, { size: 22 * u, align: al, color: f > 0.5 ? ink : HUD.lime, stroke: f > 0.5 ? null : undefined, maxW: bw - 16 });
+    ctx.restore();
     this.zones.push({ kind: 'start', x: bx, y: by, w: bw, h: bh });
-    if (connected) txt(ctx, t('games.menu.pedal'), cx, by + bh + 20 * u, { size: 13 * u, align: al, color: HUD.dim, font: 'text', maxW: inner });
+    if (connected && !loading) txt(ctx, t('games.menu.pedal'), cx, by + bh + 20 * u, { size: 13 * u, align: al, color: HUD.dim, font: 'text', maxW: inner });
   }
 }
 
