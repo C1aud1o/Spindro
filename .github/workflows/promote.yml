@@ -1,7 +1,7 @@
 name: Promote beta to production
 
-# Porta main alla stessa punta di beta (fast-forward). Fallisce se main ha commit che beta non ha.
-# Un push fatto col token del workflow non avvia gli altri workflow: per questo li lanciamo noi a mano alla fine.
+# Moves main to the same tip as beta (fast-forward). Fails if main has commits that beta does not have.
+# A push made with the workflow token does not start other workflows: that is why we start them by hand at the end.
 on:
   workflow_dispatch:
 
@@ -24,14 +24,14 @@ jobs:
         run: |
           git fetch origin main beta
           if git merge-base --is-ancestor origin/beta origin/main; then
-            echo "main contiene già beta: niente da promuovere."; exit 0
+            echo "main already contains beta: nothing to promote."; exit 0
           fi
           if ! git merge-base --is-ancestor origin/main origin/beta; then
-            echo "::error::main non è un antenato di beta: non è un fast-forward. Fai prima il merge di main in beta, prova e riprova."; exit 1
+            echo "::error::main is not an ancestor of beta: this is not a fast-forward. Merge main into beta first, test, and try again."; exit 1
           fi
           git push origin origin/beta:refs/heads/main
           echo "PROMOTED=true" >> "$GITHUB_ENV"
-      - name: Avvia APK e sito da main
+      - name: Start APK and site builds from main
         if: env.PROMOTED == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
