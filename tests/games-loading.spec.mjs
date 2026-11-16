@@ -19,3 +19,14 @@ for (const id of ['mattoni', 'racer']) {
     expect(await page.evaluate(() => window.__game.state)).toMatch(/play|countdown|intro/);
   });
 }
+
+test('the games list has a visible Back control that closes it', async ({ page }) => {
+  await page.addInitScript(() => { localStorage.setItem('analytics', '0'); localStorage.setItem('safetyAck', '1'); });
+  await page.goto('/index.html');
+  await page.click('#openGame');
+  const back = page.locator('#gameList .game-back');
+  await expect(back).toBeVisible();
+  expect(await back.textContent()).toBeTruthy();
+  await back.click();
+  await expect(page.locator('#gamePanel')).toBeHidden();
+});

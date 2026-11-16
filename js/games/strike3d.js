@@ -410,6 +410,13 @@ export class Strike3D {
     this.ev = []; this.firstSpawn = false; this.ko = 0; this.paused = false; this.stopT = 0;
     this.result = null;
   }
+  // { first, maxGap, perMin, n } in game seconds over the part of the run before the cool-down (docs/games/API.md, "Events")
+  eventStats() {
+    const cool = this.blocks?.find((b) => b.kind === 'cool'); const end = cool ? cool.t0 : (this.blocks?.total || 0);
+    const ts = (this.ev || []).filter((e) => e.t <= end && e.k !== 'cool').map((e) => e.t).sort((a, b) => a - b);
+    let maxGap = 0; let prev = 0; for (const x of ts) { maxGap = Math.max(maxGap, x - prev); prev = x; } maxGap = Math.max(maxGap, end - prev);
+    return { first: ts[0] ?? Infinity, maxGap, perMin: end > 0 ? ts.length / (end / 60) : 0, n: ts.length };
+  }
   logEvent(k) { if (this.st == null || this.state === 'menu') return; this.ev.push({ t: this.st, k }); }
 
   // ---------- comandi ----------

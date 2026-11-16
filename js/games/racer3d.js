@@ -882,6 +882,14 @@ export class Racer3D {
   }
 
   leader(type) { return this.race?.leader(type) || null; }
+  // { first, maxGap, perMin, n } in race seconds: the director's events (announcements, objective results, gaps, sprints...)
+  eventStats() {
+    const R = this.race; if (!R) return { first: Infinity, maxGap: 0, perMin: 0, n: 0 };
+    let end = R.tl?.race || this.dur; if (Number.isFinite(R.player?.fin)) end = Math.min(end, R.player.fin); // a rider who finishes early: the run ends there
+    const ts = (R.log || []).map((e) => e.t).filter((x) => x <= end).sort((a, b) => a - b);
+    let maxGap = 0; let prev = 0; for (const x of ts) { maxGap = Math.max(maxGap, x - prev); prev = x; } maxGap = Math.max(maxGap, end - prev);
+    return { first: ts[0] ?? Infinity, maxGap, perMin: end > 0 ? ts.length / (end / 60) : 0, n: ts.length };
+  }
   place() { return this.race ? this.race.place() : 8; }
   ranking() { return this.standing || []; }
 
