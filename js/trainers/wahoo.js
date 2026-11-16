@@ -17,6 +17,7 @@
 
 import { SensorDebug } from '../debug.js';
 import { t } from '../i18n.js';
+import { listen } from '../ble-util.js';
 
 export const CPS = 0x1818;
 export const CP_MEASUREMENT = 0x2a63;
@@ -62,7 +63,7 @@ export class WahooLegacyTrainer extends EventTarget {
 
   async connect() {
     this.device = await navigator.bluetooth.requestDevice({ filters: [{ services: [CPS] }], optionalServices: [CPS] });
-    this.device.addEventListener('gattserverdisconnected', () => { this.dbg.setStatus('Disconnected'); this.emit('disconnected'); });
+    listen(this, 'disc', this.device, 'gattserverdisconnected', () => { this.dbg.setStatus('Disconnected'); this.emit('disconnected'); });
     await this.setup();
     return this.device.name || t('home.trainer');
   }
@@ -79,11 +80,11 @@ export class WahooLegacyTrainer extends EventTarget {
     this.ctrl = null; this.sim = null; this.crank = null;
     const cps = await server.getPrimaryService(CPS);
     const m = await cps.getCharacteristic(CP_MEASUREMENT);
-    m.addEventListener('characteristicvaluechanged', (e) => { this.dbg.raw('rx', CP_MEASUREMENT, e.target.value); this.onCyclingPower(e.target.value); });
+    listen(this, 'm', m, 'characteristicvaluechanged', (e) => { this.dbg.raw('rx', CP_MEASUREMENT, e.target.value); this.onCyclingPower(e.target.value); });
     await m.startNotifications();
     try {
       const c = await cps.getCharacteristic(WAHOO_CONTROL);
-      c.addEventListener('characteristicvaluechanged', (e) => { this.dbg.raw('rx', WAHOO_CONTROL, e.target.value); this.onResponse(e.target.value); });
+      listen(this, 'ctl', c, 'characteristicvaluechanged', (e) => { this.dbg.raw('rx', WAHOO_CONTROL, e.target.value); this.onResponse(e.target.value); });
       await c.startNotifications(); // il Kickr usa le "indication": Web Bluetooth le attiva con la stessa chiamata
       this.ctrl = c;
       await this.command(unlockCmd(), 3000);

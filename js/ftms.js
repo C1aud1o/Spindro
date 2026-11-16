@@ -3,6 +3,7 @@
 
 import { SensorDebug } from './debug.js';
 import { t } from './i18n.js';
+import { listen } from './ble-util.js';
 
 const FTMS = 0x1826;
 const CPS = 0x1818;
@@ -56,7 +57,7 @@ export class Trainer extends EventTarget {
       filters: [{ services: [FTMS] }, { services: [CPS] }, { namePrefix: 'D100' }, { namePrefix: 'VAN RYSEL' }, { namePrefix: 'Van Rysel' }],
       optionalServices: [FTMS, CPS, CSC, HRS],
     });
-    this.device.addEventListener('gattserverdisconnected', () => { this.dbg.setStatus('Disconnected'); this.emit('disconnected'); });
+    listen(this, 'disc', this.device, 'gattserverdisconnected', () => { this.dbg.setStatus('Disconnected'); this.emit('disconnected'); });
     await this.setup();
     return this.device.name || t('home.trainer');
   }
@@ -78,12 +79,12 @@ export class Trainer extends EventTarget {
     if (ftms) {
       await this.readFeatures(ftms);
       const ibd = await ftms.getCharacteristic(CH.indoorBikeData);
-      ibd.addEventListener('characteristicvaluechanged', (e) => { this.dbg.raw('rx', CH.indoorBikeData, e.target.value); this.onIndoorBikeData(e.target.value); });
+      listen(this, 'ibd', ibd, 'characteristicvaluechanged', (e) => { this.dbg.raw('rx', CH.indoorBikeData, e.target.value); this.onIndoorBikeData(e.target.value); });
       await ibd.startNotifications();
 
       try {
         this.cp = await ftms.getCharacteristic(CH.controlPoint);
-        this.cp.addEventListener('characteristicvaluechanged', (e) => { this.dbg.raw('rx', CH.controlPoint, e.target.value); this.onControlPointResponse(e.target.value); });
+        listen(this, 'cp', this.cp, 'characteristicvaluechanged', (e) => { this.dbg.raw('rx', CH.controlPoint, e.target.value); this.onControlPointResponse(e.target.value); });
         await this.cp.startNotifications();
         await this.command([OP.requestControl]);
         await this.command([OP.startResume]).catch(() => {});
@@ -136,7 +137,7 @@ export class Trainer extends EventTarget {
         this.dbg.log(`CP Feature 0x${feat.toString(16)}: crank revs ${feat & 0x08 ? 'yes' : 'no'}, wheel revs ${feat & 0x04 ? 'yes' : 'no'}`);
       } catch { /* opzionale */ }
       const c = await cps.getCharacteristic(CH.cpMeasurement);
-      c.addEventListener('characteristicvaluechanged', (e) => { this.dbg.raw('rx', CH.cpMeasurement, e.target.value); this.onCyclingPower(e.target.value); });
+      listen(this, 'cpm', c, 'characteristicvaluechanged', (e) => { this.dbg.raw('rx', CH.cpMeasurement, e.target.value); this.onCyclingPower(e.target.value); });
       await c.startNotifications();
       this.dbg.log('Cycling Power notifications on');
     } catch (err) { this.dbg.log(`Cycling Power not available: ${err.message}`); }
@@ -147,13 +148,13 @@ export class Trainer extends EventTarget {
     try {
       const csc = await server.getPrimaryService(CSC);
       const c = await csc.getCharacteristic(CH.cscMeasurement);
-      c.addEventListener('characteristicvaluechanged', (e) => { this.dbg.raw('rx', CH.cscMeasurement, e.target.value); this.onCsc(e.target.value); });
+      listen(this, 'csc', c, 'characteristicvaluechanged', (e) => { this.dbg.raw('rx', CH.cscMeasurement, e.target.value); this.onCsc(e.target.value); });
       await c.startNotifications();
     } catch { /* assente */ }
     try {
       const hrs = await server.getPrimaryService(HRS);
       const c = await hrs.getCharacteristic(CH.hrMeasurement);
-      c.addEventListener('characteristicvaluechanged', (e) => {
+      listen(this, 'hrm', c, 'characteristicvaluechanged', (e) => {
         const v = e.target.value;
         this.dbg.raw('rx', CH.hrMeasurement, v);
         const hr = v.getUint8(0) & 1 ? v.getUint16(1, true) : v.getUint8(1);

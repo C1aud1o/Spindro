@@ -1,8 +1,10 @@
 import { t, applyI18n, LANGS, setLang, getLang, fmtDate, fmtDec, fmtNum } from './i18n.js'; // per primo: carica le traduzioni prima del render
-import { isNative, GarminBridge } from './native.js'; // nell'app installa il Bluetooth nativo
+import { isNative, GarminBridge, BLE } from './native.js'; // nell'app installa il Bluetooth nativo
 import { Trainer } from './trainers/index.js';
 import { Devices } from './devices.js';
-import { initDevicesUi } from './devices-ui.js';
+import { initDevicesUi, problemHtml } from './devices-ui.js';
+import { detectSupport, explainError, nextSuggestion } from './connect.js';
+import { runTrainerTest } from './trainer-test.js';
 import { pickPower, pickCadence } from './sources.js';
 import { SensorDebug } from './debug.js';
 import { BUILD, CHANNEL } from './build.js';
@@ -42,7 +44,8 @@ const pmDbg = new SensorDebug('pm', 'Power meter / cadence');
 const garminDbg = { dbg: new SensorDebug('garmin', 'Garmin bridge') };
 const click = new ZwiftClick();
 const hrm = new HeartRate();
-const hub = new Devices({ trainer, click, hrm, ask, meterDbg: pmDbg }); // tutti i dispositivi Bluetooth (js/devices.js)
+const liveRide = () => !!(state.ride.running || workout); // pedalando adesso (uscita in corso o allenamento)
+const hub = new Devices({ trainer, click, hrm, ask, meterDbg: pmDbg, isRiding: () => liveRide() }); // tutti i dispositivi Bluetooth (js/devices.js)
 
 const MAX_W = 600; // limite dichiarato del Van Rysel D100
 
@@ -90,8 +93,11 @@ function fmtTime(s) {
   return (h ? `${h}:` : '') + `${String(m).padStart(h ? 2 : 1, '0')}:${String(sec).padStart(2, '0')}`;
 }
 
-if (!('bluetooth' in navigator)) {
-  $('unsupported').hidden = false;
+const support = detectSupport({ ua: navigator.userAgent, native: isNative, hasBluetooth: 'bluetooth' in navigator, secure: window.isSecureContext !== false });
+if (!support.ok) {
+  // dice onestamente perché e cosa fare, secondo la piattaforma (iPhone/iPad: nessun browser ha Web Bluetooth)
+  $('unsupported').textContent = t(`connect.unsupported.${support.reason}`); $('unsupported').hidden = false;
+  window.addEventListener('langchange', () => { $('unsupported').textContent = t(`connect.unsupported.${support.reason}`); });
   $('deviceBar').disabled = true;
 }
 
@@ -99,21 +105,61 @@ if (!('bluetooth' in navigator)) {
 // Una sola scelta Bluetooth ("Aggiungi dispositivo"): js/devices.js legge i servizi e assegna il ruolo (rullo, comandi, cardio,
 // misuratore di potenza, sensore di cadenza). Qui sotto: cosa fa l'app quando un ruolo si collega o si scollega.
 let lastTrainer = null; // nome, protocollo, funzioni e servizi del rullo collegato (per "Segnala il tuo rullo")
-async function addDevice() {
-  if (hub.busy) return null;
+let lastProblem = null; // l'ultimo problema di collegamento mostrato (per "Riprova" e "Segnala")
+const setPickHint = () => { $('pickHint').textContent = t(isNative ? 'connect.pickApp' : 'connect.pick'); };
+setPickHint(); window.addEventListener('langchange', setPickHint);
+/** Bluetooth spento? Dove la piattaforma lo dice (Chrome: getAvailability, app: il plugin); in dubbio no. */
+async function bluetoothOff() {
   try {
-    const entry = await hub.add();
+    if (isNative) return (await BLE?.isEnabled?.())?.value === false;
+    return (await navigator.bluetooth.getAvailability?.()) === false;
+  } catch { return false; }
+}
+function showProblem(problem) {
+  if (problem.code === 'browser') { $('unsupported').hidden = false; $('unsupported').scrollIntoView?.({ block: 'nearest' }); return; } // il motivo è già scritto in alto: non si ripete
+  lastProblem = { platform: support.platform, ...problem };
+  $('connectHelp').innerHTML = problemHtml(lastProblem, t, { retryId: 'connectHelpRetry', reportId: 'connectHelpReport' });
+  $('connectHelp').hidden = false;
+  devicesUi?.error(lastProblem);
+}
+function problemFrom(err) {
+  const code = explainError(err, { afterPick: !!err.afterPick });
+  return { code, name: err.deviceName || err.unsupported?.name || '', services: err.unsupported?.services || [] };
+}
+async function addDevice({ kind = null, skipCheck = false } = {}) {
+  if (hub.busy) return null;
+  if (!support.ok) { showProblem({ code: 'browser', reason: support.reason }); return null; }
+  if (!skipCheck && await bluetoothOff()) { showProblem({ code: 'off' }); return null; }
+  try {
+    const entry = await hub.add({ kind });
     $('connectHelp').hidden = true;
     return entry;
   } catch (err) {
-    if (/already connected/i.test(err.message)) { toast(t('devices.already')); return null; }
-    $('connectHelp').hidden = false; // nessun dispositivo scelto o collegamento fallito: soluzioni concrete
-    devicesUi?.error();
-    log(`Device error: ${err.message}`);
+    const p = problemFrom(err);
+    if (p.code === 'already') { toast(err.deviceName ? t('devices.alreadyNamed', { name: err.deviceName }) : t('devices.already')); return null; }
+    showProblem(p);
+    log(`Device error: ${err.name || ''} ${err.message}`);
     return null;
   }
 }
-window.rfDevices = { add: addDevice, disconnectAll: () => hub.disconnectAll(), hub }; // anche per i test
+/** Il pulsante "Ricollega": passa i dispositivi già usati uno alla volta (serve il tocco se il browser non ricorda il permesso). */
+async function reconnect() {
+  if (hub.busy) return null;
+  if (await bluetoothOff()) { showProblem({ code: 'off' }); return null; }
+  try {
+    const entry = await hub.reconnectNext();
+    if (entry) $('connectHelp').hidden = true;
+    return entry;
+  } catch (err) {
+    const p = problemFrom(err);
+    if (p.code === 'cancelled') { toast(t('devices.tapToReconnect')); return null; }
+    showProblem(p);
+    log(`Reconnect error: ${err.name || ''} ${err.message}`);
+    return null;
+  }
+}
+const primaryConnect = () => (hub.needsTap.length ? reconnect() : addDevice());
+window.rfDevices = { add: addDevice, reconnect, disconnectAll: () => hub.disconnectAll(), hub, ride: () => ({ running: state.ride.running, samples: state.ride.log.length, last: state.ride.log[state.ride.log.length - 1] || null }) }; // anche per i test
 
 trainer.addEventListener('connected', (e) => {
   const { name, ftms, protocol, features } = e.detail;
@@ -133,6 +179,11 @@ trainer.addEventListener('connected', (e) => {
 trainer.addEventListener('disconnected', async () => {
   setStatus('trainerStatus', t('home.status.none'));
   log('Trainer disconnected');
+  // la registrazione continua, ma i watt del rullo caduto non devono restare "congelati" sull'ultimo valore
+  if (src.power === 'trainer') state.data.power = 0;
+  if (src.cadence === 'trainer') state.data.cadence = 0;
+  state.data.speed = 0;
+  state.lastSent = null; // al ricollegamento si rimanda lo stato (ERG / marcia / pendenza / passo dell'allenamento)
   refreshSources();
 });
 trainer.addEventListener('log', (e) => log(e.detail));
@@ -223,7 +274,41 @@ hub.addEventListener('meter', (e) => {
   m.addEventListener('disconnected', () => { if (state.data.power != null && src.power === 'meter') state.data.power = 0; refreshSources(); });
   refreshSources();
 });
-hub.addEventListener('change', () => { refreshDeviceBar(); renderWelcome?.(); devicesUi?.update(); });
+hub.addEventListener('change', () => { refreshDeviceBar(); renderWelcome?.(); devicesUi?.update(); showDrop(); renderSuggest(); });
+// avviso che non blocca: quale dispositivo è caduto; la registrazione continua e l'app ritenta da sola (js/devices.js)
+function showDrop() {
+  const down = hub.entries.filter((e) => e.wanted !== false && e.state !== 'connected' && e.lostAt);
+  $('dropBanner').hidden = !down.length;
+  if (!down.length) return;
+  const names = down.map((e) => e.name || t('devices.unnamed')).join(', ');
+  const lost = down.some((e) => e.state === 'lost');
+  $('dropText').textContent = t(lost ? 'connect.lost' : 'connect.drop', { name: names });
+  $('dropRetry').hidden = !lost;
+}
+$('dropRetry').addEventListener('click', () => hub.retryLost());
+hub.addEventListener('drop', (e) => { log(`Dropped: ${e.detail.name}`); showDrop(); });
+hub.addEventListener('back', (e) => { log(`Back: ${e.detail.name}`); toast(t('connect.back', { name: e.detail.name || t('devices.unnamed') })); showDrop(); });
+hub.addEventListener('lost', () => showDrop());
+hub.addEventListener('notice', (e) => toast(e.detail));
+// un solo suggerimento alla volta: dopo il rullo, i comandi; poi il cardio; scartabile per sempre
+const suggestOff = () => { try { return JSON.parse(localStorage.getItem('suggestOff') || '[]'); } catch { return []; } };
+let suggestKind = null;
+function renderSuggest() {
+  const kind = nextSuggestion({
+    trainer: trainer.connected, haveClick: click.connected || !!hub.pendingFor('click'), haveHr: hrm.connected || !!hub.pendingFor('hr'),
+    dismissed: suggestOff(), riding: liveRide() || state.ride.log.length > 0,
+  });
+  suggestKind = kind;
+  const covered = !!document.querySelector('.sheet:not([hidden])') || !$('connectHelp').hidden;
+  $('suggest').hidden = !kind || covered;
+  if (kind) { $('suggestText').textContent = t(`connect.suggest.${kind}`); $('suggestAdd').textContent = t(`connect.suggest.${kind}Btn`); }
+}
+$('suggestAdd').addEventListener('click', () => { const k = suggestKind; if (k) addDevice({ kind: k }); });
+$('suggestNever').addEventListener('click', () => {
+  try { localStorage.setItem('suggestOff', JSON.stringify([...new Set([...suggestOff(), suggestKind])])); } catch { /* */ }
+  renderSuggest();
+});
+window.addEventListener('langchange', () => { renderSuggest(); showDrop(); });
 function setPref(kind, value) {
   prefs[kind] = value;
   try { localStorage.setItem(kind === 'power' ? 'srcPower' : 'srcCadence', value); } catch { /* */ }
@@ -233,9 +318,12 @@ function setPref(kind, value) {
 // riga di stato in home: "Rullo ✓ · Click ✓ · Cardio —" con i nomi veri
 function refreshDeviceBar() {
   const ent = (role) => hub.entries.find((e) => e.roles.includes(role));
-  if (!trainer.connected) setStatus('trainerStatus', t('home.status.none'));
-  if (click.connected) setStatus('clickStatus', click.label, true); else setStatus('clickStatus', t('home.status.none'));
-  if (hrm.connected) setStatus('hrStatus', ent('hr')?.name || hrm.device?.name || t('home.hr'), true); else setStatus('hrStatus', t('home.status.none'));
+  // un dispositivo già usato che si sta ricollegando (all'avvio o dopo una caduta) mostra "Ricollego…", non "—"
+  const waiting = (role) => hub.pendingFor(role)?.state === 'reconnecting' || hub.entries.some((e) => e.roles.includes(role) && e.state === 'reconnecting');
+  const none = (role) => (waiting(role) ? t('devices.reconnecting') : t('home.status.none'));
+  if (!trainer.connected) setStatus('trainerStatus', none('trainer'));
+  if (click.connected) setStatus('clickStatus', click.label, true); else setStatus('clickStatus', none('click'));
+  if (hrm.connected) setStatus('hrStatus', ent('hr')?.name || hrm.device?.name || t('home.hr'), true); else setStatus('hrStatus', none('hr'));
   const extra = hub.meters.filter((m) => m.connected);
   $('dvExtra').hidden = !extra.length;
   if (extra.length) setStatus('extraStatus', `+${extra.length}`, true); $('dvExtra').title = extra.map((m) => m.name).join(' · ');
@@ -350,8 +438,9 @@ function gearTarget() {
 
 let sending = false;
 let calibrating = false;
+let testingTrainer = false; // "Prova il rullo" in corso: l'ERG non rimanda il vecchio valore finché non finisce
 async function applyMode(force = false) {
-  if (!trainer.connected || !trainer.controllable || sending || calibrating) return;
+  if (!trainer.connected || !trainer.controllable || sending || calibrating || testingTrainer) return;
   let key; let fn;
   switch (state.mode) {
     case 'gears': {
@@ -403,7 +492,7 @@ $('startStop').addEventListener('click', () => {
   const r = state.ride;
   if (!r.running && !safetyAcknowledged()) { openSheet('safetySheet'); return; }
   r.running = !r.running;
-  if (r.running) $('reportHint').hidden = true; // niente inviti mentre si pedala
+  if (r.running) { $('reportHint').hidden = true; hub.retryLost(); renderSuggest(); } // niente inviti mentre si pedala; i dispositivi persi si riprovano
   if (r.running) { r.start = performance.now() - r.elapsed * 1000; requestWakeLock(); }
   updateView();
 });
@@ -884,6 +973,13 @@ function renderChallenges(hist, riding) {
     return `<li class="${c.done ? 'done' : ''}" data-ch="${c.id}"><span class="ch-name">${c.done ? '🏅 ' : ''}${t(`challenges.${c.metric}`, { n: c.metric === 'z2' ? c.target / 60 : c.target })}</span><small>${c.done ? t('challenges.completed') : left}</small><span class="goal-bar" role="progressbar" aria-valuenow="${c.pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${c.pct}%"></i></span></li>`;
   }).join('')}</ul>${medals ? `<p class="fine">${t('challenges.medals', { count: medals })}</p>` : ''}`;
 }
+// il pulsante grande: "Collega il rullo", oppure — se ci sono dispositivi già usati — "Ricollego…" / "Ricollega X"
+function connectLabel() {
+  if (hub.needsTap.length) return t('devices.reconnectNext', { name: hub.needsTap[0].name || t('devices.unnamed') });
+  if (hub.pending.some((k) => k.state === 'reconnecting')) return t('devices.reconnecting');
+  return t('welcome.connect');
+}
+const otherBtn = () => (hub.needsTap.length ? `<button class="ghost" id="welcomeOther">${t('devices.addAnother')}</button>` : '');
 function renderWelcome() {
   const el = $('welcome');
   const hist = history();
@@ -899,12 +995,16 @@ function renderWelcome() {
     el.innerHTML = `<h2>${t('welcome.title')}</h2>
       <p>${t('welcome.subtitle')}</p>
       <ol><li>${t('welcome.step1')}</li><li>${t('welcome.step2')}</li><li>${t('welcome.step3')}</li></ol>
-      <button class="cta" id="welcomeConnect">${t('welcome.connect')}</button>`;
+      <p class="fine">${t(isNative ? 'connect.pickApp' : 'connect.pick')}</p>
+      <button class="cta" id="welcomeConnect">${connectLabel()}</button>${otherBtn()}`;
   } else {
     // utente che torna: solo il tasto per collegare il rullo (e l'obiettivo della settimana, se c'è)
-    el.innerHTML = `<button class="cta" id="welcomeConnect">${t('welcome.connect')}</button>${goalHtml(hist)}`;
+    el.innerHTML = `<button class="cta" id="welcomeConnect">${connectLabel()}</button>${otherBtn()}${goalHtml(hist)}`;
   }
-  $('welcomeConnect')?.addEventListener('click', () => addDevice()); // apre direttamente la scelta Bluetooth
+  const wc = $('welcomeConnect');
+  wc.disabled = hub.pending.some((k) => k.state === 'reconnecting') && !hub.needsTap.length;
+  wc.addEventListener('click', () => primaryConnect()); // apre direttamente la scelta Bluetooth (o ricollega i dispositivi già usati)
+  $('welcomeOther')?.addEventListener('click', () => addDevice());
 }
 trainer.addEventListener('connected', () => renderWelcome());
 trainer.addEventListener('disconnected', () => renderWelcome());
@@ -979,8 +1079,16 @@ function offerTrainerReport(name) { // la prima volta che si collega un rullo co
   $('reportHintText').textContent = t('trainerReport.first', { name });
   $('reportHint').hidden = false;
 }
-$('connectHelpRetry').addEventListener('click', () => { $('connectHelp').hidden = true; addDevice(); });
-$('connectHelpReport').addEventListener('click', () => openExternal(trainerReportUrl()));
+// pulsanti dentro il riquadro d'aiuto (home e pannello): "Riprova" e "Segnala"
+function problemAction(act) {
+  if (act === 'retry') { $('connectHelp').hidden = true; addDevice({ skipCheck: true }); }
+  if (act === 'report') openExternal(lastProblem?.code === 'unsupportedDevice' ? deviceReportUrl(lastProblem) : trainerReportUrl());
+}
+$('connectHelp').addEventListener('click', (e) => { const a = e.target.closest('[data-act]'); if (a) problemAction(a.dataset.act); });
+// "Segnala questo dispositivo": issue GitHub precompilata con nome Bluetooth e servizi (nessun dato personale)
+function deviceReportUrl(p) {
+  return buildReportUrl({ name: p.name, services: p.services, protocol: 'not supported', kind: 'device', native: isNative, android: /Android/i.test(navigator.userAgent), version: BUILD, lang: getLang() });
+}
 $('reportHintGo').addEventListener('click', () => { $('reportHint').hidden = true; openExternal(trainerReportUrl()); });
 $('reportHintLater').addEventListener('click', () => { $('reportHint').hidden = true; });
 trainer.addEventListener('disconnected', () => { $('reportHint').hidden = true; });
@@ -997,7 +1105,16 @@ window.addEventListener('langchange', renderWatchBrand);
 renderWatchBrand();
 
 // ---------- Pannello Dispositivi ----------
-const devicesUi = initDevicesUi({ hub, trainer, hrm, click, src, prefs, setPref, addDevice, openSheet, closeSheet, t, openClickCheck: () => clickCheck.open() });
+// "Prova il rullo": la resistenza sale e scende per qualche secondo; alla fine si rimette la modalità e il valore di prima
+async function testTrainer(onStep) {
+  if (testingTrainer || liveRide() || !trainer.connected || !trainer.controllable) return 'unavailable';
+  testingTrainer = true;
+  return runTrainerTest({
+    trainer, ftp: state.ftp, onStep, shouldAbort: () => liveRide() || !trainer.connected,
+    restore: async () => { testingTrainer = false; state.lastSent = null; await applyMode(true); },
+  });
+}
+const devicesUi = initDevicesUi({ hub, trainer, hrm, click, src, prefs, setPref, addDevice, reconnect, openSheet, closeSheet, t, openClickCheck: () => clickCheck.open(), testTrainer, isRiding: liveRide, onProblemAction: problemAction });
 $('deviceBar').addEventListener('click', () => devicesUi.open());
 // all'avvio riprova, in silenzio, i dispositivi già usati (browser: navigator.bluetooth.getDevices(); app Android: plugin)
 setTimeout(() => { if ('bluetooth' in navigator) hub.reconnectKnown().catch(() => {}); }, 800);
@@ -1006,7 +1123,7 @@ setTimeout(() => { if ('bluetooth' in navigator) hub.reconnectKnown().catch(() =
 document.querySelectorAll('#quickPick [data-open]').forEach((b) => b.addEventListener('click', () => {
   if (b.dataset.open === 'history') openHistory(); else $(b.dataset.open).click();
 }));
-setInterval(() => { $('quickPick').hidden = state.ride.running || !!workout || !!route; }, 1000);
+setInterval(() => { $('quickPick').hidden = state.ride.running || !!workout || !!route; renderSuggest(); }, 1000);
 
 // ---------- Cambio virtuale: calibrazione della cadenza e durezza ----------
 function renderGearSettings() {
@@ -1437,7 +1554,7 @@ function autoPauseCheck() {
   } else idleSec = 0;
   if (autoPaused && !r.running && moving) { autoPaused = false; $('startStop').click(); toast(t('auto.resumed')); }
   // partenza automatica: sessione nuova e pedali da 3 secondi
-  if (!r.running && !autoPaused && r.elapsed === 0 && moving) { if (++moveSec >= 3) { $('startStop').click(); toast(t('auto.started')); } } else moveSec = 0;
+  if (!r.running && !autoPaused && r.elapsed === 0 && moving && !testingTrainer) { if (++moveSec >= 3) { $('startStop').click(); toast(t('auto.started')); } } else moveSec = 0;
   if (r.running) autoPaused = autoPaused && !r.running;
 }
 $('startStop').addEventListener('click', () => { if (state.ride.running) idleSec = 0; });

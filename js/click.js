@@ -13,6 +13,7 @@
 // firmware di Play/Ride richiedono. Vedi docs/zwift-controller.md.
 
 import { SensorDebug, hex } from './debug.js';
+import { listen } from './ble-util.js';
 
 const SERVICES = ['00000001-19ca-4651-86e5-fa29dcdd09d1', 0xfc82];
 const ASYNC = '00000002-19ca-4651-86e5-fa29dcdd09d1';
@@ -208,7 +209,7 @@ export class ZwiftClick extends EventTarget {
     const link = { device, rx: null, model: detectModel(device.name), kind: null, types: new Set(), pressed: new Set(), seenHigh: KNOWN_RIDE_BITS, unknown: 0 };
     this.dbg.setStatus(`Connecting ${device.name || ''}…`);
     this.dbg.log(`Model recognized from name "${device.name || ''}": ${MODELS[link.model]}`);
-    device.addEventListener('gattserverdisconnected', () => {
+    listen(this, `disc|${device.id}`, device, 'gattserverdisconnected', () => {
       this.dbg.setStatus(`Disconnected ${MODELS[link.model]}`);
       this.links = this.links.filter((l) => l !== link);
       this.recompute(); // rilascia i tasti di questo dispositivo
@@ -228,7 +229,7 @@ export class ZwiftClick extends EventTarget {
       for (const uuid of [ASYNC, SYNC_TX]) {
         try {
           const c = await service.getCharacteristic(uuid);
-          c.addEventListener('characteristicvaluechanged', (e) => this.onMessage(uuid, e.target.value, link));
+          listen(this, `ch|${device.id}|${uuid}`, c, 'characteristicvaluechanged', (e) => this.onMessage(uuid, e.target.value, link));
           await c.startNotifications();
           this.dbg.log(`Notifications on for ${uuid.slice(0, 8)}`);
         } catch (err) {
