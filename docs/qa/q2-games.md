@@ -26,7 +26,7 @@ Legend: ✓ looked, no defect left · ✓F looked and fixed · – not done yet 
 | # | what | where / how to see | fix |
 |---|---|---|---|
 | X1 | Bloom made lit surfaces glow: lime jersey, white helmet, road markings; whole scene hazy | `high` (bloom on), Horde Run and Pedal Strike used the default threshold 0.82 (strength 0.7, radius 0.45); other games overrode it with 0.9–0.93 | One shared preset `BLOOM` in `kit3d.js` (threshold 1.2, strength 0.6, radius 0.3); per-game overrides removed. Measured: lit surfaces stay below ~1.1 in linear space, only sprites/lamps/gems exceed 1.2 |
-| X2 | Full-screen red wash for 0.6–1.7 s on every hit / knock-out (Horde Run, Updraft, Feed Zone) hiding rider, horde and road | Horde Run: fall in an effort wave (`hurtT` 2.6 → alpha up to 0.9 over the whole screen) | New `hurtVignette()` in `kit/hud.js`: 150 ms, edges only (alpha ≤ 0.38), centre never tinted. Pedal Strike's flash (already edge-only) shortened to 0.3 s and capped at 0.3 |
+| X2 | Full-screen red wash for 0.6–1.7 s on every hit / knock-out (Horde Run, Updraft, Feed Zone) hiding rider, horde and road | Horde Run: a fall during an effort wave (`hurtT` 2.6 → alpha up to 0.9 over the whole screen) | New `hurtVignette()` in `kit/hud.js`: 150 ms, edges only (alpha ≤ 0.38), centre never tinted. Pedal Strike's flash (already edge-only) shortened to 0.3 s and capped at 0.3 |
 | X3 | WebGL contexts leaked: every open/close of a game left its context alive; after 10 open/close cycles of 6 games, 16 alive and "Too many active WebGL contexts. Oldest context will be lost." (can blank a game on a phone after a long session) | `leak.mjs` harness: open and close each game 10 times | `Stage.dispose()` calls `renderer.forceContextLoss()`; after: 0 alive, no warning, JS heap +2-8 MB over 10 cycles. Regression test `tests/games-leak.spec.mjs` (fails without the fix: 6 alive) |
 | X5 | Trainer lost mid-run: the games silently switched to the simulated demo rider and carried on (stars and bests earned by nobody) | any game, trainer drops after the run started | `guardTrainer()` in `kit/hud.js`: a drop reads as power 0 / cadence 0, each game's own pause freezes the clock after 2.5 s and a banner says "Trainer connection lost" (5 languages); it resumes when the trainer returns and the rider pedals. Unit test in `tests/games-leak.spec.mjs` |
 | X4 | Breakaway countdown: the big "3" overlapped the hint line, and the 3D START arch caption showed as garbled letters behind the objective card | first 3 s of a Breakaway run, 390×780 | digit moved down and smaller; the arch has no caption |
@@ -62,7 +62,7 @@ solid blue arches); the 3D gate captions ("2 ALLIES") are partly covered by the 
 Checked and fine (no defect seen): no console error, CSP violation or texture-load failure in 18 full 5-minute sessions
 (6 games × high/medium/low at 390×780, 0 messages); every session reaches the results screen; `renderer.info` geometries and
 textures stay bounded (Horde Run's textures grow with its zombie pool: each pooled skinned walker owns a bone texture; the pool
-stops growing once the peak horde is reached); hidden tab for 90 s (clock jump clamped to 0.05 s); stopping to pedal pauses after
+stops growing once the peak horde is reached); hidden tab for 90 s (clock jump clamped to 0.05 s); stopping pedalling pauses after
 2.5 s and resumes (all six); resize/rotation to 780×390, 1280×720 and back keeps the canvas and aspect correct.
 
 Observed, not changed (layout, needs a decision): in landscape on a phone-sized window (780×390) the HUD stack takes about half

@@ -36,7 +36,7 @@ mkdir js/games/mygame
 cp js/games/template/tempo.js js/games/mygame/index.js
 ```
 
-In `js/games/mygame/index.js` search and replace, over the whole file (it appears in the id, the class, the text keys and a few comments):
+In `js/games/mygame/index.js`, search and replace over the whole file (it appears in the id, the class, the text keys and a few comments):
 
 - `Tempo` → `MyGame` (the class name)
 - `tempo` → `mygame` (the id, lowercase letters and digits only, and the `games.tempo.*` text keys)
@@ -59,7 +59,7 @@ in Settings; the `?game=mygame` link works regardless). Remove it when the game 
 ## 4. Add your strings (3 minutes)
 
 Every word the rider sees goes through `t('games.mygame.key')` and exists in the five files `locales/{en,it,fr,es,de}.json`.
-Copy the block of `games.tempo.*` keys in each file, rename them to `games.mygame.*` and write your texts. The three you must
+Copy the block of `games.tempo.*` keys in each file, rename them to `games.mygame.*` and write your text. The three you must
 always have: `name` (title), `desc` (what you do and what the workout is, 1–2 sentences, shown on the card) and `help` (the
 controls, **one line**). Then:
 

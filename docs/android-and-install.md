@@ -25,7 +25,7 @@ https://spindro.fun/beta/ (see [environments.md](environments.md)).
 - **Content-Security-Policy**: `index.html` meta. Reviewed against Capacitor 7 source: bridge calls go through `androidBridge.postMessage`
   (not network), downloads/share/open-link go through native plugin calls, notifications are native, so none of them touch the CSP.
   `blob:`/`data:` in `connect-src`/`img-src` (three.js loaders), `'wasm-unsafe-eval'` + `worker-src blob:` (meshopt decoder),
-  `style-src 'unsafe-inline'` (style attributes) and the YouTube script/frame hosts are required and present. `tests/csp.spec.mjs` proves them
+  `style-src 'unsafe-inline'` (style attributes) and the YouTube script/frame hosts are required and present. `tests/csp.spec.mjs` checks them
   in a browser. If `FIREBASE_CONFIG` or `STRAVA_PROXY` are ever set, add their hosts (`js/config.js` says so).
 
 ## Build
@@ -44,7 +44,7 @@ cd android && ./gradlew assembleFossDebug          # needs the Android SDK (ANDR
 | Label / versionName | "Spindro" / `1.0.<n>` | "Spindro Beta" / `1.0.<n>-beta` |
 | Release | `app-android` | prerelease `app-android-beta` |
 
-Flavors: `foss` (public APK, no Google services) and `play` (AAB for Google Play; Firebase hook point only). Both are identical today.
+Flavours: `foss` (public APK, no Google services) and `play` (AAB for Google Play; Firebase hook point only). Both are identical today.
 CI is `.github/workflows/android.yml`: signed release APK + AAB when the secrets exist, otherwise the debug APK.
 
 **Signing**: GitHub Secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`. The workflow
