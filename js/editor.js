@@ -53,7 +53,7 @@ export class WorkoutEditor {
   render() {
     const r = this.root;
     r.innerHTML = `
-      <label class="ed-name"><span>${t('editor.name')}</span><input type="text" id="edName" maxlength="30" value="${this.name.replace(/"/g, '&quot;')}"></label>
+      <label class="ed-name"><span>${t('editor.name')}</span><input type="text" id="edName" maxlength="60" value="${this.name.replace(/"/g, '&quot;')}"></label>
       <canvas id="edProfile" class="wk-profile ed-profile"></canvas>
       <p class="fine" id="edSum"></p>
       <div class="ed-blocks">${this.blocks.map((b, i) => this.blockHtml(b, i)).join('')}</div>
@@ -103,6 +103,6 @@ export class WorkoutEditor {
   save() {
     const steps = this.steps(); if (!steps.length) return;
     const mins = Math.round(duration({ steps }) / 60);
-    this.onSave({ id: this.id || `my-${Date.now()}`, name: (this.name || t('editor.fallbackName')).trim().slice(0, 30), tag: t('editor.tag', { mins }), desc: t('editor.desc'), steps, blocks: this.blocks, custom: true });
+    this.onSave({ id: this.id || `my-${Date.now()}`, name: (this.name || t('editor.fallbackName')).trim().slice(0, 60), tag: t('editor.tag', { mins }), desc: t('editor.desc'), steps, blocks: this.blocks, custom: true });
   }
 }

@@ -76,7 +76,11 @@ const fitTime = (ms) => Math.round(ms / 1000) - FIT_EPOCH;
  * samples: [{ t: ms Unix, power, cadence, hr, speed (m/s), distance (m) }]
  * Restituisce un Uint8Array con il file .FIT.
  */
-export function encodeFit(samples) {
+export function encodeFit(all) {
+  // al più un campione per secondo, in ordine: dopo una pausa o un ripristino il primo campione può cadere nello stesso secondo dell'ultimo
+  // (due "record" con lo stesso orario fanno rifiutare il file a Strava) e un orario non valido farebbe un file corrotto
+  const samples = []; let lastTs = -Infinity;
+  for (const s of all) { const ts = fitTime(s.t); if (Number.isFinite(ts) && ts > lastTs) { samples.push(s); lastTs = ts; } }
   if (!samples.length) throw new Error('No data recorded');
   const w = new Writer();
   const start = samples[0].t; const end = samples[samples.length - 1].t;
@@ -88,7 +92,7 @@ export function encodeFit(samples) {
   const hrs = samples.map((s) => s.hr).filter(Boolean);
   const cads = samples.map((s) => s.cadence).filter((c) => c > 0);
   const avg = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
-  const max = (a) => (a.length ? Math.max(...a) : null);
+  const max = (a) => (a.length ? a.reduce((m, x) => (x > m ? x : m), -Infinity) : null); // niente Math.max(...a): un'uscita lunghissima supera il limite degli argomenti
   const kj = pw.reduce((x, y) => x + y, 0) / 1000;
   const kcal = kj; // ~ efficienza umana 24% => kcal ≈ kJ
   const dist = samples[samples.length - 1].distance || 0;

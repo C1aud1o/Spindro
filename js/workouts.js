@@ -165,7 +165,7 @@ export function parseZwo(text, fileName = t('editor.fallbackName')) {
     } else if (tag === 'steadystate') {
       steps.push({ d, p: num(el, 'Power', num(el, 'PowerLow', 0.6)), label: t('editor.label.steady') });
     } else if (tag === 'intervalst') {
-      const n = Math.round(num(el, 'Repeat', 1));
+      const n = Math.min(100, Math.max(0, Math.round(num(el, 'Repeat', 1)))); // un file ostile con Repeat enorme non deve bloccare l'app
       for (let i = 0; i < n; i++) {
         steps.push({ d: Math.round(num(el, 'OnDuration')), p: num(el, 'OnPower', 1), label: t('workouts.step.rep', { i: i + 1, n }) });
         steps.push({ d: Math.round(num(el, 'OffDuration')), p: num(el, 'OffPower', 0.5), label: t('workouts.step.rest') });
@@ -176,7 +176,7 @@ export function parseZwo(text, fileName = t('editor.fallbackName')) {
   }
   const valid = steps.filter((x) => x.d > 0);
   if (!valid.length) throw new Error(t('zwo.empty'));
-  const name = doc.querySelector('workout_file > name')?.textContent?.trim() || fileName.replace(/\.zwo$/i, '');
+  const name = (doc.querySelector('workout_file > name')?.textContent?.trim() || fileName.replace(/\.zwo$/i, '')).slice(0, 60);
   const desc = doc.querySelector('workout_file > description')?.textContent?.trim().slice(0, 200) || t('zwo.fromFile');
   const mins = Math.round(duration({ steps: valid }) / 60);
   return { id: `zwo-${Date.now()}`, name, tag: t('zwo.tag', { mins }), desc, steps: valid, custom: true };

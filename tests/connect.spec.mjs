@@ -73,7 +73,7 @@ test.describe('1 · prima volta, solo rullo', () => {
   test('un pulsante, la riga che spiega la lista, watt dal vivo dopo il tocco', async ({ page }) => {
     await page.goto('/index.html');
     await expect(page.locator('#welcome')).toBeVisible();
-    await expect(page.locator('#welcome .fine')).toContainText('name contains your trainer');
+    await expect(page.locator('#welcome .fine')).toContainText('pick your trainer');
     await expect(page.locator('#welcomeConnect')).toHaveText('Connect your trainer');
     const t0 = Date.now();
     await page.click('#welcomeConnect'); // l'unico tocco dell'app: poi decide il browser con la sua lista

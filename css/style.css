@@ -144,7 +144,7 @@ body:not([data-mode=gears]):not([data-mode=sim]) .only-sim { display: none; }
 .sheet { position: fixed; inset: 0; z-index: 15; background: rgba(5, 5, 4, .7); display: grid; align-items: end; animation: fade .2s ease-out; }
 .sheet[hidden] { display: none; }
 .sheet-body { position: relative; width: 100%; max-width: 560px; margin: 0 auto; max-height: 90vh; overflow-y: auto; background: var(--surface); border-radius: 24px 24px 0 0;
-  padding: 24px 16px calc(24px + env(safe-area-inset-bottom)); display: grid; gap: 16px; animation: rise .28s cubic-bezier(.2, .8, .2, 1); }
+  padding: 24px 16px calc(24px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; animation: rise .28s cubic-bezier(.2, .8, .2, 1); }
 @keyframes rise { from { transform: translateY(32px); opacity: 0; } }
 @keyframes fade { from { opacity: 0; } }
 .sheet-head { display: flex; align-items: center; justify-content: space-between; }
@@ -201,9 +201,9 @@ button.small { min-height: 44px; padding: 0 12px; font-size: var(--fs-caption); 
 .switch input { width: 24px; height: 24px; flex: none; accent-color: var(--accent); }
 .strava, #stravaSetup, #stravaLinked, #stravaPublic { display: grid; gap: 12px; }
 #stravaSetup[hidden], #stravaLinked[hidden], #stravaPublic[hidden] { display: none; }
-.garmin-btn { min-height: 48px; border: 0; border-radius: var(--r-btn); background: #11a9ed; color: #fff; font-weight: 700; box-shadow: 0 8px 24px rgba(17, 169, 237, .25); }
+.garmin-btn { min-height: 48px; border: 0; border-radius: var(--r-btn); background: #11a9ed; color: var(--ink); font-weight: 700; box-shadow: 0 8px 24px rgba(17, 169, 237, .25); }
 .garmin-btn:disabled, .strava-btn:disabled { opacity: .5; }
-.strava-btn { min-height: 48px; border: 0; border-radius: var(--r-btn); background: var(--strava); color: #fff; font-weight: 700; box-shadow: 0 8px 24px rgba(252, 82, 0, .25); }
+.strava-btn { min-height: 48px; border: 0; border-radius: var(--r-btn); background: var(--strava); color: var(--ink); font-weight: 700; box-shadow: 0 8px 24px rgba(252, 82, 0, .25); }
 .powered { margin: 0; font: 700 var(--fs-caption)/1 var(--font-ui); letter-spacing: .08em; color: var(--t3); text-align: right; }
 .msg { margin: 0; color: var(--t2); }
 .msg:empty, .compare:empty, .praise:empty { display: none; }
@@ -364,16 +364,16 @@ kbd { font: 700 var(--fs-caption)/1 var(--font-ui); padding: 2px 6px; border-rad
 .hs-weeks { width: 100%; height: 120px; display: block; }
 .hs-list { display: grid; gap: 8px; }
 .hs-ride { border-radius: 12px; background: var(--ink); padding: 12px 16px; }
-.hs-ride summary { display: grid; grid-template-columns: 1fr 96px; gap: 12px; align-items: center; cursor: pointer; list-style: none; min-height: 44px; }
+.hs-ride summary { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 12px; align-items: center; cursor: pointer; list-style: none; min-height: 44px; }
 .hs-ride summary::-webkit-details-marker { display: none; }
 .hs-ride summary span { display: grid; gap: 4px; }
 .hs-ride summary small { color: var(--t3); font-size: var(--fs-caption); }
 .hs-spark { width: 96px; height: 32px; }
 .hs-big { width: 100%; height: 140px; display: block; margin-top: 12px; }
-.hs-dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0 0; }
-.hs-dl dt { font-size: var(--fs-caption); color: var(--t3); }
+.hs-dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 12px 0 0; }
+.hs-dl dt { font-size: var(--fs-caption); color: var(--t3); overflow-wrap: anywhere; hyphens: auto; }
 .hs-dl dd { margin: 0; font-weight: 700; }
-button.link { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; min-height: 0; }
+button.link { background: none; border: 0; padding: 13px 6px; margin: -13px -6px; min-width: 44px; text-align: center; color: var(--accent); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; min-height: 0; }
 
 /* ---------- Percorsi ---------- */
 .rt-pick { display: grid; gap: 12px; padding: 0 24px 16px; }
@@ -976,6 +976,30 @@ body:not(.riding) .metrics dt { overflow: hidden; text-overflow: ellipsis; lette
 #consentSheet .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 #consentSheet .consent-btn { min-height: 56px; width: 100%; }
 
+/* QA q1: rifiniture (tedesco/francese, numeri a 4 cifre) */
+body.riding .power-value[data-digits="4"] { zoom: .72; }
+@media (max-width: 420px) { .hs-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.hs-kpis small, .hs-bests small { overflow-wrap: anywhere; }
+@media (max-width: 400px) {
+  .fields { grid-template-columns: minmax(0, 1fr); } /* peso, FTP e pulsazioni una sotto l'altra: i campi numerici restano larghi almeno 44 px */
+}
+.unit-input input { min-width: 44px; }
+.sheet-body:focus { outline: none; }
+/* riga dei valori in home: le etichette vanno a capo invece di troncarsi, e con poco spazio le colonne scendono su due righe */
+body:not(.riding) .metrics { grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); row-gap: 12px; }
+body:not(.riding) .metrics dt { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.15; letter-spacing: .02em; }
+.more-modes .chips { grid-template-columns: repeat(auto-fit, minmax(48px, 1fr)); } /* colonna stretta (tablet, desktop): i tasti vanno su due righe invece di scendere sotto 44 px */
+/* titolo lungo + dati (durata · carico): i dati vanno sotto il titolo invece di spezzarsi su tre righe a destra */
+.wk-item .row { flex-wrap: wrap; }
+.wk-item .row b { flex: 1 1 12ch; min-width: 0; overflow-wrap: anywhere; }
+.wk-item .row small { flex: 0 1 auto; margin-left: auto; text-align: right; }
+/* Primo avvio: la pagina compare quando l'app ha tradotto i testi e disegnato le schede (js/app.js aggiunge .ready), non a pezzi.
+   Se il codice non parte, dopo 2,5 s la pagina si mostra comunque (solo CSS, anche con "riduci animazioni"). */
+html:not(.ready) body { visibility: hidden; animation: reveal-safety 0s 2.5s forwards; }
+@keyframes reveal-safety { to { visibility: visible; } }
+@media (prefers-reduced-motion: reduce) { html:not(.ready) body { animation: reveal-safety 0s 2.5s forwards !important; } }
+body.riding .metrics dd[data-long] { font-size: calc(var(--fs-title) * .8); }
+@media (max-width: 380px) { body.riding .metrics dd[data-long] { font-size: calc(var(--fs-title) * .72); } }
 /* Collegare i dispositivi (D1): avviso di caduta, suggerimento, stato per dispositivo */
 .drop-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border-color: rgba(255, 212, 58, .5); }
 .drop-banner span { flex: 1 1 14ch; min-width: 0; overflow-wrap: anywhere; }
@@ -994,3 +1018,6 @@ body:not(.riding) .metrics dt { overflow: hidden; text-overflow: ellipsis; lette
 .suggest .cta-sm { min-height: 44px; border: 0; border-radius: var(--r-btn); background: var(--accent); color: var(--accent-ink); font-weight: 700; padding: 0 14px; box-shadow: var(--shadow-cta); }
 #deviceList .cta-sm { min-height: 44px; border: 0; border-radius: var(--r-btn); background: var(--accent); color: var(--accent-ink); font-weight: 700; }
 .game-list { display: contents; }
+/* In pausa (anche dopo il ripristino di un'uscita) l'intestazione torna: le Impostazioni sono sempre raggiungibili */
+body.riding.paused .top { display: flex !important; }
+body.riding.paused main { min-height: calc(100vh - 88px - env(safe-area-inset-bottom)); min-height: calc(100dvh - 88px - env(safe-area-inset-bottom)); }

@@ -1,3 +1,4 @@
+import { strictSet } from './storage-guard.js'; // primissimo: se il localStorage è vietato, ripiega su una memoria temporanea prima che gli altri moduli lo leggano
 import { t, applyI18n, LANGS, setLang, getLang, fmtDate, fmtDec, fmtNum } from './i18n.js'; // per primo: carica le traduzioni prima del render
 import { isNative, GarminBridge, BLE } from './native.js'; // nell'app installa il Bluetooth nativo
 import { Trainer } from './trainers/index.js';
@@ -364,12 +365,14 @@ const keyDir = (k) => (['ArrowRight', 'ArrowUp', 'PageUp', '+', '=', ' ', 'd', '
 // tastiera = stessi ruoli del controller: frecce, Invio = ok, Esc = back, + / − = plus / minus
 const keyRole = (k) => ({ ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', Enter: 'ok', Escape: 'back', '+': 'plus', '=': 'plus', '-': 'minus', PageUp: 'plus', PageDown: 'minus' })[k] || null;
 window.addEventListener('keyup', (e) => { const r = keyRole(e.key); if (clickNav.active && r) { clickNav.key(r, false); return; } if (activeGame?.active && keyDir(e.key)) activeGame.hold?.(0); });
+const layerOpen = () => !!document.querySelector('.sheet:not([hidden]), .calib') || !$('gamePanel').hidden || !$('debugPanel').hidden;
 window.addEventListener('keydown', (e) => {
   if (clickCheck.isOpen()) { if (e.key === 'Escape') clickCheck.close(); return; }
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') { if (e.key === 'Escape') e.target.blur(); return; }
   clickNav.sync();
   const role = keyRole(e.key);
   if (clickNav.active && role) { e.preventDefault(); if (!e.repeat) clickNav.key(role, true); return; }
+  if (e.key === 'Escape' && !activeGame?.active && !e.repeat && layerOpen()) { e.preventDefault(); closeTopLayer(); return; }
   if (e.key === 'Escape' && playingNow() && !activeGame?.active) { e.preventDefault(); clickNav.back(); return; }
   if (activeGame?.active) {
     const d = keyDir(e.key);
@@ -377,6 +380,7 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeGame();
     return;
   }
+  if (layerOpen()) return; // pannello o dialogo aperto: le frecce scorrono/si muovono lì, non cambiano marcia o watt dietro
   if (['ArrowUp', 'ArrowRight', 'PageUp', '+', '='].includes(e.key)) { e.preventDefault(); step(+1); }
   if (['ArrowDown', 'ArrowLeft', 'PageDown', '-'].includes(e.key)) { e.preventDefault(); step(-1); }
   // scorciatoie da PC (solo se nessun pannello è aperto e non si sta scrivendo)
@@ -477,14 +481,16 @@ async function applyMode(force = false) {
 
 function describeTarget(k) {
   if (k.mode === 'gears' || k.mode === 'erg') return `${k.value} W`;
-  if (k.mode === 'sim') return `${k.value.toFixed(1)} %`;
+  if (k.mode === 'sim') return `${fmtDec(k.value, 1)} %`;
   return `${k.value} %`;
 }
 
 // ---------- Sessione ----------
 // Avviso di sicurezza: una sola frase, una sola volta, prima della prima uscita (ogni avvio passa da qui).
-function safetyAcknowledged() { try { return localStorage.getItem('safetyAck') === '1'; } catch { return true; } }
+let safetyAckSession = false; // se lo spazio è pieno la presa visione non si può salvare: vale comunque finché la pagina resta aperta
+function safetyAcknowledged() { if (safetyAckSession) return true; try { return localStorage.getItem('safetyAck') === '1'; } catch { return true; } }
 $('safetyOk').addEventListener('click', () => {
+  safetyAckSession = true;
   try { localStorage.setItem('safetyAck', '1'); } catch { /* storage non disponibile */ }
   closeSheet('safetySheet'); $('startStop').click();
 });
@@ -493,13 +499,13 @@ $('startStop').addEventListener('click', () => {
   if (!r.running && !safetyAcknowledged()) { openSheet('safetySheet'); return; }
   r.running = !r.running;
   if (r.running) { $('reportHint').hidden = true; hub.retryLost(); renderSuggest(); } // niente inviti mentre si pedala; i dispositivi persi si riprovano
-  if (r.running) { r.start = performance.now() - r.elapsed * 1000; requestWakeLock(); }
+  if (r.running) { r.start = performance.now() - r.elapsed * 1000; requestWakeLock(); r.historySaved = false; } // riprendere un'uscita già conclusa: al prossimo "Termina" la voce dello storico si aggiorna (stesso orario, niente doppione)
   updateView();
 });
 $('reset').addEventListener('click', async () => {
   if (!state.ride.saved && !(await ask(t('finish.confirmReset')))) return;
   if (workout) finishWorkout(false); // senza uscita non c'è più un allenamento in corso
-  Object.assign(state.ride, { running: false, elapsed: 0, distance: 0, energy: 0, powerSum: 0, samples: 0, log: [], saved: true, stravaUrl: null, historySaved: false });
+  Object.assign(state.ride, { running: false, elapsed: 0, distance: 0, energy: 0, powerSum: 0, samples: 0, log: [], saved: true, stravaUrl: null, historySaved: false, historyT: null, lastMilestone: 0, lastKm: 0 });
   renderWelcome();
   stravaMsg('');
   persist();
@@ -654,7 +660,7 @@ function tickRoute(dm, sample) {
     if (ahead.grade >= 4 && c.grade < 3 && routeDist - (route.lastClimbSaid ?? -1e9) > 800) { route.lastClimbSaid = routeDist; coach.say(t('coach.climbAhead', { grade: Math.round(ahead.grade) })); }
   }
   if (g !== state.grade) { state.grade = g; syncInputs(); applyMode(true); }
-  $('rtGrade').textContent = c.grade.toFixed(1);
+  $('rtGrade').textContent = fmtDec(c.grade, 1);
   $('rtKm').textContent = `${fmtDec(routeDist / 1000, 2)} / ${fmtDec(route.total / 1000, 1)} km`;
   const gt = ghostTimeAt(routeDist);
   const vs = gt != null && routeT > 10 ? routeT - gt : null;
@@ -766,8 +772,27 @@ const cassetteEls = GEARS.map((_, i) => {
 });
 
 // ---------- Pannelli ----------
-function openSheet(id) { $(id).hidden = false; document.body.style.overflow = 'hidden'; }
-function closeSheet(id) { $(id).hidden = true; document.body.style.overflow = ''; }
+// Pannelli: aperti uno sopra l'altro (es. Impostazioni → Storico). Il fondo resta bloccato finché ce n'è uno aperto,
+// la pagina dietro è "inert" (niente Tab né lettori di schermo dietro il pannello) e alla chiusura il focus torna a chi l'ha aperto.
+const sheetOpener = new Map();
+const openSheets = () => [...document.querySelectorAll('.sheet')].filter((x) => !x.hidden);
+function syncSheetLock() {
+  const any = openSheets().length > 0;
+  document.body.style.overflow = any ? 'hidden' : '';
+  for (const el of document.querySelectorAll('body > header.top, body > main')) el.inert = any;
+}
+function openSheet(id) {
+  const el = $(id);
+  if (el.hidden) { const a = document.activeElement; if (a && a !== document.body && !a.closest('.sheet')) sheetOpener.set(id, a); else if (a && a.closest('.sheet')) sheetOpener.set(id, a); }
+  el.hidden = false; syncSheetLock();
+  const body = el.querySelector('.sheet-body'); if (body && !el.contains(document.activeElement)) body.focus({ preventScroll: true }); // chi usa lettore di schermo o tastiera parte dal pannello
+}
+function closeSheet(id) {
+  const el = $(id); const was = !el.hidden;
+  el.hidden = true; syncSheetLock();
+  const o = sheetOpener.get(id); sheetOpener.delete(id);
+  if (was && o && o.isConnected && !o.closest('[hidden]') && !o.closest('[inert]')) { try { o.focus({ preventScroll: true }); } catch { /* */ } }
+}
 document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => closeSheet(b.dataset.close)));
 document.querySelectorAll('.sheet').forEach((sh) => sh.addEventListener('click', (e) => { if (e.target === sh) closeSheet(sh.id); }));
 $('openSettings').addEventListener('click', () => openSheet('settingsSheet'));
@@ -797,14 +822,16 @@ function updateView() {
 }
 function render() {
   const d = state.data; const r = state.ride;
-  $('power').textContent = Math.round($('smooth3').checked && powerBuf.length ? powerBuf.reduce((a, b) => a + b, 0) / powerBuf.length : d.power || 0);
+  const shownW = Math.round($('smooth3').checked && powerBuf.length ? powerBuf.reduce((a, b) => a + b, 0) / powerBuf.length : d.power || 0) || 0;
+  $('power').textContent = shownW;
+  $('power').parentElement.dataset.digits = String(String(shownW).length); // 4 cifre (≥ 1000 W) non stanno nella scheda: il CSS le rimpicciolisce
   $('cadence').textContent = hasRealCadence() ? Math.round(d.cadence || 0) : trainer.connected ? `~${Math.round(currentCadence())}` : '0';
   const speed = state.mode === 'gears' ? currentVirtualSpeed() * 3.6 : d.speed || 0;
   $('speed').textContent = fmtDec(speed, 1);
   $('hr').textContent = d.hr ? d.hr : '--';
   const hz = d.hr ? hrZone(d.hr) : null;
   $('hrZone').textContent = hz ? `Z${hz.z} ${hz.name}` : ''; $('hrZone').style.color = hz?.color || '';
-  $('time').textContent = fmtTime(r.elapsed);
+  $('time').textContent = fmtTime(r.elapsed); $('time').dataset.long = r.elapsed >= 3600 ? '1' : ''; // h:mm:ss è più largo di m:ss
   $('distance').textContent = fmtDec(r.distance / 1000, 2);
   $('avgPower').textContent = r.samples ? Math.round(r.powerSum / r.samples) : 0;
   $('kj').textContent = Math.round(r.energy);
@@ -840,11 +867,15 @@ function render() {
 
 // ---------- Registrazione e file FIT ----------
 const STORE = 'ride-freedom-session';
+let wiped = false; // dopo "Cancella tutti i dati" nulla deve riscrivere l'uscita in corso (la pagina si ricarica e chiama pagehide)
+let storageWarned = false;
+window.addEventListener('storagefull', () => { if (!storageWarned) { storageWarned = true; toast(t('storage.full')); } });
 function persist() {
+  if (wiped) return;
   try {
     const r = state.ride;
     localStorage.setItem(STORE, JSON.stringify({ elapsed: r.elapsed, distance: r.distance, energy: r.energy,
-      powerSum: r.powerSum, samples: r.samples, log: r.log, saved: r.saved, stravaUrl: r.stravaUrl || null, historySaved: !!r.historySaved }));
+      powerSum: r.powerSum, samples: r.samples, log: r.log, saved: r.saved, stravaUrl: r.stravaUrl || null, historySaved: !!r.historySaved, historyT: r.historyT || null }));
   } catch { /* spazio esaurito o storage non disponibile */ }
 }
 function restore() {
@@ -852,6 +883,7 @@ function restore() {
     const saved = JSON.parse(localStorage.getItem(STORE) || 'null');
     if (saved?.log?.length) {
       Object.assign(state.ride, saved, { running: false });
+      state.ride.lastMilestone = Math.floor(saved.elapsed / 600); state.ride.lastKm = Math.floor(saved.distance / 5000); // i traguardi già passati non si annunciano di nuovo
       log(`Previous session restored (${fmtTime(saved.elapsed)}). Press Start to continue or save it as .FIT.`);
     }
   } catch { /* ignora */ }
@@ -951,7 +983,7 @@ function history() { try { return JSON.parse(localStorage.getItem('rideHistory')
 function saveHistory(h) {
   // se lo spazio finisce, si tengono le serie solo delle uscite più recenti
   for (let keep = h.length; keep >= 0; keep -= 20) {
-    try { localStorage.setItem('rideHistory', JSON.stringify(h.map((x, i) => (i < h.length - keep ? { ...x, series: undefined } : x)))); return; } catch { /* pieno */ }
+    if (strictSet('rideHistory', JSON.stringify(h.map((x, i) => (i < h.length - keep ? { ...x, series: undefined } : x))))) return; // se è pieno: via le serie dalle uscite più vecchie
   }
 }
 function openHistory() {
@@ -970,7 +1002,8 @@ function renderChallenges(hist, riding) {
   el.hidden = false;
   el.innerHTML = `<h2>${t('challenges.title', { month })}</h2><ul class="ch-list">${list.map((c) => {
     const left = c.metric === 'z2' ? t('challenges.valueMin', { done: Math.round(c.value), target: c.target }) : t('challenges.value', { done: fmtNum(Math.round(c.value)), target: c.target });
-    return `<li class="${c.done ? 'done' : ''}" data-ch="${c.id}"><span class="ch-name">${c.done ? '🏅 ' : ''}${t(`challenges.${c.metric}`, { n: c.metric === 'z2' ? c.target / 60 : c.target })}</span><small>${c.done ? t('challenges.completed') : left}</small><span class="goal-bar" role="progressbar" aria-valuenow="${c.pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${c.pct}%"></i></span></li>`;
+    const chName = t(`challenges.${c.metric}`, { n: c.metric === 'z2' ? c.target / 60 : c.target });
+    return `<li class="${c.done ? 'done' : ''}" data-ch="${c.id}"><span class="ch-name">${c.done ? '🏅 ' : ''}${chName}</span><small>${c.done ? t('challenges.completed') : left}</small><span class="goal-bar" role="progressbar" aria-label="${chName}" aria-valuenow="${c.pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${c.pct}%"></i></span></li>`;
   }).join('')}</ul>${medals ? `<p class="fine">${t('challenges.medals', { count: medals })}</p>` : ''}`;
 }
 // il pulsante grande: "Collega il rullo", oppure — se ci sono dispositivi già usati — "Ricollego…" / "Ricollega X"
@@ -1128,7 +1161,7 @@ setInterval(() => { $('quickPick').hidden = state.ride.running || !!workout || !
 // ---------- Cambio virtuale: calibrazione della cadenza e durezza ----------
 function renderGearSettings() {
   $('calibGroup').hidden = hasRealCadence() && !devOn(); // con una cadenza vera la stima e la calibrazione non servono (resta solo per chi sviluppa)
-  $('cadFactorInfo').textContent = t('calib.current', { f: RPM_PER_KMH.toFixed(2) }) + (RPM_PER_KMH === DEFAULT_FACTOR ? ` · ${t('calib.notYet')}` : '');
+  $('cadFactorInfo').textContent = t('calib.current', { f: fmtDec(RPM_PER_KMH, 2) }) + (RPM_PER_KMH === DEFAULT_FACTOR ? ` · ${t('calib.notYet')}` : '');
   document.querySelectorAll('#gearFeelChips button').forEach((b) => b.classList.toggle('on', +b.dataset.f === gearFeel));
 }
 document.querySelectorAll('#gearFeelChips button').forEach((b) => b.addEventListener('click', () => {
@@ -1474,7 +1507,8 @@ $('finishRide').addEventListener('click', () => {
   $('finishSummary').innerHTML = [[t('home.time'), fmtTime(r.elapsed)], ['km', fmtDec(r.distance / 1000, 2)], [t('home.avgPower'), avgW], ['kJ', Math.round(r.energy)]]
     .map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
   // il "picco" e la "fine": celebrare, confrontare, invitare a tornare
-  const hist = history();
+  const resumed = !!r.historyT && !r.historySaved; // uscita già salvata, poi ripresa: la sua voce va sostituita, non affiancata
+  const hist = history().filter((h) => !(resumed && h.t === r.historyT));
   const prev = hist[hist.length - 1];
   // medaglie: record di potenza, uscita più lunga, obiettivo della settimana, costanza
   const medals = [];
@@ -1495,10 +1529,10 @@ $('finishRide').addEventListener('click', () => {
   }
   let chDone = [];
   if (!r.historySaved && r.elapsed >= 60) {
-    const entry = { t: Date.now(), dur: Math.round(r.elapsed), km: +(r.distance / 1000).toFixed(2), avgW, kj: Math.round(r.energy), ...rideStats(r.log) };
+    const entry = { t: resumed ? r.historyT : Date.now(), dur: Math.round(r.elapsed), km: +(r.distance / 1000).toFixed(2), avgW, kj: Math.round(r.energy), ...rideStats(r.log) };
     const histBefore = [...hist];
     hist.push(entry);
-    saveHistory(hist.slice(-200)); r.historySaved = true; persist();
+    saveHistory(hist.slice(-200)); r.historySaved = true; r.historyT = entry.t; persist();
     chDone = challenges.newlyDone(histBefore, hist, challenges.monthKey(), state.ftp);
     challenges.markDone(chDone);
     dataChanged('rides', String(entry.t));
@@ -1506,7 +1540,7 @@ $('finishRide').addEventListener('click', () => {
   const week = hist.filter((h) => Date.now() - h.t < 7 * 864e5).length;
   const mins = Math.round(r.elapsed / 60);
   $('finishTitle').textContent = mins >= 60 ? t('finish.titleLong') : mins >= 30 ? t('finish.titleMid') : r.elapsed >= 60 ? t('finish.titleShort') : t('finish.titleTiny');
-  $('finishPraise').textContent = r.elapsed >= 60 ? `${t('finish.praise', { mins, kj: Math.round(r.energy) })} ${week > 1 ? t('finish.praiseWeek', { n: week }) : t('finish.praiseStart')}` : '';
+  $('finishPraise').textContent = r.elapsed >= 60 ? `${t('finish.praise', { mins, count: mins, kj: Math.round(r.energy) })} ${week > 1 ? t('finish.praiseWeek', { n: week }) : t('finish.praiseStart')}` : '';
   $('finishCompare').textContent = prev && r.elapsed >= 60 && prev.avgW ? (avgW > prev.avgW ? t('finish.compareMore', { delta: avgW - prev.avgW }) : avgW === prev.avgW ? t('finish.compareSame') : '') : '';
   const gl = goalState(hist);
   $('finishNudge').textContent = gl ? (gl.done >= gl.goal ? t('finish.goalDone', { done: gl.done, goal: gl.goal }) : t('finish.goalLeft', { done: gl.done, goal: gl.goal, left: gl.goal - gl.done })) : t('finish.nudge');
@@ -1573,7 +1607,7 @@ $('shareImg').addEventListener('click', async () => {
   if (st.best[1200]) stats.push([t('share.best20'), st.best[1200], 'W']); else if (st.best[60]) stats.push([t('share.best1'), st.best[60], 'W']);
   const { shareCard } = await import('./sharecard.js');
   const res = await shareCard({
-    title: $('finishTitle').textContent || t('share.title', { mins }),
+    title: $('finishTitle').textContent || t('share.title', { mins, count: mins }),
     date: fmtDate(new Date()),
     stats, series: st.series, ftp: state.ftp, route: route?.name || lastRouteName,
   });
@@ -1588,7 +1622,7 @@ $('hrMax').value = localStorage.getItem('hrMax') || '';
 $('hrMax').addEventListener('change', (e) => { const v = Math.round(+e.target.value); if (v >= 120 && v <= 220) localStorage.setItem('hrMax', v); else { localStorage.removeItem('hrMax'); e.target.value = ''; } render(); });
 
 // ---------- Backup: esporta / importa i dati tra dispositivi ----------
-const NO_BACKUP = /^(stravaConfig|ride-freedom-session|account:session|sync:.*)$/; // token Strava, uscita in corso, stato dell'account e della sincronizzazione
+const NO_BACKUP = /^(stravaConfig|ride-freedom-session|account:session|sync:.*|analytics|safetyAck|clickCheckSeen|seenTrainers|nativeDevices|devRoles|devKnown|trainerProtocol|__.*)$/; // non viaggiano tra dispositivi: token Strava, uscita in corso, stato dell'account e della sincronizzazione, scelta sul consenso, presa visione, dispositivi Bluetooth visti
 $('backupOut').addEventListener('click', () => {
   const data = {};
   for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!NO_BACKUP.test(k)) data[k] = localStorage.getItem(k); }
@@ -1615,6 +1649,7 @@ $('wipeData').addEventListener('click', async () => {
   if (!await ask(t('wipe.confirm'), { ok: t('wipe.go'), danger: true })) return;
   try { const sy = await import('./account/sync.js'); sy.stopSync(); sy.resetSyncState(); } catch { /* account non attivo */ }
   try { strava.disconnect(); } catch { /* niente */ }
+  wiped = true;
   try { localStorage.clear(); sessionStorage.clear(); } catch { /* niente storage */ }
   toast(t('wipe.done'));
   setTimeout(() => location.reload(), 900);
@@ -1773,15 +1808,20 @@ function closeEverything() { // torna alla home da qualsiasi schermata
 
 // tasto indietro (Android e browser): chiude ciò che è aperto; per uscire va premuto due volte
 let backArmed = 0;
-window.rfBack = () => {
-  if (clickCheck.isOpen()) { clickCheck.close(); return 'ok'; }
-  if (clickNav.menuOpen()) { clickNav.closeMenu(); return 'ok'; }
+// chiude lo strato più in alto (verifica del Click, menu, dialogo, pannello, debug, giochi); false se non c'è nulla da chiudere
+function closeTopLayer() {
+  if (clickCheck.isOpen()) { clickCheck.close(); return true; }
+  if (clickNav.menuOpen()) { clickNav.closeMenu(); return true; }
   const dlg = [...document.querySelectorAll('.calib')].pop();
-  if (dlg) { const c = dlg.querySelector('.calib-cancel'); if (dlg._cancel) dlg._cancel(); else if (c) c.click(); else dlg.remove(); return 'ok'; }
-  const sheets = [...document.querySelectorAll('.sheet')].filter((x) => !x.hidden);
-  if (sheets.length) { closeSheet(sheets[sheets.length - 1].id); return 'ok'; }
-  if (!$('debugPanel').hidden) { $('closeDebug').click(); return 'ok'; }
-  if (!$('gamePanel').hidden) { closeGame(); return 'ok'; }
+  if (dlg) { const c = dlg.querySelector('.calib-cancel'); if (dlg._cancel) dlg._cancel(); else if (c) c.click(); else dlg.remove(); return true; }
+  const sheets = openSheets();
+  if (sheets.length) { closeSheet(sheets[sheets.length - 1].id); return true; }
+  if (!$('debugPanel').hidden) { $('closeDebug').click(); return true; }
+  if (!$('gamePanel').hidden) { closeGame(); return true; }
+  return false;
+}
+window.rfBack = () => {
+  if (closeTopLayer()) return 'ok';
   if (Date.now() - backArmed < 2500) return state.ride.running ? 'background' : 'exit';
   backArmed = Date.now();
   toast(state.ride.running ? t('back.background') : t('back.exit'));
@@ -1834,3 +1874,6 @@ window.addEventListener('langchange', () => {
 
 // ---------- Account facoltativo: compare solo se js/config.js ha FIREBASE_CONFIG ----------
 initAccount();
+
+// l'app è pronta (testi tradotti, schede disegnate): la pagina può comparire (vedi css "Primo avvio")
+document.documentElement.classList.add('ready');
