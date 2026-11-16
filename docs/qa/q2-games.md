@@ -57,7 +57,10 @@ solid blue arches); the 3D gate captions ("2 ALLIES") are partly covered by the 
 | B1 | Breakaway | countdown "3" over the hint line; START arch caption garbled behind the objective card | X4 |
 | U1 | Updraft | German results line "80 % der Intervalle und höchstens 3 Gewitt…" truncated (also long in es/it) | shortened in de/es/it |
 | H3 | Horde Run | 3D gate captions ("2 ALLIES", "WEAPON") ran behind the pillars and showed as "2 ALLIE" / "EAPON" | caption plane now fits inside the opening |
-| – | Slipstream, Feed Zone | nothing found beyond the shared items | – |
+| F1 | Feed Zone | every gel pickup left 3 geometries and 3 materials undisposed (`renderer.info` geometries 44 → 124 in a 20-minute Hard run) | `freeGel()` disposes them; after the fix geometries stay at 37-44 over a 5-minute run |
+| – | Slipstream | nothing found beyond the shared items | – |
+
+Full-length runs at high 390×780 (scripted rider, 20-minute Hard and a 10.75-minute workout underneath): all 12 reach the results screen with no console messages; heap stays within +3 to +27 MB (Horde Run 32 → 59 MB over 20 minutes is the zombie pool). Breakaway at Hard finishes in 18 min of game time (stage length depends on speed).
 
 Checked and fine (no defect seen): no console error, CSP violation or texture-load failure in 18 full 5-minute sessions
 (6 games × high/medium/low at 390×780, 0 messages); every session reaches the results screen; `renderer.info` geometries and
