@@ -600,7 +600,7 @@ export class Horde {
       const frame = new THREE.Group();
       P.info.parts.forEach((pt, j) => { frame.add(new THREE.Mesh(pt.geo, this.portalMats[j])); });
       frame.rotation.y = P.turn; frame.scale.set(s, sy, s); group.add(frame);
-      const label = new THREE.Mesh(new THREE.PlaneGeometry(width - 0.2, 1.05), new THREE.MeshBasicMaterial({ map: labelTexture(t(def.text), null, '#ffffff'), transparent: true, side: THREE.DoubleSide, depthWrite: false }));
+      const label = new THREE.Mesh(new THREE.PlaneGeometry(width - 1.0, 0.8), new THREE.MeshBasicMaterial({ map: labelTexture(t(def.text), null, '#ffffff'), transparent: true, side: THREE.DoubleSide, depthWrite: false }));
       label.position.set(0, 1.8, -0.08); label.rotation.y = Math.PI; group.add(label);
       group.position.set(x, 0, z);
       this.stage.scene.add(group);
