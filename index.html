@@ -2,14 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <!-- Solo ciò che l'app usa davvero (docs/compliance-report.md): GoatCounter dopo il consenso, YouTube per i video, Strava se lo colleghi. -->
+  <!-- Solo ciò che l'app usa davvero (docs/compliance-report.md): GoatCounter dopo il consenso, YouTube per i video, Strava se lo colleghi.
+       Nella WebView Capacitor (https://localhost) non serve altro: il ponte nativo è iniettato da codice nativo / prima di questo meta, le chiamate ai plugin non passano dalla rete.
+       blob:/data: (connect-src, img-src) = loader di three.js; 'wasm-unsafe-eval' + worker-src blob: = decoder meshopt. Provato in tests/csp.spec.mjs. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-hj9YLHtXa6XlhEuI0Piw3nIiX7fW9qt8Edtric8vsHM=' 'wasm-unsafe-eval' https://gc.zgo.at https://www.youtube.com https://s.ytimg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://c1laud1o.goatcounter.com; media-src 'self' blob: data:; font-src 'self'; connect-src 'self' blob: data: https://c1laud1o.goatcounter.com https://www.strava.com; frame-src https://www.youtube.com; worker-src 'self' blob:; manifest-src 'self'; base-uri 'self'; form-action 'none'; object-src 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0f0e0c">
   <meta name="description" content="" data-i18n-attr="content:app.description">
   <title>Spindro</title>
   <link rel="manifest" href="manifest.webmanifest">
+  <!-- iOS: "Aggiungi alla schermata Home" (Web Bluetooth non esiste su iOS, ma l'icona e la barra devono essere giuste) -->
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Spindro">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/icon-192.png" type="image/png" sizes="192x192">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body data-mode="erg">

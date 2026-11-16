@@ -1562,5 +1562,7 @@
   "connect.unsupported.insecure": "Bluetooth funktioniert nur auf sicheren Seiten (https). Öffne Spindro über seine https-Adresse.",
   "connect.unsupported.ios": "iPhone und iPad: Kein Browser dort (Safari, Chrome, Firefox…) kann Bluetooth für Web-Apps nutzen, und es gibt keine Spindro-App für iOS. Nimm den kostenlosen Browser Bluefy oder fahre mit einem Android-Handy oder einem PC mit Chrome oder Edge.",
   "connect.unsupported.other": "Dieser Browser kann Bluetooth nicht nutzen. Auf PC, Mac und Android nimm Chrome oder Edge, oder auf Android die Spindro-App.",
-  "connect.unsupported.safari": "Safari unterstützt Bluetooth für Web-Apps nicht. Öffne Spindro in Chrome oder Edge auf deinem Mac oder PC."
+  "connect.unsupported.safari": "Safari unterstützt Bluetooth für Web-Apps nicht. Öffne Spindro in Chrome oder Edge auf deinem Mac oder PC.",
+  "update.ready": "Neue Version bereit",
+  "update.reload": "Neu laden"
 }

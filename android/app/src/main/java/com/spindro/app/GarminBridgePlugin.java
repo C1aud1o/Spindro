@@ -265,10 +265,16 @@ public class GarminBridgePlugin extends Plugin {
         call.resolve();
     }
 
+    // solo il nome del file: niente percorsi (../) che uscirebbero dalla cartella
+    private static String safeName(String name) {
+        String n = new File(name == null ? "" : name).getName().replaceAll("[^A-Za-z0-9._-]", "_");
+        return n.isEmpty() ? "ride.fit" : n;
+    }
+
     // salva un file nella cartella Download del telefono (visibile da File, Garmin Connect nel browser, ecc.)
     @PluginMethod
     public void saveDownload(PluginCall call) {
-        String name = call.getString("name", "ride.fit");
+        String name = safeName(call.getString("name", "ride.fit"));
         String mime = call.getString("mime", "application/octet-stream");
         byte[] data;
         try { data = Base64.decode(call.getString("data", ""), Base64.DEFAULT); }
@@ -301,7 +307,7 @@ public class GarminBridgePlugin extends Plugin {
     // passa un file a un'altra app: mode "view" = Apri con…, "send" = Condividi
     @PluginMethod
     public void shareFile(PluginCall call) {
-        String name = call.getString("name", "ride.fit");
+        String name = safeName(call.getString("name", "ride.fit"));
         String mime = call.getString("mime", "application/octet-stream");
         String mode = call.getString("mode", "send");
         try {
@@ -326,7 +332,11 @@ public class GarminBridgePlugin extends Plugin {
     @PluginMethod
     public void openUrl(PluginCall call) {
         try {
-            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(call.getString("url", "")));
+            Uri target = Uri.parse(call.getString("url", ""));
+            String scheme = target.getScheme();
+            // solo link web: niente file:, content:, intent: o altri schemi da una pagina
+            if (!"https".equalsIgnoreCase(scheme) && !"http".equalsIgnoreCase(scheme)) { call.reject("link non consentito"); return; }
+            Intent i = new Intent(Intent.ACTION_VIEW, target);
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             getContext().startActivity(i);
             call.resolve();

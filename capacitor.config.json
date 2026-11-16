@@ -2,7 +2,9 @@
   "appId": "com.spindro.app",
   "appName": "Spindro",
   "webDir": "www",
-  "android": { "allowMixedContent": false },
+  "android": {
+    "allowMixedContent": false
+  },
   "plugins": {
     "BluetoothLe": {
       "displayStrings": {
@@ -12,5 +14,6 @@
         "noDeviceFound": "Nessun dispositivo trovato"
       }
     }
-  }
+  },
+  "backgroundColor": "#0f0f0d"
 }

@@ -5,17 +5,28 @@
 //   WEB_DEPLOY=1  build per GitHub Pages: copia anche sw.js; in beta isola il localStorage, mette noindex e separa la cache
 import { createHash } from 'node:crypto';
 import { cpSync, rmSync, mkdirSync, existsSync, writeFileSync, readFileSync } from 'node:fs';
-const out = 'www';
+const out = process.env.OUT_DIR || 'www'; // OUT_DIR solo per i test (tests/pwa.spec.mjs)
 const channel = process.env.CHANNEL === 'beta' ? 'beta' : 'prod';
 const webDeploy = process.env.WEB_DEPLOY === '1';
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out);
 for (const p of ['index.html', 'manifest.webmanifest', 'css', 'js', 'icons', 'assets', 'vendor', 'locales']) {
-  if (existsSync(p)) cpSync(p, `${out}/${p}`, { recursive: true });
+  if (existsSync(p)) cpSync(p, `${out}/${p}`, { recursive: true, filter: (src) => !/(^|\/)assets\/icons\/[^/]+\.png$/.test(src) }); // i PNG sorgente delle icone della home non servono: l'app usa i .webp
 }
 // numero di build (su GitHub = numero della compilazione) e canale, mostrati nelle impostazioni
 const build = process.env.VERSION_CODE || 'sviluppo';
 writeFileSync(`${out}/js/build.js`, `export const BUILD = '${build}';\nexport const CHANNEL = '${channel}';\n`);
+
+// Il manifest della beta descrive un'app DIVERSA: id e nome propri, così si installa accanto alla stabile (/app/) senza sostituirla.
+// "id" è relativo all'origine (stessa per /app/ e /beta/): serve un id esplicito per canale.
+if (channel === 'beta') {
+  const m = JSON.parse(readFileSync(`${out}/manifest.webmanifest`, 'utf8'));
+  if (m.id !== '/app/') throw new Error('manifest.webmanifest: id inatteso (serve /app/)');
+  m.id = '/beta/';
+  m.name = 'Spindro Beta: Smart Trainer Cycling';
+  m.short_name = 'Spindro Beta';
+  writeFileSync(`${out}/manifest.webmanifest`, JSON.stringify(m, null, 2) + '\n');
+}
 
 if (webDeploy) {
   // nell'app Android il service worker non serve: solo sul web

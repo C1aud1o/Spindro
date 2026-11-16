@@ -499,7 +499,8 @@ $('startStop').addEventListener('click', () => {
   if (!r.running && !safetyAcknowledged()) { openSheet('safetySheet'); return; }
   r.running = !r.running;
   if (r.running) { $('reportHint').hidden = true; hub.retryLost(); renderSuggest(); } // niente inviti mentre si pedala; i dispositivi persi si riprovano
-  if (r.running) { r.start = performance.now() - r.elapsed * 1000; requestWakeLock(); r.historySaved = false; } // riprendere un'uscita già conclusa: al prossimo "Termina" la voce dello storico si aggiorna (stesso orario, niente doppione)
+  if (r.running) { r.start = Date.now() - r.elapsed * 1000; requestWakeLock(); r.historySaved = false; } // riprendere un'uscita già conclusa: al prossimo "Termina" la voce dello storico si aggiorna (stesso orario, niente doppione)
+  else if (!activeGame) releaseWakeLock(); // in pausa lo schermo può spegnersi di nuovo
   updateView();
 });
 $('reset').addEventListener('click', async () => {
@@ -517,8 +518,10 @@ let wakeLock = null;
 async function requestWakeLock() {
   try { wakeLock = await navigator.wakeLock?.request('screen'); } catch { /* non supportato */ }
 }
+function releaseWakeLock() { wakeLock?.release().catch(() => {}); wakeLock = null; }
+// il sistema libera il blocco quando la pagina va in secondo piano: lo si riprende al ritorno (in pedalata o in un gioco)
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && state.ride.running && (!wakeLock || wakeLock.released)) requestWakeLock();
+  if (document.visibilityState === 'visible' && (state.ride.running || activeGame) && (!wakeLock || wakeLock.released)) requestWakeLock();
 });
 
 // Ciclo principale: 1 Hz
@@ -528,7 +531,7 @@ setInterval(() => {
   state.speedSmooth = state.speedSmooth * 0.5 + ((d.speed || 0) / 3.6) * 0.5;
   const r = state.ride;
   if (r.running) {
-    r.elapsed = (performance.now() - r.start) / 1000;
+    r.elapsed = (Date.now() - r.start) / 1000; // orologio di sistema: continua a contare anche se il telefono dorme o la WebView viene rallentata in secondo piano
     const speedMs = state.mode === 'gears' ? currentVirtualSpeed() : (d.speed || 0) / 3.6;
     r.distance += speedMs;
     r.energy += (d.power || 0) / 1000;
@@ -1425,6 +1428,7 @@ function closeGame() {
   $('gamePanel').hidden = true;
   document.body.classList.remove('game-open');
   updateGameStrip(null);
+  if (!state.ride.running) releaseWakeLock(); // fuori dai giochi e senza pedalata lo schermo può spegnersi
 }
 applyI18n(renderGameList($('gameList')));
 $('gameList').addEventListener('click', (e) => { const b = e.target.closest('.game-card'); if (b) startGame(b.dataset.game); });
@@ -1568,7 +1572,38 @@ renderWelcome();
 syncInputs();
 render();
 
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+// Aggiornamenti dell'app web installata: il nuovo service worker aspetta (sw.js non fa skipWaiting da solo) e qui compare
+// un invito discreto "nuova versione pronta: ricarica". Mai durante una pedalata, mai un ricaricamento a sorpresa.
+if ('serviceWorker' in navigator) {
+  let pendingUpdate = null; let updateBar = null; let reloadAsked = false;
+  const showUpdateBar = () => {
+    updateBar = document.createElement('div');
+    updateBar.className = 'update-bar'; updateBar.setAttribute('role', 'status');
+    const msg = document.createElement('span'); msg.textContent = t('update.ready');
+    const btn = document.createElement('button'); btn.className = 'ghost'; btn.textContent = t('update.reload');
+    btn.addEventListener('click', () => { reloadAsked = true; pendingUpdate.postMessage('skipWaiting'); });
+    updateBar.append(msg, btn); document.body.append(updateBar);
+  };
+  // il ricaricamento parte solo dopo il tocco sul pulsante (la prima installazione, senza controller, non conta)
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (reloadAsked) location.reload(); });
+  navigator.serviceWorker.register('sw.js').then((reg) => {
+    const offer = () => { if (reg.waiting && navigator.serviceWorker.controller) pendingUpdate = reg.waiting; };
+    offer();
+    reg.addEventListener('updatefound', () => {
+      const w = reg.installing;
+      w?.addEventListener('statechange', () => { if (w.state === 'installed') offer(); });
+    });
+    setInterval(() => { if (pendingUpdate && !updateBar && !state.ride.running) showUpdateBar(); }, 5000);
+    // un'app installata resta aperta per giorni: ricontrolla quando torna in primo piano
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
+  }).catch(() => {});
+}
+// scorciatoie dell'app installata (manifest "shortcuts"): ?open=workouts | games
+{
+  const open = new URLSearchParams(location.search).get('open');
+  if (open === 'workouts') $('openWorkouts').click();
+  else if (open === 'games') $('openGame').click();
+}
 
 $('openHistory').addEventListener('click', openHistory);
 $('finishHistory').addEventListener('click', openHistory);
