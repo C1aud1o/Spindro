@@ -1,7 +1,7 @@
 // BOT HARNESS: `npm run game:check -- <id> [options]`
 //
 // Plays one game with the simulated rider (the demo rider, js/games/demo.js) at the four standard power levels of
-// docs/games/DESIGN-RULES.md §5 (0.6 / 0.8 / 1.0 / 1.2 × FTP, FTP 200, 5-minute session, level Normal, seeded with
+// docs/games/DESIGN-RULES.md §5 (0.6 / 0.8 / 1.0 / 1.2 × FTP, FTP 200, session at the menu's first length (5 minutes for the standard menu), level Normal, seeded with
 // kit/rng.js), prints the table the design rules ask for and exits 1 with a clear message for every rule that is broken.
 //
 //   <id>            a game id from js/games/registry.js
@@ -111,7 +111,7 @@ for (const r of rows) {
 if (flag('json')) console.log(JSON.stringify(rows.map(({ errors, ...r }) => r), null, 1));
 else {
   const f = (x, n = 1) => (Number.isFinite(x) ? x.toFixed(n) : '—');
-  console.log(`\ngame:check ${id}  ·  FTP ${FTP} W  ·  seed ${SEED}  ·  ${LIMIT ? `first ${LIMIT} s of the run` : 'full session, 5 min, level Normal'}\n`);
+  console.log(`\ngame:check ${id}  ·  FTP ${FTP} W  ·  seed ${SEED}  ·  ${LIMIT ? `first ${LIMIT} s of the run` : 'full session at the first length of the menu (5 min in most games), level Normal'}\n`);
   console.log('| × FTP | stars | expected | first event (s) | longest gap (s) | events/min | game s | ms/frame |');
   console.log('|---|---|---|---|---|---|---|---|');
   for (const r of rows) { const e = EXPECT[r.mult]; console.log(`| ${r.mult} | ${r.stars ?? '—'} | ${e ? (e[0] === e[1] ? e[0] : `${e[0]}-${e[1]}`) : '—'} | ${f(r.ev.first)} | ${f(r.ev.maxGap)} | ${f(r.ev.perMin)} | ${r.secs} | ${f(r.frameMs, 0)} |`); }

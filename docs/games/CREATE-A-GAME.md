@@ -36,13 +36,12 @@ mkdir js/games/mygame
 cp js/games/template/tempo.js js/games/mygame/index.js
 ```
 
-In `js/games/mygame/index.js` change two things:
+In `js/games/mygame/index.js` search and replace, over the whole file (it appears in the id, the class, the text keys and a few comments):
 
-- `export class Tempo` → `export class MyGame`
-- `const ID = 'tempo'` → `const ID = 'mygame'` (lowercase letters and digits only)
+- `Tempo` → `MyGame` (the class name)
+- `tempo` → `mygame` (the id, lowercase letters and digits only, and the `games.tempo.*` text keys)
 
-and replace the text keys `games.tempo.` with `games.mygame.` (search and replace in the file). Keep the imports as they are:
-the folder is at the same depth as `template/`.
+Keep the imports as they are: the folder is at the same depth as `template/`.
 
 For a three.js game start from `js/games/template/skeleton3d.js` instead (shared stage, sky, lights and cyclist).
 

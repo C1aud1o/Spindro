@@ -59,6 +59,14 @@ No build step: plain ES modules in `js/`, three.js vendored in `vendor/`. The An
 
 Trainer support, translations and games are the best places to start: see [CONTRIBUTING.md](CONTRIBUTING.md). Security reports: [SECURITY.md](SECURITY.md).
 
+<!-- games:begin -->
+## Games
+
+Spindro has six games, all workouts in % of your FTP, played with + / − and the pedals. Adding a seventh is meant to be easy:
+one folder, one registry entry, its strings. Start with [Create a game](docs/games/CREATE-A-GAME.md) (15 minutes, no trainer needed:
+`npm run dev`, then `?game=tempo&demo=1`), the [game API](docs/games/API.md) and the [design rules](docs/games/DESIGN-RULES.md).
+<!-- games:end -->
+
 ## Known limits
 
 - The app replaces Zwift as the trainer controller: both cannot be connected at once.

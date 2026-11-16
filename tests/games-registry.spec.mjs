@@ -49,7 +49,7 @@ test('registry: every file a shipped game imports is in the service worker ASSET
   const shipped = registrySrc.split('\n').filter((l) => l.includes('defineGame({ id:') && !l.includes('dev: true'));
   expect(shipped.length).toBeGreaterThanOrEqual(7);
   for (const l of shipped) walk(join('js/games', l.match(/import\('([^']+)'\)/)[1]));
-  walk('js/games/registry.js'); walk('js/games/list.js');
+  for (const f of ['js/games/registry.js', 'js/games/list.js']) if (!assets.has(f)) missing.push(f); // not walked: the registry also names dev-only games
   expect(missing, 'files imported by shipped games but missing from ASSETS in sw.js').toEqual([]);
 });
 
