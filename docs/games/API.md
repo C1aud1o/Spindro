@@ -1,7 +1,3 @@
-<!-- RUNNING CHECKLIST (remove when finished)
-done:  registry + list from it · app opens games via registry · template "Tempo" + 3D skeleton · types.js · demo rider · npm run dev · game:check · registry tests · state "results" unified · API.md
-left:  CREATE-A-GAME · DESIGN-RULES · PR/issue templates · README/CONTRIBUTING sections · verify with scratch game · full test run · merge origin/beta
--->
 # Game API
 
 This is the contract between the Spindro app and a game. It is written from the code of the six shipped games and
