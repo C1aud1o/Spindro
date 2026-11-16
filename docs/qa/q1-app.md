@@ -84,3 +84,17 @@ Commit column: `c1` = first QA commit (sheets, DST, FIT, service worker, plurals
 - **3D vendor files** (`vendor/three/**`) are not in the service-worker precache (cached at first use, as documented), so a game never opened online will not start offline. Games area, not touched.
 - **Games / device connection internals** (`js/games/**`, `js/devices*.js`) were not audited here, as agreed.
 - Not verifiable here: real Bluetooth hardware, real Android WebView/back button, the YouTube player (needs the network), Safari/iOS, `localStorage` limits on real phones, GoatCounter loading after consent (no DSN in the repo config).
+
+## Round 2 — merged result (device-connection branch, games registry)
+
+Scripts: `scripts/qa/round2.mjs` (welcome card, suggestion banner, Devices sheet, dropout banner × 360/390/768 × 5 languages, audit + screenshots), `scripts/qa/games-list.mjs` (games list × 4 viewports × 5 languages), plus direct `?game=<id>&demo=1` panels (racer, horde, gruppetto, planata) at 360/390/1280.
+
+| # | Screen | Lang / viewport | What was wrong | Fix | Commit |
+|---|--------|-----------------|----------------|-----|--------|
+| 29 | Home "Ready to ride?" | all / 360 | The first-run card carried a three-line paragraph about the Bluetooth chooser (a wall of text under the three steps) | `connect.pick` / `connect.pickApp` shortened to one line in all five languages (they also feed the Devices sheet hint); `tests/connect.spec.mjs` updated | r2 |
+| 30 | Cockpit | all | A restored or paused ride hid the header, so Settings were unreachable until finish/reset | the header returns whenever the ride is paused (`body.riding.paused`) | r2 |
+| 31 | Settings → Import data | all | The import copied device-specific keys from another device: consent choice, safety acknowledgement, known Bluetooth devices, device roles, trainer protocol | those keys added to `NO_BACKUP` (also used by the beta "copy my data" action) | r2 |
+
+Checked with no finding: welcome card, suggestion banner, dropout banner, Devices sheet (with "Test resistance" and source pickers) at 360/390/768 in de/fr/en/es/it (no overflow, no clipped text, tap targets ≥ 44 px, no console messages), games list from the registry at 360/390/768/1280 in all languages (Escape closes it), and the `?game=…&demo=1` panels open. Game internals were not audited.
+Left to the install session as instructed: PWA icon colour and `manifest.webmanifest`.
+Remaining from round 1: the "Seen but not fixed" list above, minus the two items fixed here (Settings after a restore, backup consent key).
