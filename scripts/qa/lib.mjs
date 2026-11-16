@@ -14,7 +14,7 @@ export async function launch() {
 }
 
 /** New page with seeded storage, fake BLE and console/CSP/pageerror collection in page.qaLog. */
-export async function newPage(browser, { vp = 's390', lang = 'en', seed = {}, ble = true, base = BASE, path = '/index.html' } = {}) {
+export async function newPage(browser, { vp = 's390', lang = 'en', seed = {}, ble = true, base = BASE, path = '/index.html', clock = false } = {}) {
   const [width, height] = VIEWPORTS[vp] || vp;
   const ctx = await browser.newContext({ viewport: { width, height }, serviceWorkers: 'block', acceptDownloads: true, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
@@ -26,6 +26,7 @@ export async function newPage(browser, { vp = 's390', lang = 'en', seed = {}, bl
   const s = { safetyAck: '1', analytics: '0', lang, ...seed };
   await page.addInitScript((s) => { try { if (!localStorage.getItem('__qa')) { localStorage.setItem('__qa', '1'); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)); } } catch { /* */ } }, s);
   if (ble) await page.addInitScript({ path: FAKE_BLE });
+  if (clock) await page.clock.install(); // fake timers, installed before the app starts
   await page.goto(base + path);
   await page.waitForSelector('html.ready', { state: 'attached' });
   await page.waitForTimeout(400);
