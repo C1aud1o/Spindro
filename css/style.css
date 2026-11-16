@@ -991,3 +991,5 @@ body:not(.riding) .metrics dt { overflow: hidden; text-overflow: ellipsis; lette
 .dev-test-note { margin: 0; }
 #deviceList [data-test], #deviceList [data-remove], #deviceList [data-forget], #reconnectDevice { min-height: 44px; }
 #unsupported { overflow-wrap: anywhere; }
+.suggest .cta-sm { min-height: 44px; border: 0; border-radius: var(--r-btn); background: var(--accent); color: var(--accent-ink); font-weight: 700; padding: 0 14px; box-shadow: var(--shadow-cta); }
+#deviceList .cta-sm { min-height: 44px; border: 0; border-radius: var(--r-btn); background: var(--accent); color: var(--accent-ink); font-weight: 700; }

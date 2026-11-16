@@ -1,7 +1,3 @@
-> **Running checklist (remove when finished)**
-> - done: reconnect-safe listeners, hub with dropout retry and backoff, per-platform error panel, one-at-a-time suggestions, Devices sheet states, trainer test, translations, scenario tests (`tests/connect.spec.mjs`)
-> - left: contact sheet `docs/design/d1-connect.png`, merge with `beta`, final test run
-
 # Connecting devices
 
 How Spindro connects a trainer, a controller, a heart-rate strap, a power meter and a cadence sensor, what works where, and what to do when it does not. For users first, then a section for contributors.

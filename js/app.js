@@ -114,6 +114,7 @@ async function bluetoothOff() {
   } catch { return false; }
 }
 function showProblem(problem) {
+  if (problem.code === 'browser') { $('unsupported').hidden = false; $('unsupported').scrollIntoView?.({ block: 'nearest' }); return; } // il motivo è già scritto in alto: non si ripete
   lastProblem = { platform: support.platform, ...problem };
   $('connectHelp').innerHTML = problemHtml(lastProblem, t, { retryId: 'connectHelpRetry', reportId: 'connectHelpReport' });
   $('connectHelp').hidden = false;

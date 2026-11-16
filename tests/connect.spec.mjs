@@ -91,7 +91,7 @@ test.describe('1 · prima volta, solo rullo', () => {
     await expect(page.locator('#unsupported')).toContainText('iPhone and iPad');
     await expect(page.locator('#unsupported')).toContainText('Bluefy');
     await page.click('#welcomeConnect');
-    await expect(page.locator('#connectHelp')).toContainText("can't connect devices");
+    await expect(page.locator('#connectHelp')).toBeHidden(); // non si ripete il testo già in alto
     await ctx.close();
   });
 
