@@ -57,7 +57,7 @@ solid blue arches); the 3D gate captions ("2 ALLIES") are partly covered by the 
 | B2 | Breakaway | "IN DRAFT −22 % WATTS" pill touched the "% FTP" readout and the gear pill (worse at 360 px wide and at 100 %+ FTP) | the pill is sized and placed in the free band between the gear pill and the readout, text shrinks to fit; checked at 360×640 |
 | L1 | Slipstream | big lane arrow at the screen edge was cut | inset by 12 px, smaller glyph |
 | H4 | Horde Run | rider's jersey washed out to white for a moment when gems were pulled in (additive halo on top of the jersey) | the halo shrinks as the gem approaches; jersey keeps its colour |
-| U2 | Updraft | the wing covered the rider's lower body and the next ring in portrait | portrait camera raised (5.4 → 7.2 above the plane): wing now at the feet, ring above the rider clear |
+| U2 | Updraft | the wing covered the rider's lower body and the next ring in portrait | portrait camera raised (5.4 → 6.2 above the plane; 7.2 looked better but broke the rule "rider ≥ 14 % of the screen", caught by `tests/planata.spec.mjs`): the wing sits lower on the rider |
 | B1 | Breakaway | countdown "3" over the hint line; START arch caption garbled behind the objective card | X4 |
 | U1 | Updraft | German results line "80 % der Intervalle und höchstens 3 Gewitt…" truncated (also long in es/it) | shortened in de/es/it |
 | H3 | Horde Run | 3D gate captions ("2 ALLIES", "WEAPON") ran behind the pillars and showed as "2 ALLIE" / "EAPON" | caption plane now fits inside the opening |
