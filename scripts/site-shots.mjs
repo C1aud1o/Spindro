@@ -67,7 +67,7 @@ const seed = (lang, extra = {}) => ({
 // ---- server and pages ----
 function startServer() {
   const child = spawn(process.execPath, [join(ROOT, 'tests/serve.mjs')], { env: { ...process.env, PORT: String(PORT) }, stdio: ['ignore', 'pipe', 'inherit'] });
-  return new Promise((ok, ko) => { child.stdout.on('data', (d) => { if (String(d).includes('Server di test')) ok(child); }); child.on('exit', (c) => ko(new Error(`server exited ${c}`))); setTimeout(() => ko(new Error('server did not start')), 8000); });
+  return new Promise((ok, ko) => { child.stdout.on('data', (d) => { if (/(Server di test|Test server at)/.test(String(d))) ok(child); }); child.on('exit', (c) => ko(new Error(`server exited ${c}`))); setTimeout(() => ko(new Error('server did not start')), 8000); });
 }
 async function newPage(browser, lang, { extra = {}, size = { width: 390, height: 780 }, keepClickCheck = false } = {}) {
   const ctx = await browser.newContext({ viewport: size, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: lang, serviceWorkers: 'block' });
@@ -179,7 +179,7 @@ const GAMES = {
     for (let i = 0; i < 40 && (await page.evaluate(() => window.__game.state)) !== 'race'; i++) await run(page, 0.5);
     await run(page, 150);
   } },
-  horde: { card: 'horde', async scene(page) { await startGame(page); await run(page, T(135)); } },
+  horde: { card: 'horde', async scene(page) { await startGame(page); await run(page, T(52)); } },
   gruppetto: { card: 'gruppetto', async scene(page) { await startGame(page); await run(page, T(135)); } },
   planata: { card: 'planata', async scene(page) { await startGame(page); await run(page, T(135)); } },
   mattoni: { card: 'mattoni', async scene(page) { await startGame(page); await run(page, T(135)); } },

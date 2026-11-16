@@ -55,4 +55,4 @@ Tutto questo usa rulli simulati. Non possiamo dirti come gira un gioco sul tuo t
 
 ## Creane uno
 
-I giochi sono piccoli moduli JavaScript su un kit comune che fornisce menu, risultati, HUD, ciclista, ambiente e qualità grafica. Se hai un'idea per un gioco che funzioni come allenamento, la pagina [Crea un gioco](/it/developers/) dice cosa dà il kit e come aggiungerne uno. Ci piacerebbe vedere il tuo.
+I giochi sono piccoli moduli JavaScript su un kit comune che fornisce menu, risultati, HUD, ciclista, ambiente e qualità grafica. Se hai un'idea per un gioco che funzioni come allenamento, la pagina [Crea un gioco](/it/developers/) mostra i tre passi: copia il gioco modello, aggiungi una voce al registro, aggiungi le tue stringhe. La guida porta in circa 15 minuti da un clone nuovo al tuo gioco sullo schermo, e un bot lo fa giocare a quattro livelli di potenza e ti dice quale regola non rispetta. Ci piacerebbe vedere il tuo.
