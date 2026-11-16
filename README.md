@@ -47,7 +47,7 @@ Only what has been ridden on real hardware is called verified. Details and notes
 | Garmin watches (sensor bridge) | Implemented as a standard Bluetooth sensor, not yet verified on a real watch; please report your model |
 | Wahoo Elemnt, Coros, Suunto, Polar, Apple Watch | Should work; please report |
 
-**Requirements:** Android with Chrome or the app; PC, Mac, Linux or ChromeOS with Chrome or Edge and Bluetooth. iPhone and iPad: Safari has no Web Bluetooth; a browser that adds it should work, untested. A trainer accepts one Bluetooth connection at a time: close other apps first.
+**Requirements:** Android with Chrome or the app; PC, Mac, Linux or ChromeOS with Chrome or Edge and Bluetooth. iPhone and iPad: Safari has no Web Bluetooth; a browser that adds it should work, untested. A trainer accepts one Bluetooth connection at a time: close other apps first. What works where, reconnecting and troubleshooting: [docs/connecting-devices.md](docs/connecting-devices.md).
 
 ## Run it locally
 

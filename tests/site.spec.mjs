@@ -97,6 +97,14 @@ test('sitemap, robots, feeds', () => {
   expect(post).toContain('"@type":"Article"'); expect(post).toContain('application/rss+xml');
 });
 
+test('no account-deletion page while accounts are switched off', () => {
+  const cfgJs = readFileSync(join(root, 'js/config.js'), 'utf8');
+  if (!/export const FIREBASE_CONFIG\s*=\s*null/.test(cfgJs)) return;
+  expect(Object.keys(pages).filter((u) => u.includes('account-deletion'))).toEqual([]);
+  expect(readFileSync(join(dist, 'sitemap.xml'), 'utf8')).not.toContain('account-deletion');
+  expect(pages['/']).not.toContain('account-deletion');
+});
+
 test('blog articles are 700 to 1000 words', () => {
   for (const f of readdirSync(join(root, 'site/blog')).filter((x) => x.endsWith('.md'))) {
     const body = readFileSync(join(root, 'site/blog', f), 'utf8').split(/^---$/m)[2].replace(/!\[[^\]]*\]\(shot:[^)]*\)/g, '');

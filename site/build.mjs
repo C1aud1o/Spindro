@@ -16,6 +16,9 @@ const out = outArg > 0 ? resolve(process.argv[outArg + 1]) : join(here, 'dist');
 const read = (p) => readFileSync(p, 'utf8');
 const json = (p) => JSON.parse(read(p));
 const cfg = json(join(here, 'config.json'));
+// Senza account (FIREBASE_CONFIG nullo in js/config.js) la pagina «Elimina l'account» non ha senso: fuori da menu, pagine e sitemap (i file Markdown restano).
+const ACCOUNTS_ON = !/export const FIREBASE_CONFIG\s*=\s*null/.test(readFileSync(join(repo, 'js/config.js'), 'utf8'));
+if (!ACCOUNTS_ON) cfg.legalPages = cfg.legalPages.filter((p) => p !== 'account-deletion');
 const SITE_URL = cfg.siteUrl.replace(/\/$/, '');   // dominio: l'unica costante da cambiare è in config.json
 const compat = json(join(here, 'data/compatibility.json'));
 const T = Object.fromEntries(cfg.langs.map((l) => [l, json(join(here, `i18n/${l}.json`))]));
@@ -88,6 +91,7 @@ function inline(s, lang) {
     let h = esc(p);
     h = h.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, text, href) => {
       const m = href.match(/^(privacy|terms|account-deletion|licenses|trademarks)\.(?:en|it)\.md$/);
+      if (m && !cfg.legalPages.includes(m[1])) return text; // pagina non pubblicata (account spenti): resta il testo, senza collegamento
       if (m) return `<a href="${pageUrl(lang, m[1])}">${text}</a>`;
       return `<a href="${href}"${/^https?:/.test(href) ? ' rel="noopener"' : ''}>${text}</a>`;
     });
@@ -285,6 +289,8 @@ for (const lang of cfg.langs) {
   writePage({
     lang, slug: 'compatibility', tplName: 'compat', title: c.title, description: c.description,
     extra: {
+      connectRows: c.connect.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join(''),
+      connectDoc: `${cfg.github}/blob/main/docs/connecting-devices.md`,
       legend: ['verified', 'partial', 'expected', 'reported'].map((k) => `<li><span class="badge ${k}">${esc(c.status[k])}</span> ${esc(c.statusDesc[k])}</li>`).join(''),
       tableTrainers: table(compat.trainers), tableControllers: table(compat.controllers), tableWatches: table(compat.watches),
     },
