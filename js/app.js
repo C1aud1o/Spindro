@@ -297,7 +297,7 @@ let suggestKind = null;
 function renderSuggest() {
   const kind = nextSuggestion({
     trainer: trainer.connected, haveClick: click.connected || !!hub.pendingFor('click'), haveHr: hrm.connected || !!hub.pendingFor('hr'),
-    dismissed: suggestOff(), riding: liveRide() || state.ride.log.length > 0,
+    dismissed: suggestOff(), riding: liveRide() || state.ride.log.length > 0 || !history().length, // la prima volta niente consigli: prima si pedala
   });
   suggestKind = kind;
   const covered = !!document.querySelector('.sheet:not([hidden])') || !$('connectHelp').hidden;
