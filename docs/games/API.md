@@ -1,7 +1,7 @@
 # Game API
 
 This is the contract between the Spindro app and a game. It is written from the code of the six shipped games and
-of the template; where they used to disagree, the games were adapted to what is written here. Types for your editor
+of the template; where they used to disagree, the games were changed to match what is written here. Types for your editor
 (autocomplete, no TypeScript needed) are in [`js/games/kit/types.js`](../../js/games/kit/types.js).
 
 - Add a game in 15 minutes: [CREATE-A-GAME.md](CREATE-A-GAME.md)
@@ -76,7 +76,7 @@ resumes when the power returns (Tempo shows the pattern). A game never loses bec
 
 | state | meaning |
 |---|---|
-| `'loading'` | between `start()` and the menu: models, fonts. Draw a progress, never a blank screen |
+| `'loading'` | between `start()` and the menu: models, fonts. Draw a progress indicator, never a blank screen |
 | `'menu'` | the shared `GameMenu` is shown (length, level, best, start). `input` goes to `menu.input` |
 | `'play'` | the run is on. A game with phases of its own may use other names between `'menu'` and `'results'` (Breakaway: `countdown`, `race`, `finishCam`; Pedal Strike: `intro`, `cool`); nothing outside the game relies on them |
 | `'results'` | the shared `ResultsView` is shown: stars, criteria, score, best. `+` plays again, `−` calls `hooks.close()` |
@@ -104,7 +104,7 @@ The second constructor argument. This is the **complete** list.
 | `ftp()` | `() => number` | the rider's FTP in watts. Everything is in % of it: `Math.max(80, hooks.ftp?.() \|\| 200)` |
 | `speedKmh()` | `() => number` | speed, km/h (virtual speed in Gears mode) |
 | `shift(dir)` | `(±1) => void` | virtual gear up/down (Gears mode): the way a game reacts to + / − when its own action is "pedal harder / easier" |
-| `setGrade(g)` | `(number\|null) => void` | slope sent to the trainer, % (−10…15, scaled by the rider's "climb realism"). `null` gives control back; call it in `stop()`. Ignored while a workout runs (ERG stays on the workout's watts) |
+| `setGrade(g)` | `(number\|null) => void` | gradient sent to the trainer, % (−10…15, scaled by the rider's "climb realism"). `null` gives control back; call it in `stop()`. Ignored while a workout runs (ERG stays on the workout's watts) |
 | `workout()` | `() => WorkoutInfo\|null` | the workout in progress under the game, or `null` (see "Workout mode") |
 | `workoutHud` | `boolean` | `true`: the game shows the workout step in its own HUD (the app's strip is then hidden) |
 | `runStart()` | `() => void` | call when a run really starts: the app starts timing it |
@@ -112,7 +112,7 @@ The second constructor argument. This is the **complete** list.
 | `close()` | `() => void` | back to the games list (the `−` button on the results screen) |
 | `progress` | `Progress` | shared progress (js/games/progress.js): see "Storage" and "Toasts" |
 
-Types and units: power in watts, cadence in rpm, heart rate in bpm, speed in km/h, grade in %, time in seconds. Read hooks
+Types and units: power in watts, cadence in rpm, heart rate in bpm, speed in km/h, gradient in %, time in seconds. Read hooks
 every frame, do not cache them: values change, and tests replace them.
 
 ### Audio

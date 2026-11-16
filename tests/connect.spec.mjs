@@ -8,6 +8,7 @@ const FAKE_BLE = fileURLToPath(new URL('./fake-ble.js', import.meta.url));
 const PORT = Number(process.env.PORT) || 4173;
 const STORE = (extra = []) => ({ cookies: [], origins: [{ origin: `http://127.0.0.1:${PORT}`, localStorage: [{ name: 'safetyAck', value: '1' }, ...extra] }] });
 
+const withHistory = (page) => page.addInitScript(() => { try { if (!localStorage.getItem('rideHistory')) localStorage.setItem('rideHistory', JSON.stringify([{ t: Date.now() - 864e5, dur: 1800, km: 15, avgW: 150, kj: 270, best: {} }])); } catch { /* */ } }); // i suggerimenti compaiono dopo la prima uscita
 test.beforeEach(async ({ page }) => {
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
@@ -165,7 +166,7 @@ test.describe('1 · prima volta, solo rullo', () => {
 
 test.describe('2 · rullo, comandi e cardio: un suggerimento alla volta', () => {
   test('dopo il rullo "Aggiungi i comandi", poi "Aggiungi il cardio"; "Non fa per me" vale per sempre', async ({ page }) => {
-    await boot(page);
+    await withHistory(page); await boot(page);
     await expect(page.locator('#suggest')).toBeHidden(); // senza rullo non si suggerisce nulla
     await connectTrainer(page);
     await expect(page.locator('#suggest')).toBeVisible();
@@ -186,7 +187,7 @@ test.describe('2 · rullo, comandi e cardio: un suggerimento alla volta', () => 
   });
 
   test('"Non fa per me" sui comandi passa al cardio; non compare mentre si pedala né a un foglio aperto', async ({ page }) => {
-    await boot(page);
+    await withHistory(page); await boot(page);
     await connectTrainer(page);
     await page.click('#suggestNever');
     await expect(page.locator('#suggestAdd')).toHaveText('Add heart rate');
@@ -515,14 +516,14 @@ test.describe('Prova il rullo e stato nel pannello', () => {
 test.describe('layout e controller', () => {
   test('360×640: avviso, suggerimento e pannello non si sovrappongono né escono dallo schermo', async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 640 });
-    await boot(page);
+    await withHistory(page); await boot(page);
     await connectTrainer(page);
     await next(page, 'click'); await page.click('#deviceBar'); await page.click('#addDevice'); await page.click('#devicesSheet .close');
     await expect(page.locator('#suggestAdd')).toHaveText('Add heart rate');
     await page.evaluate(() => { window.rfDevices.hub.backoffMs = [60000]; window.__fakeBle.drop('click'); });
     await expect(page.locator('#dropBanner')).toBeVisible();
-    await expect(page.locator('#suggest')).toBeVisible();
-    const boxes = await page.evaluate(() => ['deviceBar', 'dropBanner', 'suggest'].map((id) => { const r = document.getElementById(id).getBoundingClientRect(); return [id, r.top, r.bottom, r.left, r.right]; }));
+    await expect(page.locator('#suggest')).toBeHidden(); // un solo avviso alla volta: il dispositivo perso ha la precedenza sul suggerimento
+    const boxes = await page.evaluate(() => ['deviceBar', 'dropBanner'].map((id) => { const r = document.getElementById(id).getBoundingClientRect(); return [id, r.top, r.bottom, r.left, r.right]; }));
     for (let i = 1; i < boxes.length; i++) expect(boxes[i][1], `${boxes[i][0]} sotto ${boxes[i - 1][0]}`).toBeGreaterThanOrEqual(boxes[i - 1][2] - 1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.click('#deviceBar');

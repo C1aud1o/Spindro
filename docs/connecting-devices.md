@@ -34,7 +34,7 @@ The consent sheet (when statistics are configured) and the safety notice each ap
 |---|---|
 | FTMS, Tacx FE-C over BLE, Wahoo control, or a known trainer name (Tacx, D100, Van Rysel) | **Trainer** (resistance, watts, speed, cadence) |
 | Heart Rate service | **Heart rate** |
-| Zwift controller service, or a name starting with “Zwift” | **Controls** (Click, Play, Ride) |
+| Zwift controller service, or a name starting with “Zwift” | **Controller** (Click, Play, Ride) |
 | Cycling Power **and** Cycling Speed & Cadence | **Power meter** (with cadence) |
 | Cycling Speed & Cadence only | **Cadence sensor** (or speed sensor, from what it sends) |
 | Cycling Power only | Ambiguous: Spindro asks once “trainer or power meter?” and remembers the answer. With a trainer already connected it is taken as a power meter without asking. The role can be switched later in the Devices sheet. |
@@ -46,7 +46,7 @@ If two devices give the same data, the dedicated one wins: a power meter over th
 
 ## Coming back tomorrow
 
-Known devices reconnect at start by themselves where the platform allows it (the Android app always; Chrome when it keeps the Bluetooth permission and implements `navigator.bluetooth.getDevices()`). Each known device shows **Reconnecting…** in the status row and in the Devices sheet.
+Known devices reconnect by themselves at startup where the platform allows it (the Android app always; Chrome when it keeps the Bluetooth permission and implements `navigator.bluetooth.getDevices()`). Each known device shows **Reconnecting…** in the status row and in the Devices sheet.
 
 Where the browser needs a tap, or a device is not found, the big button becomes **Reconnect <name>**. It walks through the known devices one at a time: first without a list if the permission is remembered, otherwise with the browser list narrowed to that device's name. A device that is simply gone can be removed with **Forget this device**.
 
@@ -57,7 +57,7 @@ When a trainer or sensor disconnects:
 - the ride **keeps recording** (the dropped trainer's watts show as 0 instead of freezing on the last value; no auto-pause is triggered by a dropped trainer);
 - a non-blocking banner under the status row says which device dropped;
 - Spindro retries by itself after 1, 2, 5, 10, 15 then 30 s (the last wait repeats) for as long as the ride lasts; outside a ride it gives up after four tries and shows **Try now**;
-- on reconnect the previous control mode and target are sent again (ERG watts, gear, grade, resistance or the current workout step), the controller mapping and heart-rate feed resume, and the banner disappears.
+- on reconnect the previous control mode and target are sent again (ERG watts, gear, gradient, resistance or the current workout step), the controller mapping and heart-rate feed resume, and the banner disappears.
 
 Listeners are replaced, not added, on every reconnect (`js/ble-util.js`), so data never arrives twice. This is covered by tests that drop devices during the handshake, twice in a row, during a workout and with a game open.
 

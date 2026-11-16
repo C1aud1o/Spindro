@@ -136,8 +136,8 @@ body:not([data-mode=gears]):not([data-mode=sim]) .only-sim { display: none; }
 .cta.running { background: var(--t1); color: var(--ink); box-shadow: var(--shadow); }
 
 /* ---------- traguardi (piccoli picchi durante la pedalata) ---------- */
-.toast { position: fixed; z-index: 12; left: 50%; top: max(16px, env(safe-area-inset-top)); transform: translate(-50%, -140%); max-width: calc(100% - 32px);
-  padding: 12px 24px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-weight: 700; box-shadow: var(--shadow-cta); opacity: 0; visibility: hidden; transition: transform .35s cubic-bezier(.2, 1.4, .4, 1), opacity .2s, visibility .2s; }
+.toast { position: fixed; z-index: 12; left: 50%; top: max(16px, env(safe-area-inset-top)); transform: translate(-50%, -140%); width: max-content; max-width: calc(100% - 32px); text-align: center;
+  padding: 12px 24px; border-radius: 24px; background: var(--accent); color: var(--accent-ink); font-weight: 700; box-shadow: var(--shadow-cta); opacity: 0; visibility: hidden; transition: transform .35s cubic-bezier(.2, 1.4, .4, 1), opacity .2s, visibility .2s; }
 .toast.show { transform: translate(-50%, 0); opacity: 1; visibility: visible; }
 /* nuova versione pronta (app installata): in alto sotto l'intestazione, mai sopra i comandi */
 .update-bar { position: fixed; z-index: 11; left: 50%; transform: translateX(-50%); top: calc(max(8px, env(safe-area-inset-top)) + 64px); max-width: calc(100% - 32px); display: flex; align-items: center; gap: 12px;
@@ -205,9 +205,7 @@ button.small { min-height: 44px; padding: 0 12px; font-size: var(--fs-caption); 
 .switch input { width: 24px; height: 24px; flex: none; accent-color: var(--accent); }
 .strava, #stravaSetup, #stravaLinked, #stravaPublic { display: grid; gap: 12px; }
 #stravaSetup[hidden], #stravaLinked[hidden], #stravaPublic[hidden] { display: none; }
-.garmin-btn { min-height: 48px; border: 0; border-radius: var(--r-btn); background: #11a9ed; color: var(--ink); font-weight: 700; box-shadow: 0 8px 24px rgba(17, 169, 237, .25); }
-.garmin-btn:disabled, .strava-btn:disabled { opacity: .5; }
-.strava-btn { min-height: 48px; border: 0; border-radius: var(--r-btn); background: var(--strava); color: var(--ink); font-weight: 700; box-shadow: 0 8px 24px rgba(252, 82, 0, .25); }
+button.ghost:disabled { opacity: .5; } /* "Strava" e "Garmin" usano il tasto neutro dell'app: niente colori né loghi dei marchi (docs/compliance-report.md, D10) */
 .powered { margin: 0; font: 700 var(--fs-caption)/1 var(--font-ui); letter-spacing: .08em; color: var(--t3); text-align: right; }
 .msg { margin: 0; color: var(--t2); }
 .msg:empty, .compare:empty, .praise:empty { display: none; }
@@ -1025,3 +1023,13 @@ body.riding .metrics dd[data-long] { font-size: calc(var(--fs-title) * .8); }
 /* In pausa (anche dopo il ripristino di un'uscita) l'intestazione torna: le Impostazioni sono sempre raggiungibili */
 body.riding.paused .top { display: flex !important; }
 body.riding.paused main { min-height: calc(100vh - 88px - env(safe-area-inset-bottom)); min-height: calc(100dvh - 88px - env(safe-area-inset-bottom)); }
+
+/* Un solo avviso alla volta sopra la scheda "Oggi", per priorità: errore di collegamento > dispositivo perso > suggerimento > "segnala il rullo" > nuova versione.
+   Gli altri restano nascosti (non scartati): compaiono quando quello sopra sparisce. Il pannello aperto o la pedalata nascondono l'avviso di aggiornamento. */
+#connectHelp:not([hidden]) ~ #dropBanner, #connectHelp:not([hidden]) ~ #suggest, #dropBanner:not([hidden]) ~ #suggest { display: none; }
+main:has(#connectHelp:not([hidden]), #dropBanner:not([hidden]), #suggest:not([hidden])) #reportHint { display: none; }
+main:has(#connectHelp:not([hidden]), #dropBanner:not([hidden]), #suggest:not([hidden]), #reportHint:not([hidden])) .update-bar, body.riding .update-bar { display: none; }
+.update-bar { position: static; transform: none; max-width: none; width: 100%; justify-content: space-between; border-radius: 22px; padding: 6px 6px 6px 16px; }
+.update-bar .ghost { flex: none; min-height: 44px; min-width: 44px; }
+/* avvisi (collegamento, dispositivo perso, suggerimento, nuova versione, nessuna fonte): a tutta larghezza anche nella griglia a due colonne */
+main > #suggest, main > #connectHelp, main > #dropBanner, main > .update-bar, main > #noSource, main > #reportHint, main > #devMsg { grid-column: 1 / -1; }

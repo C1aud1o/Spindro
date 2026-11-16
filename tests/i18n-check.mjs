@@ -38,6 +38,14 @@ for (const k of [...all].sort()) {
   if (new Set(sets.map(([, p]) => p)).size > 1) say('ERR', `different placeholders for "${k}": ${sets.map(([l, p]) => `${l}={${p}}`).join(' ')}`);
 }
 
+// 2b. plural keys: a form that exists must come with `other` (the fallback), and `one` only makes sense next to `other`
+const pluralBases = new Set([...all].filter((k) => /\.(zero|one|two|few|many)$/.test(k)).map((k) => k.replace(/\.(zero|one|two|few|many)$/, '')));
+for (const b of [...pluralBases].sort()) for (const l of LANGS) {
+  if (b in dict[l]) say('ERR', `[${l}] "${b}" is both a plain key and a plural key (${b}.one/other)`);
+  else if (!(`${b}.other` in dict[l])) say('ERR', `[${l}] "${b}" has plural forms but no "${b}.other"`);
+  else if (!(`${b}.one` in dict[l]) && LANGS.some((x) => `${b}.one` in dict[x])) say('ERR', `[${l}] "${b}.one" is missing`);
+}
+
 // Text without placeholders, markup, entities, units and product names: what is left is what a translator wrote.
 const NAMES = /\b(Spindro|Strava|Garmin(?: Connect)?|Zwift(?: Click| Play| Ride| Cog)?|FTMS|ERG|FTP|GPX|FIT|TCX|ZWO|BLE|Bluetooth|YouTube|Wahoo|Polar|Suunto|COROS|Apple Watch|Van Rysel|Tacx|Elite|Meshy|Quaternius|Kenney|Firebase|Google|GitHub|Breakaway|Horde Run|Pedal Strike|Slipstream|Updraft|Feed Zone|Tempo|Sweet Spot|OVERDRIVE|SMASH|KOM|NP|TSS|HR|CTL|VO2|W|kJ|km|rpm|bpm|kg|min|Min|VO2max|Z[1-7])\b/gi;
 const words = (s) => String(s).replace(/<[^>]+>/g, ' ').replace(/&\w+;/g, ' ').replace(/\{\w+\}/g, ' ').replace(NAMES, ' ').replace(/[^\p{L}\s'’-]/gu, ' ').split(/\s+/).filter((w) => w.length > 1);

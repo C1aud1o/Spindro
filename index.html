@@ -129,6 +129,7 @@
     </details>
 
     <!-- lettura dal vivo: piccola in home, grande nel cruscotto -->
+    <div id="noSource" class="hint-box" hidden><p data-i18n="ride.noSource"></p><button id="noSourceGo" class="ghost" data-i18n="welcome.connect"></button></div>
     <section id="readout" class="card readout" data-i18n-attr="aria-label:home.live">
       <div class="power">
         <span class="label" data-i18n="home.power"></span>
@@ -215,8 +216,8 @@
       <p id="finishCompare" class="compare"></p>
       <p id="stravaMsg" class="msg"></p>
       <div class="sheet-actions">
-        <button id="uploadStrava" class="strava-btn" disabled hidden data-i18n="finish.uploadStrava"></button>
-        <button id="garminUp" class="garmin-btn" disabled data-i18n="finish.garmin"></button>
+        <button id="uploadStrava" class="ghost" disabled hidden data-i18n="finish.uploadStrava"></button>
+        <button id="garminUp" class="ghost" disabled data-i18n="finish.garmin"></button>
         <button id="saveFit" class="ghost" disabled data-i18n="finish.saveFit"></button>
         <button id="shareFit" class="ghost" disabled hidden data-i18n="finish.shareFit"></button>
         <button id="openFit" class="ghost" disabled hidden data-i18n="finish.openFit"></button>
@@ -395,7 +396,7 @@
         <div id="stravaBox" class="strava">
           <div id="stravaPublic" hidden>
             <p class="fine" data-i18n="strava.autoUpload"></p>
-            <button id="stravaPublicConnect" class="strava-btn" data-i18n="strava.connectWith"></button>
+            <button id="stravaPublicConnect" class="ghost" data-i18n="strava.connectWith"></button>
           </div>
           <div id="stravaSetup">
             <ol class="fine steps">
@@ -407,7 +408,7 @@
               <label>Client ID <input id="stravaId" inputmode="numeric" autocomplete="off"></label>
               <label>Client Secret <input id="stravaSecret" type="password" autocomplete="off"></label>
             </div>
-            <button id="stravaConnect" class="strava-btn" data-i18n="strava.connect"></button>
+            <button id="stravaConnect" class="ghost" data-i18n="strava.connect"></button>
           </div>
           <div id="stravaLinked" hidden>
             <label class="switch"><input type="checkbox" id="stravaAuto"><span data-i18n="strava.auto"></span></label>

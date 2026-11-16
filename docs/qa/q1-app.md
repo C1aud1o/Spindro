@@ -24,7 +24,7 @@ scenes below with the automatic audit; screenshots were reviewed as contact shee
 
 - [x] Home: no trainer (welcome card), trainer connected, Click connected (legend bar), plan active, long names / FTP 450
 - [x] Ride cockpit: ERG, virtual gears (Click legend), 4-digit watts, 9-hour ride time, restored session
-- [x] Other modes (virtual gears, slope, resistance) panel
+- [x] Other modes panel (virtual gears, gradient, resistance)
 - [x] Workouts: library, custom workout with a very long name, editor, .zwo import (parser), GPX routes (parser, drawing)
 - [x] Training plans: list, active plan, home card, DST-safe day arithmetic (code review: `plans.js` uses day numbers)
 - [x] History and records, weekly bars (DST), records, share card (code review), FIT export (decoded and validated in a test), backup export/import/wipe
@@ -59,16 +59,16 @@ Commit column: `c1` = first QA commit (sheets, DST, FIT, service worker, plurals
 | 12 | .zwo import | all | `Repeat="99999999"` froze the app; names were unlimited | repeat capped at 100, name at 60 (editor too) | c1 |
 | 13 | Home | all | Layout shift on load (CLS 0.5–0.67): the page painted before the translations and cards were ready | page revealed when the app is ready, CSS-only 2.5 s safety reveal | c2 |
 | 14 | Startup | all | With localStorage blocked (blocked cookies) the app never started | `js/storage-guard.js`: memory fallback | c2 |
-| 15 | Safety notice | all | With a full storage the notice could never be acknowledged (it re-opened on every Start) | acknowledged for the session as well | c2 |
+| 15 | Safety notice | all | With full storage the notice could never be acknowledged (it re-opened on every Start) | acknowledged for the session as well | c2 |
 | 16 | Finish → resume → finish | all | The first finish saved the ride in the history; after resuming, the extra minutes never reached the history, records or challenges | the history entry is updated in place (same timestamp, same sync id) | c2 |
-| 17 | GPX routes | all | Empty `lat/lon` became (0,0) points, a non-numeric elevation produced NaN grade, a stationary track gave a broken route, tracks > ~120 000 points crashed drawing (`Math.min(...)`), names unlimited | parse with `parseFloat`, reject stationary tracks, loops instead of spreads, name capped at 60 | c2 |
-| 18 | History, route, calibration, slope label | de, fr, es | Decimals ignored the language (`111.5 km`, `7.37`, `2.5 %`) | `fmtDec` | c2 |
+| 17 | GPX routes | all | Empty `lat/lon` became (0,0) points, a non-numeric elevation produced a NaN gradient, a stationary track gave a broken route, tracks > ~120 000 points crashed drawing (`Math.min(...)`), names unlimited | parse with `parseFloat`, reject stationary tracks, loops instead of spreads, name capped at 60 | c2 |
+| 18 | History, route, calibration, gradient label | de, fr, es | Decimals ignored the language (`111.5 km`, `7.37`, `2.5 %`) | `fmtDec` | c2 |
 | 19 | Developer-mode toasts | de, fr, es | English text | translated | c2 |
 | 20 | Ride | fr, de / 360–390 | A 9-hour time (`9:00:00`) overflowed its cell and made the page scroll | smaller type from one hour on | c2 |
-| 21 | Home, history, editor | 360–768 | Standalone link buttons (Delete, ↑ Up, Skip, "227 W verwenden") and slope chips were smaller than 44 px; the workout card meta broke onto three lines | 44 px hit areas, chips wrap on narrow columns, meta below the title | c2 |
+| 21 | Home, history, editor | 360–768 | Standalone link buttons (Delete, ↑ Up, Skip, "227 W verwenden") and gradient chips were smaller than 44 px; the workout card meta broke onto three lines | 44 px hit areas, chips wrap on narrow columns, meta below the title | c2 |
 | 22 | Settings | ≤ 400 px | Weight, FTP and HR fields were 33 px wide | one column on phones | c2 |
 | 23 | Stepper buttons (− / +) | all but it | Screen-reader label hard-coded in Italian | `ui.increase` / `ui.decrease`, refreshed on language change | c3 |
-| 24 | Any setting | all | With a full storage every settings change threw inside its handler | `setItem` swallows quota errors and warns once (`storage.full`); history keeps its own trimming via `strictSet` | c3 |
+| 24 | Any setting | all | With full storage every settings change threw inside its handler | `setItem` swallows quota errors and warns once (`storage.full`); history keeps its own trimming via `strictSet` | c3 |
 | 25 | Challenges card | all | Progress bars without an accessible name (axe `aria-progressbar-name`) | `aria-label` | c3 |
 | 26 | Finish, settings | all | White text on the Garmin blue / Strava orange buttons: contrast below 4.5:1 | dark text on the brand fill | c3 |
 | 28 | Web manifest | all | `theme_color` / `background_color` (#0f1115) differed from the page's `theme-color` (#0f0e0c) | aligned | c4 |
@@ -98,3 +98,32 @@ Scripts: `scripts/qa/round2.mjs` (welcome card, suggestion banner, Devices sheet
 Checked with no finding: welcome card, suggestion banner, dropout banner, Devices sheet (with "Test resistance" and source pickers) at 360/390/768 in de/fr/en/es/it (no overflow, no clipped text, tap targets ≥ 44 px, no console messages), games list from the registry at 360/390/768/1280 in all languages (Escape closes it), and the `?game=…&demo=1` panels open. Game internals were not audited.
 Left to the install session as instructed: PWA icon colour and `manifest.webmanifest`.
 Remaining from round 1: the "Seen but not fixed" list above, minus the two items fixed here (Settings after a restore, backup consent key).
+
+## Round 3 — the build after the Android/install, language and connection branches
+
+Full matrix re-run on the merged build (5 viewports × 5 languages × every scene, with axe): one finding, fixed (#38). Journeys: `tests/journeys.spec.mjs`
+(set `QA_SHOTS=<folder>` to save a screenshot at every step; they were reviewed as contact sheets). Extra probes: `scripts/qa/updatebar.mjs`, `scripts/qa/round2.mjs`.
+
+| # | Screen | Lang / viewport | What was wrong | Fix |
+|---|--------|-----------------|----------------|-----|
+| 32 | Home banners | all | Connection error, lost device, suggestion, "report your trainer" and the update bar could all show at once | CSS priority: connection error > lost device > suggestion > report hint > update bar; one at a time, the rest wait (test `one banner above the Today card`) |
+| 33 | Update bar | all | Fixed pill over the header and device bar; shown while a ride was paused | now a full-width row at the top of the page flow (nothing covered, no overlap with legend or bottom buttons), 44 px button, never while a ride exists |
+| 34 | Strava / Garmin buttons | all | Orange and blue brand-coloured buttons (compliance D10) | neutral `.ghost` outlined buttons, words only; `docs/compliance-report.md` updated |
+| 35 | Store listing | en, de, es, it, fr | "Accounts and leaderboards are planned for later" | sentence removed from the five `full_description.txt` |
+| 36 | Toasts | all | A long toast (e.g. "Saved to Download/…fit") wrapped in a narrow blob over the logo | `width: max-content`, rounded rectangle |
+| 37 | Home, first connection | all | The "add your controller" suggestion appeared before the very first ride, pushing Start down | suggestions start after the first ride; connect.spec updated |
+| 38 | Home | es / 360 | Device-bar label "Frec. cardiaca" cut (language pass reverted "Pulso") | `home.hr` = "Pulso" |
+| 39 | Cockpit, no trainer or meter | all | Start with nothing connected silently rode at 0 W | note "No trainer or power meter connected: the watts stay at 0" with a Connect button |
+| 40 | Home | all | An app left open past midnight kept yesterday's plan card and weekly goal | the home re-renders when the day changes |
+| 41 | Plan card | fr, de, es, it | "mer. 18 nov.." double full stop | `plans.next` no longer adds a full stop |
+| 42 | Any sheet | all | Esc pressed while focus is in a checkbox/field only blurred it instead of closing the sheet | Esc closes the sheet |
+| 43 | Home, desktop/tablet | all / 768, 1280 | New banners sat in one grid column beside the Today card | full-width in the two-column grid |
+| 44 | First-run card | all | Long Bluetooth-chooser paragraph (round 2 follow-up) | already one line; confirmed at 360 in de/fr |
+
+Journeys (each is a test and passes): (a) it, phone, trainer only: consent → safety → connect → 3-minute ERG ride → pause → resume → end → FIT → share card;
+(b) de, trainer + controller, controller keys only: workout → game on top → back → end workout → finish; (c) en, nothing connected: ride note, games in demo
+("DEMO: trainer not connected" is drawn on the game HUD), workouts; (d) fr, a plan: choose → do the day's workout → "tomorrow" (clock moved, app open) → skip → abandon;
+(e) es, 1280×720, keyboard only: Tab order has names and visible focus, Esc closes, Space/arrows/g/Enter all work.
+
+Seen, not fixed in round 3: in the games menu START ignores taps while the 3D models load (several seconds on slow hardware) without any feedback (games SDK, not touched);
+with a Click that has arrows, the games list can only be left with B (no "Close" item in the selectable order).
