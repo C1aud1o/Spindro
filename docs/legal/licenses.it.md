@@ -60,6 +60,7 @@ I modelli in `assets/3d/meshy/` (edifici, veicoli, personaggi e scenari) e le ic
 ## Altre risorse
 
 - **Icone e interfaccia** (`icons/`, `css/`): opere originali del progetto, stessa licenza del codice.
+- **Icona dell'app e grafiche degli store** (`icons/`, `store/`, icone di avvio e splash di Android, `site/assets/favicon.svg`): opere originali realizzate per il progetto, ridisegnate da `scripts/icons.mjs` a partire da `icons/icon.svg`.
 - **Giochi**: originali. Non usano nomi o personaggi di altri giochi.
 - **File FIT**: il codice che li scrive (`js/fit.js`) è stato scritto dalla specifica pubblica del formato di file di Garmin. Non include l'SDK di Garmin.
 - **Protocolli dei rulli**: Tacx FE-C su Bluetooth (`js/trainers/fec.js`) segue il documento pubblico Tacx "FE-C over BLE" e il profilo ANT+ FE-C; il protocollo Wahoo legacy (`js/trainers/wahoo.js`) è stato confrontato con i progetti open source GoldenCheetah (GPL-3.0), SwiftySensors e incyclist. Sono stati usati solo fatti di protocollo (identificatori, formato dei messaggi); il codice è di Spindro.

@@ -1,7 +1,8 @@
 // Compone le immagini finali per gli store a partire dalle catture di store-shots.mjs:
 //   store/screenshots/<lingua>/01.png … 08.png   1080×1920, didascalia in alto + telefono
-//   store/feature-graphics/<lingua>.png          1024×500 (Play), in più store/feature-graphic.png (inglese)
-//   store/icon-512.png                           512×512 (Play)
+//   store/feature-graphics/<lingua>.png          1024×500 (Play), in più store/feature-graphic.png (inglese): icona, wordmark,
+//                                                una riga e una schermata vera da site/assets/shots/home-<lingua>.webp
+//   (store/icon-512.png lo scrive scripts/icons.mjs, dallo stesso SVG di tutte le icone)
 // Tutto è disegnato con il canvas di Chromium: nessuna dipendenza nuova. Colori e font vengono da css/style.css
 // (--ink, --surface, --accent, Barlow Condensed). Le immagini sono PROVVISORIE: il proprietario potrà rifarle.
 //
@@ -42,10 +43,10 @@ const CAPTIONS = {
   es: ['Conecta tu rodillo inteligente', 'Entrenos ERG estructurados', 'Crea tus propios entrenos', 'Una etapa 3D a pedales', 'Pedalea sobre tu propio vídeo', 'Tu reloj graba la salida', 'Una medalla por cada récord', 'Historial y récords de potencia'],
   de: ['Smart Trainer verbinden', 'Strukturierte ERG-Workouts', 'Eigene Workouts erstellen', '3D-Etappe mit Pedalkraft', 'Fahre zu deinem eigenen Video', 'Deine Uhr zeichnet auf', 'Medaillen für jeden Rekord', 'Verlauf und Leistungsrekorde'],
 };
-// frase per l'immagine in evidenza: dice solo cose già nella scheda (gratis, open source, senza abbonamento)
+// una riga per l'immagine in evidenza (come sul sito: "Your trainer. No subscription.")
 const TAGLINES = {
-  en: ['Free & open source.', 'No subscription.'], it: ['Gratis e open source.', 'Nessun abbonamento.'], fr: ['Gratuit et open source.', 'Sans abonnement.'],
-  es: ['Gratis y de código abierto.', 'Sin suscripción.'], de: ['Kostenlos & Open Source.', 'Kein Abo.'],
+  en: 'Your trainer. No subscription.', it: 'Il tuo rullo. Nessun abbonamento.', fr: 'Votre home trainer. Sans abonnement.',
+  es: 'Tu rodillo. Sin suscripción.', de: 'Dein Trainer. Kein Abo.',
 };
 
 // tutto il disegno gira nel browser: questa funzione viene serializzata ed eseguita nella pagina
@@ -101,54 +102,47 @@ function pageDraw() {
       phone(g, img, Math.round((W - w) / 2), top, w, h, 70, pal);
     },
 
-    // immagine in evidenza Play 1024×500
+    // immagine in evidenza Play 1024×500: icona, wordmark, una riga, una schermata vera che esce dal bordo inferiore
     feature(canvas, imgs, tagline, pal) {
       const W = 1024; const H = 500; canvas.width = W; canvas.height = H; const g = canvas.getContext('2d');
       background(g, W, H, pal, 0.2);
       glow(g, W, H, pal, W * 0.82, H * 0.5, 380, 0.1);
-      wordmark(g, pal, 64, 252, 150);
-      g.fillStyle = pal.accent; rr(g, 70, 278, 88, 8, 4); g.fill();
-      g.textAlign = 'left'; g.fillStyle = pal.paper; g.font = `600 44px ${FONT}`;
-      tagline.forEach((l, i) => g.fillText(l.toUpperCase(), 70, 345 + i * 50));
-      // due telefoni che escono dal bordo inferiore
-      const pw = 236; const ph = Math.round(pw * 1920 / 1080);
-      phone(g, imgs[0], 600, 66, pw, ph, 26, pal);
-      phone(g, imgs[1], 600 + pw + 36, 118, pw, ph, 26, pal);
-    },
-
-    // icona 512×512 piena (Play applica la maschera): wordmark su due righe? una riga larga basta a 512
-    icon(canvas, pal) {
-      const S = 512; canvas.width = S; canvas.height = S; const g = canvas.getContext('2d');
-      background(g, S, S, pal, 0.3);
-      // arco a "pedale" dietro la parola
-      g.strokeStyle = 'rgba(217,255,61,.18)'; g.lineWidth = 22; g.lineCap = 'round';
-      g.beginPath(); g.arc(S / 2, S * 0.5, 172, Math.PI * 0.82, Math.PI * 2.18); g.stroke();
-      let size = 112; g.font = `italic 700 ${size}px ${FONT}`;
-      const w = wordmark(g, pal, S / 2, S * 0.5 + size * 0.34, size, 'center');
-      g.fillStyle = pal.accent; rr(g, S / 2 - 54, S * 0.5 + size * 0.34 + 26, 108, 10, 5); g.fill();
-      return w;
+      const [icon, shot] = imgs;
+      g.save(); g.shadowColor = 'rgba(0,0,0,.5)'; g.shadowBlur = 30; g.shadowOffsetY = 10; rr(g, 72, 66, 128, 128, 30); g.fillStyle = pal.ink; g.fill(); g.restore();
+      g.save(); rr(g, 72, 66, 128, 128, 30); g.clip(); g.drawImage(icon, 72, 66, 128, 128); g.restore();
+      rr(g, 73, 67, 126, 126, 29); g.strokeStyle = 'rgba(242,240,230,.14)'; g.lineWidth = 2; g.stroke();
+      wordmark(g, pal, 66, 342, 150);
+      g.fillStyle = pal.accent; rr(g, 72, 366, 88, 8, 4); g.fill();
+      let size = 42; g.font = `600 ${size}px ${FONT}`; const text = tagline.toUpperCase();
+      while (g.measureText(text).width > 590 && size > 24) { size -= 1; g.font = `600 ${size}px ${FONT}`; }
+      g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.fillStyle = pal.paper; g.fillText(text, 72, 424);
+      const pw = 252; const ph = Math.round(pw * shot.height / shot.width);
+      phone(g, shot, 700, 58, pw, ph, 28, pal);
     },
   };
 }
 
 const browser = await chromium.launch({ executablePath: CHROMIUM, args: ['--no-sandbox'] });
 const page = await browser.newPage();
-await page.setContent('<!doctype html><meta charset="utf-8"><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700&display=swap" rel="stylesheet"><canvas id="c"></canvas>');
+const font64 = (f) => readFileSync(join(ROOT, 'assets/fonts', f)).toString('base64');
+const faces = [['600', 'normal', 'barlow-condensed-latin-600-normal.woff2'], ['700', 'normal', 'barlow-condensed-latin-700-normal.woff2'], ['700', 'italic', 'barlow-condensed-latin-700-italic.woff2']]
+  .map(([w, st, f]) => `@font-face{font-family:"Barlow Condensed";font-weight:${w};font-style:${st};src:url(data:font/woff2;base64,${font64(f)})}`).join('');
+await page.setContent(`<!doctype html><meta charset="utf-8"><style>${faces}</style><canvas id="c"></canvas>`);
 await page.evaluate(async () => {
   await Promise.all(['700 100px "Barlow Condensed"', 'italic 700 100px "Barlow Condensed"', '600 100px "Barlow Condensed"'].map((f) => document.fonts.load(f)));
 });
 const fontOk = await page.evaluate(() => document.fonts.check('700 100px "Barlow Condensed"') && [...document.fonts].some((f) => f.family.includes('Barlow') && f.status === 'loaded'));
-if (!fontOk) console.warn('! Barlow Condensed non caricato (rete?): le immagini useranno un font di ripiego. Rilancia con la rete attiva.');
+if (!fontOk) console.warn('! Barlow Condensed non caricato: le immagini useranno un font di ripiego.');
 await page.evaluate(`window.__draw = (${pageDraw.toString()})()`);
 
-const dataUrl = (file) => `data:image/png;base64,${readFileSync(file).toString('base64')}`;
+const MIME = { png: 'image/png', webp: 'image/webp', svg: 'image/svg+xml' };
+const dataUrl = (file) => `data:${MIME[file.split('.').pop()]};base64,${readFileSync(file).toString('base64')}`;
 async function render(kind, payload) {
   const url = await page.evaluate(async ({ kind, payload, pal }) => {
     const load = (src) => new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = src; });
     const c = document.getElementById('c'); const d = window.__draw;
     if (kind === 'screenshot') d.screenshot(c, await load(payload.img), payload.caption, pal);
-    else if (kind === 'feature') d.feature(c, [await load(payload.imgs[0]), await load(payload.imgs[1])], payload.tagline, pal);
-    else d.icon(c, pal);
+    else d.feature(c, [await load(payload.imgs[0]), await load(payload.imgs[1])], payload.tagline, pal);
     return c.toDataURL('image/png');
   }, { kind, payload, pal: PAL });
   return Buffer.from(url.split(',')[1], 'base64');
@@ -162,14 +156,13 @@ for (const lang of LANGS) {
     if (!existsSync(raw)) { console.warn(`manca ${raw}`); missing++; continue; }
     writeFileSync(join(SHOTS_OUT, lang, `${String(n).padStart(2, '0')}.png`), await render('screenshot', { img: dataUrl(raw), caption: CAPTIONS[lang][n - 1] }));
   }
-  const a = join(RAW, lang, '01.png'); const b = join(RAW, lang, '04.png');
-  if (existsSync(a) && existsSync(b)) {
+  const shot = join(ROOT, 'site/assets/shots', `home-${lang}.webp`);
+  if (existsSync(shot)) {
     mkdirSync(join(ROOT, 'store/feature-graphics'), { recursive: true });
-    writeFileSync(join(ROOT, 'store/feature-graphics', `${lang}.png`), await render('feature', { imgs: [dataUrl(a), dataUrl(b)], tagline: TAGLINES[lang] }));
-  }
+    writeFileSync(join(ROOT, 'store/feature-graphics', `${lang}.png`), await render('feature', { imgs: [dataUrl(join(ROOT, 'icons/icon.svg')), dataUrl(shot)], tagline: TAGLINES[lang] }));
+  } else { console.warn(`manca ${shot}: SHOT_LANG=${lang} SHOT_ONLY=home node scripts/site-shots.mjs`); missing++; }
   console.log(`ok  ${lang}`);
 }
 if (existsSync(join(ROOT, 'store/feature-graphics/en.png'))) copyFileSync(join(ROOT, 'store/feature-graphics/en.png'), join(ROOT, 'store/feature-graphic.png'));
-writeFileSync(join(ROOT, 'store/icon-512.png'), await render('icon', {}));
 await browser.close();
 process.exit(missing ? 1 : 0);

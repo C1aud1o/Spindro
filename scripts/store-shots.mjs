@@ -172,7 +172,7 @@ async function makeFakeVideo(context) {
 function startServer() {
   const child = spawn(process.execPath, [join(ROOT, 'tests/serve.mjs')], { env: { ...process.env, PORT: String(PORT) }, stdio: ['ignore', 'pipe', 'inherit'] });
   return new Promise((ok, ko) => {
-    child.stdout.on('data', (d) => { if (String(d).includes('Server di test')) ok(child); });
+    child.stdout.on('data', (d) => { if (/(Server di test|Test server at)/.test(String(d))) ok(child); });
     child.on('exit', (c) => ko(new Error(`server uscito con codice ${c}`)));
     setTimeout(() => ko(new Error('server non partito')), 8000);
   });
@@ -219,7 +219,7 @@ async function newPage(context, lang, extra = {}) {
 }
 
 async function connect(page) {
-  await page.click('#connectTrainer');
+  await page.evaluate(async () => { while (!window.rfDevices) await new Promise((r) => setTimeout(r, 50)); return window.rfDevices.add(); });
   await page.waitForFunction(() => /FTMS/.test(document.getElementById('trainerStatus').textContent));
   await sleep(300);
 }
@@ -272,13 +272,13 @@ const SHOTS = {
     await page.evaluate(() => document.getElementById('openGame').click());
     await sleep(500);
     await page.evaluate(() => document.querySelector('.game-card[data-game="racer"]').click());
-    await page.waitForFunction(() => window.__game?.state === 'select', null, { timeout: 30000 }); // il circuito 3D si carica
-    await page.waitForFunction(() => window.__game.selT > 0.6, null, { timeout: 30000 }); // il gioco ignora il "+" nei primi istanti
-    await page.evaluate(() => window.__game.input(+1)); // "+ go!": parte la tappa
-    await page.waitForFunction(() => window.__game.state === 'race', null, { timeout: 15000 });
+    await page.waitForFunction(() => window.__game?.state === 'menu', null, { timeout: 120000 }); // il circuito 3D si carica
+    await sleep(1500);
+    await page.evaluate(() => { const g = window.__game; if (g.menu?.start) { g.menu.age = 1; g.menu.start(); } else { g.stateT = 1; g.input(1); } }); // parte la tappa
+    await page.waitForFunction(() => window.__game.state === 'race' || window.__game.state === 'play', null, { timeout: 60000 });
     await setRide(page, 275, 94, 36);
     // in cloud il rendering software è lento e il tempo di gioco scorre piano: si aspetta che la tappa sia ben avviata
-    await page.waitForFunction(() => window.__game.raceT > 14 || window.__game.state !== 'race', null, { timeout: 120000 });
+    await page.waitForFunction(() => (window.__game.raceT ?? window.__game.stateT) > 14 || !['race', 'play'].includes(window.__game.state), null, { timeout: 120000 });
     await sleep(500);
     return page;
   },

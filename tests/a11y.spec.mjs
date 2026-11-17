@@ -65,9 +65,9 @@ test('app: rispetta "riduci animazioni" e il focus è visibile', async ({ page }
   expect(outline).not.toBe('none');
 });
 
-test('contrasto: il lime #d9ff3d sullo scuro #0f0e0c supera 4,5:1', async () => {
+test('contrasto: il lime #d9ff3d sullo scuro #0f0f0d supera 4,5:1', async () => {
   const lum = (h) => { const c = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
-  const [a, b] = [lum('#d9ff3d'), lum('#0f0e0c')];
+  const [a, b] = [lum('#d9ff3d'), lum('#0f0f0d')];
   expect((a + 0.05) / (b + 0.05)).toBeGreaterThan(4.5);
 });
 

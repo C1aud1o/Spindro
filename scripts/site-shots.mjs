@@ -2,6 +2,7 @@
 // Screenshots of the CURRENT app for the showcase site, README and blog. Re-runnable: run it again whenever the UI changes.
 //   node scripts/site-shots.mjs                      all screens, en + it
 //   SHOT_ONLY=home,ride SHOT_LANG=en node scripts/site-shots.mjs
+//   SHOT_LANG=en,it,fr,es,de SHOT_ONLY=home node scripts/site-shots.mjs   (the Play feature graphics use home-<lang>.webp in all 5 languages)
 //   SHOT_OUT=/some/dir node scripts/site-shots.mjs   write somewhere else (default site/assets/shots)
 // Only fake devices (tests/fake-ble.js) are used: a simulated FTMS trainer connected, at realistic values. Phone viewport 390x780,
 // device pixel ratio 2, WebP under 120 KB each (quality is lowered until it fits). Needs ImageMagick (`convert`) and Chromium

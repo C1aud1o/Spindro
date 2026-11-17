@@ -3,5 +3,5 @@
     <!-- fondo dell'app (variabile ink in css/style.css): splash, finestra e barre di sistema -->
     <color name="spindro_bg">#0F0F0D</color>
     <!-- fondo del livello adattivo dell'icona (come icons/icon.svg) -->
-    <color name="ic_launcher_background">#0F1115</color>
+    <color name="ic_launcher_background">#0F0F0D</color>
 </resources>
