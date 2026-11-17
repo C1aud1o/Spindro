@@ -186,3 +186,11 @@ for (const game of ['racer', 'horde', 'shooter', 'gruppetto', 'planata', 'matton
     expect(bad, 'textures that failed to load').toEqual([]);
   });
 }
+
+// Android rifiuta "--" dentro un commento XML delle risorse: la build dell'APK fallisce. Il controllo è qui perché in locale non c'è l'SDK Android.
+test('Android resources: no double hyphen inside XML comments', () => {
+  const walk = (d) => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? (e.name === 'build' ? [] : walk(`${d}/${e.name}`)) : e.name.endsWith('.xml') ? [`${d}/${e.name}`] : []));
+  const bad = [];
+  for (const f of walk(`${ROOT}android/app/src`)) for (const m of readFileSync(f, 'utf8').matchAll(/<!--([\s\S]*?)-->/g)) if (m[1].includes('--') || m[1].endsWith('-')) bad.push(`${f.replace(ROOT, '')}: ${m[0].slice(0, 80)}`);
+  expect(bad).toEqual([]);
+});
