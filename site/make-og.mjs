@@ -16,7 +16,8 @@ const html = `<!doctype html><meta charset="utf-8"><style>
 @font-face{font-family:B;font-weight:700;src:url("${font('barlow-latin-700-normal.woff2')}")}
 *{margin:0;box-sizing:border-box}
 body{width:1200px;height:630px;background:#f1efe6;color:#131311;position:relative;overflow:hidden;font-family:B,sans-serif}
-.wm{position:absolute;left:70px;top:52px;font:italic 700 56px/1 BC,sans-serif;text-transform:uppercase}
+.ic{position:absolute;left:70px;top:44px;width:72px;height:72px;border-radius:17px}
+.wm{position:absolute;left:162px;top:52px;font:italic 700 56px/1 BC,sans-serif;text-transform:uppercase}
 .wm b{background:#d9ff3d;padding:0 8px;margin-left:2px}
 h1{position:absolute;left:70px;top:200px;font:italic 700 80px/1 BC,sans-serif;text-transform:uppercase;white-space:nowrap}
 h1 mark{background:#d9ff3d;color:#131311;padding:0 14px;margin-left:-14px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
@@ -28,6 +29,7 @@ h1 mark{background:#d9ff3d;color:#131311;padding:0 14px;margin-left:-14px;box-de
 .st b{font:italic 700 62px/.85 BC,sans-serif;display:block}
 .st span{font:700 17px/1.1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;display:block;margin-top:6px}
 </style>
+<img class="ic" src="${b64('../icons/icon.svg', 'image/svg+xml')}">
 <div class="wm">Spin<b>dro</b></div>
 <h1>Your trainer.<br><mark>No subscription.</mark></h1>
 <div class="k">Free · Open source</div>
