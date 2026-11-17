@@ -48,9 +48,9 @@ test('settimana ISO', () => {
 
 test('ogni gioco dell\'app ha limiti anti-cheat (e le sfide di default coincidono con js/challenges.js)', async () => {
   const { readFileSync } = await import('node:fs');
-  const app = readFileSync('../js/app.js', 'utf8');
-  const block = app.slice(app.indexOf('\nconst games = {')).split('\n};')[0];
-  const keys = [...block.matchAll(/^  (\w+): \{ game:/gm)].map((m) => m[1]).filter((k) => k !== 'video');
+  // l'elenco dei giochi vive nel registro (js/games/registry.js); i giochi solo per sviluppatori (dev: true) non vanno in classifica
+  const registry = readFileSync('../js/games/registry.js', 'utf8');
+  const keys = [...registry.matchAll(/defineGame\(\{ id: '(\w+)'([^\n]*)/g)].filter((m) => !/dev: true/.test(m[2])).map((m) => m[1]).filter((k) => k !== 'video');
   assert.ok(keys.length >= 6);
   for (const k of keys) assert.ok(GAMES[k], `mancano i limiti per ${k}`);
   const { DEFAULT_CHALLENGES } = await import('./challenges');
