@@ -133,9 +133,9 @@ test('Impostazioni: voce "Open-source licences" verso la pagina delle licenze de
   await page.click('#openSettings');
   const a = page.locator('#openLicences');
   await expect(a).toContainText('Open-source licences');
-  expect(await a.getAttribute('href')).toBe('https://spindro.fun/licenses/');
+  expect(await a.getAttribute('href')).toBe('https://spindro.fit/licenses/');
   await expect(page.locator('#analyticsOn')).not.toBeChecked();
-  await expect(page.locator('a[data-legal="privacy"]')).toHaveAttribute('href', 'https://spindro.fun/privacy/');
+  await expect(page.locator('a[data-legal="privacy"]')).toHaveAttribute('href', 'https://spindro.fit/privacy/');
 });
 
 test('avviso e licenze esistono in tutte e cinque le lingue', async () => {

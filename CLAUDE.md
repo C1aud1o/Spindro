@@ -4,8 +4,8 @@ Spindro is a free, open-source indoor cycling app: a static web app (`index.html
 an Android shell (Capacitor, `android/`) and a showcase site (`site/`, built by `node site/build.mjs`).
 
 ## Branches and environments
-- `main` is **production**: https://spindro.fun (site) and https://spindro.fun/app/ (app), APK release `app-android`.
-- `beta` is **beta**: https://spindro.fun/beta/ (app only), APK prerelease `app-android-beta` ("Spindro Beta", installs next to the stable app).
+- `main` is **production**: https://spindro.fit (site) and https://spindro.fit/app/ (app), APK release `app-android`.
+- `beta` is **beta**: https://spindro.fit/beta/ (app only), APK prerelease `app-android-beta` ("Spindro Beta", installs next to the stable app).
 - Work on a feature branch, merge into `beta`, test on real devices, then promote `beta` to `main`. Never push untested work straight to `main`.
 
 ## Commits

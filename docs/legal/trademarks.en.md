@@ -16,5 +16,5 @@ Spindro's own name, icons and games are original. They do not copy the logos, ch
 - **Garmin:** the optional watch bridge makes the phone look like a standard Bluetooth cycling sensor, and ride files use the public .FIT format. Spindro uses no Garmin SDK, code or logo.
 - **Strava:** Spindro uses the public Strava API to upload rides you choose to upload. It says "Works with Strava" in plain text, with a not-affiliated note, only to describe that it works with Strava, and uses no Strava logo or button artwork. It is not an official Strava app.
 - **YouTube:** videos are played by YouTube's own embedded player, unchanged and fully visible, subject to YouTube's terms. Spindro does not download or separate the audio.
-- **Tacx, Wahoo, Van Rysel, Decathlon:** product names used only to say which trainers Spindro can control. A trainer is marked "verified" only after a real-hardware test (see the [compatibility page](https://spindro.fun/compatibility/)).
+- **Tacx, Wahoo, Van Rysel, Decathlon:** product names used only to say which trainers Spindro can control. A trainer is marked "verified" only after a real-hardware test (see the [compatibility page](https://spindro.fit/compatibility/)).
 - **Google Play and Android** are trademarks of Google LLC.

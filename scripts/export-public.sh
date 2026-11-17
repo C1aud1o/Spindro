@@ -12,5 +12,5 @@ cd "$DEST"
 # nessuna chiave o archivio di firma deve arrivare nel repo pubblico
 if find . -name '*.keystore' -o -name '*.jks' -o -name '*.p12' | grep -q .; then echo "ERRORE: trovata una chiave di firma" >&2; exit 1; fi
 if command -v gitleaks >/dev/null; then gitleaks detect --no-git --source . --redact; else echo "gitleaks non installato: controllo segreti saltato" >&2; fi
-echo "spindro.fun" > CNAME   # dominio del repo pubblico
+echo "spindro.fit" > CNAME   # dominio del repo pubblico
 echo "Copia pulita pronta in $DEST"

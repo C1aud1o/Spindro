@@ -14,10 +14,10 @@ Spindro connects to your trainer over Bluetooth and gives you ERG, virtual gears
 
 ## Try it
 
-- **Website:** https://spindro.fun, with a [blog](https://spindro.fun/blog/) on how it works
-- **Web app:** https://spindro.fun/app/ (Chrome or Edge)
-- **Android APK:** https://spindro.fun/app/spindro.apk
-- **Beta (testers):** https://spindro.fun/beta/ and its APK, see [docs/environments.md](docs/environments.md)
+- **Website:** https://spindro.fit, with a [blog](https://spindro.fit/blog/) on how it works
+- **Web app:** https://spindro.fit/app/ (Chrome or Edge)
+- **Android APK:** https://spindro.fit/app/spindro.apk
+- **Beta (testers):** https://spindro.fit/beta/ and its APK, see [docs/environments.md](docs/environments.md)
 
 ## Features
 
@@ -35,7 +35,7 @@ Spindro connects to your trainer over Bluetooth and gives you ERG, virtual gears
 
 ## Supported devices, honestly
 
-Only what has been ridden on real hardware is called verified. Details and notes: [spindro.fun/compatibility](https://spindro.fun/compatibility/).
+Only what has been ridden on real hardware is called verified. Details and notes: [spindro.fit/compatibility](https://spindro.fit/compatibility/).
 
 | | Status |
 |---|---|
@@ -64,7 +64,7 @@ No build step for the app: plain ES modules in `js/`, three.js vendored in `vend
 
 ## Add a game
 
-A game is one folder, one registry entry and its strings. [docs/games/CREATE-A-GAME.md](docs/games/CREATE-A-GAME.md) goes from a fresh clone to a game on your screen in about 15 minutes; the interface is in [docs/games/API.md](docs/games/API.md) and the rules in [docs/games/DESIGN-RULES.md](docs/games/DESIGN-RULES.md). `npm run game:check -- <id>` checks a game against them. Overview: [Build a game](https://spindro.fun/developers/).
+A game is one folder, one registry entry and its strings. [docs/games/CREATE-A-GAME.md](docs/games/CREATE-A-GAME.md) goes from a fresh clone to a game on your screen in about 15 minutes; the interface is in [docs/games/API.md](docs/games/API.md) and the rules in [docs/games/DESIGN-RULES.md](docs/games/DESIGN-RULES.md). `npm run game:check -- <id>` checks a game against them. Overview: [Build a game](https://spindro.fit/developers/).
 
 ## Report a trainer
 

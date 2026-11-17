@@ -57,4 +57,4 @@ No background location, no foreground service, no SMS/contacts/camera/microphone
 - Third-party names appear only descriptively, with the independence disclaimer at the end of each description. No Zwift, Garmin, Strava or Decathlon logos are used in the icon, feature graphic or screenshots (checked in `store/` and `fastlane/`; screenshots show the app's own UI). **(decision)** a human should glance at the screenshots once more for any third-party logo or video thumbnail.
 - Target audience: the Terms and Privacy Policy say "not for children under 14". **(decision)** pick "18+" or "13+/16+" in the Play Console target-audience form consistently with that; do not opt into "Designed for Families".
 - Health apps declaration: complete the Play Console "Health apps" form if it is shown for this app. Not verified, could not read that policy page.
-- Privacy policy URL to enter: https://spindro.fun/privacy/
+- Privacy policy URL to enter: https://spindro.fit/privacy/

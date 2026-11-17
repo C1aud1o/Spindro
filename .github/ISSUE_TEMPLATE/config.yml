@@ -1,7 +1,7 @@
 blank_issues_enabled: false
 contact_links:
   - name: Try the web app
-    url: https://spindro.fun
+    url: https://spindro.fit
     about: Use Spindro in your browser, no installation needed.
   - name: Documentation
     url: https://github.com/C1aud1o/Spindro/blob/beta/docs/README.md

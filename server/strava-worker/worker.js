@@ -5,7 +5,7 @@
 // Variabili (wrangler secret / dashboard Cloudflare):
 //   STRAVA_CLIENT_ID      id numerico dell'app Strava
 //   STRAVA_CLIENT_SECRET  segreto dell'app Strava
-//   ALLOWED_ORIGINS       origini ammesse, separate da virgola (es. https://spindro.fun)
+//   ALLOWED_ORIGINS       origini ammesse, separate da virgola (es. https://spindro.fit)
 
 const STRAVA = 'https://www.strava.com';
 const MAX_UPLOAD = 25 * 1024 * 1024; // limite di Strava per i file

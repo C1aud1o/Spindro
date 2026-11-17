@@ -47,7 +47,7 @@ L'app Android può anche ricevere un link condiviso da un'altra app (per esempio
 
 ## Cosa caricano dalla rete l'app e il sito
 
-- **I file dell'app**, dallo stesso sito (`spindro.fun`), ospitato su GitHub Pages. GitHub può registrare i dati tecnici standard di una richiesta, come l'indirizzo IP.
+- **I file dell'app**, dallo stesso sito (`spindro.fit`), ospitato su GitHub Pages. GitHub può registrare i dati tecnici standard di una richiesta, come l'indirizzo IP.
 - **Caratteri:** tutti i caratteri sono serviti dall'app e dal sito stessi. Non si carica nulla da Google Fonts né da altri servizi di caratteri.
 - **Contatore di visite, sito:** lo script di GoatCounter (`gc.zgo.at`), vedi sotto.
 - **Contatore di visite, app:** solo dopo il tuo sì, vedi sotto.

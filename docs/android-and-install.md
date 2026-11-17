@@ -1,8 +1,8 @@
 # Android app and installing Spindro
 
 Spindro is one web app (`index.html`, `js/`, no bundler). It reaches users in three ways: the **Android APK**, the
-**installable web app (PWA)** and a plain browser tab. Production lives at https://spindro.fun/app/, beta at
-https://spindro.fun/beta/ (see [environments.md](environments.md)).
+**installable web app (PWA)** and a plain browser tab. Production lives at https://spindro.fit/app/, beta at
+https://spindro.fit/beta/ (see [environments.md](environments.md)).
 
 ## How the Android shell works
 
@@ -79,7 +79,7 @@ Documented in `docs/legal/privacy.*.md`.
 
 ## Installing
 
-**Android APK**: open https://spindro.fun/app/spindro.apk (stable) or https://spindro.fun/beta/spindro-beta.apk (beta) on the phone, download,
+**Android APK**: open https://spindro.fit/app/spindro.apk (stable) or https://spindro.fit/beta/spindro-beta.apk (beta) on the phone, download,
 allow "install from this source". Each new build installs over the previous one (same signing key). Beta installs next to stable.
 
 **Web app (PWA)**: Chrome/Edge on Android or desktop: open /app/ and use the install button in the address bar or menu ("Install app").

@@ -38,7 +38,7 @@ export async function shareCard({ title, date, stats, series, ftp, route }) {
     g.beginPath(); series.forEach((v, i) => (i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v)))); g.strokeStyle = '#d9ff3d'; g.lineWidth = 4; g.stroke();
     g.font = ui(26); g.fillStyle = 'rgba(242,240,230,.5)'; g.fillText(route ? t('share.route', { route }) : t('home.power'), gx, gy - 20);
   }
-  g.font = ui(26); g.fillStyle = 'rgba(242,240,230,.4)'; g.fillText('spindro.fun', 72, H - 50);
+  g.font = ui(26); g.fillStyle = 'rgba(242,240,230,.4)'; g.fillText('spindro.fit', 72, H - 50);
   const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
   const file = new File([blob], `spindro-${Date.now()}.png`, { type: 'image/png' });
   if (navigator.canShare?.({ files: [file] })) {

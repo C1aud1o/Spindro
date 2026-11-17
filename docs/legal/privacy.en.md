@@ -47,7 +47,7 @@ The Android app can also receive a link shared from another app (for example "Sh
 
 ## What the app and the website load from the internet
 
-- **The app's own files**, from the same site (`spindro.fun`), which is hosted on GitHub Pages. GitHub may log standard technical data of a request, such as the IP address.
+- **The app's own files**, from the same site (`spindro.fit`), which is hosted on GitHub Pages. GitHub may log standard technical data of a request, such as the IP address.
 - **Fonts:** all fonts are served from the app and the site themselves. Nothing is loaded from Google Fonts or any other font service.
 - **Visit counter, website:** the script from GoatCounter (`gc.zgo.at`), see below.
 - **Visit counter, app:** only after you say yes, see below.

@@ -5,9 +5,9 @@ Everything is hosted on GitHub (Actions, Pages, Releases). Nothing else.
 | | Production | Beta |
 |---|---|---|
 | Branch | `main` | `beta` |
-| Site | https://spindro.fun | none |
-| Web app | https://spindro.fun/app/ | https://spindro.fun/beta/ (`noindex`, `Disallow` in robots.txt) |
-| Android APK | https://spindro.fun/app/spindro.apk (release `app-android`) | https://spindro.fun/beta/spindro-beta.apk (prerelease `app-android-beta`) |
+| Site | https://spindro.fit | none |
+| Web app | https://spindro.fit/app/ | https://spindro.fit/beta/ (`noindex`, `Disallow` in robots.txt) |
+| Android APK | https://spindro.fit/app/spindro.apk (release `app-android`) | https://spindro.fit/beta/spindro-beta.apk (prerelease `app-android-beta`) |
 | Android app | "Spindro", `com.spindro.app` | "Spindro Beta", `com.spindro.app.beta` (installs next to the stable app) |
 
 ## Flow
@@ -32,7 +32,7 @@ git push origin origin/beta:main     # fails unless it is a fast-forward: that i
 
 ## How beta stays separate from production
 
-- **Web storage.** `/app/` and `/beta/` share the origin `spindro.fun`, so beta replaces `window.localStorage` with a view on
+- **Web storage.** `/app/` and `/beta/` share the origin `spindro.fit`, so beta replaces `window.localStorage` with a view on
   keys prefixed `beta:` (`scripts/beta-storage-shim.js`, inlined first in `index.html` by `scripts/copy-web.mjs`). Beta can never
   read or overwrite the stable data. Settings has **Copy my data from the stable app** (stable → beta only, never the reverse).
 - **Caches.** The beta service worker uses cache names starting with `beta-spindro-` and has scope `/beta/`; each worker only
