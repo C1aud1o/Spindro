@@ -51,7 +51,7 @@ CI is `.github/workflows/android.yml`: signed release APK + AAB when the secrets
 decodes the keystore into the runner's temp dir, exports `ANDROID_KEYSTORE_FILE` & co. to Gradle and deletes it afterwards. Keystores never
 go in the repository.
 
-**Icons and splash**: `node scripts/make-icons.mjs` (Chromium via `PW_CHROMIUM_PATH`) redraws every PNG from `icons/icon.svg`: PWA icons,
+**Icons and splash**: `node scripts/icons.mjs` (Chromium via `PW_CHROMIUM_PATH`) redraws every PNG from `icons/icon.svg`: PWA icons,
 maskable icons, apple-touch icon, Android launcher (adaptive foreground, monochrome layer for themed icons, legacy square and round) and splash.
 
 **Target SDK**: `targetSdkVersion 35`. Google Play currently requires **API 36** for new apps and updates (deadline 31 Aug 2026, per Google's

@@ -40,15 +40,15 @@ test('manifest: icone 192/512 normali e maskable, tutte esistenti e della misura
   expect(pngSize(read('icons/apple-touch-icon.png'))).toEqual({ w: 180, h: 180 });
 });
 
-test('icone maskable: a tutto campo e con la ruota dentro la zona sicura (cerchio del 40%)', async ({ page }) => {
-  // si legge il PNG con un canvas: angoli opachi (nessuna trasparenza da mascherare) e pixel "arancio" solo entro il raggio sicuro
+test('icone maskable: a tutto campo e con il segno dentro la zona sicura (cerchio del 40%)', async ({ page }) => {
+  // si legge il PNG con un canvas: angoli opachi (nessuna trasparenza da mascherare) e pixel lime (il segno) solo entro il raggio sicuro
   await page.goto('/index.html');
   const r = await page.evaluate(async () => {
     const img = new Image(); img.src = '/icons/icon-maskable-512.png'; await img.decode();
     const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d'); g.drawImage(img, 0, 0);
     const px = (x, y) => g.getImageData(x, y, 1, 1).data;
     const data = g.getImageData(0, 0, 512, 512).data; let maxR = 0;
-    for (let y = 0; y < 512; y++) for (let x = 0; x < 512; x++) { const i = (y * 512 + x) * 4; if (data[i] > 200 && data[i + 1] > 60 && data[i + 1] < 160 && data[i + 2] < 90) maxR = Math.max(maxR, Math.hypot(x - 256, y - 256)); }
+    for (let y = 0; y < 512; y++) for (let x = 0; x < 512; x++) { const i = (y * 512 + x) * 4; if (data[i] > 150 && data[i + 1] > 200 && data[i + 2] < 140) maxR = Math.max(maxR, Math.hypot(x - 256, y - 256)); }
     return { corners: [px(0, 0)[3], px(511, 0)[3], px(0, 511)[3], px(511, 511)[3]], maxR };
   });
   expect(r.corners).toEqual([255, 255, 255, 255]);
