@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "description": "Spindro: webapp e app Android per rulli FTMS (Van Rysel D100), cambio virtuale, giochi e ponte verso Garmin.",
-  "license": "GPL-3.0-only",
+  "license": "AGPL-3.0-only",
   "scripts": {
     "build:web": "node scripts/copy-web.mjs",
     "android:sync": "npm run build:web && npx cap sync android",

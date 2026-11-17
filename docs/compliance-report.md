@@ -159,3 +159,12 @@ Website requests: own files, plus `gc.zgo.at/count.js` and the GoatCounter endpo
 - **D10 Strava and Garmin look.** (a) Is "personal mode" (each user registers their own Strava API application) acceptable to Strava? Consider writing to Strava developer support. (b) Resolved in QA q1 round 3: the Strava and Garmin buttons now use the app's own neutral outlined style (words only, no logos or brand colours). If you ever enable the shared Strava bridge (`STRAVA_PROXY`), Strava requires its official "Connect with Strava" button artwork. (c) Strava's rate limits and API Agreement were summarised from one page read; read them fully before launch.
 - **D11 GitHub settings.** Enable private vulnerability reporting for the repository (Settings → Security), otherwise the route in `SECURITY.md` and `CODE_OF_CONDUCT.md` does not work.
 - **D12 Smaller points.** `docs/legal/account-deletion.*` still describes accounts that do not exist yet (harmless, but it is in the site footer); `TERMS_VERSION` / `PRIVACY_VERSION` in `js/config.js` were not bumped (only relevant when accounts exist); the YouTube player on very short landscape phones may fall under 200 px high only if the window is under ~376 px high (`min-height: 200px` is set, but check on a device); the store text promises "accounts and leaderboards planned for later", consider removing it.
+
+## Update, 17 November 2026: licence changed to AGPL-3.0
+
+The maintainer, sole author of every commit so far, changed Spindro's licence from GPL-3.0 to **AGPL-3.0-only** for all
+versions from this date (`LICENSE` replaced with the text from https://www.gnu.org/licenses/agpl-3.0.txt; `package.json`,
+README, legal pages, store texts, site and in-app labels updated). Versions published earlier remain available under the
+GPL-3.0. AGPL-3.0 section 13 allows combining with GPL-3.0 code; the MIT, Apache, OFL, CC0 and CC BY components listed above
+are compatible. `CONTRIBUTING.md` now adds to the DCO sign-off a licence grant to the maintainer that allows relicensing,
+and `docs/legal/trademarks.*.md` states that the Spindro name and logo are not covered by the code licence. Not legal advice.

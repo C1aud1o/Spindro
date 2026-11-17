@@ -18,3 +18,9 @@ Nome, icone e giochi di Spindro sono originali. Non copiano loghi, personaggi o 
 - **YouTube:** i video sono riprodotti dal lettore incorporato di YouTube, non modificato e interamente visibile, secondo i termini di YouTube. Spindro non scarica né separa l'audio.
 - **Tacx, Wahoo, Van Rysel, Decathlon:** nomi di prodotto usati solo per dire quali rulli Spindro può controllare. Un rullo è segnato "verificato" solo dopo una prova su hardware reale (vedi la [pagina di compatibilità](https://spindro.fit/it/compatibility/)).
 - **Google Play e Android** sono marchi di Google LLC.
+
+## Il nome e il logo di Spindro
+
+La licenza riguarda il codice, non il nome. "Spindro" e il logo di Spindro identificano il progetto ufficiale: puoi usare il
+nome per dire, in modo veritiero, che il tuo lavoro si basa su Spindro o funziona con Spindro, ma una versione modificata o
+ridistribuita deve usare un nome e un logo propri e non deve far pensare di essere l'app o il servizio ufficiale di Spindro.

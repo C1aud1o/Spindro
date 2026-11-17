@@ -73,7 +73,7 @@ We are not responsible for third-party services, sites or content.
 
 ## 8. Licence of the software and content
 
-Spindro's code is **open source**, under the [GPL-3.0] licence. The licence gives you the right to use, study, modify and redistribute the code under its conditions. The full text is in the repository.
+Spindro's code is **open source**, under the [AGPL-3.0] licence. The licence gives you the right to use, study, modify and redistribute the code under its conditions. The full text is in the repository.
 
 Some parts use other people's materials under their own licences, listed on the "Licences and credits" page.
 

@@ -86,7 +86,7 @@ one folder, one registry entry, its strings. Start with [Create a game](docs/gam
 
 ## Licence and trademarks
 
-[GPL-3.0](LICENSE). Zwift, Garmin, Strava, Tacx, Wahoo, Van Rysel, Decathlon, YouTube and the other names are trademarks of their owners; Spindro is not affiliated with them.
+[AGPL-3.0](LICENSE). The name "Spindro" and its logo are not covered by the licence: a modified version must use its own name and logo. Zwift, Garmin, Strava, Tacx, Wahoo, Van Rysel, Decathlon, YouTube and the other names are trademarks of their owners; Spindro is not affiliated with them.
 
 ## Credits
 
@@ -109,4 +109,4 @@ Everything third-party that ships with Spindro, with author, licence and use. Fu
 
 **Generated with [Meshy](https://www.meshy.ai) for Spindro**: the models in `assets/3d/meshy/` (cyclist, fan, zombies, ogre, bikes, finish arch, podium, team car, buildings, scenery, farm animals, the Pedal Strike robots, mech, drone and so on) and the home icons in `assets/icons/`. The models generated on Meshy's free plan are licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) and credited here to **Meshy** (https://www.meshy.ai); those made on a paid plan need no attribution. The repository does not record which model came from which plan, so all are credited.
 
-**Everything else** (code, icons, the games' design and their generated sounds) is original and GPL-3.0.
+**Everything else** (code, icons, the games' design and their generated sounds) is original and AGPL-3.0.

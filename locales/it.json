@@ -787,7 +787,7 @@
   "home.unsupported": "Questo browser non supporta il Bluetooth. Su PC e Mac usa <strong>Chrome</strong> o <strong>Edge</strong>; su Android Chrome o l'app; su iPhone l'app <strong>Bluefy</strong>.",
   "legal.licenses": "Licenze open source",
   "legal.privacy": "Informativa sulla privacy",
-  "legal.source": "Codice sorgente (GPL-3.0)",
+  "legal.source": "Codice sorgente (AGPL-3.0)",
   "legal.terms": "Condizioni d'uso",
   "legal.title": "Note legali e licenze",
   "legal.trademarks": "Marchi",

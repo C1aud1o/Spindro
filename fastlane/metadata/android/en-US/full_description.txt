@@ -30,7 +30,7 @@ HISTORY AND EXPORT
 • Auto-start and pause, weekly goal, heart-rate zones, data backup.
 
 OPEN SOURCE
-The full source code is public under the GPL-3.0 licence.
+The full source code is public under the AGPL-3.0 licence.
 
 Tip: your trainer accepts one Bluetooth connection at a time, so close other cycling apps first.
 

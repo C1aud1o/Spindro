@@ -18,3 +18,9 @@ Spindro's own name, icons and games are original. They do not copy the logos, ch
 - **YouTube:** videos are played by YouTube's own embedded player, unchanged and fully visible, subject to YouTube's terms. Spindro does not download or separate the audio.
 - **Tacx, Wahoo, Van Rysel, Decathlon:** product names used only to say which trainers Spindro can control. A trainer is marked "verified" only after a real-hardware test (see the [compatibility page](https://spindro.fit/compatibility/)).
 - **Google Play and Android** are trademarks of Google LLC.
+
+## The Spindro name and logo
+
+The licence covers the code, not the name. "Spindro" and the Spindro logo identify the official project: you can use the
+name to say truthfully that your work is based on or works with Spindro, but a modified or redistributed version must use
+its own name and logo and must not suggest that it is the official Spindro app or service.

@@ -30,7 +30,7 @@ HISTORIAL Y EXPORTACIÓN
 • Inicio y pausa automáticos, objetivo semanal, zonas cardíacas, copia de seguridad.
 
 CÓDIGO ABIERTO
-El código fuente es público con licencia GPL-3.0.
+El código fuente es público con licencia AGPL-3.0.
 
 Consejo: el rodillo admite una sola conexión Bluetooth a la vez; cierra otras apps de ciclismo.
 

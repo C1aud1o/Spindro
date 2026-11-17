@@ -35,7 +35,7 @@ Preferiamo dirlo chiaramente piuttosto che te ne accorga in una fredda sera di m
 
 Spindro è una web app statica: file JavaScript semplici, niente bundler, nessun nostro server da cui passino le tue uscite. L'app Android è lo stesso codice in un involucro Capacitor. Uscite, record e impostazioni restano sul tuo dispositivo; non c'è un account da creare. I dati escono dal dispositivo solo se scegli di usare Strava, guardare un video YouTube o esportare un file. Questo sito conta le visite in forma anonima, senza cookie, e l'app chiede il permesso prima di contare qualsiasi cosa.
 
-Il codice è pubblico con licenza GPL-3.0, il che significa che resta pubblico, anche nelle versioni modificate da altri.
+Il codice è pubblico con licenza AGPL-3.0, il che significa che resta pubblico, anche nelle versioni modificate da altri.
 
 ## A proposito di abbonamenti
 

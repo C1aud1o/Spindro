@@ -12,7 +12,7 @@ Spindro è un'app gratuita per rulli smart: si collega al rullo, mostra l'uscita
 
 ## 3. Fornita "così com'è"
 
-Spindro è software libero e, come indicato nelle sezioni 15 e 16 della GNU GPL-3.0, non ha alcuna garanzia nei limiti consentiti dalla legge: è fornita così com'è, senza garanzie di alcun tipo. Può avere errori. Non tutti i rulli funzionano: segniamo un dispositivo come verificato solo se è stato provato su hardware reale, il resto è "dovrebbe funzionare, non ancora verificato". Non promettiamo che l'app sia sempre disponibile, senza errori o compatibile con i tuoi dispositivi, e le funzioni possono cambiare o cessare. Nei limiti consentiti dalla legge, chi cura il progetto non risponde dei danni derivanti dall'uso dell'app. Nulla qui limita i diritti che hai per legge come consumatore, né la responsabilità che la legge non permette di limitare.
+Spindro è software libero e, come indicato nelle sezioni 15 e 16 della GNU AGPL-3.0, non ha alcuna garanzia nei limiti consentiti dalla legge: è fornita così com'è, senza garanzie di alcun tipo. Può avere errori. Non tutti i rulli funzionano: segniamo un dispositivo come verificato solo se è stato provato su hardware reale, il resto è "dovrebbe funzionare, non ancora verificato". Non promettiamo che l'app sia sempre disponibile, senza errori o compatibile con i tuoi dispositivi, e le funzioni possono cambiare o cessare. Nei limiti consentiti dalla legge, chi cura il progetto non risponde dei danni derivanti dall'uso dell'app. Nulla qui limita i diritti che hai per legge come consumatore, né la responsabilità che la legge non permette di limitare.
 
 ## 4. Allenati in sicurezza
 
@@ -28,7 +28,7 @@ Spindro può collegarsi a Strava e riprodurre i video di YouTube che scegli. Val
 
 ## 7. Licenza
 
-Il codice di Spindro è software libero con licenza GNU GPL-3.0. Puoi usarlo, studiarlo, modificarlo e condividerlo secondo quella licenza. I componenti di terzi mantengono le loro licenze: vedi [Licenze](licenses.it.md).
+Il codice di Spindro è software libero con licenza GNU AGPL-3.0. Puoi usarlo, studiarlo, modificarlo e condividerlo secondo quella licenza; se fai usare ad altri una versione modificata via rete, la licenza ti chiede di offrire loro il codice sorgente. Il nome "Spindro" e il suo logo non fanno parte della licenza. I componenti di terzi mantengono le loro licenze: vedi [Licenze](licenses.it.md).
 
 ## 8. Usala in modo corretto
 

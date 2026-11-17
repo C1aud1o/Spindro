@@ -30,7 +30,7 @@ HISTORIQUE ET EXPORT
 • Démarrage et pause automatiques, objectif hebdomadaire, zones cardio, sauvegarde des données.
 
 OPEN SOURCE
-Le code source est public sous licence GPL-3.0.
+Le code source est public sous licence AGPL-3.0.
 
 Astuce : le home trainer n'accepte qu'une connexion Bluetooth à la fois, fermez les autres applications de cyclisme.
 

@@ -73,7 +73,7 @@ Non siamo responsabili di servizi, siti o contenuti di terzi.
 
 ## 8. Licenza del software e dei contenuti
 
-Il codice di Spindro è **open source**, con licenza [GPL-3.0]. La licenza ti dà il diritto di usare, studiare, modificare e ridistribuire il codice alle sue condizioni. Il testo completo è nel repository.
+Il codice di Spindro è **open source**, con licenza [AGPL-3.0]. La licenza ti dà il diritto di usare, studiare, modificare e ridistribuire il codice alle sue condizioni. Il testo completo è nel repository.
 
 Alcune parti usano materiali di altri con le loro licenze, elencate nella pagina "Licenze e crediti".
 

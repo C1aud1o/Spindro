@@ -1,6 +1,6 @@
 # Third-party notices
 
-Spindro's own code is released under the GNU GPL-3.0 (see `LICENSE`). Spindro includes or loads the third-party
+Spindro's own code is released under the GNU AGPL-3.0 (see `LICENSE`). Spindro includes or loads the third-party
 components below. This file reproduces the licence texts that their licences require us to pass on. The readable,
 translated overview (what each thing is used for) is on the website: https://spindro.fit/licenses/ and in
 `docs/legal/licenses.en.md` / `docs/legal/licenses.it.md`.

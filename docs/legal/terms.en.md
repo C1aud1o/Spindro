@@ -12,7 +12,7 @@ Spindro is a free app for smart trainers: it connects to your trainer, shows you
 
 ## 3. Provided "as is"
 
-Spindro is free software and, as stated in sections 15 and 16 of the GNU GPL-3.0, there is no warranty for it to the extent permitted by applicable law: it is provided as is, without warranties of any kind. It may have bugs. Not every trainer works: we mark a device as verified only when it was tested on real hardware, and everything else is "expected to work, not yet verified". We do not promise that the app will always be available, free of errors or work with your devices, and features may change or stop. To the extent the law allows, the maintainers are not liable for damages from using the app. Nothing here limits rights you have by law as a consumer, or liability that cannot be limited by law.
+Spindro is free software and, as stated in sections 15 and 16 of the GNU AGPL-3.0, there is no warranty for it to the extent permitted by applicable law: it is provided as is, without warranties of any kind. It may have bugs. Not every trainer works: we mark a device as verified only when it was tested on real hardware, and everything else is "expected to work, not yet verified". We do not promise that the app will always be available, free of errors or work with your devices, and features may change or stop. To the extent the law allows, the maintainers are not liable for damages from using the app. Nothing here limits rights you have by law as a consumer, or liability that cannot be limited by law.
 
 ## 4. Train safely
 
@@ -28,7 +28,7 @@ Spindro can connect to Strava and play YouTube videos you choose. Their own term
 
 ## 7. Licence
 
-Spindro's code is free software under the GNU GPL-3.0 licence. You can use, study, modify and share it under that licence. Third-party components keep their own licences: see [Licences](licenses.en.md).
+Spindro's code is free software under the GNU AGPL-3.0 licence. You can use, study, modify and share it under that licence; if you let others use a modified version over a network, the licence asks you to offer them its source code. The name "Spindro" and its logo are not part of the licence. Third-party components keep their own licences: see [Licences](licenses.en.md).
 
 ## 8. Use it properly
 

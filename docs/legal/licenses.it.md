@@ -6,7 +6,7 @@ Spindro si basa sul lavoro di altri. Questa pagina elenca ciò che è nel reposi
 
 ## Licenza di Spindro
 
-Il codice di Spindro è rilasciato con licenza **GNU GPL-3.0**. Il testo completo è nel file `LICENSE` del repository: https://github.com/C1aud1o/Spindro. Il copyright appartiene ai contributori di Spindro.
+Il codice di Spindro è rilasciato con licenza **GNU AGPL-3.0**. Il testo completo è nel file `LICENSE` del repository: https://github.com/C1aud1o/Spindro. Il copyright appartiene ai contributori di Spindro.
 
 ## Librerie incluse nell'app
 
@@ -63,8 +63,8 @@ I modelli in `assets/3d/meshy/` (edifici, veicoli, personaggi e scenari) e le ic
 - **Icona dell'app e grafiche degli store** (`icons/`, `store/`, icone di avvio e splash di Android, `site/assets/favicon.svg`): opere originali realizzate per il progetto, ridisegnate da `scripts/icons.mjs` a partire da `icons/icon.svg`.
 - **Giochi**: originali. Non usano nomi o personaggi di altri giochi.
 - **File FIT**: il codice che li scrive (`js/fit.js`) è stato scritto dalla specifica pubblica del formato di file di Garmin. Non include l'SDK di Garmin.
-- **Protocolli dei rulli**: Tacx FE-C su Bluetooth (`js/trainers/fec.js`) segue il documento pubblico Tacx "FE-C over BLE" e il profilo ANT+ FE-C; il protocollo Wahoo legacy (`js/trainers/wahoo.js`) è stato confrontato con i progetti open source GoldenCheetah (GPL-3.0), SwiftySensors e incyclist. Sono stati usati solo fatti di protocollo (identificatori, formato dei messaggi); il codice è di Spindro.
-- **Zwift Click, Play e Ride**: il supporto (`js/click.js`) nasce dalla ricostruzione open source del protocollo Bluetooth, fatta a fini di interoperabilità: ajchellew/zwiftplay, SwiftControl e qdomyos-zwift (GPL-3.0). **Non è incluso alcun codice, chiave o immagine di Zwift** e Spindro non si collega al servizio Zwift. Dettagli e punti aperti: `docs/zwift-controller.md`.
+- **Protocolli dei rulli**: Tacx FE-C su Bluetooth (`js/trainers/fec.js`) segue il documento pubblico Tacx "FE-C over BLE" e il profilo ANT+ FE-C; il protocollo Wahoo legacy (`js/trainers/wahoo.js`) è stato confrontato con i progetti open source GoldenCheetah (AGPL-3.0), SwiftySensors e incyclist. Sono stati usati solo fatti di protocollo (identificatori, formato dei messaggi); il codice è di Spindro.
+- **Zwift Click, Play e Ride**: il supporto (`js/click.js`) nasce dalla ricostruzione open source del protocollo Bluetooth, fatta a fini di interoperabilità: ajchellew/zwiftplay, SwiftControl e qdomyos-zwift (AGPL-3.0). **Non è incluso alcun codice, chiave o immagine di Zwift** e Spindro non si collega al servizio Zwift. Dettagli e punti aperti: `docs/zwift-controller.md`.
 - **Effetti sonori**: i suoni dei giochi sono generati dal codice; gli unici file audio sono i jingle di Kenney qui sopra.
 
 ## Servizi esterni

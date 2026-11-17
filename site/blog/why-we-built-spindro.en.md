@@ -35,7 +35,7 @@ We would rather say this plainly than have you find out on a cold Tuesday evenin
 
 Spindro is a static web app: plain JavaScript files, no bundler, no server of our own that your rides pass through. The Android app is the same code in a Capacitor shell. Your rides, records and settings stay on your device; there is no account to create. Data leaves the device only if you choose to use Strava, play a YouTube video or export a file. This website counts visits anonymously, without cookies, and the app asks before it counts anything.
 
-The code is public under the GPL-3.0 licence, which means it stays public, including in anyone's modified version.
+The code is public under the AGPL-3.0 licence, which means it stays public, including in anyone's modified version.
 
 ## About subscriptions
 
