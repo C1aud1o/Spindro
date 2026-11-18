@@ -2,8 +2,10 @@
 // Generatore del sito vetrina Spindro: template + JSON di testi -> site/dist/. Nessuna dipendenza.
 //   node site/build.mjs            costruisce site/dist/
 //   node site/build.mjs --out dir  scrive altrove (per i test)
+//   node site/build.mjs --config f usa un'altra configurazione (per i test)
 // Per aggiungere una lingua: copia site/i18n/en.json in fr.json, traduci e aggiungi "fr" a "langs" in site/config.json.
 import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync, existsSync, readdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,7 +17,8 @@ const out = outArg > 0 ? resolve(process.argv[outArg + 1]) : join(here, 'dist');
 
 const read = (p) => readFileSync(p, 'utf8');
 const json = (p) => JSON.parse(read(p));
-const cfg = json(join(here, 'config.json'));
+const cfgArg = process.argv.indexOf('--config'); // --config file.json: un'altra configurazione (per i test)
+const cfg = json(cfgArg > 0 ? resolve(process.argv[cfgArg + 1]) : join(here, 'config.json'));
 // Senza account (FIREBASE_CONFIG nullo in js/config.js) la pagina «Elimina l'account» non ha senso: fuori da menu, pagine e sitemap (i file Markdown restano).
 const ACCOUNTS_ON = !/export const FIREBASE_CONFIG\s*=\s*null/.test(readFileSync(join(repo, 'js/config.js'), 'utf8'));
 if (!ACCOUNTS_ON) cfg.legalPages = cfg.legalPages.filter((p) => p !== 'account-deletion');
@@ -83,6 +86,18 @@ function shotHtml(s, t) {
   return `<figure>${fig}<figcaption>${esc(s.c)}</figcaption></figure>`;
 }
 
+// ---------- elenchi generati da data/compatibility.json (usati negli articoli) ----------
+function compatList(protocol, lang) {
+  const rows = compat.trainers.filter((r) => r.protocol === protocol);
+  if (!rows.length) throw new Error(`:::compat ${protocol}: nessun rullo con questo protocollo`);
+  const st = T[lang].compat.status;
+  return `<ul class="compat-list">${rows.map((r) => `<li><strong>${esc(r.name)}</strong>${r.brand ? ` <span class="brand">${esc(r.brand)}</span>` : ''} <span class="badge ${r.status}">${esc(st[r.status])}</span><span class="note">${esc(r.note[lang] || r.note.en)}</span></li>`).join('')}</ul>`;
+}
+function compatCount(lang) {
+  const n = (k) => compat.trainers.filter((r) => r.status === k).length;
+  return `<p><strong>${esc(T[lang].blog.compatSummary.replace('{verified}', n('verified')).replace('{partial}', n('partial')).replace('{expected}', n('expected')).replace('{reported}', n('reported')))}</strong></p>`;
+}
+
 // ---------- markdown -> html (solo quello che usano i testi legali) ----------
 function inline(s, lang) {
   const parts = String(s).split(/(`[^`]+`)/g);
@@ -107,7 +122,9 @@ function md(src, lang) {
     const l = lines[i];
     if (!l.trim()) { i++; continue; }
     let m;
-    if ((m = l.match(/^!\[([^\]]*)\]\(shot:([\w-]+)\)\s*$/))) { // ![didascalia](shot:nome): screenshot a due righe di testo, per lingua
+    if ((m = l.match(/^:::compat(-count)?\s*(.*)$/))) { // :::compat FTMS = elenco dei rulli di quel protocollo, :::compat-count = riepilogo; entrambi dai dati di compatibility.json
+      html.push(m[1] ? compatCount(lang) : compatList(m[2].trim(), lang)); i++;
+    } else if ((m = l.match(/^!\[([^\]]*)\]\(shot:([\w-]+)\)\s*$/))) { // ![didascalia](shot:nome): screenshot a due righe di testo, per lingua
       html.push(`<figure class="post-shot"><div class="phone">${shotImg(m[2], lang, m[1])}</div><figcaption>${esc(m[1])}</figcaption></figure>`); i++;
     } else if ((m = l.match(/^(#{1,4})\s+(.*)$/))) {
       const n = m[1].length; if (n === 1 && !title) title = m[2];
@@ -154,6 +171,19 @@ for (const lang of cfg.langs) {
   POSTS[lang] = existsSync(blogDir) ? readdirSync(blogDir).filter((f) => f.endsWith(`.${lang}.md`)).map((f) => ({ slug: f.replace(`.${lang}.md`, ''), ...parsePost(join(blogDir, f)) })) : [];
   POSTS[lang].sort((a, b) => b.meta.date.localeCompare(a.meta.date) || Number(a.meta.order || 99) - Number(b.meta.order || 99));
 }
+const isGuide = (p) => p.meta.kind === 'guide';
+const lastmodOf = (p) => p.meta.updated || p.meta.date;
+/** «## Questions» / «## Domande» seguito da «### domanda» + risposta = una vera sezione FAQ: ne escono i dati strutturati FAQPage. */
+function faqFrom(body) {
+  const m = body.match(/^## (?:Questions|Domande)\s*\n([\s\S]*?)(?=^## |(?![\s\S]))/m);
+  if (!m) return [];
+  const plain = (t) => t.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/[*`]/g, '').replace(/\s+/g, ' ').trim();
+  return m[1].split(/^### /m).slice(1).map((b) => { const [q, ...a] = b.split('\n'); return { q: plain(q), a: plain(a.join(' ')) }; }).filter((f) => f.q && f.a);
+}
+function guideLinks(lang, except = '') {
+  const items = POSTS[lang].filter((p) => isGuide(p) && p.slug !== except);
+  return items.length ? `<ul class="guide-links">${items.map((p) => `<li><a href="${pageUrl(lang, `blog/${p.slug}`)}">${esc(p.meta.title)}</a></li>`).join('')}</ul>` : '';
+}
 const fmtDate = (iso, lang) => new Date(iso + 'T12:00:00Z').toLocaleDateString(T[lang].htmlLang, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 function blogCards(lang, n = 99) {
   return POSTS[lang].slice(0, n).map((p) => `<li><a class="card" href="${pageUrl(lang, `blog/${p.slug}`)}"><time datetime="${p.meta.date}">${esc(fmtDate(p.meta.date, lang))}</time><h3>${esc(p.meta.title)}</h3><p>${esc(p.meta.description)}</p><span class="more">${esc(T[lang].blog.read)} · ${readTime(p.body)} ${esc(T[lang].blog.minutes)}</span></a></li>`).join('');
@@ -170,6 +200,8 @@ function ctxFor(lang, extra) {
     htmlLang: t.htmlLang, cssVersion,
     // contatore di visite senza cookie (GoatCounter): solo se configurato in config.json
     analytics: cfg.goatcounter ? `<script data-goatcounter="${cfg.goatcounter}" async src="https://gc.zgo.at/count.js"></script>` : '',
+    verification: [['google-site-verification', cfg.searchVerification?.google], ['msvalidate.01', cfg.searchVerification?.bing]]
+      .filter(([, v]) => v).map(([n, v]) => `<meta name="${n}" content="${esc(v)}">`).join('\n'),
     homeUrl: pageUrl(lang), compatUrl: pageUrl(lang, 'compatibility'), blogUrl: pageUrl(lang, 'blog'), devUrl: pageUrl(lang, 'developers'), feedUrl: `${pageUrl(lang, 'blog')}feed.xml`, appUrl: cfg.appPath,
     github: cfg.github, issues: cfg.contactIssues,
     androidUrl: androidLive ? cfg.playStore : cfg.apk,
@@ -199,7 +231,7 @@ function withCsp(html) {
   return html.replace('<!--CSP-->', `<meta http-equiv="Content-Security-Policy" content="${policy}">`);
 }
 
-function writePage({ lang, slug: pslug = '', tplName, extra, title, description, jsonld = '', index = true, langsAvailable = cfg.langs, file }) {
+function writePage({ lang, slug: pslug = '', tplName, extra, title, description, jsonld = '', index = true, langsAvailable = cfg.langs, file, ogType = 'website', lastmod = '', headExtra = '' }) {
   const t = T[lang];
   const path = pageUrl(lang, pslug);
   const alternates = langsAvailable.map((l) => `<link rel="alternate" hreflang="${l}" href="${abs(pageUrl(l, pslug))}">`);
@@ -213,12 +245,17 @@ function writePage({ lang, slug: pslug = '', tplName, extra, title, description,
     ogLocaleAlt: langsAvailable.filter((l) => l !== lang).map((l) => `<meta property="og:locale:alternate" content="${T[l].ogLocale}">`).join('\n'),
     compatCurrent: pslug === 'compatibility' ? ' aria-current="page"' : '',
     blogCurrent: pslug.startsWith('blog') ? ' aria-current="page"' : '', devCurrent: pslug === 'developers' ? ' aria-current="page"' : '',
-    jsonld, csp: '<!--CSP-->',
+    jsonld, csp: '<!--CSP-->', ogType, headExtra,
   };
   const outFile = file || join(out, path, 'index.html');
   mkdirSync(dirname(outFile), { recursive: true });
   writeFileSync(outFile, withCsp(render(tpl.base, ctx)));
-  if (!file) written.push({ path, alternates: langsAvailable.map((l) => [l, pageUrl(l, pslug)]), index });
+  if (!file) written.push({ path, alternates: langsAvailable.map((l) => [l, pageUrl(l, pslug)]), index, lastmod });
+}
+
+// Data dell'ultima modifica dai commit (per lastmod della sitemap); senza git resta vuota e il campo si omette.
+function gitDate(paths) {
+  try { return execFileSync('git', ['log', '-1', '--format=%cs', '--', ...paths], { cwd: repo, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); } catch { return ''; }
 }
 
 // ---------- costruzione ----------
@@ -242,18 +279,24 @@ function shotImg(key, lang, alt, { eager = false } = {}) {
   return `<img src="/assets/shots/${file}" width="${w}" height="${h}" alt="${esc(alt)}" decoding="async"${eager ? ' fetchpriority="high"' : ' loading="lazy"'}>`;
 }
 
+/** SoftwareApplication: gratis, Android + web, categoria applicazione. Una sola definizione per home, compatibilità e guide. */
+const appLd = (lang, description) => ({
+  '@context': 'https://schema.org', '@type': 'SoftwareApplication', '@id': `${SITE_URL}/#app`, name: 'Spindro: Smart Trainer Cycling', alternateName: 'Spindro',
+  description, applicationCategory: 'HealthApplication', operatingSystem: 'Android, Web (Chrome, Edge)',
+  url: abs(pageUrl(lang)), downloadUrl: cfg.apk, inLanguage: lang, isAccessibleForFree: true,
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
+  image: abs('/assets/og.png'), sameAs: [cfg.github], license: 'https://www.gnu.org/licenses/agpl-3.0.html',
+});
+const ldTag = (o) => `<script type="application/ld+json">${JSON.stringify(o).replace(/</g, '\\u003c')}</script>`;
+const faqLd = (faq, lang) => ({ '@context': 'https://schema.org', '@type': 'FAQPage', inLanguage: lang, mainEntity: faq.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) });
+
 for (const lang of cfg.langs) {
   const t = T[lang]; const h = t.home;
-  const ld = {
-    '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'Spindro: Smart Trainer Cycling', alternateName: 'Spindro',
-    description: h.description, applicationCategory: 'HealthApplication', operatingSystem: 'Android, Web (Chrome, Edge)',
-    url: abs(pageUrl(lang)), downloadUrl: cfg.apk, inLanguage: lang, isAccessibleForFree: true,
-    offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
-    image: abs('/assets/og.png'), sameAs: [cfg.github], license: undefined,
-  };
+  const ld = appLd(lang, h.description);
   writePage({
     lang, tplName: 'home', title: h.title, description: h.description,
-    jsonld: `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>`,
+    lastmod: gitDate(['site/i18n', 'site/templates/home.html']),
+    jsonld: ldTag(ld) + ldTag(faqLd(h.faq.map((f) => ({ q: f.q, a: f.a })), lang)),
     extra: (() => {
       const bib = (i) => `<p class="bib"><span>${esc(h.stageWord)}</span><b>${pad2(i + 1)}</b></p>`;
       const stage = (i, flip) => {
@@ -275,6 +318,7 @@ for (const lang of cfg.langs) {
         blogCards: blogCards(lang, 3),
         ownPoints: h.ownPoints.map((p) => `<li>${esc(p)}</li>`).join(''),
         compatRows: h.compatRows.map(([name, what, st, label]) => `<tr><th scope="row">${esc(name)}<small>${esc(what)}</small></th><td><span class="chip ${st}">${esc(label)}</span></td></tr>`).join(''),
+        guideLinks: guideLinks(lang),
         faq: h.faq.map((f) => `<details><summary>${esc(f.q)}</summary><p>${esc(f.a)}</p></details>`).join(''),
       };
     })(),
@@ -288,7 +332,9 @@ for (const lang of cfg.langs) {
   }).join('')}</tbody></table></div>`;
   writePage({
     lang, slug: 'compatibility', tplName: 'compat', title: c.title, description: c.description,
+    lastmod: gitDate(['site/data/compatibility.json', 'site/templates/compat.html', 'site/i18n']), jsonld: ldTag(appLd(lang, t.home.description)),
     extra: {
+      guideLinks: guideLinks(lang),
       connectRows: c.connect.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join(''),
       connectDoc: `${cfg.github}/blob/main/docs/connecting-devices.md`,
       legend: ['verified', 'partial', 'expected', 'reported'].map((k) => `<li><span class="badge ${k}">${esc(c.status[k])}</span> ${esc(c.statusDesc[k])}</li>`).join(''),
@@ -311,7 +357,7 @@ for (const lang of cfg.langs) {
     if (draft && lang === cfg.defaultLang) legalWarnings.push(`${p}: ${placeholders.join(' ') || 'bozza'}`);
     writePage({
       lang, slug: p, tplName: 'legal', title: t.legal.title.replace('{title}', title), description: t.legal.description.replace('{title}', title),
-      index: !draft, langsAvailable: cfg.langs.filter(have),
+      index: !draft, langsAvailable: cfg.langs.filter(have), lastmod: gitDate([`docs/legal/${p}.${contentLang}.md`]),
       extra: { body: html, contentLang, draftNote: draft ? `<blockquote><p>${esc(t.legal.draft)}</p></blockquote>` : '' },
     });
   }
@@ -328,7 +374,7 @@ for (const lang of cfg.langs) {
   const DOCS = [['CREATE-A-GAME.md', d.docsGuide], ['API.md', d.docsApi], ['DESIGN-RULES.md', d.docsRules]];
   const docLinks = DOCS.filter(([f]) => existsSync(join(repo, 'docs/games', f))).map(([f, label], i) => `<a class="btn${i ? '' : ' primary'}" href="${ghBlob(`docs/games/${f}`)}" rel="noopener">${esc(label)}</a>`);
   writePage({
-    lang, slug: 'developers', tplName: 'dev', title: d.title, description: d.description,
+    lang, slug: 'developers', tplName: 'dev', title: d.title, description: d.description, lastmod: gitDate(['site/templates/dev.html', 'site/i18n']),
     jsonld: `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'TechArticle', headline: d.h1, description: d.description, inLanguage: lang, url: abs(pageUrl(lang, 'developers')), publisher: { '@type': 'Organization', name: 'Spindro', url: SITE_URL } }).replace(/</g, '\\u003c')}</script>`,
     extra: {
       kit: d.kit.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join(''),
@@ -347,17 +393,21 @@ for (const lang of cfg.langs) {
   const t = T[lang]; const b = t.blog;
   const feedHref = `${pageUrl(lang, 'blog')}feed.xml`;
   const feedLink = `<link rel="alternate" type="application/rss+xml" title="Spindro: ${esc(b.h1)} (${lang})" href="${feedHref}">`;
-  writePage({ lang, slug: 'blog', tplName: 'blogindex', title: b.title, description: b.description, jsonld: feedLink, extra: { cards: blogCards(lang) } });
+  writePage({ lang, slug: 'blog', tplName: 'blogindex', title: b.title, description: b.description, jsonld: feedLink, lastmod: POSTS[lang].map(lastmodOf).sort().pop() || '', extra: { cards: blogCards(lang), guideLinks: guideLinks(lang) } });
   for (const post of POSTS[lang]) {
     const m = post.meta; const url = abs(pageUrl(lang, `blog/${post.slug}`));
     const { html } = md(post.body, lang);
     const others = POSTS[lang].filter((x) => x.slug !== post.slug);
-    const ld = { '@context': 'https://schema.org', '@type': 'Article', headline: m.title, description: m.description, datePublished: m.date, dateModified: m.date, inLanguage: lang,
+    const ld = { '@context': 'https://schema.org', '@type': 'Article', headline: m.title, description: m.description, datePublished: m.date, dateModified: lastmodOf(post), inLanguage: lang,
       author: { '@type': 'Organization', name: 'Spindro', url: SITE_URL }, publisher: { '@type': 'Organization', name: 'Spindro', url: SITE_URL, logo: { '@type': 'ImageObject', url: abs('/assets/og.png') } },
-      mainEntityOfPage: url, image: abs(`/assets/shots/${m.image}-${lang}.webp`) };
+      mainEntityOfPage: url, image: abs(`/assets/shots/${m.image}-${lang}.webp`), ...(isGuide(post) ? { about: { '@id': `${SITE_URL}/#app` } } : {}) };
+    const faq = faqFrom(post.body);
+    // le guide parlano di un'app: la descrivono anche come SoftwareApplication (gratis, sistemi operativi, categoria); la FAQ solo se la pagina ne ha una vera
+    const ldAll = [ld, ...(isGuide(post) ? [appLd(lang, T[lang].home.description)] : []), ...(faq.length ? [faqLd(faq, lang)] : [])].map(ldTag).join('');
     writePage({
-      lang, slug: `blog/${post.slug}`, tplName: 'post', title: `${m.title} | Spindro`, description: m.description,
-      jsonld: `${feedLink}<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>`,
+      lang, slug: `blog/${post.slug}`, tplName: 'post', title: `${m.title} | Spindro`, description: m.description, ogType: 'article', lastmod: lastmodOf(post),
+      headExtra: `<meta property="article:published_time" content="${m.date}">\n<meta property="article:modified_time" content="${lastmodOf(post)}">`,
+      jsonld: feedLink + ldAll,
       extra: { postTitle: m.title, postDate: m.date, postDateText: fmtDate(m.date, lang), postRead: `${readTime(post.body)} ${b.minutes}`, postBody: html, moreCards: others.length ? `<h2>${esc(b.more)}</h2><ul class="cards">${blogCards(lang).split('</li>').filter(Boolean).filter((c) => !c.includes(`/blog/${post.slug}/`)).map((c) => c + '</li>').join('')}</ul>` : '' },
     });
   }
@@ -376,7 +426,7 @@ for (const lang of cfg.langs) {
 
 // sitemap, robots
 const urls = written.filter((w) => w.index);
-const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.map((w) => `  <url>\n    <loc>${abs(w.path)}</loc>\n${w.alternates.map(([l, p]) => `    <xhtml:link rel="alternate" hreflang="${l}" href="${abs(p)}"/>`).join('\n')}\n  </url>`).join('\n')}\n</urlset>\n`;
+const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.map((w) => `  <url>\n    <loc>${abs(w.path)}</loc>\n${w.lastmod ? `    <lastmod>${w.lastmod}</lastmod>\n` : ''}${w.alternates.map(([l, p]) => `    <xhtml:link rel="alternate" hreflang="${l}" href="${abs(p)}"/>`).join('\n')}\n  </url>`).join('\n')}\n</urlset>\n`;
 writeFileSync(join(out, 'sitemap.xml'), sitemap);
 writeFileSync(join(out, 'robots.txt'), `User-agent: *\nAllow: /\nDisallow: /beta/\n\nSitemap: ${SITE_URL}/sitemap.xml\n`);
 

@@ -368,8 +368,8 @@
     "home": "Go to the home page"
   },
   "blog": {
-    "title": "Blog: notes on building a free indoor-cycling app | Spindro",
-    "description": "Why we built Spindro, how virtual gears and ERG mode work on a budget trainer, and how games can be workouts.",
+    "title": "Blog and guides: free indoor cycling with a smart trainer | Spindro",
+    "description": "Guides to using a smart trainer without a subscription (Van Rysel D100, Zwift Click, ERG in the browser, which trainers work) and notes on how Spindro is built.",
     "h1": "Blog",
     "lead": "Notes from building a free indoor-cycling app: the reasons, the technical details, and the design rules we hold ourselves to.",
     "read": "Read",
@@ -379,7 +379,10 @@
     "tryTitle": "Try it",
     "tryText": "Open the web app, connect the trainer, ride.",
     "more": "Keep reading",
-    "rss": "RSS feed"
+    "rss": "RSS feed",
+    "guidesTitle": "Guides: start here",
+    "allTitle": "All articles",
+    "compatSummary": "{verified} trainer verified on real hardware, {partial} partly verified, {expected} expected to work, {reported} reported by users."
   },
   "dev": {
     "title": "Build a game for Spindro | Spindro",

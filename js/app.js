@@ -17,7 +17,7 @@ import { encodeFit, encodeWorkoutFit, encodeZwo } from './fit.js';
 import { Strava } from './strava.js';
 import { STRAVA_PROXY, GOATCOUNTER_URL, SENTRY_DSN, SITE_URL } from './config.js';
 import { initMonitoring, track, consentAsked, consentGiven, setConsent } from './monitor.js';
-import { buildReportUrl } from './report.js';
+import { buildReportUrl, REPO } from './report.js';
 import { setupDebug } from './debugview.js';
 import { rideStats, renderHistory } from './history.js';
 // glowSetting vive qui (stessa chiave di games/kit3d.js) per non caricare three.js all'avvio
@@ -1538,6 +1538,28 @@ async function uploadToStrava() {
   } finally { stravaBusy = false; render(); }
 }
 $('uploadStrava').addEventListener('click', uploadToStrava);
+// ---------- invito a passare parola: una volta sola, dopo la terza uscita ----------
+// Discreto e chiudibile; dopo «Non ora» o dopo aver usato un pulsante non torna più. Nessun dato lascia il dispositivo: solo l'evento anonimo, e solo con il consenso.
+const SHARE_PROMPT_KEY = 'sharePromptDone';
+const sharePromptDone = () => { try { return localStorage.getItem(SHARE_PROMPT_KEY) === '1'; } catch { return true; } };
+function maybeSharePrompt(rides, completed) {
+  const el = $('sharePrompt');
+  if (!completed || rides < 3 || sharePromptDone()) { el.hidden = true; return; }
+  el.hidden = false;
+}
+function closeSharePrompt(action) {
+  try { localStorage.setItem(SHARE_PROMPT_KEY, '1'); } catch { /* storage non disponibile */ }
+  $('sharePrompt').hidden = true;
+  track('share-prompt', action);
+}
+$('sharePromptLater').addEventListener('click', () => closeSharePrompt('dismiss'));
+$('sharePromptStar').addEventListener('click', () => { closeSharePrompt('star'); openExternal(`https://github.com/${REPO}`); });
+$('sharePromptShare').addEventListener('click', async () => {
+  closeSharePrompt('share');
+  const data = { title: t('share.promptTitle'), text: t('share.promptShareText'), url: SITE_URL };
+  try { if (navigator.share) await navigator.share(data); else { await navigator.clipboard.writeText(SITE_URL); toast(t('share.promptCopied')); } }
+  catch { /* chiuso senza scegliere: va bene */ }
+});
 $('finishRide').addEventListener('click', () => {
   const r = state.ride;
   if (r.running) $('startStop').click(); // pausa
@@ -1588,6 +1610,7 @@ $('finishRide').addEventListener('click', () => {
   if (gl && goalBefore && goalBefore.done < gl.goal && gl.done >= gl.goal) medals.unshift({ ico: '🏁', title: t('finish.goalTitle'), sub: t('finish.goalSub', { done: gl.done, goal: gl.goal }) });
   for (const c of chDone) medals.unshift({ ico: '🏅', title: t('challenges.badge', { name: t(`challenges.${c.metric}`, { n: c.metric === 'z2' ? c.target / 60 : c.target }) }), sub: t('challenges.badgeSub') });
   badges($('finishBadges'), medals.slice(0, 4));
+  maybeSharePrompt(hist.length, r.elapsed >= 60);
   openSheet('finishSheet');
   if (r.elapsed >= 60) track('ride-complete');
   if (r.elapsed >= 60) { party($('finishSheet'), { records: medals.length }); if (medals.length) gameAudio.jingle('win', 0.6); }

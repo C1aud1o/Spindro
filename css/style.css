@@ -226,6 +226,10 @@ button.ghost:disabled { opacity: .5; } /* "Strava" e "Garmin" usano il tasto neu
 .summary dd { margin: 8px 0 0; font: 700 var(--fs-title)/1 var(--font-num); font-variant-numeric: tabular-nums; }
 .compare { margin: 0; text-align: center; color: var(--accent); font-weight: 700; }
 .sheet-actions { display: grid; gap: 8px; }
+.share-prompt { display: grid; gap: 10px; justify-items: center; padding: 14px 16px; border-radius: 16px; background: var(--surface-2); text-align: center; }
+.share-prompt[hidden] { display: none; }
+.share-prompt p { margin: 0; color: var(--t2); }
+.share-prompt-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 
 @media (max-width: 370px) {
   :root { --fs-display: 72px; }
