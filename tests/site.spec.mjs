@@ -220,3 +220,19 @@ test('search-engine verification tags come from config.json, and are absent whil
     }
   } finally { rmSync(tmp, { recursive: true, force: true }); }
 });
+
+// Assistenti AI: llms.txt esiste, ogni link punta a una pagina costruita, robots.txt li lascia leggere tutto tranne la beta.
+test('llms.txt lists only pages that exist, and robots.txt lets AI crawlers in except on /beta/', () => {
+  const read = (f) => readFileSync(join(dist, f), 'utf8');
+  const llms = read('llms.txt');
+  expect(llms.startsWith('# Spindro')).toBe(true);
+  for (const [, href] of llms.matchAll(/\]\((https:\/\/spindro\.fit\/[^)]*)\)/g)) {
+    const path = href.replace('https://spindro.fit/', '');
+    if (/^(app|beta)\//.test(path)) continue; // l'app e l'APK non fanno parte del sito costruito
+    const file = path === '' ? 'index.html' : path.endsWith('/') ? `${path}index.html` : path;
+    expect(existsSync(join(dist, file)), `${href} exists in the built site`).toBe(true);
+  }
+  expect(read('llms-full.txt')).not.toMatch(/^:::/m);
+  const robots = read('robots.txt');
+  for (const bot of ['GPTBot', 'OAI-SearchBot', 'ClaudeBot', 'Google-Extended', 'PerplexityBot']) expect(robots).toContain(`User-agent: ${bot}\nAllow: /\nDisallow: /beta/`);
+});

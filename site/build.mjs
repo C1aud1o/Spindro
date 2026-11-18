@@ -428,7 +428,41 @@ for (const lang of cfg.langs) {
 const urls = written.filter((w) => w.index);
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.map((w) => `  <url>\n    <loc>${abs(w.path)}</loc>\n${w.lastmod ? `    <lastmod>${w.lastmod}</lastmod>\n` : ''}${w.alternates.map(([l, p]) => `    <xhtml:link rel="alternate" hreflang="${l}" href="${abs(p)}"/>`).join('\n')}\n  </url>`).join('\n')}\n</urlset>\n`;
 writeFileSync(join(out, 'sitemap.xml'), sitemap);
-writeFileSync(join(out, 'robots.txt'), `User-agent: *\nAllow: /\nDisallow: /beta/\n\nSitemap: ${SITE_URL}/sitemap.xml\n`);
+// robots: tutti i motori e gli assistenti AI possono leggere il sito (tranne la beta); i crawler AI sono nominati esplicitamente
+const AI_BOTS = ['GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'ClaudeBot', 'Claude-SearchBot', 'Claude-User', 'Google-Extended', 'PerplexityBot', 'Bingbot'];
+writeFileSync(join(out, 'robots.txt'), `${['*', ...AI_BOTS].map((u) => `User-agent: ${u}\nAllow: /\nDisallow: /beta/\n`).join('\n')}\nSitemap: ${SITE_URL}/sitemap.xml\n`);
+
+// llms.txt (formato llmstxt.org): cos'è Spindro in poche righe e dove trovare il resto, per gli assistenti AI che leggono il sito
+{
+  const en = T.en || T[cfg.defaultLang];
+  const plain = (txt) => txt.replace(/^:::.*$/gm, '').replace(/!\[[^\]]*\]\([^)]*\)/g, '').replace(/\n{3,}/g, '\n\n').trim();
+  const postLinks = (lang) => POSTS[lang].map((p) => `- [${p.meta.title}](${abs(pageUrl(lang, `blog/${p.slug}`))}): ${p.meta.description}`).join('\n');
+  const llms = `# Spindro
+
+> ${en.home.description}
+
+Spindro is free and open source (AGPL-3.0). It runs in Chrome or Edge on Android, Windows, macOS and Linux, and as an Android app; iPhone and iPad browsers have no Web Bluetooth, so they are not supported. No account and no subscription are needed. Only the Van Rysel D100 trainer and the + and - keys of a Zwift Click v2 have been tested on real hardware; other FTMS, Tacx FE-C and Wahoo trainers are expected to work but are not verified.
+
+## Use it
+- [Web app](${abs(cfg.appPath)}): open it in Chrome or Edge and connect the trainer over Bluetooth
+- [Android app (APK)](${cfg.apk})
+- [Compatible trainers and controllers](${abs(pageUrl('en', 'compatibility'))})
+- [Source code](${cfg.github})
+
+## Guides and articles (English)
+${postLinks('en')}
+
+## Guide e articoli (italiano)
+${postLinks('it')}
+
+## Optional
+- [Privacy policy](${abs(pageUrl('en', 'privacy'))})
+- [Full text of the guides](${SITE_URL}/llms-full.txt)
+`;
+  writeFileSync(join(out, 'llms.txt'), llms);
+  const full = [`# Spindro: full text of the guides (English)\n\n> ${en.home.description}\n`, ...POSTS.en.map((p) => `\n## ${p.meta.title}\n\nSource: ${abs(pageUrl('en', `blog/${p.slug}`))}\n\n${plain(p.body)}\n`)].join('');
+  writeFileSync(join(out, 'llms-full.txt'), full);
+}
 
 console.log(`site: ${written.length} pagine in ${out} (${cfg.langs.join(', ')}), dominio ${SITE_URL}`);
 if (legalWarnings.length) console.log(`pagine legali ancora bozza (noindex, fuori dalla sitemap):\n  - ${legalWarnings.join('\n  - ')}`);

@@ -22,6 +22,10 @@ The tags below are public: they only prove that you control the site. They conta
 4. Paste it into `site/config.json`, field `searchVerification.bing`, publish, and press **Verify**.
 5. Open **Sitemaps** and submit `https://spindro.fit/sitemap.xml`.
 
+## AI assistants (ChatGPT, Gemini, Claude, Perplexity)
+
+They answer from their own web searches (ChatGPT also uses Bing, Gemini uses Google), so the two steps above matter for them too: do Bing as well as Google. The site helps them read it: `robots.txt` allows their crawlers everywhere except `/beta/`, and `/llms.txt` and `/llms-full.txt` give a short factual description of Spindro with links to every guide. Nothing to do by hand. There is no registration that makes an assistant recommend an app; being cited by others (AlternativeTo, GitHub lists, community posts) helps more.
+
 ## After that
 
 - Indexing takes days to weeks. Judge it after a month, not after a day.
