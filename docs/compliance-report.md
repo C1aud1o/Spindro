@@ -166,5 +166,4 @@ The maintainer, sole author of every commit so far, changed Spindro's licence fr
 versions from this date (`LICENSE` replaced with the text from https://www.gnu.org/licenses/agpl-3.0.txt; `package.json`,
 README, legal pages, store texts, site and in-app labels updated). Versions published earlier remain available under the
 GPL-3.0. AGPL-3.0 section 13 allows combining with GPL-3.0 code; the MIT, Apache, OFL, CC0 and CC BY components listed above
-are compatible. `CONTRIBUTING.md` now adds to the DCO sign-off a licence grant to the maintainer that allows relicensing,
-and `docs/legal/trademarks.*.md` states that the Spindro name and logo are not covered by the code licence. Not legal advice.
+are compatible. `CONTRIBUTING.md` keeps the standard DCO sign-off, and `docs/legal/trademarks.*.md` states that the Spindro name and logo are not covered by the code licence. Not legal advice.

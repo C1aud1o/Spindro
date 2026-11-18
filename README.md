@@ -86,7 +86,7 @@ one folder, one registry entry, its strings. Start with [Create a game](docs/gam
 
 ## Licence and trademarks
 
-[AGPL-3.0](LICENSE). The name "Spindro" and its logo are not covered by the licence: a modified version must use its own name and logo. Zwift, Garmin, Strava, Tacx, Wahoo, Van Rysel, Decathlon, YouTube and the other names are trademarks of their owners; Spindro is not affiliated with them.
+[AGPL-3.0](LICENSE). Zwift, Garmin, Strava, Tacx, Wahoo, Van Rysel, Decathlon, YouTube and the other names are trademarks of their owners; Spindro is not affiliated with them.
 
 ## Credits
 

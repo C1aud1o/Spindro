@@ -136,21 +136,11 @@ Native speakers are very welcome to review a language: open an issue with the "T
 
 ## Code and commit rules
 
-### Licence of contributions and sign-off
+### Developer Certificate of Origin (DCO)
 
 Every commit must be signed off with the [Developer Certificate of Origin 1.1](https://developercertificate.org/):
-a line saying you wrote the code, or have the right to submit it.
-
-By submitting a contribution you agree that:
-
-1. it is licensed to everyone under the project licence, the **GNU AGPL-3.0**, like the rest of Spindro; and
-2. you also grant the Spindro maintainer a perpetual, worldwide, royalty-free, irrevocable licence to use, modify and
-   distribute your contribution under other licence terms as well (for example in a future version of Spindro under a
-   different licence, or in a paid service). You keep the copyright on your work and can use it however you like.
-
-Point 2 lets the project change its licence in the future without having to find every past contributor.
-Your contribution always stays available under the AGPL-3.0 in the versions where it was published.
-If you do not agree with point 2, say so in the pull request before it is merged.
+a line saying you wrote the code, or have the right to submit it under the project licence.
+Contributions are licensed under the **GNU AGPL-3.0**, like the rest of the project.
 
 Add it with `-s`:
 
