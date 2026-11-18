@@ -259,3 +259,12 @@ details p { margin: 0 0 18px; max-width: 46em; color: #2c2b27; }
 .cmd { margin: 0 0 18px; padding: 16px 18px; background: var(--ink); color: var(--paper); border-radius: 6px; overflow-x: auto; font: .88rem/1.6 var(--mono); }
 .cmd code { background: none; padding: 0; color: inherit; font: inherit; white-space: pre; }
 .prose .lead + .btns { margin-top: 22px; }
+
+/* guide: elenchi generati dai dati di compatibilità e collegamenti fra gli articoli */
+.compat-list { list-style: none; padding: 0; margin: 14px 0; display: grid; gap: 10px; }
+.compat-list li { display: grid; gap: 4px; padding: 12px 14px; border: 1.5px solid var(--ink); border-radius: 6px; background: var(--paper); }
+.compat-list .brand { color: var(--mute); }
+.compat-list .note { font-size: .92rem; color: var(--mute); }
+.guide-links { margin: 8px 0 0; padding-left: 1.2em; display: grid; gap: 6px; }
+.guides-h { margin: 28px 0 0; font: italic 700 1.4rem/1 var(--disp); text-transform: uppercase; }
+.compat-list .badge { white-space: normal; justify-self: start; }

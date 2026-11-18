@@ -368,8 +368,8 @@
     "home": "Vai alla home"
   },
   "blog": {
-    "title": "Blog: appunti su un'app gratuita di indoor cycling | Spindro",
-    "description": "Perché abbiamo creato Spindro, come funzionano il cambio virtuale e l'ERG su un rullo economico e come i giochi possono essere allenamenti.",
+    "title": "Blog e guide: indoor cycling gratis con il rullo smart | Spindro",
+    "description": "Guide per usare un rullo smart senza abbonamento (Van Rysel D100, Zwift Click, ERG nel browser, quali rulli funzionano) e appunti su come è fatta Spindro.",
     "h1": "Blog",
     "lead": "Appunti da un'app gratuita di indoor cycling: le ragioni, i dettagli tecnici e le regole di design che ci siamo dati.",
     "read": "Leggi",
@@ -379,7 +379,10 @@
     "tryTitle": "Provala",
     "tryText": "Apri la web app, collega il rullo, pedala.",
     "more": "Continua a leggere",
-    "rss": "Feed RSS"
+    "rss": "Feed RSS",
+    "guidesTitle": "Guide: da dove cominciare",
+    "allTitle": "Tutti gli articoli",
+    "compatSummary": "{verified} rullo verificato su hardware vero, {partial} parzialmente verificati, {expected} che dovrebbero funzionare, {reported} segnalati dagli utenti."
   },
   "dev": {
     "title": "Crea un gioco per Spindro | Spindro",
