@@ -290,8 +290,8 @@ export class Mattoni {
     // borraccia (la palla): modello Meshy, tinta lime, che gira; alone e ombra
     this.ball = { root: new THREE.Group() };
     const bot = prop(this.m.bottle, 2.1); const inner = new THREE.Group(); inner.add(bot); bot.position.y = -1.05; this.ball.root.add(inner); this.ball.spin = inner;
-    this.ball.fire = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: '#ff7a2a', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); this.ball.fire.scale.setScalar(3);
-    this.ball.glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: '#d9ff3d', transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending })); this.ball.glow.scale.setScalar(3.4);
+    this.ball.fire = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: '#ff7a2a', transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending })); this.ball.fire.scale.setScalar(3);
+    this.ball.glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: '#d9ff3d', transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending })); this.ball.glow.scale.setScalar(3.4);
     this.ball.glow.material.depthTest = false; this.ball.glow.renderOrder = 5; this.ball.fire.material.depthTest = false; this.ball.fire.renderOrder = 5;
     this.ball.root.add(this.ball.glow, this.ball.fire); scene.add(this.ball.root);
     this.ball.blob = new THREE.Mesh(new THREE.CircleGeometry(0.8, 14).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: 0.3, depthWrite: false })); this.ball.blob.renderOrder = 1; scene.add(this.ball.blob);
@@ -469,7 +469,7 @@ export class Mattoni {
     this.ballAlive = false; this.combo = 0; this.charge *= 0.5; this.ev('lose');
     this.audio.sfx('hurt'); this.shake.add(0.35); this.hurtT = 0.8; this.hurtFlash = HURT_FLASH_S; if (navigator.vibrate) navigator.vibrate(80);
     this.fx.spawn(b.x, 0.6, PZ - 0.5, { tex: 'smoke', size: 2.4, life: 0.6, additive: false });
-    this.fx.spawn(b.x, 0.8, PZ - 0.5, { tex: 'flash', size: 3, life: 0.3, grow: 1, color: '#ff4a4a' });
+    this.fx.spawn(b.x, 0.8, PZ - 0.5, { tex: 'flash', size: 2.2, life: 0.28, grow: 1, color: '#ff4a4a' });
     this.lives--;
     if (this.lives <= 0 && this.el >= 60) this.knockOut();
     else {
@@ -543,7 +543,7 @@ export class Mattoni {
 
   dropGel(x, z) {
     const mesh = gelObject('#ffd34d'); mesh.position.set(x, 1.2, z); this.scene.add(mesh);
-    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: '#ffd34d', transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending })); glow.scale.setScalar(1.5); mesh.add(glow);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: '#ffd34d', transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending })); glow.scale.setScalar(1.5); mesh.add(glow);
     this.gels.push({ mesh, x, z, t: 0 });
   }
   stepGels(dt) {

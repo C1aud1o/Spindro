@@ -266,7 +266,7 @@ export class World {
     if (L.id !== 'harbor') {
       const g = new THREE.Group();
       const disc = new THREE.Mesh(new THREE.CircleGeometry(L.night ? 14 : 26, 40), new THREE.MeshBasicMaterial({ color: L.night ? '#f4f0ff' : '#fff1c8', fog: false, depthWrite: false }));
-      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: L.night ? '#a58cff' : '#ffb070', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: L.night ? 0.6 : 0.9 }));
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: L.night ? '#a58cff' : '#ffb070', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: L.night ? 0.35 : 0.5 }));
       halo.scale.setScalar(L.night ? 150 : 260); halo.position.z = -1;
       g.add(halo, disc); disc.renderOrder = -5; halo.renderOrder = -6; this.root.add(g); this.orb = g;
     } else this.orb = null;
@@ -435,14 +435,14 @@ export class World {
   buildNeon(L) {
     const M = this.models; const r = rnd(37);
     const wt = windowTextures(true, 9);
-    this.matBuild = toonMaterial({ vertexColors: true, map: wt.map, emissiveMap: wt.emissive, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0.9 });
+    this.matBuild = toonMaterial({ vertexColors: true, map: wt.map, emissiveMap: wt.emissive, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0.6 });
     this.matPlain = toonMaterial({ vertexColors: true });
     this.neonTex = neonAtlas();
     this.matNeon = new THREE.MeshBasicMaterial({ map: this.neonTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
     // skyline lontano: sagome con finestre accese
     const far = [];
     for (let x = -350; x < this.span + 350; x += 7 + r() * 10) { const h = 25 + r() * 90; far.push(boxGeo(7 + r() * 9, h, 10, x, -2, -230 - r() * 60, new THREE.Color('#2a2050').lerp(new THREE.Color('#4a2f7a'), r()), { uvOff: r() * 50 })); }
-    const farMat = toonMaterial({ vertexColors: true, map: wt.map, emissiveMap: wt.emissive, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0.9 });
+    const farMat = toonMaterial({ vertexColors: true, map: wt.map, emissiveMap: wt.emissive, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0.6 });
     this.mergedMesh(this.root, far, farMat);
     // grattacieli al neon (Meshy) in seconda fila
     const towers = []; for (let x = 20; x < this.span; x += 34 + r() * 30) towers.push({ x, z: -62 - r() * 30, rot: (r() - 0.5) * 0.4, s: 0.85 + r() * 0.5 });
@@ -455,7 +455,7 @@ export class World {
     // pozze di luce sull'asfalto bagnato (riflessi colorati allungati)
     const poolTex = canvasTex(64, 256, (g) => { const gr = g.createRadialGradient(32, 128, 0, 32, 128, 128); gr.addColorStop(0, 'rgba(255,255,255,.75)'); gr.addColorStop(0.4, 'rgba(255,255,255,.25)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 256); }, { repeat: false });
     const pg = new THREE.PlaneGeometry(1, 1); pg.rotateX(-Math.PI / 2);
-    this.pools = new THREE.InstancedMesh(pg, new THREE.MeshBasicMaterial({ map: poolTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.55, fog: false }), 24);
+    this.pools = new THREE.InstancedMesh(pg, new THREE.MeshBasicMaterial({ map: poolTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.35, fog: false }), 24);
     this.pools.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(24 * 3), 3); this.pools.frustumCulled = false; this.pools.count = 0; this.root.add(this.pools);
     // pioggia: strisce sottili che cadono attorno alla camera
     const RN = 260; const rg = new THREE.PlaneGeometry(0.025, 0.9);

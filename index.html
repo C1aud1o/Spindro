@@ -77,9 +77,9 @@
     </section>
 
     <nav id="quickPick" class="quick-pick" data-i18n-attr="aria-label:quick.label">
-      <button id="openWorkouts" class="qp qp-train"><img class="ico" src="assets/icons/workouts.webp" width="256" height="256" alt="" decoding="async" aria-hidden="true"><b data-i18n="quick.workouts"></b></button>
-      <button id="openGame" class="qp qp-play"><img class="ico" src="assets/icons/games.webp" width="256" height="256" alt="" decoding="async" aria-hidden="true"><b data-i18n="nav.games"></b></button>
-      <button id="openHistoryCard" class="qp qp-hist" data-open="history"><img class="ico" src="assets/icons/trophy.webp" width="256" height="256" alt="" decoding="async" aria-hidden="true"><b data-i18n="quick.history"></b></button>
+      <button id="openWorkouts" class="qp qp-train"><svg class="qp-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-8M12 20V5M19 20v-5"/></svg><b data-i18n="quick.workouts"></b></button>
+      <button id="openGame" class="qp qp-play"><svg class="qp-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="11" rx="4"/><path d="M8 10.5v4M6 12.5h4M16 11.5h.01M18 13.5h.01"/></svg><b data-i18n="nav.games"></b></button>
+      <button id="openHistoryCard" class="qp qp-hist" data-open="history"><svg class="qp-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17l5-5 4 3 7-8M15 7h5v5"/></svg><b data-i18n="quick.history"></b></button>
     </nav>
 
     <!-- le altre modalità di pedalata: chiuse finché non servono (ERG è quella di partenza) -->
@@ -460,7 +460,7 @@
       <button id="closeGame" class="small" data-i18n="games.exit"></button>
     </div>
     <div id="gameMenu" class="game-menu">
-      <h2 class="menu-title"><img class="ico" src="assets/icons/games.webp" width="256" height="256" alt="" decoding="async" aria-hidden="true"><span data-i18n="games.choose"></span></h2>
+      <h2 class="menu-title"><svg class="menu-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="11" rx="4"/><path d="M8 10.5v4M6 12.5h4M16 11.5h.01M18 13.5h.01"/></svg><span data-i18n="games.choose"></span></h2>
       <div id="progressPanel" class="prog"></div>
       <div id="boardPanel" class="boards" hidden></div>
       <!-- one card per game, rendered from js/games/registry.js (js/games/list.js) -->

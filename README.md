@@ -7,7 +7,7 @@ Spindro connects to your trainer over Bluetooth and gives you ERG, virtual gears
 <p>
 <img src="site/assets/shots/home-en.webp" width="150" alt="Home screen: a free ride in ERG with a 130 W target">
 <img src="site/assets/shots/workout-en.webp" width="150" alt="A Sweet spot workout in progress">
-<img src="site/assets/shots/game-racer-en.webp" width="150" alt="Breakaway, the stage-race game">
+<img src="site/assets/shots/game-strike-en.webp" width="150" alt="Pedal Strike, the runner shooter">
 <img src="site/assets/shots/game-horde-en.webp" width="150" alt="Horde Run">
 <img src="site/assets/shots/keycheck-en.webp" width="150" alt="Controller key check">
 </p>
@@ -26,7 +26,7 @@ Spindro connects to your trainer over Bluetooth and gives you ERG, virtual gears
 - **One "Add device"** for a trainer, a Zwift controller, a heart rate strap, a power meter or a cadence sensor.
 - **Zwift Click, Play and Ride** as shifter and remote, with a key check that shows which key the app receives and lets you map it.
 - **Workouts:** 34 structured workouts (24 to 90 minutes), 4 multi-week plans, a ramp FTP test, a block editor, `.zwo` import, export to `.zwo` and Garmin `.fit`, a spoken coach in 5 languages.
-- **Six games that are workouts:** Breakaway, Horde Run, Pedal Strike, Slipstream, Updraft, Feed Zone. 5, 10 or 20 minutes in % of FTP, three levels, one shared menu. A game can also follow the workout you are riding. Plus any YouTube ride video at your speed.
+- **Six games that are workouts:** Pedal Strike, Horde Run, Slipstream, Breakaway, Updraft, Feed Zone. 5, 10 or 20 minutes in % of FTP, three levels, one shared menu. A game can also follow the workout you are riding. Plus any YouTube ride video at your speed.
 - **Routes:** load a GPX and the slope follows the course.
 - **Your watch as the head unit** (Android app): the phone broadcasts power, cadence and speed as a Bluetooth sensor.
 - **History and records,** a share card, `.fit` export with GPS, optional Strava upload.
@@ -107,6 +107,6 @@ Everything third-party that ships with Spindro, with author, licence and use. Fu
 - [Kenney](https://kenney.nl): Racing Kit, Nature Kit, Blocky Characters, Graveyard Kit, Blaster Kit, Platformer Kit (3D, `assets/3d`), Particle Pack (`assets/fx`), Music Jingles (`assets/audio/jingles`).
 - [Quaternius](https://quaternius.com): Ultimate Modular Men, Simple Nature Pack, Farm Buildings, Simple Buildings (`assets/3d/quaternius`, converted and optimised).
 
-**Generated with [Meshy](https://www.meshy.ai) for Spindro**: the models in `assets/3d/meshy/` (cyclist, fan, zombies, ogre, bikes, finish arch, podium, team car, buildings, scenery, farm animals, the Pedal Strike robots, mech, drone and so on) and the home icons in `assets/icons/`. The models generated on Meshy's free plan are licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) and credited here to **Meshy** (https://www.meshy.ai); those made on a paid plan need no attribution. The repository does not record which model came from which plan, so all are credited.
+**Generated with [Meshy](https://www.meshy.ai) for Spindro**: the models in `assets/3d/meshy/` (cyclist, fan, zombies, ogre, bikes, finish arch, podium, team car, buildings, scenery, farm animals, the Pedal Strike robots, mech, drone and so on). The models generated on Meshy's free plan are licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) and credited here to **Meshy** (https://www.meshy.ai); those made on a paid plan need no attribution. The repository does not record which model came from which plan, so all are credited.
 
 **Everything else** (code, icons, the games' design and their generated sounds) is original and AGPL-3.0.

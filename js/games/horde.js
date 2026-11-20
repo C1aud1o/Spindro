@@ -166,7 +166,7 @@ export class Horde {
     }
     // gemma: gioiello Kenney (Platformer Kit, CC0) con un alone che il bagliore fa brillare
     const jb = new THREE.Box3().setFromObject(this.m.jewel.scene); this.gemScale = 0.75 / ((jb.max.y - jb.min.y) || 1);
-    this.gemGlow = new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: '#5fd4ff', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.8 });
+    this.gemGlow = new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: '#5fd4ff', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.4 });
     // i nemici sono scuri sull'asfalto: un po' di luce propria li fa leggere (la sagoma si stacca dalla strada)
     // (i materiali sono condivisi con gli altri giochi: alla chiusura si rimettono come prima)
     this.litMats = [...Object.values(this.kits).map((k) => k.material), ...Object.entries(this.farKits).map(([type, k]) => enemyMaterial(k.tpl.map, ENEMIES[type].h, { far: true }))];
@@ -596,7 +596,7 @@ export class Horde {
     pair.forEach((def, i) => {
       const x = (sides[i] ? 1 : -1) * 2.5; // fra i due portali resta un varco: chi passa in mezzo non attraversa i pilastri
       const group = new THREE.Group();
-      const panel = new THREE.Mesh(new THREE.PlaneGeometry(width - 0.5, 2.9), new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+      const panel = new THREE.Mesh(new THREE.PlaneGeometry(width - 0.5, 2.9), new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0.07, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
       panel.position.y = 1.7; group.add(panel);
       const frame = new THREE.Group();
       P.info.parts.forEach((pt, j) => { frame.add(new THREE.Mesh(pt.geo, this.portalMats[j])); });
@@ -667,7 +667,7 @@ export class Horde {
         mesh.core.visible = s.self && w.rate <= 8; // il nucleo bianco solo per i colpi lenti del giocatore: meno disegni
       }
       // vampata alla bocca dell'arma (per gli alleati solo ogni tanto)
-      if (s.self || this.rnd() < 0.4) this.fx.spawn(s.x + Math.sin(ang) * 1.15, 1.5, s.z + Math.cos(ang) * 1.15, { tex: w.splash ? 'fire' : 'muzzle', size: w.splash ? 1.5 : 1.1, life: 0.08, grow: 0.6, color: od ? '#9eeeff' : null });
+      if (s.self || this.rnd() < 0.4) this.fx.spawn(s.x + Math.sin(ang) * 1.15, 1.5, s.z + Math.cos(ang) * 1.15, { tex: w.splash ? 'fire' : 'muzzle', size: w.splash ? 1.1 : 0.8, life: 0.08, grow: 0.6, color: od ? '#9eeeff' : null });
       if (s.self) this.audio.sfx(w.splash ? 'rocket' : w.rate > 8 ? 'mg' : w.pierce ? 'laser' : 'shot');
       else if (this.rnd() < 0.35) holder.r.root.userData.kick = 0.1;
     }
@@ -738,7 +738,7 @@ export class Horde {
   addGem(x, z, trail = false) {
     const mesh = new THREE.Group();
     const jewel = this.m.jewel.scene.clone(true); jewel.scale.setScalar(this.gemScale); mesh.add(jewel);
-    const halo = new THREE.Sprite(this.gemGlow); halo.scale.setScalar(1.6); halo.position.y = 0.35; mesh.add(halo);
+    const halo = new THREE.Sprite(this.gemGlow); halo.scale.setScalar(1.2); halo.position.y = 0.35; mesh.add(halo);
     mesh.position.set(x, 0.6, z);
     this.stage.scene.add(mesh); this.gems.push({ mesh, halo, t: this.rnd() * 3, trail });
   }

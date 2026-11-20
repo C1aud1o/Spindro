@@ -13,7 +13,7 @@ QUATTRO MODI DI PEDALARE
 Cambi con i pulsanti a schermo, la tastiera o telecomandi Bluetooth, oppure con uno Zwift Click (sperimentale: solo i tasti + e − sono stati provati su hardware vero; riconosciuti anche Zwift Play e Zwift Ride, e una verifica tasti mostra cosa riceve l'app).
 
 GIOCHI CHE SI GIOCANO CON LE GAMBE
-Sei giochi 3D che sono allenamenti: Breakaway (una corsa a tappe), Horde Run, Pedal Strike, Slipstream, Updraft e Feed Zone. Ognuno è una sessione da 5, 10 o 20 minuti in percentuale della tua FTP, con tre livelli e un solo menu. Le salite di Breakaway arrivano sul rullo come pendenza reale.
+Sei giochi 3D che sono allenamenti: Pedal Strike, Horde Run, Slipstream, Breakaway (una corsa a tappe), Updraft e Feed Zone. Ognuno è una sessione da 5, 10 o 20 minuti in percentuale della tua FTP, con tre livelli e un solo menu. Le salite di Breakaway arrivano sul rullo come pendenza reale.
 
 ALLENAMENTI STRUTTURATI
 • Allenamenti ERG calcolati sulla tua FTP (sweet spot, soglia, VO2max, piramide, 30/30…) e test FTP a rampa.

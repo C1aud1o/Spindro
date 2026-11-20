@@ -13,7 +13,7 @@ FOUR WAYS TO RIDE
 Shift with on-screen buttons, keyboard or Bluetooth remotes, or a Zwift Click (experimental: only its + and − keys were tried on real hardware; Zwift Play and Zwift Ride are also recognised, and a key check shows what the app receives).
 
 GAMES THAT USE YOUR LEGS
-Six 3D games that are workouts: Breakaway (a stage race), Horde Run, Pedal Strike, Slipstream, Updraft and Feed Zone. Each is a 5, 10 or 20 minute session in percent of your FTP, with three levels and one shared menu. Climbs in Breakaway arrive on the trainer as real gradient.
+Six 3D games that are workouts: Pedal Strike, Horde Run, Slipstream, Breakaway (a stage race), Updraft and Feed Zone. Each is a 5, 10 or 20 minute session in percent of your FTP, with three levels and one shared menu. Climbs in Breakaway arrive on the trainer as real gradient.
 
 STRUCTURED TRAINING
 • ERG workouts computed on your FTP (sweet spot, threshold, VO2max, pyramid, 30/30…) and a ramp FTP test.

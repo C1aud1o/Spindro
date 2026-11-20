@@ -55,7 +55,7 @@ Each folder has the original `License.txt`. **Thank you, Kenney and Quaternius.*
 
 ## Models generated for the project
 
-The models in `assets/3d/meshy/` (buildings, vehicles, characters and scenery) and the 3D icons of the home screen (`assets/icons/`) were generated for Spindro with the AI tool **Meshy** (https://www.meshy.ai). They are used under Meshy's terms of service and the terms of the plan used: models generated on Meshy's free plan are licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) and are credited to **Meshy** (https://www.meshy.ai); models made on a paid plan need no attribution. Which model came from which plan is not recorded, so all are credited here. The generation scripts are in `scripts/meshy/` (the files that come out of them go through `shrink.py` / `decimate.py`; the characters get a skeleton in the game, `js/games/kit/autorig.js`).
+The models in `assets/3d/meshy/` (buildings, vehicles, characters and scenery) were generated for Spindro with the AI tool **Meshy** (https://www.meshy.ai). They are used under Meshy's terms of service and the terms of the plan used: models generated on Meshy's free plan are licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) and are credited to **Meshy** (https://www.meshy.ai); models made on a paid plan need no attribution. Which model came from which plan is not recorded, so all are credited here. The generation scripts are in `scripts/meshy/` (the files that come out of them go through `shrink.py` / `decimate.py`; the characters get a skeleton in the game, `js/games/kit/autorig.js`).
 
 ## Other resources
 

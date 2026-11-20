@@ -13,7 +13,7 @@ VIER ARTEN ZU FAHREN
 Geschaltet wird per Bildschirmtasten, Tastatur, Bluetooth-Fernbedienung oder Zwift Click (experimentelle Unterstützung; Zwift Play und Zwift Ride werden ebenfalls erkannt).
 
 SPIELE, DIE MAN MIT DEN BEINEN SPIELT
-Sechs 3D-Spiele, die Trainings sind: Breakaway (ein Etappenrennen), Horde Run, Pedal Strike, Slipstream, Updraft und Feed Zone. Jedes ist eine Einheit von 5, 10 oder 20 Minuten in Prozent deiner FTP, mit drei Stufen und einem gemeinsamen Menü. Die Anstiege in Breakaway kommen als echte Steigung am Trainer an.
+Sechs 3D-Spiele, die Trainings sind: Pedal Strike, Horde Run, Slipstream, Breakaway (ein Etappenrennen), Updraft und Feed Zone. Jedes ist eine Einheit von 5, 10 oder 20 Minuten in Prozent deiner FTP, mit drei Stufen und einem gemeinsamen Menü. Die Anstiege in Breakaway kommen als echte Steigung am Trainer an.
 
 STRUKTURIERTES TRAINING
 • ERG-Workouts auf Basis deiner FTP (Sweetspot, Schwelle, VO2max, Pyramide, 30/30 …) und Stufentest zur FTP.

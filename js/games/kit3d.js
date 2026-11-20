@@ -10,9 +10,9 @@ import { mergeGeometries } from '../../vendor/three/addons/utils/BufferGeometryU
 // bagliore (bloom): colpi, luci, gemme e lampi brillano. Si spegne da solo se il telefono fatica.
 export const glowSetting = { get on() { return localStorage.getItem('gameGlow') !== '0'; }, set on(v) { localStorage.setItem('gameGlow', v ? '1' : '0'); } };
 
-// Parametri del bagliore, uguali per tutti i giochi (un gioco non li cambia: se una scena brilla troppo si abbassa la
+// Parametri del bagliore, uguali per tutti i giochi, tenuti bassi (soglia alta, forza ridotta): solo le vere sorgenti sfiorano la soglia. Un gioco non li cambia: se una scena brilla troppo si abbassa la
 // luminosità dell'oggetto, non si alza la soglia). Misurati con tests QA: lo spazio lineare delle superfici illuminate sta sotto 1.1.
-export const BLOOM = { threshold: 1.2, strength: 0.6, radius: 0.3 };
+export const BLOOM = { threshold: 1.5, strength: 0.28, radius: 0.2 };
 
 export { THREE };
 // caricamento con cache e decoder meshopt (js/games/kit/loader.js)
@@ -312,7 +312,7 @@ export function tracer(color = '#fff3a0') {
   }
   // nucleo bianco quasi puro + alone colorato (due passaggi additivi)
   const group = new THREE.Group();
-  const glow = new THREE.Mesh(tracerGeo, new THREE.MeshBasicMaterial({ map: tracerTexture(false), color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+  const glow = new THREE.Mesh(tracerGeo, new THREE.MeshBasicMaterial({ map: tracerTexture(false), color, opacity: 0.6, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
   const core = new THREE.Mesh(tracerGeo, new THREE.MeshBasicMaterial({ map: tracerTexture(true), color: '#ffffff', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
   glow.scale.set(0.42, 1, 1.7); core.scale.set(0.12, 1, 1.4); core.position.z = 0.1;
   group.add(glow, core); group.glow = glow; group.core = core;
@@ -358,10 +358,10 @@ export class Effects {
     s.material.blending = additive ? THREE.AdditiveBlending : THREE.NormalBlending; s.material.needsUpdate = true;
     s.material.rotation = Math.random() * Math.PI * 2;
     s.position.set(x, y, z); s.scale.setScalar(size);
-    this.list.push({ s, t: 0, life, vx, vy, vz, size, grow, spin, alpha: additive ? 1 : 0.75 });
+    this.list.push({ s, t: 0, life, vx, vy, vz, size, grow, spin, alpha: additive ? 0.6 : 0.7 });
   }
   explode(x, y, z, size = 1) {
-    this.spawn(x, y, z, { tex: 'flash', size: 2.6 * size, life: 0.18, grow: 0.8, spin: 2 });
+    this.spawn(x, y, z, { tex: 'flash', size: 1.8 * size, life: 0.16, grow: 0.7, spin: 2 });
     this.spawn(x, y, z, { tex: 'fire', size: 1.6 * size, life: 0.45, grow: 1.6, spin: 1.5 });
     for (let i = 0; i < 6; i++) this.spawn(x, y, z, { tex: 'spark', size: 0.45 * size, life: 0.45 + Math.random() * 0.2, vx: (Math.random() - 0.5) * 10 * size, vy: 2 + Math.random() * 6 * size, vz: (Math.random() - 0.5) * 10 * size, grow: 0.1, spin: 6 });
     for (let i = 0; i < 3; i++) this.spawn(x + (Math.random() - 0.5), y + 0.2, z + (Math.random() - 0.5), { tex: 'smoke', size: 1.3 * size, life: 1.1, vy: 1.1, grow: 1.4, additive: false, spin: (Math.random() - 0.5) * 1.5 });

@@ -302,7 +302,7 @@ export class Planata {
     }
     this.filmGeo = new THREE.CircleGeometry(RING_R - 0.4, 28);
     this.beamGeo = new THREE.CylinderGeometry(0.09, 0.09, 1, 5, 1, true).translate(0, 0.5, 0);
-    this.beamMat = new THREE.MeshBasicMaterial({ color: '#fff2c0', transparent: true, opacity: 0.32, depthWrite: false, blending: THREE.AdditiveBlending });
+    this.beamMat = new THREE.MeshBasicMaterial({ color: '#fff2c0', transparent: true, opacity: 0.2, depthWrite: false, blending: THREE.AdditiveBlending });
     // stella: moneta d'oro piatta con un anello più chiaro, grande abbastanza da leggersi
     this.coinGeo = new THREE.CylinderGeometry(0.75, 0.75, 0.16, 14).rotateX(Math.PI / 2);
     this.coinMat = new THREE.MeshBasicMaterial({ color: '#ffcf3a' });
@@ -315,8 +315,8 @@ export class Planata {
     this.stormGeo = new THREE.IcosahedronGeometry(1, 1); this.stormMat = new THREE.MeshToonMaterial({ gradientMap: this.groundMat.gradientMap, color: '#4b4f66', emissive: '#14162a' });
     this.boltGeo = new THREE.ConeGeometry(0.4, 2.6, 4).rotateX(Math.PI); this.boltMat = new THREE.MeshBasicMaterial({ color: '#fff06a' });
     // termica: colonna luminosa che sale
-    this.thermGeo = new THREE.CylinderGeometry(3.6, 3.6, 40, 20, 1, true); this.thermMat = new THREE.MeshBasicMaterial({ color: '#ffe7a0', transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
-    this.thermRingGeo = new THREE.TorusGeometry(3.4, 0.14, 6, 28).rotateX(Math.PI / 2); this.thermRingMat = new THREE.MeshBasicMaterial({ color: '#fff3c0', transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false });
+    this.thermGeo = new THREE.CylinderGeometry(3.6, 3.6, 40, 20, 1, true); this.thermMat = new THREE.MeshBasicMaterial({ color: '#ffe7a0', transparent: true, opacity: 0.06, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+    this.thermRingGeo = new THREE.TorusGeometry(3.4, 0.14, 6, 28).rotateX(Math.PI / 2); this.thermRingMat = new THREE.MeshBasicMaterial({ color: '#fff3c0', transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false });
     // raffica: strisce di vento chiare
     this.gustGeo = new THREE.PlaneGeometry(0.16, 9).rotateX(-Math.PI / 2); this.gustMat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide });
     // pista: asfalto, strisce e luci
@@ -517,7 +517,7 @@ export class Planata {
   addRing(x, y, z, seg, ta) {
     const g = new THREE.Group(); const kind = seg.kind;
     const ringMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true });
-    const filmMat = new THREE.MeshBasicMaterial({ color: '#ffe27a', transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+    const filmMat = new THREE.MeshBasicMaterial({ color: '#ffe27a', transparent: true, opacity: 0.09, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
     const ring = new THREE.Mesh(this.ringGeos[kind], ringMat); const film = new THREE.Mesh(this.filmGeo, filmMat);
     const ground = Math.max(terrainH(x, z), 0);
     const beam = new THREE.Mesh(this.beamGeo, this.beamMat); beam.scale.y = Math.max(0.1, y - RING_R - ground); beam.position.set(0, ground - y, 0);
@@ -780,9 +780,9 @@ export class Planata {
       const gk = it.group;
       if (it.kind === 'ring') {
         const k = it.flash > 0 ? (it.flash = Math.max(0, it.flash - dt * 3.4)) : 0;
-        if (!it.done) { it.ring.rotation.z = this.t * 0.8; it.filmMat.opacity = 0.14 + 0.06 * Math.sin(this.t * 4 + it.z); } else {
+        if (!it.done) { it.ring.rotation.z = this.t * 0.8; it.filmMat.opacity = 0.09 + 0.04 * Math.sin(this.t * 4 + it.z); } else {
           const s = it.hit ? 1 + (1 - k) * 0.35 : 1; it.ring.scale.setScalar(s); it.film.scale.setScalar(s);
-          it.filmMat.opacity = (it.hit ? 0.4 : 0.25) * k; it.ringMat.opacity = clamp(k * 1.4, 0, 1); if (it.hit) it.ringMat.color.setScalar(0.4 + k * 0.6);
+          it.filmMat.opacity = (it.hit ? 0.25 : 0.15) * k; it.ringMat.opacity = clamp(k * 1.4, 0, 1); if (it.hit) it.ringMat.color.setScalar(0.4 + k * 0.6);
           if (k <= 0) gk.visible = false;
         }
       } else if (it.kind === 'coin') { gk.rotation.y = this.t * 3.2 + it.z; if (it.done) { it.fade = Math.min(1, (it.fade || 0) + dt * 6); gk.scale.setScalar(Math.max(0.001, 1 - it.fade)); } }

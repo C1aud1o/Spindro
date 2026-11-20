@@ -492,12 +492,12 @@ export class Strike3D {
     }
     if (def.hover) { // disco volante sotto i piedi: tiene la distanza senza camminare
       const d = new THREE.Mesh(this.discGeo, this.discMat); d.castShadow = false; scene.add(d);
-      const g = new THREE.Sprite(new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: '#ffb347', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.8 }));
+      const g = new THREE.Sprite(new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: '#ffb347', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.45 }));
       g.scale.set(2.4, 1.2, 1); scene.add(g); e.disc = d; e.discGlow = g; e.extra.push(d, g);
     }
     if (def.shielded) { e.dome = this.makeDome('#5cc8ff'); e.dome.scale.set(1.25, 2.1, 1.25); scene.add(e.dome); e.extra.push(e.dome); }
     // entrata: lampo di teletrasporto e crescita in 0,3 s (lontano, nella foschia)
-    this.blast.fx.spawn(x, 1.2, z, { tex: 'flash', size: 3.5, life: 0.25, color: type === 'shield' ? '#5cc8ff' : '#ffd9a0' });
+    this.blast.fx.spawn(x, 1.2, z, { tex: 'flash', size: 2.4, life: 0.22, color: type === 'shield' ? '#5cc8ff' : '#ffd9a0' });
     this.foes.push(e);
     return e;
   }
@@ -582,7 +582,7 @@ export class Strike3D {
     const pr = new Cyclist(this.allyTpl, makeKit(['#4de3ff', '#ffd166', '#7dff6a', '#c77dff', '#ff922b'][this.rescued % 5], this.rescued + 3), { shadows: false });
     pr.standUp(false); pr.root.scale.setScalar(0.95); pr.root.rotation.y = -0.6; pr.pose(0.01, 0, 0, { wave: true });
     root.add(pr.root);
-    const beacon = new THREE.Sprite(new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: '#7dff6a', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.6 }));
+    const beacon = new THREE.Sprite(new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: '#7dff6a', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.35 }));
     beacon.scale.setScalar(3.4); beacon.position.y = 1.4; root.add(beacon);
     root.position.set(x, 0, z); root.scale.setScalar(0.001); this.stage.scene.add(root);
     this.cages.push({ root, cage, pr, beacon, x, lane, z, open: false, t: 0 });
@@ -595,7 +595,7 @@ export class Strike3D {
     const model = kind === 'heart' ? rigidModel(this.m.heart, 1.0) : rigidModel(this.m.crate, 1.0);
     model.position.y = 0.6; root.add(model);
     if (kind !== 'heart') model.userData.mats.forEach((m) => m.userData.u.tint.value.set(col).lerp(new THREE.Color('#ffffff'), 0.45));
-    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: col, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.85 }));
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: col, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.45 }));
     glow.scale.setScalar(3); glow.position.y = 1.1; root.add(glow);
     const ring = new THREE.Mesh(this.teleGeo, new THREE.MeshBasicMaterial({ map: fxTexture('circle_05'), color: col, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
     ring.scale.setScalar(2.2); ring.position.y = 0.05; root.add(ring);
@@ -1478,7 +1478,7 @@ export class Strike3D {
     const x = this.px + 20 + this.rnd() * 30; const y = 10 + this.rnd() * 8; const z = (this.rnd() - 0.5) * 30;
     const col = ['#ff4d9d', '#4de3ff', '#ffd166', '#7dff6a', '#c77dff'][Math.floor(this.rnd() * 5)];
     for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2; this.blast.fx.spawn(x, y, z, { tex: 'spark', size: 0.9, life: 1.1, vx: 0, vy: Math.sin(a) * 7, vz: Math.cos(a) * 7, grow: 0, color: col }); }
-    this.blast.fx.spawn(x, y, z, { tex: 'flash', size: 6, life: 0.3, color: col });
+    this.blast.fx.spawn(x, y, z, { tex: 'flash', size: 4, life: 0.28, color: col });
     this.audio.sfx('boom');
   }
 
