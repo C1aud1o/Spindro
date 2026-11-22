@@ -116,7 +116,7 @@ test('Feed Zone: menu (− durata, + livello, pressione lunga inizia) e comandi:
   expect(r.nudged).toBeLessThan(-1); expect(r.moved, 'tenuto premuto: si muove di continuo').toBeGreaterThan(2);
 });
 
-test('Feed Zone: chi smette di pedalare va in pausa; ciclista ≥ 14 %, soigneur ≥ 8 % dello schermo a 390×780', async ({ page }) => {
+test('Feed Zone: chi smette di pedalare va in pausa; ciclista 7–16 %, soigneur ≥ 4 % dello schermo a 390×780', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 780 });
   await openGame(page);
   const r = await page.evaluate(() => {
@@ -137,10 +137,10 @@ test('Feed Zone: chi smette di pedalare va in pausa; ciclista ≥ 14 %, soigneur
     return { rider, guy, ball, fieldFar: Math.abs(wTop) / Wd, paused, still: Math.abs(t1 - t0) < 3, st, lives: g.lives, resumed: !g.paused && g.el > t1 };
   });
   console.log(`SCHERMO ciclista ${(r.rider * 100).toFixed(1)} %, soigneur lontano ${(r.guy * 100).toFixed(1)} %, borraccia ${(r.ball * 100).toFixed(1)} %, campo in fondo ${(r.fieldFar * 100).toFixed(0)} % della larghezza`);
-  expect(r.rider, 'ciclista / altezza schermo').toBeGreaterThanOrEqual(0.14);
-  expect(r.guy, 'soigneur più lontano / altezza schermo').toBeGreaterThanOrEqual(0.08);
-  expect(r.ball, 'borraccia / altezza schermo').toBeGreaterThanOrEqual(0.08);
-  expect(r.fieldFar, 'il campo riempie la larghezza').toBeGreaterThanOrEqual(0.7);
+  expect(r.rider, 'ciclista / altezza schermo').toBeGreaterThanOrEqual(0.07); expect(r.rider, 'il ciclista resta una figura piccola').toBeLessThanOrEqual(0.16);
+  expect(r.guy, 'soigneur più lontano / altezza schermo').toBeGreaterThanOrEqual(0.04);
+  expect(r.ball, 'borraccia / altezza schermo').toBeGreaterThanOrEqual(0.04);
+  expect(r.fieldFar, 'il campo sta tutto in larghezza, senza riempirla fino ai bordi').toBeGreaterThanOrEqual(0.5);
   expect(r.paused).toBe(true); expect(r.still, 'il tempo di gioco si ferma').toBe(true);
   expect(r.st).toBe('play'); expect(r.lives).toBeGreaterThan(0); expect(r.resumed, 'riprende appena si pedala').toBe(true);
 });

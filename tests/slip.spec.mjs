@@ -115,7 +115,7 @@ test('Slipstream: il corridore davanti si prende solo nella sua corsia; + / − 
   expect(r.lane).toBe(r.want); expect(r.caught1, 'cambiata la corsia, lo prende').toBeGreaterThanOrEqual(1); expect(r.group).toBeGreaterThanOrEqual(1);
 });
 
-test('Slipstream: chi smette di pedalare va in pausa e non perde; ciclista ≥ 14 % e corridore davanti ≥ 8 % dello schermo', async ({ page }) => {
+test('Slipstream: chi smette di pedalare va in pausa e non perde; ciclista 7–16 % e corridore davanti ≥ 4 % dello schermo', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 780 });
   await openSlip(page);
   const r = await page.evaluate(() => {
@@ -136,8 +136,8 @@ test('Slipstream: chi smette di pedalare va in pausa e non perde; ciclista ≥ 1
     p = 150; for (let i = 0; i < 2 * 30; i++) g.update(1 / 30);
     return { player, target, gap, paused, still: Math.abs(t1 - t0) < 3, st, resumed: !g.paused && g.el > t1, score };
   });
-  expect(r.player, 'ciclista / altezza schermo').toBeGreaterThanOrEqual(0.14);
-  expect(r.target, `corridore a ${Math.round(r.gap)} m / altezza schermo`).toBeGreaterThanOrEqual(0.08);
+  expect(r.player, 'ciclista / altezza schermo').toBeGreaterThanOrEqual(0.07); expect(r.player, 'il ciclista resta una figura piccola').toBeLessThanOrEqual(0.16);
+  expect(r.target, `corridore a ${Math.round(r.gap)} m / altezza schermo`).toBeGreaterThanOrEqual(0.04);
   expect(r.paused).toBe(true); expect(r.still, 'il tempo di gioco si ferma').toBe(true);
   expect(r.st).toBe('play'); expect(r.resumed, 'riprende appena si pedala').toBe(true);
 });

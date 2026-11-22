@@ -21,22 +21,22 @@ test.afterEach(async ({ page }) => {
   expect(page.errors, 'errori JavaScript non gestiti nella pagina').toEqual([]);
 });
 
-test('Breakaway: si carica, parte, il direttore annuncia, + / − cambiano marcia', async ({ page }) => {
+test('Breakaway: si carica, parte, il direttore annuncia, + / − cambiano corsia, il rullo resta in ERG', async ({ page }) => {
   await page.click('#openGame');
   await page.click('[data-game=racer]');
   await expect.poll(() => page.evaluate(() => window.__game?.state), { timeout: 120_000 }).toBe('menu');
   await page.evaluate(() => { window.__game.menu.age = 1; window.__game.menu.start(); });
   await expect.poll(() => page.evaluate(() => window.__game.state), { timeout: 60_000 }).toMatch(/countdown|race/);
-  const gear0 = await page.locator('#gearNum').textContent();
-  await page.evaluate(() => window.__game.input(1));
-  await expect(page.locator('#gearNum')).not.toHaveText(gear0);
   await expect.poll(() => page.evaluate(() => window.__game.state), { timeout: 60_000 }).toBe('race');
+  const lane0 = await page.evaluate(() => window.__game.lane);
+  await page.evaluate(() => window.__game.input(1));
+  await expect.poll(() => page.evaluate(() => window.__game.lane), { timeout: 8000 }).not.toBe(lane0);
   // la tappa è a tempo e ha momenti con un obiettivo; il primo evento arriva subito
   await expect.poll(() => page.evaluate(() => window.__game.race.log.length), { timeout: 30_000 }).toBeGreaterThan(0);
   expect(await page.evaluate(() => window.__game.race.tl.moments.map((m) => m.kind))).toEqual(expect.arrayContaining(['start', 'break', 'sprint', 'climb', 'final']));
-  // la pendenza della tappa arriva al rullo: in salita il gioco imposta un grado positivo
+  // in salita il rullo resta in ERG sul bersaglio (mai pendenza): l'ultimo comando è il bersaglio mostrato
   await page.evaluate(() => { const g = window.__game; g.s = g.climbs[Math.floor(g.climbs.length / 2)]; });
-  await expect.poll(() => page.evaluate(() => window.__game.sentGrade), { timeout: 30_000 }).toBeGreaterThan(2);
+  await expect.poll(async () => { const t = await page.evaluate(() => window.__game.stripInfo?.()?.target); const l = await page.evaluate(() => { const c = window.__fakeBle?.state.controlLog.filter((b) => b[0] === 0x05).pop(); return c ? c[1] | (c[2] << 8) : null; }); return t > 0 && l === t; }, { timeout: 30_000 }).toBe(true);
   // arrivo, stelle e podio
   await page.evaluate(() => { const g = window.__game; g.s = g.length - 1; });
   await expect.poll(() => page.evaluate(() => window.__game.state), { timeout: 60_000 }).toBe('finishCam');
@@ -89,9 +89,9 @@ test('Pedal Strike: allenamento a tempo, + / − cambiano corsia, scudo del boss
   expect(await page.evaluate(() => window.__game.lane)).toBe(0);
   await page.evaluate(() => { window.__game.input(-1); window.__game.input(-1); });
   expect(await page.evaluate(() => window.__game.lane)).toBe(2);
-  // negli sforzi il rullo riceve una pendenza più dura
+  // negli sforzi il bersaglio mostrato sale e il rullo resta in ERG (mai pendenza)
   await page.evaluate(() => window.__game.skip('effort'));
-  await expect.poll(() => page.evaluate(() => window.__game.sentGrade), { timeout: 30_000 }).toBeGreaterThan(2);
+  await expect.poll(() => page.evaluate(() => window.__game.stripInfo?.()?.kind), { timeout: 30_000 }).toBe('effort');
   // boss finale: lo scudo cede solo tenendo la potenza; poi si abbatte
   await page.evaluate(() => { const g = window.__game; g.god = true; g.skip('boss'); });
   await expect.poll(() => page.evaluate(() => window.__game.boss?.ready === true), { timeout: 60_000 }).toBe(true);
