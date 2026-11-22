@@ -471,7 +471,7 @@ export class Strike3D {
   // ---------- nemici ----------
   spawnFoe(type, x, lane, extra = {}) {
     const def = FOES[type]; const z = LANES[lane];
-    const hpK = 1 + 0.12 * this.diff + (this.coach?.adapt || 0);
+    const hpK = 1 + 0.12 * this.diff;
     const e = { type, def, x, lane, z, hp: def.hp * hpK, maxHp: 0, dead: false, deadT: 0, flash: 0, t: this.rnd() * 3, born: 0, fireT: 0.6 + this.rnd() * 0.8, tele: 0, size: def.size || 1, extra: [], ...extra };
     e.maxHp = e.hp;
     const scene = this.stage.scene;

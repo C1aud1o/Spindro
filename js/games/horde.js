@@ -15,7 +15,7 @@ import { t, fmtDec } from '../i18n.js';
 import { GameMenu, ResultsView } from './kit/menu.js';
 import { makeRandom } from './kit/rng.js';
 import { SONGS } from './audio.js';
-import { DURATIONS, LEVELS, COOL_S, buildPlan, planFromWorkout, segAt, composAt, targetW, targetPct, Adapter, starsFor, nextStarHint } from './horde-plan.js';
+import { DURATIONS, LEVELS, COOL_S, buildPlan, planFromWorkout, segAt, composAt, targetW, targetPct, starsFor, nextStarHint } from './horde-plan.js';
 import { WorkoutClock, BandMeter, workoutStars } from './kit/workout-plan.js';
 
 const M = 'assets/3d/meshy';
@@ -245,7 +245,7 @@ export class Horde {
     this.pw = 0; this.sinceSpawn = 0; this.gemAcc = 0; this.gemT = 0; this.popN = 0; // niente eredità dal menu o dalla partita prima: la potenza di allora dipende dal tempo reale
     this.paused = false; this.pauseT = 0; this.startT = 0; this.calm = 0; this.finished = false; this.result = null;
     this.nextSize = 0; this.trailT = 5; this.pressure = 1; this.lastHitT = 0; this.ko = 0; this.effortsDone = 0; this.effortsTotal = 0; this.bossKilled = 0; this.bossSpawned = new Set(); this.passed = 0;
-    this.adapt = new Adapter(); this.evLog = []; this.sprinting = false; this.sentGrade = undefined; this.msgs.clear();
+    this.evLog = []; this.sprinting = false; this.sentGrade = undefined; this.msgs.clear();
     this.player = this.makeRider('#d9ff3d', 0, 0);
     this.fireT = 0; this.camInit = false; this.frame = 0; this.fov = 60;
     this.scenery.update(this.z, true);
@@ -419,7 +419,7 @@ export class Horde {
     const prev = this.seg; const seg = this.plan.segs[i]; const first = this.segIdx < 0;
     if (!first) this.judge(prev);
     this.segIdx = i; this.seg = seg; seg.inT = 0; seg.okT = 0;
-    const W = targetW(seg, this.ftp, this.level.k, this.adapt.value, this.el);
+    const W = targetW(seg, this.ftp, this.level.k, this.el);
     const wc = (composId) => t(`games.horde.c.${composId}`);
     if (this.wk && seg.wave >= 1 && seg.wave <= this.plan.N && seg.wave !== prev?.wave && seg.kind !== 'pace') { this.ev('wave'); this.hudWave = seg.wave; }
     if (seg.kind === 'warm' && !first && prev?.kind === 'warm') { /* riscaldamento lungo spezzato in ondate: un solo annuncio */ }
@@ -445,8 +445,6 @@ export class Horde {
       this.say(t(seg.kind === 'sprint' ? 'games.horde.sprintOk' : 'games.horde.effortOk'), '#7dff6a', 1.8, true, 2); this.prog('sprintsWon', seg.kind === 'sprint' ? 1 : 0, 20);
     } else this.say(t('games.horde.effortKo'), '#ffb84d', 1.6, false, 1);
     this.ev(ok ? 'effortOk' : 'effortKo');
-    const moved = this.wk ? 0 : this.adapt.report(ok); // con un allenamento i watt li decide lui
-    if (moved) this.say(t(moved < 0 ? 'games.horde.adaptDown' : 'games.horde.adaptUp'), moved < 0 ? '#4de3ff' : '#ffd34d', 2.2, false, 2);
   }
 
   maybeBoss(seg) {
@@ -460,7 +458,7 @@ export class Horde {
     this.bossAt = { t: at, wave: seg.wave, seg, sprint };
   }
   spawnBoss(b) {
-    const pct = targetPct(b.seg, this.level.k, this.adapt.value);
+    const pct = targetPct(b.seg, this.level.k);
     const hp = Math.round(0.2 * this.firepower(pct) * (BOSS_RANGE / (this.v + ENEMIES.keeper.speed)));
     const e = this.spawnEnemy('keeper', 0, this.z + SPAWN_Z, Math.max(60, hp)); e.hp = e.maxHp = Math.max(60, hp);
     this.bossAlive = true; this.audio.sfx('alarm'); this.ev('boss');
@@ -470,7 +468,7 @@ export class Horde {
   startCool() {
     this.clearHorde();
     this.finishResult();
-    this.say(t('games.horde.say.cool'), SEG_COLOR.cool, 3, true, 3, t('games.horde.say.coolSub', { w: targetW(this.seg, this.ftp, 0, 0) }));
+    this.say(t('games.horde.say.cool'), SEG_COLOR.cool, 3, true, 3, t('games.horde.say.coolSub', { w: targetW(this.seg, this.ftp, 0) }));
     this.audio.sfx('win');
   }
 
@@ -504,7 +502,7 @@ export class Horde {
     const ftp = this.ftp;
     // senza rullo la demo simula 0,8 × FTP con scatti (e un po' meno nel recupero)
     const demo = !connected;
-    const demoP = demo && this.wk && this.seg ? targetW(this.seg, ftp, 0, 0, this.el) : demo ? ftp * (this.state === 'play' && this.seg?.kind === 'rest' ? 0.58 : 0.8) * (((this.t % 40) > 31 && this.seg?.kind !== 'rest') ? 1.6 : 1) : 0;
+    const demoP = demo && this.wk && this.seg ? targetW(this.seg, ftp, 0, this.el) : demo ? ftp * (this.state === 'play' && this.seg?.kind === 'rest' ? 0.58 : 0.8) * (((this.t % 40) > 31 && this.seg?.kind !== 'rest') ? 1.6 : 1) : 0;
     this.power = connected ? st.power || 0 : demoP;
     this.cadence = connected ? st.cadence || 0 : 88;
     this.pw += (this.power - this.pw) * Math.min(1, dt / 1.2);
@@ -532,7 +530,7 @@ export class Horde {
     const idx = this.plan.segs.indexOf(seg);
     if (idx !== this.segIdx) { this.enterSeg(idx); seg = this.seg; }
     if (this.el >= this.total) return this.finish();
-    const tgt = targetW(seg, ftp, this.level.k, this.adapt.value, this.el);
+    const tgt = targetW(seg, ftp, this.level.k, this.el);
     seg.inT += dt;
     if (this.wk) this.band.add(dt, this.pw, tgt, this.el - seg.stepStart);
     if ((seg.kind === 'effort' || seg.kind === 'sprint') && seg.inT > (seg.kind === 'sprint' ? 2 : 4) && this.pw >= 0.92 * tgt) seg.okT += dt;
@@ -949,7 +947,7 @@ export class Horde {
     const col = SEG_COLOR[seg.kind]; const by = y0 + 22; const bh2 = 44;
     ctx.fillStyle = 'rgba(8,10,26,.72)'; rrect(ctx, pad - 4, by, W - 2 * pad + 8, bh2, 12); ctx.fill();
     ctx.fillStyle = col; rrect(ctx, pad - 4, by, 7, bh2, 3); ctx.fill();
-    const tw = this.tgtW || targetW(seg, this.ftp, this.level.k, this.adapt.value, this.el);
+    const tw = this.tgtW || targetW(seg, this.ftp, this.level.k, this.el);
     // con un allenamento: nome del passo e tempo che manca alla fine del passo (la striscia dell'app è nascosta)
     const left = Math.max(0, Math.ceil((this.wk ? seg.stepEnd : seg.t1) - this.el));
     hudText(ctx, this.wk ? (seg.label || t(`games.wk.seg.${seg.wkKind}`)) : t(`games.horde.seg.${seg.kind}`), pad + 12, by + 29, { size: 21, color: col, maxW: W * 0.34 });

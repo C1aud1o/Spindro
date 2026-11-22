@@ -17,7 +17,7 @@ import { t } from '../i18n.js';
 import { SONGS } from './audio.js';
 import { GameMenu, ResultsView } from './kit/menu.js';
 import { makeRandom } from './kit/rng.js';
-import { DURATIONS, LEVELS, COOL_S, buildPlan, planFromWorkout, WARM_BRIDGE, segAt, targetW, closingSpeed, HOLD_PCT, DROP_AFTER, Adapter, starsFor, nextStarHint } from './slip-plan.js';
+import { DURATIONS, LEVELS, COOL_S, buildPlan, planFromWorkout, WARM_BRIDGE, segAt, targetW, closingSpeed, HOLD_PCT, DROP_AFTER, starsFor, nextStarHint } from './slip-plan.js';
 import { WorkoutClock, BandMeter, workoutStars, SETTLE_S } from './kit/workout-plan.js';
 
 const A = 'assets/3d';
@@ -183,7 +183,7 @@ export class Gruppetto {
     this.z = 0; this.x = 0; this.lane = 0; this.pops = []; this.el = this.wk ? this.wc.el : 0; this.segIdx = -1; this.seg = this.plan.segs[0];
     this.score = 0; this.caught = 0; this.dropped = 0; this.bridgesDone = 0; this.bridgesTotal = 0; this.finalWon = false; this.finalTried = false;
     this.paused = false; this.pauseT = 0; this.startT = 0; this.finished = false; this.result = null; this.v = V_BASE;
-    this.adapt = new Adapter(); this.evLog = []; this.sprinting = false; this.sentGrade = undefined; this.msgs.clear();
+    this.evLog = []; this.sprinting = false; this.sentGrade = undefined; this.msgs.clear();
     this.tickT = TICK; this.deficit = 0; this.gemT = 4; this.gemLane = 0; this.hint = null; this.hintT = 0; this.blocked = false; this.holdOk = true; this.assistT = 0;
     this.bottles = 0; this.lostThisSeg = 0; this.camInit = false; this.laneInput = 0;
     this.player = this.rider(PLAYER_COLOR, 0, false);
@@ -254,7 +254,7 @@ export class Gruppetto {
     this.ev('spawn');
   }
 
-  tgtNow() { return targetW(this.seg, this.ftp, this.level.k, this.adapt.value, this.el); }
+  tgtNow() { return targetW(this.seg, this.ftp, this.level.k, this.el); }
 
   enterSeg(idx) {
     // un ponte ancora aperto alla fine del tratto precedente è fallito
@@ -325,7 +325,6 @@ export class Gruppetto {
     if (seg.kind === 'effort' || seg.kind === 'sprint') {
       this.bridgesDone++; if (seg.kind === 'sprint' && seg.line === 'finish') this.finalWon = true;
       if (seg.kind === 'sprint') this.prog('sprintsWon', 1, 10);
-      const d = this.wk ? 0 : this.adapt.report(true); if (d > 0) this.say(t('games.gruppetto.adaptUp'), '#7dff6a', 2.2);
       this.say(t('games.gruppetto.caught'), '#7dff6a', 1.6, true, 2, t('games.gruppetto.caughtSub', { n: this.group.length }));
     } else this.say(t('games.gruppetto.caught'), '#7dff6a', 1.6, true, 2, t('games.gruppetto.caughtSub', { n: this.group.length }));
   }
@@ -337,8 +336,7 @@ export class Gruppetto {
     this.ev('escape'); this.blocked = false;
     const seg = b.seg;
     if (!silent && (seg.kind === 'effort' || seg.kind === 'sprint') && b.state === 'attack') {
-      const d = this.wk ? 0 : this.adapt.report(false); if (d < 0) this.say(t('games.gruppetto.adaptDown'), '#ffd34d', 2.4);
-      else this.say(t('games.gruppetto.gotAway'), '#ff8d8d', 1.8, false, 1, t('games.gruppetto.gotAwaySub'));
+      this.say(t('games.gruppetto.gotAway'), '#ff8d8d', 1.8, false, 1, t('games.gruppetto.gotAwaySub'));
     }
     if (seg.kind === 'sprint' && seg.line === 'finish') this.finalTried = true;
   }
@@ -368,7 +366,7 @@ export class Gruppetto {
     this.t += dt;
     const connected = this.hooks.connected(); const st = this.hooks.stats(); const ftp = this.ftp;
     // senza rullo la demo simula 0,8 × FTP con scatti (e un po' meno nel recupero)
-    const demoP = !connected && this.wk && this.seg ? targetW(this.seg, ftp, 0, 0, this.el) : !connected ? ftp * (this.state === 'play' && this.seg?.kind === 'rest' ? 0.58 : 0.8) * (((this.t % 40) > 31 && this.seg?.kind !== 'rest') ? 1.6 : 1) : 0;
+    const demoP = !connected && this.wk && this.seg ? targetW(this.seg, ftp, 0, this.el) : !connected ? ftp * (this.state === 'play' && this.seg?.kind === 'rest' ? 0.58 : 0.8) * (((this.t % 40) > 31 && this.seg?.kind !== 'rest') ? 1.6 : 1) : 0;
     this.power = connected ? st.power || 0 : demoP;
     this.cadence = connected ? st.cadence || 0 : 88;
     if (this.pwInit) { this.pw = this.power; this.pwInit = false; } else this.pw += (this.power - this.pw) * Math.min(1, dt / 1.2);

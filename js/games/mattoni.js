@@ -17,7 +17,7 @@ import { makeRandom } from './kit/rng.js';
 import { clamp, lerp } from './engine.js';
 import { SONGS } from './audio.js';
 import { t } from '../i18n.js';
-import { DURATIONS, LEVELS, COOL_S, buildPlan, planFromWorkout, segAt, targetW, targetPct, Adapter, starsFor, nextStarHint } from './horde-plan.js';
+import { DURATIONS, LEVELS, COOL_S, buildPlan, planFromWorkout, segAt, targetW, targetPct, starsFor, nextStarHint } from './horde-plan.js';
 import { WorkoutClock, BandMeter, workoutStars } from './kit/workout-plan.js';
 
 const A = 'assets/3d';
@@ -332,7 +332,7 @@ export class Mattoni {
     this.el = this.wk ? this.wc.el : 0; this.segIdx = -1; this.seg = this.plan.segs[0]; this.tgtW = undefined; this.gels = []; this.pop = null;
     this.paused = false; this.pauseT = 0; this.startT = 0; this.finished = false; this.result = null; this.ko = 0;
     this.effortsDone = 0; this.effortsTotal = 0; this.bossKilled = 0; this.bossSpawned = new Set(); this.delivered = 0; this.waveGot = 0; this.waveQuota = Infinity; this.waveClears = 0; this.waveNo = 0;
-    this.adapt = new Adapter(); this.evLog = []; this.sprinting = false; this.sentGrade = undefined; this.msgs.clear(); this.boss = null; this.bossAt = null;
+    this.evLog = []; this.sprinting = false; this.sentGrade = undefined; this.msgs.clear(); this.boss = null; this.bossAt = null;
     this.hurtT = 0; this.padPulse = 0; this.serveT = 0; this.lastHitT = -9;
     this.player = new Cyclist(this.tpl, makeKit(PALETTE.lime, 0), { shadows: this.quality.cfg.shadows });
     this.player.root.scale.setScalar(RIDER_S); scene.add(this.player.root);
@@ -609,7 +609,7 @@ export class Mattoni {
     const prev = this.seg; const seg = this.plan.segs[i]; const first = this.segIdx < 0;
     if (!first) this.judge(prev);
     this.segIdx = i; this.seg = seg; seg.inT = 0; seg.okT = 0;
-    const W = targetW(seg, this.ftp, this.level.k, this.adapt.value, this.el);
+    const W = targetW(seg, this.ftp, this.level.k, this.el);
     const isBoss = this.plan.bossWaves.includes(seg.wave);
     // con un allenamento un'ondata può cominciare con qualunque tratto (non solo con il ritmo): le file si costruiscono al cambio d'ondata
     if (this.wk && seg.wave >= 1 && seg.wave <= this.plan.N && seg.wave !== prev?.wave && seg.kind !== 'pace') this.startWave(seg, i);
@@ -647,8 +647,6 @@ export class Mattoni {
       this.say(t(seg.kind === 'sprint' ? 'games.horde.sprintOk' : 'games.horde.effortOk'), '#7dff6a', 1.8, true, 2); this.prog('sprintsWon', seg.kind === 'sprint' ? 1 : 0, 20);
     } else this.say(t('games.horde.effortKo'), '#ffb84d', 1.6, false, 1);
     this.ev(ok ? 'effortOk' : 'effortKo');
-    const moved = this.wk ? 0 : this.adapt.report(ok); // con un allenamento i watt li decide lui
-    if (moved) this.say(t(moved < 0 ? 'games.horde.adaptDown' : 'games.horde.adaptUp'), moved < 0 ? '#4de3ff' : '#ffd34d', 2.2, false, 2);
   }
 
   startCool() {
@@ -688,7 +686,7 @@ export class Mattoni {
     const connected = this.hooks.connected(); const st = this.hooks.stats();
     const ftp = this.ftp;
     // senza rullo la demo simula 0,8 × FTP con scatti (e un po' meno nel recupero)
-    const demoP = !connected && this.wk && this.seg ? targetW(this.seg, ftp, 0, 0, this.el) : !connected ? ftp * (this.state === 'play' && this.seg?.kind === 'rest' ? 0.58 : 0.8) * (((this.t % 40) > 31 && this.seg?.kind !== 'rest') ? 1.6 : 1) : 0;
+    const demoP = !connected && this.wk && this.seg ? targetW(this.seg, ftp, 0, this.el) : !connected ? ftp * (this.state === 'play' && this.seg?.kind === 'rest' ? 0.58 : 0.8) * (((this.t % 40) > 31 && this.seg?.kind !== 'rest') ? 1.6 : 1) : 0;
     this.power = connected ? st.power || 0 : demoP;
     this.cadence = connected ? st.cadence || 0 : 88;
     this.pw += (this.power - this.pw) * Math.min(1, dt / 0.9);
@@ -714,7 +712,7 @@ export class Mattoni {
     const idx = this.plan.segs.indexOf(seg);
     if (idx !== this.segIdx) { this.enterSeg(idx); seg = this.seg; }
     if (this.el >= this.total) return this.finish();
-    const tgt = targetW(seg, ftp, this.level.k, this.adapt.value, this.el);
+    const tgt = targetW(seg, ftp, this.level.k, this.el);
     seg.inT += dt; this.tgtW = tgt;
     if (this.wk) this.band.add(dt, this.pw, tgt, this.el - seg.stepStart);
     this.inTarget = this.pw >= 0.92 * tgt;
@@ -874,7 +872,7 @@ export class Mattoni {
     const col = SEG_COLOR[seg.kind]; const by = y0 + 22; const bh2 = 44;
     ctx.fillStyle = 'rgba(8,10,26,.72)'; rrect(ctx, pad - 4, by, W - 2 * pad + 8, bh2, 12); ctx.fill();
     ctx.fillStyle = col; rrect(ctx, pad - 4, by, 7, bh2, 3); ctx.fill();
-    const tw = this.tgtW || targetW(seg, this.ftp, this.level.k, this.adapt.value, this.el);
+    const tw = this.tgtW || targetW(seg, this.ftp, this.level.k, this.el);
     const left = Math.max(0, Math.ceil((this.wk ? seg.stepEnd : seg.t1) - this.el)); // con un allenamento: nome del passo e tempo che manca alla fine del passo
     hudText(ctx, this.wk ? (seg.label || t(`games.wk.seg.${seg.wkKind}`)) : t(`games.horde.seg.${seg.kind}`), pad + 12, by + 29, { size: 21, color: col, maxW: W * 0.34 });
     hudText(ctx, `${tw} W`, W / 2 + 8, by + 32, { size: 32, align: 'center', color: this.inTarget || ['rest', 'cool', 'warm'].includes(seg.kind) ? '#ffffff' : '#ffd34d', maxW: W * 0.34 });

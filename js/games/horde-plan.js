@@ -7,7 +7,6 @@ export const LEVELS = [{ id: 'easy', k: -0.10 }, { id: 'normal', k: 0 }, { id: '
 export const WARM_S = 50;   // avvio facile
 export const COOL_S = 30;   // defaticamento con il riepilogo
 export const SPRINT_S = 10; // lo scatto del Custode
-export const ADAPT_MAX = 0.15;
 
 // quante ondate per durata e dopo quante arriva un Custode (fine di un "blocco" di ondate)
 export function waveCount(total) { return total <= 300 ? 4 : total <= 600 ? 7 : 12; }
@@ -26,7 +25,7 @@ import { wkTarget } from './kit/workout-plan.js';
 const lerp = (a, b, k) => a + (b - a) * k;
 
 // Costruisce il piano: segmenti { t0, t1, kind, pct, wave } e la lista dei Custodi.
-// kind: warm | pace | effort | sprint | rest | cool. pct = frazione della FTP (prima di livello e adattamento).
+// kind: warm | pace | effort | sprint | rest | cool. pct = frazione della FTP (prima del livello).
 export function buildPlan(total) {
   const N = waveCount(total);
   const mid = total - WARM_S - COOL_S; const L = mid / N;
@@ -52,10 +51,10 @@ export const segAt = (plan, t) => plan.segs.find((s) => t >= s.t0 && t < s.t1) |
 export const composAt = (wave) => (wave < 1 ? WARM_MIX : COMPOS[(wave - 1) % 4]);
 
 const FIXED = { rest: 1, cool: 1, warm: 1 };
-// Watt richiesti: percentuale × FTP, più livello e adattamento (recupero, avvio e defaticamento non si adattano).
-// Nei tratti di un allenamento vero (seg.fixed) i watt sono quelli dell'allenamento: livello e adattamento non contano.
-export function targetPct(seg, levelK, adapt) { return seg.fixed ? seg.pct : seg.pct + (FIXED[seg.kind] ? 0 : levelK + adapt); }
-export function targetW(seg, ftp, levelK, adapt, el) { return seg.fixed ? (el == null ? seg.watts : wkTarget(seg, el)) : Math.round(ftp * targetPct(seg, levelK, adapt)); }
+// Watt richiesti: percentuale × FTP più il livello scelto nel menu (recupero, avvio e defaticamento non lo seguono).
+// Nei tratti di un allenamento vero (seg.fixed) i watt sono quelli dell'allenamento. Niente cambia da solo durante la partita.
+export function targetPct(seg, levelK) { return seg.fixed ? seg.pct : seg.pct + (FIXED[seg.kind] ? 0 : levelK); }
+export function targetW(seg, ftp, levelK, el) { return seg.fixed ? (el == null ? seg.watts : wkTarget(seg, el)) : Math.round(ftp * targetPct(seg, levelK)); }
 
 // Allenamento in corso → piano (kit/workout-plan.js workoutPlan): stessi tratti dei piani di Horde Run, con i watt dell'allenamento.
 // warm | easy, tempo → pace | effort | sprint | recovery → rest | cool. Custodi: ondate con scatto e l'ultima ondata di lavoro duro.
@@ -67,16 +66,6 @@ export function planFromWorkout(wp, kindMap = WK_KIND) {
   if (lastWork && (lastWork.wkKind === 'effort' || lastWork.wkKind === 'sprint') && !bossWaves.includes(lastWork.wave)) bossWaves.push(lastWork.wave);
   bossWaves.sort((a, b) => a - b);
   return { total: wp.total, N: wp.N, segs, bossWaves, L: wp.total / Math.max(1, wp.N), wk: true, name: wp.name };
-}
-
-// Adattamento: dopo due sforzi falliti di fila −5 %, dopo tre riusciti +5 %, entro ±15 %
-export class Adapter {
-  constructor() { this.value = 0; this.fails = 0; this.wins = 0; }
-  report(ok) {
-    if (ok) { this.wins++; this.fails = 0; if (this.wins >= 3) { this.wins = 0; return this.step(+0.05); } } else { this.fails++; this.wins = 0; if (this.fails >= 2) { this.fails = 0; return this.step(-0.05); } }
-    return 0;
-  }
-  step(d) { const v = Math.max(-ADAPT_MAX, Math.min(ADAPT_MAX, +(this.value + d).toFixed(2))); const m = +(v - this.value).toFixed(2); this.value = v; return m; }
 }
 
 // Stelle: 1 = finita; 2 = almeno metà degli sforzi; 3 = almeno l'80 %, tutti i Custodi battuti e al massimo 3 cadute

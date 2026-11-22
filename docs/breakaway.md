@@ -6,7 +6,7 @@ General rules: `docs/games/DESIGN-RULES.md`. Code: `js/games/racer-sim.js` (logi
 ## Length and level
 - **5, 10 or 20 minutes** (in the menu: − changes the length, + starts; the buttons can also be tapped). 5 min = Sunset Coast, 10 min = Autumn Hills, 20 min = Cloud Pass.
 - The race lasts the chosen length minus 30 s: the last **30 s are the cool-down** (podium and summary, the trainer goes back to flat).
-- **Easy / Normal / Hard** = −10% / 0 / +10% on all percentages (the pace of the bunch and the targets). Adaptation: after two failed efforts in a row −5%, after three successful ones +5% (within ±15%), saved for the next stage.
+- **Easy / Normal / Hard** = −10% / 0 / +10% on all percentages (the pace of the bunch and the targets). Nothing adapts by itself: the targets are the plan percentage × FTP plus the level.
 
 ## The moments (announced ~10 s ahead, with the card at the top)
 | Moment | What to do (Normal) | What happens |

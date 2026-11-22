@@ -1,6 +1,6 @@
 // Horde Run: la forma dell'allenamento (js/games/horde-plan.js) rispetta docs/games/DESIGN-RULES.md §1. Logica pura, senza browser.
 import { test, expect } from '@playwright/test';
-import { DURATIONS, LEVELS, WARM_S, COOL_S, buildPlan, targetPct, Adapter, starsFor } from '../js/games/horde-plan.js';
+import { DURATIONS, LEVELS, WARM_S, COOL_S, buildPlan, targetPct, targetW, starsFor } from '../js/games/horde-plan.js';
 
 test('piano: durate 5/10/20 min, avvio 45–60 s, defaticamento 30 s, tratti in % FTP nelle fasce del documento', () => {
   expect(DURATIONS).toEqual([300, 600, 1200]);
@@ -29,16 +29,14 @@ test('piano: durate 5/10/20 min, avvio 45–60 s, defaticamento 30 s, tratti in 
   expect(buildPlan(300).N).toBe(4); expect(buildPlan(600).N).toBe(7); expect(buildPlan(1200).N).toBe(12);
 });
 
-test('livelli e adattamento: ±10 % sul livello, −5 % dopo due falliti di fila, +5 % dopo tre riusciti, entro ±15 %', () => {
+test('livelli: ±10 % sul livello e nient\'altro; il recupero non cambia; i watt sono % × FTP', () => {
   const eff = buildPlan(300).segs.find((s) => s.kind === 'effort');
-  expect(targetPct(eff, -0.1, 0)).toBeCloseTo(eff.pct - 0.1); expect(targetPct(eff, 0.1, 0.05)).toBeCloseTo(eff.pct + 0.15);
+  expect(targetPct(eff, -0.1)).toBeCloseTo(eff.pct - 0.1); expect(targetPct(eff, 0.1)).toBeCloseTo(eff.pct + 0.1);
   const rest = buildPlan(300).segs.find((s) => s.kind === 'rest');
-  expect(targetPct(rest, 0.1, 0.15)).toBe(rest.pct); // il recupero non cambia
-  const a = new Adapter();
-  a.report(false); expect(a.value).toBe(0); a.report(false); expect(a.value).toBe(-0.05);
-  a.report(true); a.report(true); expect(a.value).toBe(-0.05); a.report(true); expect(a.value).toBe(0);
-  for (let i = 0; i < 20; i++) a.report(false); expect(a.value).toBe(-0.15);
-  for (let i = 0; i < 40; i++) a.report(true); expect(a.value).toBe(0.15);
+  expect(targetPct(rest, 0.1)).toBe(rest.pct);
+  expect(targetW(eff, 200, 0)).toBe(Math.round(200 * eff.pct));
+  // nessuna difficoltà adattiva: il bersaglio non dipende da come è andata prima
+  expect(targetW(eff, 200, 0, 10)).toBe(targetW(eff, 200, 0));
 });
 
 test('stelle: una per aver finito, due con metà degli sforzi, tre con l’80 %, tutti i Custodi e al massimo 3 cadute', () => {

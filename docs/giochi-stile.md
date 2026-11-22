@@ -139,7 +139,7 @@ Same style as the other games; gameplay is watts = altitude, gates, ridges, brid
 3D run-and-gun shooter (`js/games/strike3d.js`, world in `js/games/strike-world.js`, workout shape in `js/games/strike-plan.js`).
 - **The game is a workout** (rules in `docs/games/DESIGN-RULES.md`): 5, 10 or 20 minutes chosen in the menu, Easy/Normal/Hard level (−10% / 0 / +10%).
   Easy start 45–60 s at 60% FTP, effort waves (95–110%) and recovery (58%), 10 s sprints at 135% (always followed by 40 s of easy riding),
-  a **mini-boss in the middle** and a **final boss** at 105%, 30 s of cool-down with the summary. Adaptive difficulty: 2 failed efforts in a row −5%, 3 successful +5% (±15%).
+  a **mini-boss in the middle** and a **final boss** at 105%, 30 s of cool-down with the summary. No adaptive difficulty: targets never change by themselves.
   An effort succeeds if the block average is at least 95% of the target. At the top: time left, workout profile with a "you are here" mark and the results (✓), block card with the watts asked and the power bar.
 - **Camera behind the player, three-quarter view**: the cyclist takes about 30% of the height at 390×780, the road and the enemies ahead. The fog is closer and the scenery is prepared 170 m ahead: new objects are born inside the haze.
 - **Controls**: + lane to the right, − lane to the left (a single function in play). In the menu − goes to the next row, + changes the row (Start, Length, Level, World, Hero).

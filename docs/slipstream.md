@@ -2,7 +2,7 @@
 
 Code: `js/games/gruppetto.js` (game, graphics, interface; id `gruppetto`), `js/games/slip-plan.js` (the shape of the
 workout and the "bridge" rules, no graphics), `js/games/slip-world.js` (road, fields, objects along the route).
-Lengths, levels, adaptation and stars follow `docs/games/DESIGN-RULES.md`; the plan reuses `Adapter`, `segAt`, `targetW` from `horde-plan.js`.
+Lengths, levels and stars follow `docs/games/DESIGN-RULES.md`; the plan reuses `segAt`, `targetW` from `horde-plan.js`.
 
 ## The idea
 You are on a three-lane country road. A rider ahead of you **attacks**: you reach them with your watts (the metres left

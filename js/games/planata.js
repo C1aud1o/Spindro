@@ -13,7 +13,7 @@ import { t } from '../i18n.js';
 import { SONGS } from './audio.js';
 import { GameMenu, ResultsView, LENGTHS } from './kit/menu.js';
 import { makeRandom } from './kit/rng.js';
-import { DURATIONS, LEVELS, COOL_S, SPEED, RING_EVERY, FIRST_RING, Y_LO, Y_HI, PCT_LO, PCT_HI, buildPlan, planFromWorkout, segAt, targetW, targetPct, profilePct, altOf, pctOf, Adapter, starsFor, nextStarHint } from './planata-plan.js';
+import { DURATIONS, LEVELS, COOL_S, SPEED, RING_EVERY, FIRST_RING, Y_LO, Y_HI, PCT_LO, PCT_HI, buildPlan, planFromWorkout, segAt, targetW, targetPct, profilePct, altOf, pctOf, starsFor, nextStarHint } from './planata-plan.js';
 import { WorkoutClock, BandMeter, workoutStars } from './kit/workout-plan.js';
 
 const PLANE_SPAN = 8;       // apertura alare (m)
@@ -415,7 +415,7 @@ export class Planata {
     this.items = []; this.zBase = 0; this.el = this.wk ? this.wc.el : 0; this.segIdx = -1; this.seg = this.plan.segs[0];
     this.score = 0; this.combo = 0; this.bestCombo = 0; this.rings = 0; this.ringsTotal = 0; this.coins = 0; this.pods = 0; this.hits = 0;
     this.waveRings = {}; this.waveHit = {};
-    this.effortsDone = 0; this.effortsTotal = 0; this.adapt = new Adapter(); this.evLog = []; this.sprinting = false; this.inTarget = false;
+    this.effortsDone = 0; this.effortsTotal = 0; this.evLog = []; this.sprinting = false; this.inTarget = false;
     this.paused = false; this.pauseT = 0; this.startT = 0; this.result = null; this.recStart = null; this.finished = false; this.landing = 0; this.rollV = 0;
     this.hurtT = 0; this.boostT = 0; this.gustK = 0; this.sentGrade = undefined; this.pops = []; this.msgs.clear();
     const e0 = this.wk ? this.wc.el : 0; this.nextRingT = e0 + FIRST_RING; this.cn = 0; this.prev = { t: e0 + FIRST_RING - RING_EVERY, z: 0, x: 0, lane: 0 }; this.lastRing = this.prev; this.courseDone = false;
@@ -481,7 +481,7 @@ export class Planata {
     while (!this.courseDone && this.nextRingT < this.el + AHEAD_S) this.spawnRing();
   }
 
-  pathY(ta) { return altOf(profilePct(this.plan, ta, this.level.k, this.adapt.value)); }
+  pathY(ta) { return altOf(profilePct(this.plan, ta, this.level.k)); }
 
   spawnRing() {
     const ta = this.nextRingT; const p = this.prev;
@@ -566,7 +566,7 @@ export class Planata {
     const prev = this.seg; const seg = this.plan.segs[i]; const first = this.segIdx < 0;
     if (!first) this.judge(prev);
     this.segIdx = i; this.seg = seg; seg.inT = 0; seg.okT = 0;
-    const W = targetW(seg, this.ftp, this.level.k, this.adapt.value, this.el);
+    const W = targetW(seg, this.ftp, this.level.k, this.el);
     const N = this.plan.N;
     if (this.wk && seg.wave >= 1 && seg.wave <= N && seg.wave !== prev?.wave && seg.kind !== 'pace') this.ev('wave');
     if (seg.kind === 'warm' && !first && prev?.kind === 'warm') { /* riscaldamento lungo spezzato in ondate: un solo annuncio */ }
@@ -589,8 +589,6 @@ export class Planata {
       this.say(t(seg.kind === 'climb' ? 'games.planata.climbOk' : 'games.planata.effortOk'), '#7dff6a', 1.8, true, 2); this.prog('sprintsWon', seg.kind === 'climb' ? 1 : 0, 20);
     } else this.say(t('games.planata.effortKo'), '#ffb84d', 1.6, false, 1);
     this.ev(ok ? 'effortOk' : 'effortKo');
-    const moved = this.wk ? 0 : this.adapt.report(ok); // con un allenamento i watt li decide lui
-    if (moved) this.say(t(moved < 0 ? 'games.planata.adaptDown' : 'games.planata.adaptUp'), moved < 0 ? '#4de3ff' : '#ffd34d', 2.2, false, 2);
   }
 
   startCool() {
@@ -620,7 +618,7 @@ export class Planata {
     // senza rullo la demo simula 0,8 × FTP con scatti (e un po' meno nel recupero)
     const demo = !connected; this.connected = connected;
     const rest = this.state === 'play' && (this.seg?.kind === 'rest' || this.seg?.kind === 'cool');
-    const demoP = demo && this.wk && this.seg ? targetW(this.seg, ftp, 0, 0, this.el) : demo ? ftp * (rest ? 0.58 : 0.8) * (((this.t % 40) > 31 && !rest) ? 1.6 : 1) : 0;
+    const demoP = demo && this.wk && this.seg ? targetW(this.seg, ftp, 0, this.el) : demo ? ftp * (rest ? 0.58 : 0.8) * (((this.t % 40) > 31 && !rest) ? 1.6 : 1) : 0;
     this.power = connected ? st.power || 0 : demoP;
     this.cadence = connected ? st.cadence || 0 : 88;
     this.pw += (this.power - this.pw) * Math.min(1, dt / 0.9);
@@ -655,7 +653,7 @@ export class Planata {
     let seg = segAt(this.plan, this.el); const idx = this.plan.segs.indexOf(seg);
     if (idx !== this.segIdx) { this.enterSeg(idx); seg = this.seg; }
     if (this.el >= this.total) { this.finish(); return; }
-    const tgt = targetW(seg, ftp, this.level.k, this.adapt.value, this.el); this.tgtW = tgt;
+    const tgt = targetW(seg, ftp, this.level.k, this.el); this.tgtW = tgt;
     seg.inT += dt;
     if (this.wk) this.band.add(dt, this.pw, tgt, this.el - seg.stepStart);
     if ((seg.kind === 'effort' || seg.kind === 'climb') && seg.inT > (seg.kind === 'climb' ? 2 : 4) && this.pw >= 0.92 * tgt) seg.okT += dt;
@@ -666,7 +664,7 @@ export class Planata {
     // quota: la potenza (smussata) è la percentuale di FTP; l'aereo la insegue morbido, come un volo e non un grafico
     // Quota = watt. Con un allenamento il rullo è in ERG e segue da solo il bersaglio: la quota segue il profilo dell'allenamento
     // e i tuoi watt la spostano di poco (al massimo ±10 % della FTP): chi segue l'allenamento passa gli anelli, chi non pedala no.
-    const pPath = this.wk ? profilePct(this.plan, this.el, this.level.k, this.adapt.value) : 0;
+    const pPath = this.wk ? profilePct(this.plan, this.el, this.level.k) : 0;
     const ty = altOf(this.wk ? clamp(pPath + clamp(this.pw / ftp - pPath, -0.1, 0.1), 0, 1.4) : clamp(this.pw / ftp, 0, 1.4));
     this.gustK = lerp(this.gustK, 0, Math.min(1, dt * 2.2));
     let y = this.y; const y0 = y;
@@ -844,7 +842,7 @@ export class Planata {
     if (this.state === 'menu') { this.menu.draw(ctx, W, H, { connected: this.hooks.connected() }); this.hooks.progress?.drawToasts(ctx, W, dt); return; }
     if (this.state === 'results') { if (this.result) this.drawResult(ctx, W, H, true); this.hooks.progress?.drawToasts(ctx, W, dt, W > H * 1.15 ? Math.round(H * 0.78) : 330, true); return; }
     const seg = this.seg; const pad = 12; const y0 = 84; const ftp = this.ftp;
-    const col = SEG_COLOR[seg.kind]; const tw = this.tgtW || targetW(seg, ftp, this.level.k, this.adapt.value, this.el);
+    const col = SEG_COLOR[seg.kind]; const tw = this.tgtW || targetW(seg, ftp, this.level.k, this.el);
     // riga in alto
     ctx.fillStyle = 'rgba(8,10,26,.62)'; rrect(ctx, pad - 4, y0 - 22, W - 2 * pad + 8, 36, 10); ctx.fill();
     hudText(ctx, String(Math.round(this.score)), pad + 6, y0 + 5, { size: 26, maxW: 100 });

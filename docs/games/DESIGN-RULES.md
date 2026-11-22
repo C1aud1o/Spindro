@@ -27,8 +27,9 @@ New games add their own row here when they are accepted. `tempo` (and the `skele
 - Everything is a **percentage of the rider's FTP** (`hooks.ftp()`): recovery 50–65 %, pace 75–90 %, effort 95–110 %,
   sprint 130 %+ for 5–15 s. With no trainer connected the demo simulates 0.8 × FTP with sprints. That way the game is fair to
   someone with 120 W of FTP and to someone with 320.
-- **Three levels** (Easy −10 %, Normal, Hard +10 % on the percentages) and **adaptive difficulty**: after two failed
-  efforts in a row the demands drop by 5 %, after three successful ones they rise by 5 % (within ±15 %).
+- **Three levels** (Easy −10 %, Normal, Hard +10 % on the percentages), chosen in the game's menu. **No adaptive
+  difficulty**: the target in watts is only plan percentage × FTP (+ the chosen level), or exactly the workout's watts when
+  a workout is running. Nothing changes the target automatically during a session.
 - **Workout mode**: if the rider follows a workout, the workout is the run: the targets, the length and the stars come from
   it (`kit/workout-plan.js`): ★ finished, ★★ at least 60 % of the time within ±7 % of the target, ★★★ at least 85 %.
 

@@ -98,7 +98,6 @@ export class Racer3D {
     this.hud = hudCanvas; this.hooks = guardTrainer(hooks); this.audio = audio;
     this.active = false;
     const ls = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : Number(v); } catch { return d; } };
-    this.adaptMem = clamp(ls('racerAdapt', 0), -0.15, 0.15);
     this.seed = null; this.rnd = makeRandom(this.seed);
     // menu e risultati condivisi (kit/menu.js): durata e livello restano in racerDur / racerLevel
     this.menu = new GameMenu({
@@ -678,7 +677,7 @@ export class Racer3D {
   newRace() {
     this.rnd = makeRandom(this.seed);
     const D = this.dur;
-    this.race = new Race({ tl: this.tl, duration: D, stage: this.stageIndex, level: this.level, adapt: this.wkItems ? 0 : this.adaptMem, names: RIVALS.map((r) => t(r.name)) });
+    this.race = new Race({ tl: this.tl, duration: D, stage: this.stageIndex, level: this.level, names: RIVALS.map((r) => t(r.name)) });
     this.rivals = this.race.rivals;
     this.rivals.forEach((r, i) => { r.name = t(RIVALS[i].name); r.color = RIVALS[i].color; r.line = t(RIVALS[i].line); r.said = 0; r.boost = 0; });
     this.s = START; this.x = 0; this.lane = 1; this.speed = 0; this.raceT = 0; this.capV = null; this.blockT = 0; this.bumpT = 0;
@@ -920,10 +919,9 @@ export class Racer3D {
     const best = Number(localStorage.getItem(key)) || Infinity;
     this.newBest = !this.wk && crossed && this.finishT < best;
     if (this.newBest) localStorage.setItem(key, this.finishT.toFixed(1));
-    // stelle e livello adattivo restano per la prossima tappa
+    // le stelle restano per la prossima tappa
     const sk = `racerStars${this.durIdx}_${this.level}`; const prev = Number(localStorage.getItem(sk)) || 0;
     this.newStars = !this.wk && res.stars > prev; if (this.newStars) localStorage.setItem(sk, res.stars);
-    if (!this.wk) { this.adaptMem = race.adapt; try { localStorage.setItem('racerAdapt', race.adapt); } catch { /* niente storage */ } }
     this.hooks.runEnd?.({ game: 'racer', stage: this.stageIndex, score: Math.round(this.finishT * 10) / 10 });
     this.prog('races', 1, 60 + ([100, 70, 50][place - 1] || 0) + res.stars * 20);
     if (place <= 3) this.prog('podiums', 1, 0);

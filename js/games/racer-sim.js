@@ -129,9 +129,9 @@ export function buildTimeline(D, stage = 0, wkItems = null) {
 
 // ---------- la gara ----------
 export class Race {
-  constructor({ tl = null, duration = 300, stage = 0, level = 1, names = [], adapt = 0, seed = 1 } = {}) {
+  constructor({ tl = null, duration = 300, stage = 0, level = 1, names = [], seed = 1 } = {}) {
     this.tl = tl || buildTimeline(duration, stage); this.wk = !!this.tl.wk; // con un allenamento: tempo = quello dell'allenamento, watt = quelli dell'allenamento
-    this.kD = TUNE.kD[duration <= 300 ? 0 : duration <= 600 ? 1 : 2]; this.D = duration; this.levelMul = LEVELS[level] ?? 1; this.adapt = adapt;
+    this.kD = TUNE.kD[duration <= 300 ? 0 : duration <= 600 ? 1 : 2]; this.D = duration; this.levelMul = LEVELS[level] ?? 1;
     this.names = names; this.events = []; this.log = [];
     let rs = seed; this.rnd = () => ((rs = (rs * 16807) % 2147483647) / 2147483647);
     this.t = 0; this.P = START; this.packV = 0; this.mi = -1; this.announced = new Set();
@@ -154,7 +154,7 @@ export class Race {
   }
 
   // il livello cambia la forza dei rivali; con un allenamento niente adattamento e mai i watt del giocatore (obiettivi in watt fissi)
-  get scale() { return this.wk ? this.levelMul : this.levelMul * (1 + this.adapt); }
+  get scale() { return this.levelMul; }
   moment(i = this.mi) { return this.tl.moments[Math.max(0, i)]; }
   say(key, p = {}, prio = 1, o = {}) {
     // lo stesso testo non si ripete a ruota
@@ -302,7 +302,6 @@ export class Race {
   succeed() {
     const ob = this.obj; ob.done = true; this.objDone++; this.streak.ok++; this.streak.ko = 0; this.objHist.push({ kind: ob.kind, ok: true, t: this.t });
     this.say('games.racer.say.objOk', { kind: ob.kind }, 3, { big: true, every: 0, ok: true });
-    if (!this.wk && this.streak.ok >= 3 && this.adapt < 0.15) { this.adapt = Math.min(0.15, this.adapt + 0.05); this.streak.ok = 0; this.say('games.racer.say.harder', {}, 1, { every: 0 }); }
   }
   closeObjective() {
     const ob = this.obj; if (!ob) return;
@@ -316,7 +315,6 @@ export class Race {
       else {
         this.streak.ko++; this.streak.ok = 0; this.objHist.push({ kind: ob.kind, ok: false, t: this.t });
         this.say('games.racer.say.objKo', { kind: ob.kind }, 2, { every: 0, ko: true });
-        if (!this.wk && ob.type !== 'stay' && this.streak.ko >= 2 && this.adapt > -0.15) { this.adapt = Math.max(-0.15, this.adapt - 0.05); this.streak.ko = 0; this.say('games.racer.say.easier', {}, 1, { every: 0 }); }
       }
     }
     this.obj = null;
@@ -356,7 +354,7 @@ export class Race {
     if ((frac >= 0.7 && top3) || (this.objTotal > 0 && this.objDone === this.objTotal && frac >= 0.99)) stars = 3; // 3 stelle: tutti gli obiettivi, oppure il 70 % e il podio
     // con un allenamento le stelle sono le stesse di tutti i giochi: tempo entro ±7 % del bersaglio (kit/workout-plan.js)
     if (this.wk && bandRatio != null) stars = workoutStars(bandRatio, true);
-    this.result = { place, stars, objDone: this.objDone, objTotal: this.objTotal, time: this.player.fin, adapt: this.adapt, wk: this.wk, band: bandRatio };
+    this.result = { place, stars, objDone: this.objDone, objTotal: this.objTotal, time: this.player.fin, wk: this.wk, band: bandRatio };
     return this.result;
   }
 
