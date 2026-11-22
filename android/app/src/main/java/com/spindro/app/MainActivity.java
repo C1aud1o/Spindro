@@ -10,8 +10,12 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // per prima cosa: se qualcosa va storto più giù (plugin, WebView, Bluetooth) resta una traccia leggibile al prossimo avvio
+        CrashRecorder.install(this);
+        CrashRecorder.note("MainActivity.onCreate (ripristino: " + (savedInstanceState != null) + ")");
         registerPlugin(GarminBridgePlugin.class);
         super.onCreate(savedInstanceState);
+        CrashRecorder.note("Capacitor bridge creato; WebView: " + CrashRecorder.webViewInfo());
         // durante l'allenamento lo schermo resta acceso
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         // l'audio dei giochi non deve aspettare un gesto dell'utente dentro l'app
@@ -32,6 +36,15 @@ public class MainActivity extends BridgeActivity {
         });
         handleShare(getIntent());
     }
+
+    @Override
+    public void onResume() { super.onResume(); CrashRecorder.note("onResume"); }
+
+    @Override
+    public void onPause() { CrashRecorder.note("onPause"); super.onPause(); }
+
+    @Override
+    public void onDestroy() { CrashRecorder.note("onDestroy (finishing: " + isFinishing() + ")"); super.onDestroy(); }
 
     // link condivisi da YouTube (Condividi → Spindro): si aprono in "Pedala su un video"
     @Override

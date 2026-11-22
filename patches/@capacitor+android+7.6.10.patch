@@ -1,0 +1,19 @@
+diff --git a/node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/Bridge.java b/node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/Bridge.java
+index ae6fcc8..ff8d9b1 100644
+--- a/node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/Bridge.java
++++ b/node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/Bridge.java
+@@ -855,8 +855,13 @@ public class Bridge {
+                 } catch (PluginLoadException | InvalidPluginMethodException ex) {
+                     Logger.error("Unable to execute plugin method", ex);
+                 } catch (Exception ex) {
++                    // Spindro patch: an exception thrown by a plugin method used to be rethrown here, on the "CapacitorPlugins" thread,
++                    // which has no handler of its own: the whole app process died (and every later call would have hung).
++                    // Reject the call with the real cause instead, so the web layer sees an ordinary failed promise.
++                    Throwable cause = (ex instanceof java.lang.reflect.InvocationTargetException && ex.getCause() != null) ? ex.getCause() : ex;
+                     Logger.error("Serious error executing plugin", ex);
+-                    throw new RuntimeException(ex);
++                    String detail = cause.getClass().getSimpleName() + (cause.getMessage() != null ? ": " + cause.getMessage() : "");
++                    call.reject("Native error in " + pluginId + "." + methodName + " (" + detail + ")");
+                 }
+             };
+ 

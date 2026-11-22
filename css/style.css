@@ -1043,3 +1043,10 @@ main > #suggest, main > #connectHelp, main > #dropBanner, main > .update-bar, ma
   .game-bar strong { flex: 1 1 auto; }
   .game-bar button { white-space: nowrap; flex: none; }
 }
+
+/* Report dell'ultimo arresto anomalo (js/crashreport.js) */
+.crash-dlg .calib-box { text-align: left; max-height: 92vh; overflow-y: auto; }
+.crash-dlg h2 { margin: 0 0 8px; font-size: 1.15rem; }
+.crash-text { width: 100%; box-sizing: border-box; height: 32vh; resize: none; margin: 0 0 8px; user-select: text; }
+.crash-note { min-height: 1.2em; margin: 0 0 8px; }
+.crash-dlg .row2 { flex-wrap: wrap; }

@@ -34,6 +34,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelUuid;
+import org.json.JSONObject;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
@@ -93,22 +94,77 @@ public class GarminBridgePlugin extends Plugin {
 
     @PluginMethod
     public void start(PluginCall call) {
-        deviceName = call.getString("name", "Spindro");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && getPermissionState("ble") != PermissionState.GRANTED) {
-            requestPermissionForAlias("ble", call, "permsCallback");
-            return;
-        }
-        doStart(call);
+        try {
+            deviceName = call.getString("name", "Spindro");
+            CrashRecorder.note("GarminBridge.start");
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && getPermissionState("ble") != PermissionState.GRANTED) {
+                requestPermissionForAlias("ble", call, "permsCallback");
+                return;
+            }
+            doStart(call);
+        } catch (Throwable e) { fail(call, "start", e); }
     }
 
     @PermissionCallback
     private void permsCallback(PluginCall call) {
-        if (getPermissionState("ble") == PermissionState.GRANTED) doStart(call);
-        else call.reject("Permesso Bluetooth negato");
+        try {
+            if (getPermissionState("ble") == PermissionState.GRANTED) doStart(call);
+            else call.reject("Permesso Bluetooth negato");
+        } catch (Throwable e) { fail(call, "permsCallback", e); }
+    }
+
+    /** Un errore imprevisto in un metodo del plugin non deve fermare l'app: diventa un rifiuto con il motivo, e resta nelle briciole. */
+    private static void fail(PluginCall call, String what, Throwable e) {
+        CrashRecorder.note("GarminBridge." + what + " errore: " + e);
+        try { call.reject(what + ": " + e.getClass().getSimpleName() + (e.getMessage() != null ? " " + e.getMessage() : "")); } catch (Throwable ignored) { }
+    }
+
+    // ---- diagnostica: report dell'ultimo arresto anomalo (vedi CrashRecorder) ----
+    @PluginMethod
+    public void getCrashReport(PluginCall call) {
+        try {
+            String report = CrashRecorder.readPending(getContext());
+            JSObject o = new JSObject();
+            o.put("report", report == null ? JSONObject.NULL : report);
+            call.resolve(o);
+        } catch (Throwable e) { fail(call, "getCrashReport", e); }
+    }
+
+    @PluginMethod
+    public void clearCrashReport(PluginCall call) {
+        try { CrashRecorder.clear(getContext()); call.resolve(); } catch (Throwable e) { fail(call, "clearCrashReport", e); }
+    }
+
+    /** Un passo del collegamento Bluetooth lato JS: finisce nel report se l'app si chiude subito dopo. */
+    @PluginMethod
+    public void breadcrumb(PluginCall call) {
+        try { CrashRecorder.note("js: " + call.getString("message", "")); call.resolve(); } catch (Throwable e) { fail(call, "breadcrumb", e); }
+    }
+
+    /** Modello, Android, versione app, WebView: per il report e per capire se il ponte Capacitor è arrivato. */
+    @PluginMethod
+    public void environment(PluginCall call) {
+        try {
+            JSObject o = new JSObject();
+            o.put("sdk", Build.VERSION.SDK_INT);
+            o.put("text", CrashRecorder.environment(getContext()));
+            call.resolve(o);
+        } catch (Throwable e) { fail(call, "environment", e); }
     }
 
     @SuppressLint("MissingPermission")
     private void doStart(PluginCall call) {
+        try {
+            doStartUnsafe(call);
+        } catch (Throwable e) {
+            CrashRecorder.note("GarminBridge.doStart errore: " + e);
+            try { stopAll(); } catch (Throwable ignored) { }
+            call.reject("Ponte Garmin non avviato: " + e.getClass().getSimpleName() + (e.getMessage() != null ? " " + e.getMessage() : ""));
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private void doStartUnsafe(PluginCall call) {
         if (running) { call.resolve(status()); return; }
         manager = (BluetoothManager) getContext().getSystemService(Context.BLUETOOTH_SERVICE);
         BluetoothAdapter adapter = manager == null ? null : manager.getAdapter();
@@ -156,7 +212,7 @@ public class GarminBridgePlugin extends Plugin {
             String current = a.getName();
             if (!sp.contains(KEY_ORIG) && current != null && !current.equals(deviceName)) sp.edit().putString(KEY_ORIG, current).apply();
             a.setName(deviceName);
-        } catch (SecurityException ignored) { }
+        } catch (Exception ignored) { }
     }
 
     @SuppressLint("MissingPermission")
@@ -167,7 +223,7 @@ public class GarminBridgePlugin extends Plugin {
             if (orig == null) return;
             BluetoothManager m = manager != null ? manager : (BluetoothManager) getContext().getSystemService(Context.BLUETOOTH_SERVICE);
             if (m != null && m.getAdapter() != null && m.getAdapter().setName(orig)) sp.edit().remove(KEY_ORIG).apply();
-        } catch (SecurityException ignored) { }
+        } catch (Exception ignored) { }
     }
 
     @Override
@@ -181,7 +237,9 @@ public class GarminBridgePlugin extends Plugin {
         if (advertiser == null || advertising) return;
         renameAdapter();
         // il cambio di nome richiede un attimo: si parte dopo mezzo secondo
-        handler.postDelayed(this::doAdvertise, 600);
+        handler.postDelayed(() -> {
+            try { doAdvertise(); } catch (Throwable e) { advertising = false; emit("error", "Advertising non avviato: " + e); }
+        }, 600);
     }
 
     @SuppressLint("MissingPermission")
@@ -197,7 +255,9 @@ public class GarminBridgePlugin extends Plugin {
             .addServiceUuid(new ParcelUuid(CPS)).build();
         AdvertiseData scan = new AdvertiseData.Builder()
             .addServiceUuid(new ParcelUuid(CSC)).build();
-        try { advertiser.startAdvertising(settings, data, scan, advCallback); } catch (SecurityException e) { emit("error", "Permesso advertising mancante"); }
+        try { advertiser.startAdvertising(settings, data, scan, advCallback); }
+        catch (SecurityException e) { emit("error", "Permesso advertising mancante"); }
+        catch (RuntimeException e) { emit("error", "Advertising non avviato: " + e); } // es. IllegalStateException con il Bluetooth appena spento
     }
 
     private final AdvertiseCallback advCallback = new AdvertiseCallback() {
@@ -207,22 +267,25 @@ public class GarminBridgePlugin extends Plugin {
 
     @PluginMethod
     public void update(PluginCall call) {
-        Double p = call.getDouble("power"); Double c = call.getDouble("cadence"); Double s = call.getDouble("speedKmh");
-        if (p != null) power = (int) Math.max(0, Math.min(3000, Math.round(p)));
-        if (c != null) cadence = Math.max(0, Math.min(250, c));
-        if (s != null) speedKmh = Math.max(0, Math.min(120, s));
-        call.resolve();
+        try {
+            Double p = call.getDouble("power"); Double c = call.getDouble("cadence"); Double s = call.getDouble("speedKmh");
+            if (p != null) power = (int) Math.max(0, Math.min(3000, Math.round(p)));
+            if (c != null) cadence = Math.max(0, Math.min(250, c));
+            if (s != null) speedKmh = Math.max(0, Math.min(120, s));
+            call.resolve();
+        } catch (Throwable e) { fail(call, "update", e); }
     }
 
     @SuppressLint("MissingPermission")
     @PluginMethod
     public void stop(PluginCall call) {
-        stopAll();
-        call.resolve(status());
+        try { stopAll(); call.resolve(status()); } catch (Throwable e) { fail(call, "stop", e); }
     }
 
     @PluginMethod
-    public void getStatus(PluginCall call) { call.resolve(status()); }
+    public void getStatus(PluginCall call) {
+        try { call.resolve(status()); } catch (Throwable e) { fail(call, "getStatus", e); }
+    }
 
     // dispositivi Bluetooth LE collegati al telefono (anche da altre app, es. Garmin Connect)
     // coach vocale: sintesi vocale di Android (la WebView non parla da sola)
@@ -231,13 +294,18 @@ public class GarminBridgePlugin extends Plugin {
 
     @PluginMethod
     public void speak(PluginCall call) {
+        try { speakUnsafe(call); } catch (Throwable e) { fail(call, "speak", e); }
+    }
+
+    private void speakUnsafe(PluginCall call) {
         final String text = call.getString("text", "");
         // lingua della voce: etichetta BCP-47 dall'app ("it-IT", "en-US"…); se manca resta l'italiano
         final Locale locale = Locale.forLanguageTag(call.getString("lang", "it-IT"));
         if (tts == null) {
             tts = new TextToSpeech(getContext(), status -> {
-                ttsReady = status == TextToSpeech.SUCCESS;
-                if (ttsReady) { tts.setLanguage(locale); tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "rf"); }
+                TextToSpeech engine = tts; // il motore può arrivare prima che il campo sia assegnato
+                ttsReady = status == TextToSpeech.SUCCESS && engine != null;
+                if (ttsReady) { engine.setLanguage(locale); engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, "rf"); }
             });
             call.resolve();
             return;
@@ -258,11 +326,13 @@ public class GarminBridgePlugin extends Plugin {
         int code = "next".equals(k) ? KeyEvent.KEYCODE_MEDIA_NEXT
                 : "previous".equals(k) ? KeyEvent.KEYCODE_MEDIA_PREVIOUS
                 : KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE;
-        AudioManager am = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
-        if (am == null) { call.reject("audio non disponibile"); return; }
-        am.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, code));
-        am.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, code));
-        call.resolve();
+        try {
+            AudioManager am = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
+            if (am == null) { call.reject("audio non disponibile"); return; }
+            am.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, code));
+            am.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, code));
+            call.resolve();
+        } catch (Throwable e) { fail(call, "mediaKey", e); }
     }
 
     // solo il nome del file: niente percorsi (../) che uscirebbero dalla cartella
@@ -355,7 +425,7 @@ public class GarminBridgePlugin extends Plugin {
                 try { n = d.getName(); } catch (SecurityException ignored) { }
                 arr.put(n != null ? n : d.getAddress());
             }
-        } catch (SecurityException ignored) { }
+        } catch (RuntimeException ignored) { }
         o.put("devices", arr);
         call.resolve(o);
     }
@@ -364,9 +434,9 @@ public class GarminBridgePlugin extends Plugin {
     private void stopAll() {
         running = false;
         handler.removeCallbacks(ticker);
-        try { if (advertiser != null && advertising) advertiser.stopAdvertising(advCallback); } catch (SecurityException ignored) { }
+        try { if (advertiser != null && advertising) advertiser.stopAdvertising(advCallback); } catch (RuntimeException ignored) { }
         advertising = false;
-        try { if (server != null) server.close(); } catch (SecurityException ignored) { }
+        try { if (server != null) server.close(); } catch (RuntimeException ignored) { }
         server = null; connected.clear(); cpSubs.clear(); cscSubs.clear();
         restoreAdapterName();
         emitStatus();
@@ -379,6 +449,10 @@ public class GarminBridgePlugin extends Plugin {
     private final Runnable ticker = new Runnable() {
         @Override public void run() {
             if (!running) return;
+            try { tick(); } catch (Throwable e) { emit("error", "Ponte Garmin: " + e); }
+            if (running) handler.postDelayed(this, 1000);
+        }
+        private void tick() {
             long now = System.currentTimeMillis();
             double dt = Math.min(2.0, (now - lastTick) / 1000.0);
             lastTick = now;
@@ -407,7 +481,6 @@ public class GarminBridgePlugin extends Plugin {
             }
             notifySubscribers(cpMeas, cpSubs, cpPacket());
             notifySubscribers(cscMeas, cscSubs, cscPacket());
-            handler.postDelayed(this, 1000);
         }
     };
 
@@ -443,16 +516,26 @@ public class GarminBridgePlugin extends Plugin {
                 try {
                     if (Build.VERSION.SDK_INT >= 33) server.notifyCharacteristicChanged(d, ch, false, value);
                     else { ch.setValue(value); server.notifyCharacteristicChanged(d, ch, false); }
-                } catch (SecurityException ignored) { }
+                } catch (RuntimeException ignored) { }
             }
         }
+    }
+
+    // Le callback del server GATT arrivano da thread del Bluetooth: se il ponte è stato fermato nel frattempo `server` è null,
+    // e un'eccezione qui non ha nessuno che la prenda (chiude il processo).
+    @SuppressLint("MissingPermission")
+    private void respond(BluetoothDevice device, int requestId, byte[] value) {
+        try {
+            BluetoothGattServer srv = server;
+            if (srv != null) srv.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, value);
+        } catch (RuntimeException ignored) { }
     }
 
     private final BluetoothGattServerCallback gattCallback = new BluetoothGattServerCallback() {
         @Override public void onServiceAdded(int status, BluetoothGattService service) {
             BluetoothGattService next = pendingServices.poll();
             if (next != null && server != null) {
-                try { server.addService(next); } catch (SecurityException ignored) { }
+                try { server.addService(next); } catch (RuntimeException ignored) { }
             } else startAdvertising();
         }
 
@@ -461,7 +544,7 @@ public class GarminBridgePlugin extends Plugin {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 connected.add(device);
                 // accorgimento noto: "accettare" la connessione evita che Android la chiuda subito
-                try { if (server != null) server.connect(device, false); } catch (SecurityException ignored) { }
+                try { BluetoothGattServer srv = server; if (srv != null) srv.connect(device, false); } catch (RuntimeException ignored) { }
             } else { connected.remove(device); cpSubs.remove(device.getAddress()); cscSubs.remove(device.getAddress()); }
             emit("log", (newState == BluetoothProfile.STATE_CONNECTED ? "connesso: " : "disconnesso: ") + label(device) + " (stato " + status + ")");
             emitStatus();
@@ -478,7 +561,7 @@ public class GarminBridgePlugin extends Plugin {
             else if (id.equals(SENSOR_LOC)) v = new byte[] { 13 };                   // mozzo posteriore (rullo)
             else v = new byte[0];
             emit("log", "lettura " + shortId(id) + " da " + label(device));
-            try { server.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, v); } catch (SecurityException ignored) { }
+            respond(device, requestId, v);
         }
 
         @SuppressLint("MissingPermission")
@@ -488,7 +571,7 @@ public class GarminBridgePlugin extends Plugin {
             Set<String> subs = ch.equals(CP_MEAS) ? cpSubs : cscSubs;
             if (on) subs.add(device.getAddress()); else subs.remove(device.getAddress());
             emit("log", (on ? "iscritto a " : "disiscritto da ") + shortId(ch) + ": " + label(device));
-            if (needResp) try { server.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null); } catch (SecurityException ignored) { }
+            if (needResp) respond(device, requestId, null);
             emitStatus();
         }
 
@@ -496,7 +579,7 @@ public class GarminBridgePlugin extends Plugin {
         @Override public void onDescriptorReadRequest(BluetoothDevice device, int requestId, int offset, BluetoothGattDescriptor d) {
             UUID ch = d.getCharacteristic().getUuid();
             boolean on = (ch.equals(CP_MEAS) ? cpSubs : cscSubs).contains(device.getAddress());
-            try { server.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, on ? BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE : BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE); } catch (SecurityException ignored) { }
+            respond(device, requestId, on ? BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE : BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE);
         }
     };
 
