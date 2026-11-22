@@ -89,7 +89,7 @@ test('Horde Run: livelli Facile e Difficile cambiano i watt richiesti, la partit
   expect(r['11']).toMatchObject({ N: 7, boss: 2, total: 600 }); expect(r['21']).toMatchObject({ N: 12, boss: 3, total: 1200 });
 });
 
-test('Horde Run: chi smette di pedalare va in pausa e non perde; il ciclista è almeno il 14 % dello schermo', async ({ page }) => {
+test('Horde Run: chi smette di pedalare va in pausa e non perde; il ciclista è il 7–16 % dello schermo', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 780 });
   await openGame(page, 'horde');
   const r = await page.evaluate(() => {
@@ -108,7 +108,7 @@ test('Horde Run: chi smette di pedalare va in pausa e non perde; il ciclista è 
     p = 150; for (let i = 0; i < 2 * 30; i++) g.update(1 / 30);
     return { frac, paused, still: Math.abs(t1 - t0) < 3, t0, t1, hp, st, resumed: !g.paused && g.el > t1 };
   });
-  expect(r.frac, 'ciclista / altezza schermo').toBeGreaterThanOrEqual(0.14);
+  expect(r.frac, 'ciclista / altezza schermo').toBeGreaterThanOrEqual(0.07); expect(r.frac, 'il ciclista resta una figura piccola').toBeLessThanOrEqual(0.16);
   expect(r.paused).toBe(true); expect(r.still, 'il tempo di gioco si ferma').toBe(true);
   expect(r.st).toBe('play'); expect(r.hp).toBeGreaterThan(0); expect(r.resumed, 'riprende appena si pedala').toBe(true);
 });

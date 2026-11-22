@@ -186,7 +186,7 @@ function seedScript(lang, extra) {
   const names = CUSTOM_NAMES[lang];
   const custom = { ...CUSTOM_WORKOUT, name: names[0], desc: names[1] };
   return {
-    lang, analytics: '0', ftp: '220', mass: '72', hrMax: '188', weekGoal: '150', usePm: '0',
+    lang, analytics: '0', safetyAck: '1', ftp: '220', mass: '72', hrMax: '188', weekGoal: '150', usePm: '0',
     watchBrand: 'garmin', videoRef: '25', seenTrainers: JSON.stringify(['Smart-T']),
     customWorkouts: JSON.stringify([custom]), rideHistory: JSON.stringify(HISTORY),
     rfProgress: JSON.stringify({ xp: 2300, stats: { kills: 310, rescued: 14, races: 6, podiums: 3, coins: 120, bosses: 2 }, achievements: {}, daily: null }),

@@ -2,6 +2,8 @@
 // alla tua velocità: ti fermi e si ferma, acceleri e accelera. + / − restano il cambio.
 import { hudText } from './games/engine.js';
 import { t, fmtDec } from './i18n.js';
+import { drawWorkoutStrip, stripBottom, buildStrip } from './games/kit/workout-strip.js';
+import { wkTarget } from './games/kit/workout-plan.js';
 
 const YT_RE = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/;
 const REF_KMH = [{ v: 15, key: 'video.ref.run' }, { v: 25, key: 'video.ref.easy' }, { v: 32, key: 'video.ref.fast' }];
@@ -63,7 +65,6 @@ export class VideoRide {
     if (this.video?.src?.startsWith('blob:')) URL.revokeObjectURL(this.video.src);
     this.box?.remove(); this.ui?.remove(); this.yt = null; this.video = null;
     this.ctx.setTransform(1, 0, 0, 1, 0, 0); this.ctx.clearRect(0, 0, this.hud.width, this.hud.height);
-    this.hooks.setGrade(null);
   }
 
   resize() {
@@ -71,6 +72,19 @@ export class VideoRide {
     this.W = r.width; this.H = r.height;
     this.hud.width = Math.round(r.width * dpr); this.hud.height = Math.round(r.height * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  // la striscia comune dell'allenamento (null senza un allenamento: il video non ha un piano suo).
+  // I watt del passo vanno al rullo (ERG) ogni fotogramma; l'host restituisce quelli davvero chiesti (intensità a mano / ERG dal vivo).
+  stripInfo() {
+    const wk = this.hooks.workout?.(); if (!wk || !wk.steps?.length) { this.tgtEff = 0; return null; }
+    const ftp = this.hooks.ftp?.() || 200; const el = wk.elapsed || 0;
+    const segs = wk.steps.map((g) => ({ t0: g.t0, t1: g.t0 + g.dur, kind: g.kind, watts: g.watts, label: g.label || null }));
+    const g = wk.steps.find((x) => el >= x.t0 && el < x.t0 + x.dur) || wk.steps[wk.steps.length - 1];
+    const base = wkTarget({ t0: g.t0, t1: g.t0 + g.dur, w0: g.w0 ?? g.watts, w1: g.w1 ?? g.watts, watts: g.watts }, el);
+    const eff = this.hooks.setTarget ? Math.round(this.hooks.setTarget(base)) : base;
+    this.tgtEff = eff;
+    return buildStrip({ segs, el, total: wk.total, target: eff, ftp, bias: this.hooks.bias?.() ?? 1, wk: true });
   }
 
   // + / − cambiano marcia come fuori dai giochi
@@ -134,6 +148,9 @@ export class VideoRide {
     this.syncT = (this.syncT || 0) + 1;
     if (this.syncT % 15 === 0) this.sync();
     const { ctx, W, H } = this; ctx.clearRect(0, 0, W, H);
+    const strip = this.stripInfo(); const sb = strip ? stripBottom(W, H) : 0;
+    if (strip) drawWorkoutStrip(ctx, W, H, strip);
+    if (this.kind === 'yt' && this.box) this.box.style.top = strip ? `${Math.round(sb)}px` : ''; // il lettore YouTube non si copre: scende sotto la striscia
     if (this.ui.hidden) {
       const st = this.hooks.stats();
       const kmh = this.hooks.connected() ? this.hooks.speedKmh() : 0;
@@ -144,8 +161,8 @@ export class VideoRide {
         hudText(ctx, v, x, H - 54, { size: 26, align: 'center', color: i === 0 ? '#d9ff3d' : '#fff' });
         hudText(ctx, u, x, H - 34, { size: 11, align: 'center', color: '#ccc' });
       });
-      const yt = this.kind === 'yt'; const noteY = yt ? H - 98 : 100;
-      hudText(ctx, this.rate ? t('video.speed', { rate: fmtDec(this.rate, 2) }) : t('video.paused'), W - 16, yt ? 40 : 76, { size: 13, align: 'right', color: this.rate ? '#fff' : '#ffd34d' });
+      const yt = this.kind === 'yt'; const noteY = yt ? H - 98 : Math.max(100, sb + 24);
+      hudText(ctx, this.rate ? t('video.speed', { rate: fmtDec(this.rate, 2) }) : t('video.paused'), W - 16, yt ? Math.max(40, sb + 20) : Math.max(76, sb + 22), { size: 13, align: 'right', color: this.rate ? '#fff' : '#ffd34d' });
       if (!this.hooks.connected()) hudText(ctx, t('video.noTrainer'), W / 2, noteY, { size: 12, align: 'center', color: '#ffd34d' });
       if (this.error) hudText(ctx, this.error, W / 2, yt ? noteY : H / 2, { size: 13, align: 'center', color: '#ff6b6b' });
     }

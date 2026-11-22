@@ -34,13 +34,13 @@ export function defineGame({ id, icon, load, noAudio = false, dev = false, cls =
 
 /** @type {GameEntry[]} */
 export const GAMES = [
-  defineGame({ id: 'racer', icon: '01', load: () => import('./racer3d.js').then((m) => m.Racer3D) }),
+  defineGame({ id: 'shooter', icon: '01', load: () => import('./strike3d.js').then((m) => m.Strike3D) }),
   defineGame({ id: 'horde', icon: '02', load: () => import('./horde.js').then((m) => m.Horde) }),
   defineGame({ id: 'gruppetto', icon: '03', load: () => import('./gruppetto.js').then((m) => m.Gruppetto) }),
+  defineGame({ id: 'racer', icon: '04', load: () => import('./racer3d.js').then((m) => m.Racer3D) }),
+  defineGame({ id: 'planata', icon: '05', load: () => import('./planata.js').then((m) => m.Planata) }),
+  defineGame({ id: 'mattoni', icon: '06', load: () => import('./mattoni.js').then((m) => m.Mattoni) }),
   defineGame({ id: 'video', icon: '▶', cls: 'video-card', noAudio: true, load: () => import('../videoride.js').then((m) => m.VideoRide) }),
-  defineGame({ id: 'planata', icon: 'L1', load: () => import('./planata.js').then((m) => m.Planata) }),
-  defineGame({ id: 'mattoni', icon: 'L2', load: () => import('./mattoni.js').then((m) => m.Mattoni) }),
-  defineGame({ id: 'shooter', icon: 'L3', load: () => import('./strike3d.js').then((m) => m.Strike3D) }),
   // Living documentation: the template game (docs/games/CREATE-A-GAME.md). Visible only in developer mode.
   defineGame({ id: 'skeleton', icon: '3D', dev: true, load: () => import('./template/skeleton3d.js').then((m) => m.Skeleton3D) }),
   defineGame({ id: 'tempo', icon: 'T', dev: true, load: () => import('./template/tempo.js').then((m) => m.Tempo) }),

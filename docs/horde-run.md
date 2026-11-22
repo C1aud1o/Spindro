@@ -19,7 +19,7 @@ Start by pedalling (or by holding + or − for 0.8 s). All the watts asked for a
 Waves: 4 (5 min), 7 (10 min), 12 (20 min). The Keeper arrives at the end of every block of 4 waves and in the last one.
 Rotating mix: walkers in numbers, runners, brutes, skeletons (they dodge shots).
 An **effort** succeeds if for 65% of the time (sprint: 50%) you hold at least 92% of the watts asked.
-Adaptation: two failed efforts in a row → targets −5%, three successful → +5%, within ±15%.
+No adaptation: targets are plan % × FTP plus the chosen level, and never change by themselves during a run.
 
 ## Controls
 - Watts → fire rate: `shots/s = weapon base × clamp(watts / (0.8 × FTP), 0.35, 1.8)`.

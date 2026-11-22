@@ -17,7 +17,7 @@ await page.addInitScript(() => { localStorage.setItem('__seeded', '1'); localSto
 await page.goto(`${BASE}/index.html`);
 await page.click('#openGame'); await page.click('[data-game=racer]');
 await page.waitForFunction(() => window.__game?.state === 'select', null, { timeout: 150000 });
-await page.evaluate(({ MIN }) => { const g = window.__game; g.durIdx = [5, 10, 20].indexOf(MIN); g.level = 1; g.adaptMem = 0; g.selT = 1; g.begin(); }, { MIN });
+await page.evaluate(({ MIN }) => { const g = window.__game; g.durIdx = [5, 10, 20].indexOf(MIN); g.level = 1; g.selT = 1; g.begin(); }, { MIN });
 await page.waitForFunction(() => window.__game.state === 'countdown', null, { timeout: 150000 });
 await page.evaluate(({ PW, AT }) => {
   const g = window.__game;

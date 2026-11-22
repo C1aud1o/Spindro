@@ -105,7 +105,7 @@ test('Updraft: comandi del menu (− durata, + livello, + lungo avvia) e + / −
   expect(r.xLeft, '− = sinistra').toBeGreaterThan(3);
 });
 
-test('Updraft: chi smette di pedalare va in pausa e non perde; il ciclista è ≥ 14 % dello schermo, gli anelli ≥ 8 %', async ({ page }) => {
+test('Updraft: chi smette di pedalare va in pausa e non perde; il ciclista è il 7–16 % dello schermo, gli anelli ≥ 4 %', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 780 });
   await openGame(page);
   const r = await page.evaluate(() => {
@@ -126,9 +126,9 @@ test('Updraft: chi smette di pedalare va in pausa e non perde; il ciclista è �
     p = 150; for (let i = 0; i < 2 * 30; i++) g.update(1 / 30);
     return { riderFrac, ringFrac, ringDist, stormFrac, stormDist, paused, still: Math.abs(t1 - t0) < 3, st, resumed: !g.paused && g.el > t1 };
   });
-  expect(r.riderFrac, 'ciclista / altezza schermo').toBeGreaterThanOrEqual(0.14);
-  expect(r.ringFrac * 1, `anello / altezza schermo a ${r.ringDist.toFixed(0)} m`).toBeGreaterThanOrEqual(0.08);
-  expect(r.stormFrac, `tempesta / altezza schermo a ${r.stormDist.toFixed(0)} m`).toBeGreaterThanOrEqual(0.08);
+  expect(r.riderFrac, 'ciclista / altezza schermo').toBeGreaterThanOrEqual(0.07); expect(r.riderFrac, 'il ciclista resta una figura piccola').toBeLessThanOrEqual(0.16);
+  expect(r.ringFrac * 1, `anello / altezza schermo a ${r.ringDist.toFixed(0)} m`).toBeGreaterThanOrEqual(0.04);
+  expect(r.stormFrac, `tempesta / altezza schermo a ${r.stormDist.toFixed(0)} m`).toBeGreaterThanOrEqual(0.04);
   expect(r.paused).toBe(true); expect(r.still, 'il tempo di gioco si ferma').toBe(true);
   expect(r.st).toBe('play'); expect(r.resumed, 'riprende appena si pedala').toBe(true);
 });

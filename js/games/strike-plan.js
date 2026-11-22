@@ -80,19 +80,15 @@ export function blocksFromWorkout(wp) {
 export const isHard = (b) => b && (b.kind === 'effort' || b.kind === 'mini' || b.kind === 'boss' || b.kind === 'sprint');
 
 export class Coach {
-  constructor(ftp = 200, level = 1) { this.ftp = ftp; this.level = level; this.adapt = 0; this.okRow = 0; this.failRow = 0; this.results = []; }
-  get mul() { return LEVEL_MUL[this.level] * (1 + this.adapt); }
-  // watt richiesti da un blocco (gli scatti non si adattano: sono un "tutto" breve)
+  constructor(ftp = 200, level = 1) { this.ftp = ftp; this.level = level; this.results = []; }
+  get mul() { return LEVEL_MUL[this.level]; }
+  // watt richiesti da un blocco (solo il livello scelto nel menu)
   target(b) { if (!b) return 0; if (b.fixed) return b.watts; /* con un allenamento i watt li decide lui */ const k = b.kind === 'sprint' ? LEVEL_MUL[this.level] : isHard(b) ? this.mul : 1; return Math.round(this.ftp * b.pct * k / 5) * 5; }
   // esito di uno sforzo: media della potenza nel blocco rispetto al bersaglio
   finish(b, avgW, inZoneK) {
     const target = this.target(b);
     const ok = b.kind === 'sprint' ? inZoneK >= 0.6 : avgW >= target * TOL;
-    this.results.push({ kind: b.kind, target, avg: Math.round(avgW), ok, adapt: this.adapt });
-    if (b.kind === 'sprint') return ok; // gli scatti non cambiano la difficoltà
-    if (ok) { this.okRow++; this.failRow = 0; if (this.okRow >= 3) { this.adapt = Math.min(0.15, this.adapt + 0.05); this.okRow = 0; } }
-    else { this.failRow++; this.okRow = 0; if (this.failRow >= 2) { this.adapt = Math.max(-0.15, this.adapt - 0.05); this.failRow = 0; } }
-    this.adapt = Math.round(this.adapt * 100) / 100;
+    this.results.push({ kind: b.kind, target, avg: Math.round(avgW), ok });
     return ok;
   }
   get efforts() { return this.results.filter((r) => r.kind !== 'sprint'); }

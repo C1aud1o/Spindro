@@ -175,20 +175,20 @@
     ],
     "games": [
       [
-        "Breakaway",
-        "A timed stage: breakaway, intermediate sprint, climb and final sprint. Climbs load your trainer."
+        "Pedal Strike",
+        "A runner shooter. Shields break only at the right watts; a sprint unleashes overdrive."
       ],
       [
         "Horde Run",
         "Hold the road against waves of zombies. More watts, more shots."
       ],
       [
-        "Pedal Strike",
-        "A runner shooter. Shields break only at the right watts; a sprint unleashes overdrive."
-      ],
-      [
         "Slipstream",
         "Bridge to the riders who attack and tow them into your slipstream."
+      ],
+      [
+        "Breakaway",
+        "A timed stage: breakaway, intermediate sprint, climb and final sprint. Climbs load your trainer."
       ],
       [
         "Updraft",
@@ -201,10 +201,10 @@
     ],
     "gamesMore": "The games menu also plays any YouTube ride video, or a video of your own, at your own speed. If the trainer drops during a game, the game pauses with a message.",
     "gamesAlt": [
-      "Breakaway: the rider in pink leads the bunch towards the sea, with the gear, the climb goal and a profile of the stage on screen.",
-      "Horde Run: a rider on a night road firing at a horde of zombies, with a wave counter and shots per second.",
       "Pedal Strike: a rider on a harbour road facing a shielded mini-boss, with the score, the workout step bar and the overdrive meter.",
+      "Horde Run: a rider on a night road firing at a horde of zombies, with a wave counter and shots per second.",
       "Slipstream: a rider on a country road collecting bottles, with the next rider 45 metres ahead.",
+      "Breakaway: the rider in pink leads the bunch towards the sea, with the gear, the climb goal and a profile of the stage on screen.",
       "Updraft: a yellow plane carrying the rider through a ring, with an altitude gauge.",
       "Feed Zone: a rider bouncing a bottle off a line of fans holding buckets."
     ],
@@ -436,7 +436,7 @@
     "rulesTitle": "The rules a game follows",
     "rules": [
       "A run is a workout of 5, 10 or 20 minutes, with intensity as a percentage of the rider's FTP, so it is fair at 120 W and at 320 W.",
-      "Three levels (easy, normal, hard) and a difficulty that adapts a little after failed or successful efforts.",
+      "Three levels (easy, normal, hard) of your choosing; the targets stay exactly those of the plan.",
       "Something to do within eight seconds, and never more than five seconds without an event that asks or rewards something.",
       "Playable without touching the screen: watts and cadence do the work, + and − do one thing.",
       "Whoever stops pedalling pauses the game; nobody is punished for pushing harder."

@@ -13,7 +13,7 @@ QUATRE FAÇONS DE PÉDALER
 Changez avec les boutons à l'écran, le clavier, des télécommandes Bluetooth ou un Zwift Click (prise en charge expérimentale ; Zwift Play et Zwift Ride sont aussi reconnus).
 
 DES JEUX QUI SE JOUENT AVEC LES JAMBES
-Six jeux 3D qui sont des entraînements : Breakaway (une course par étapes), Horde Run, Pedal Strike, Slipstream, Updraft et Feed Zone. Chacun est une séance de 5, 10 ou 20 minutes en pourcentage de votre FTP, avec trois niveaux et un seul menu. Les montées de Breakaway arrivent sur le home trainer comme une vraie pente.
+Six jeux 3D qui sont des entraînements : Pedal Strike, Horde Run, Slipstream, Breakaway (une course par étapes), Updraft et Feed Zone. Chacun est une séance de 5, 10 ou 20 minutes en pourcentage de votre FTP, avec trois niveaux et un seul menu. Les montées de Breakaway arrivent sur le home trainer comme une vraie pente.
 
 ENTRAÎNEMENTS STRUCTURÉS
 • Séances ERG calculées sur votre FTP (sweet spot, seuil, VO2max, pyramide, 30/30…) et test FTP en rampe.

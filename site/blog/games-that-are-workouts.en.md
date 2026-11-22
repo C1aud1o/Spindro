@@ -17,9 +17,9 @@ All of it is expressed in **percent of your FTP**. Recovery is around 50 to 65%,
 
 ![Breakaway, the stage-race game: a climb goal at 90% of FTP while the pack rides alongside.](shot:game-racer)
 
-## Three levels, and a difficulty that adapts
+## Three levels, and targets that stay put
 
-Easy, normal and hard shift the percentages by about 10% either way. On top of that the game adapts a little: after two failed efforts in a row the demands drop by 5%, and after three successful ones they rise by 5%, within a limit of 15% either way. The point is to keep you in the zone where the effort is hard but not hopeless.
+Easy, normal and hard shift the percentages by about 10% either way. The target in watts is only the plan percentage times your FTP, plus the level you picked in the menu. Nothing changes it behind your back during a session, so a number on screen is a number you can trust.
 
 ## Something to do every few seconds
 

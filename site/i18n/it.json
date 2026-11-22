@@ -175,20 +175,20 @@
     ],
     "games": [
       [
-        "Breakaway",
-        "Una tappa a tempo: fuga, traguardo volante, salita e volata finale. Le salite caricano il tuo rullo."
+        "Pedal Strike",
+        "Uno sparatutto in corsa. Gli scudi si rompono solo ai watt giusti; uno scatto scatena l'overdrive."
       ],
       [
         "Horde Run",
         "Tieni la strada contro ondate di zombie. Più watt, più colpi."
       ],
       [
-        "Pedal Strike",
-        "Uno sparatutto in corsa. Gli scudi si rompono solo ai watt giusti; uno scatto scatena l'overdrive."
-      ],
-      [
         "Slipstream",
         "Raggiungi i corridori che attaccano e portali nella tua scia."
+      ],
+      [
+        "Breakaway",
+        "Una tappa a tempo: fuga, traguardo volante, salita e volata finale. Le salite caricano il tuo rullo."
       ],
       [
         "Updraft",
@@ -201,10 +201,10 @@
     ],
     "gamesMore": "Il menu dei giochi riproduce anche un video di una salita da YouTube, o un tuo video, alla tua velocità. Se il rullo si stacca durante un gioco, il gioco va in pausa con un messaggio.",
     "gamesAlt": [
-      "Breakaway: il corridore in rosa guida un gruppo verso il mare, con la marcia, l'obiettivo della salita e il profilo della tappa sullo schermo.",
-      "Horde Run: un ciclista su una strada di notte spara a un'orda di zombie, con il contatore delle ondate e i colpi al secondo.",
       "Pedal Strike: un ciclista su una strada del porto di fronte a un mini-boss con lo scudo, con il punteggio, la barra dei tratti dell'allenamento e il misuratore dell'overdrive.",
+      "Horde Run: un ciclista su una strada di notte spara a un'orda di zombie, con il contatore delle ondate e i colpi al secondo.",
       "Slipstream: un ciclista su una strada di campagna raccoglie borracce, con il prossimo corridore a 45 metri.",
+      "Breakaway: il corridore in rosa guida un gruppo verso il mare, con la marcia, l'obiettivo della salita e il profilo della tappa sullo schermo.",
       "Updraft: un aereo giallo porta il ciclista attraverso un anello, con l'indicatore di quota.",
       "Feed Zone: un ciclista fa rimbalzare una borraccia su una fila di tifosi con i secchi in mano."
     ],
@@ -436,7 +436,7 @@
     "rulesTitle": "Le regole che un gioco segue",
     "rules": [
       "Una partita è un allenamento da 5, 10 o 20 minuti, con l'intensità in percentuale della FTP del ciclista, così è equa a 120 W e a 320 W.",
-      "Tre livelli (facile, normale, difficile) e una difficoltà che si adatta un po' dopo sforzi falliti o riusciti.",
+      "Tre livelli (facile, normale, difficile) a tua scelta; i watt richiesti restano quelli del piano.",
       "Qualcosa da fare entro otto secondi, e mai più di cinque secondi senza un evento che chiede o premia qualcosa.",
       "Si gioca senza toccare lo schermo: watt e cadenza fanno il grosso, + e − fanno una cosa sola.",
       "Chi smette di pedalare mette in pausa il gioco; nessuno è punito perché spinge di più."

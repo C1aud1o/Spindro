@@ -596,7 +596,7 @@ body:not(.dev) .lab-game { display: none; }
 /* scelte rapide: icona grande sopra, titolo, una riga di spiegazione */
 /* titolo del menu giochi con l'icona */
 .game-menu h2.menu-title { display: flex; align-items: center; gap: 12px; }
-.game-menu h2.menu-title .ico { width: 56px; height: 56px; }
+.game-menu h2.menu-title .menu-ico { width: 28px; height: 28px; stroke-width: 1.8; color: var(--t3); flex: none; }
 /* schede dei giochi: numero nel riquadro colorato, titoli nei caratteri dei giochi */
 .game-emoji { width: 64px; height: 64px; flex: none; display: grid; place-items: center; border-radius: 18px; font: 400 30px/1 var(--font-game); color: #15141b; background: linear-gradient(160deg, var(--accent), #9ad100); box-shadow: 0 6px 14px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .55); }
 [data-game=horde] .game-emoji { background: linear-gradient(160deg, #ff8a95, #ff4d5e); }
@@ -674,12 +674,12 @@ main { gap: 12px; }
 .cassette { height: 24px; }
 
 /* ---------- tre scorciatoie ---------- */
-.quick-pick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.qp { display: grid; justify-items: center; align-content: center; gap: 4px; min-height: 88px; padding: 10px 4px; color: inherit; background: var(--surface); border: 1px solid rgba(var(--paper), .06); border-top: 3px solid var(--qp, var(--accent)); border-radius: var(--r-card); box-shadow: var(--shadow); }
+.quick-pick { container-type: inline-size; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.qp { display: grid; justify-items: center; align-content: center; gap: 4px; min-height: 88px; padding: 10px 4px; color: inherit; background: var(--surface); border: 1px solid rgba(var(--paper), .06); border-radius: var(--r-card); box-shadow: var(--shadow); }
 .qp:active { transform: scale(.97); }
-.qp .ico { width: 44px; height: 44px; }
-.qp b { font: 700 18px/1 var(--font-num); letter-spacing: .04em; text-transform: uppercase; }
-.qp-train { --qp: var(--accent); } .qp-play { --qp: #ff7a45; } .qp-hist { --qp: #4aa3ff; }
+.qp-ico { width: 26px; height: 26px; stroke-width: 1.8; color: var(--t3); transition: color .12s; }
+.qp:hover .qp-ico, .qp:focus-visible .qp-ico, .qp:active .qp-ico { color: var(--accent); }
+.qp b { font: 700 clamp(13px, 5cqi, 18px)/1 var(--font-num); letter-spacing: .04em; text-transform: uppercase; }
 
 /* ---------- altre modalità (chiuso finché non servono) ---------- */
 .more-modes { padding: 0; }

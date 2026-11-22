@@ -13,6 +13,7 @@ import { Walker, makeEnemyKit } from './kit/walkers.js';
 import { World, LEVELS, LANES } from './strike-world.js';
 import { buildWorkout, blocksFromWorkout, Coach, starsFor, isHard, DURATIONS, TOL } from './strike-plan.js';
 import { WorkoutClock, BandMeter, workoutStars, workoutPlan } from './kit/workout-plan.js';
+import { drawWorkoutStrip, stripBottom, buildStrip } from './kit/workout-strip.js';
 import { clamp, lerp } from './engine.js';
 import { txt, HUD, hudView, measure, paragraph, wrapLines, MessageQueue, guardTrainer, trainerLostBanner } from './kit/hud.js';
 import { t, fmtDec } from '../i18n.js';
@@ -80,7 +81,6 @@ const POOLS = {
   boss: ['runners', 'pair'],
 };
 const GAP = { warm: 3.6, effort: 2.9, rec: 3.4, sprint: 2.2, mini: 5.5, boss: 6, cool: 99 };
-const GRADE = { warm: 1, effort: 3, rec: 0.5, sprint: 2, mini: 3.5, boss: 4, cool: 0 };
 
 const OD_TIME = 7;
 const v3 = new THREE.Vector3();
@@ -288,7 +288,7 @@ export class Strike3D {
   }
 
   stop() {
-    this.active = false; this.detachMenu?.(); this.detachResults?.(); this.audio.stopSong(); this.audio.transpose = 0; this.hooks.setGrade(null);
+    this.active = false; this.detachMenu?.(); this.detachResults?.(); this.audio.stopSong(); this.audio.transpose = 0;
     this.stage?.dispose(); this.stage = null;
   }
 
@@ -402,7 +402,7 @@ export class Strike3D {
     // allenamento in corso: la partita È l'allenamento (durata, blocchi e watt vengono da lì; il livello non cambia i watt)
     this.wc = new WorkoutClock(this.hooks); const wp = this.wc.begin(ftp); this.wk = wp ? { ...wp } : null; this.band = new BandMeter();
     this.blocks = wp ? blocksFromWorkout(wp) : buildWorkout(this.minutes);
-    this.coach = new Coach(ftp, this.diff);
+    this.coach = new Coach(ftp, this.diff); this.effW = null; this.effFor = null; this.effK = 1;
     this.st = wp ? this.wc.el : 0; this.bi = -1; this.block = null; this.blockStat = null;
     this.score = 0; this.kills = 0; this.rescued = 0; this.combo = 0; this.comboT = 0; this.maxCombo = 0; this.kos = 0; this.hitsTaken = 0;
     this.hp = this.hero.hp; this.maxHp = this.hero.hp;
@@ -460,18 +460,33 @@ export class Strike3D {
   say(text, color = HUD.gold, life = 1.8, big = false, prio = big ? 2 : 1) { this.msgs.say(text, { color, dur: life, big, prio }); }
   pop(text, color, x, y, z, life = 1) { this.pops.push({ text, color, x, y, z, t: life, life }); if (this.pops.length > 5) this.pops.shift(); }
   prog(stat, n = 1, xp = 0) { this.hooks.progress?.event(stat, n, xp); }
-  tgW() { return this.coach ? this.coach.target(this.block) : 0; }
+  // ERG: il bersaglio del blocco va al rullo ogni frame; il valore davvero richiesto (x intensità a mano, o il watt vivo dell'allenamento) è quello che si mostra e si giudica
+  tgW() { return this.effW != null && this.effFor === this.block ? this.effW : this.coach ? this.coach.target(this.block) : 0; }
+  syncTarget() {
+    const b = this.block || this.blocks?.[0]; if (!b || !this.coach) return;
+    const base = this.coach.target(b);
+    const eff = this.hooks.setTarget ? Math.round(this.hooks.setTarget(base)) : base;
+    this.effW = eff > 0 ? eff : base; this.effFor = b;
+    this.effK = base > 0 ? this.effW / base : 1; // rapporto sul piano (intensità a mano): scala anche scudi e scatto
+  }
+  // la striscia comune dell'allenamento: con un allenamento i suoi passi, senza i blocchi della partita (stessi campi)
+  stripInfo() {
+    const bl = this.blocks || []; const wk = !!this.wk;
+    const segs = bl.map((b) => ({ t0: b.t0, t1: b.t1, kind: wk ? b.wkKind || b.kind : b.kind, watts: this.coach.target(b), label: wk ? b.label || null : null, stepStart: b.stepStart, stepEnd: b.stepEnd }));
+    const cur = this.block || bl[0];
+    return buildStrip({ segs, el: this.st || 0, total: bl.total || segs[segs.length - 1]?.t1 || 1, target: this.effW ?? this.coach.target(cur), ftp: this.coach.ftp, bias: this.hooks.bias?.() ?? 1, wk });
+  }
   // con un allenamento il rullo è in ERG: «in zona» = segui il bersaglio del passo (in qualunque blocco), così scudi e boss restano giusti per chi segue l'allenamento
   advance(dt) { if (this.wk) this.st = this.wc.tick(dt); else this.st += dt; }
   // potenza "in zona": sopra il 95 % di quella richiesta dal blocco
-  inZone() { const tg = this.block && (this.wk || isHard(this.block)) ? this.coach.target(this.block) : 0; return tg > 0 && this.power >= tg * TOL; }
-  shieldW() { const b = this.block; if (!b) return 0; if (this.wk) return this.coach.target(b); const k = isHard(b) && b.kind !== 'sprint' ? b : { kind: 'effort', pct: 1 }; return this.coach.target(k); }
+  inZone() { const tg = this.block && (this.wk || isHard(this.block)) ? this.tgW() : 0; return tg > 0 && this.power >= tg * TOL; }
+  shieldW() { const b = this.block; if (!b) return 0; if (this.wk) return this.tgW(); const k = isHard(b) && b.kind !== 'sprint' ? b : { kind: 'effort', pct: 1 }; return Math.round(this.coach.target(k) * (this.effK || 1) / 5) * 5; }
   shieldsDown() { return this.power >= this.shieldW() * TOL; }
 
   // ---------- nemici ----------
   spawnFoe(type, x, lane, extra = {}) {
     const def = FOES[type]; const z = LANES[lane];
-    const hpK = 1 + 0.12 * this.diff + (this.coach?.adapt || 0);
+    const hpK = 1 + 0.12 * this.diff;
     const e = { type, def, x, lane, z, hp: def.hp * hpK, maxHp: 0, dead: false, deadT: 0, flash: 0, t: this.rnd() * 3, born: 0, fireT: 0.6 + this.rnd() * 0.8, tele: 0, size: def.size || 1, extra: [], ...extra };
     e.maxHp = e.hp;
     const scene = this.stage.scene;
@@ -492,12 +507,12 @@ export class Strike3D {
     }
     if (def.hover) { // disco volante sotto i piedi: tiene la distanza senza camminare
       const d = new THREE.Mesh(this.discGeo, this.discMat); d.castShadow = false; scene.add(d);
-      const g = new THREE.Sprite(new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: '#ffb347', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.8 }));
+      const g = new THREE.Sprite(new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: '#ffb347', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.16 }));
       g.scale.set(2.4, 1.2, 1); scene.add(g); e.disc = d; e.discGlow = g; e.extra.push(d, g);
     }
     if (def.shielded) { e.dome = this.makeDome('#5cc8ff'); e.dome.scale.set(1.25, 2.1, 1.25); scene.add(e.dome); e.extra.push(e.dome); }
     // entrata: lampo di teletrasporto e crescita in 0,3 s (lontano, nella foschia)
-    this.blast.fx.spawn(x, 1.2, z, { tex: 'flash', size: 3.5, life: 0.25, color: type === 'shield' ? '#5cc8ff' : '#ffd9a0' });
+    this.blast.fx.spawn(x, 1.2, z, { tex: 'flash', size: 2.4, life: 0.22, color: type === 'shield' ? '#5cc8ff' : '#ffd9a0' });
     this.foes.push(e);
     return e;
   }
@@ -582,7 +597,7 @@ export class Strike3D {
     const pr = new Cyclist(this.allyTpl, makeKit(['#4de3ff', '#ffd166', '#7dff6a', '#c77dff', '#ff922b'][this.rescued % 5], this.rescued + 3), { shadows: false });
     pr.standUp(false); pr.root.scale.setScalar(0.95); pr.root.rotation.y = -0.6; pr.pose(0.01, 0, 0, { wave: true });
     root.add(pr.root);
-    const beacon = new THREE.Sprite(new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: '#7dff6a', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.6 }));
+    const beacon = new THREE.Sprite(new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: '#7dff6a', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.14 }));
     beacon.scale.setScalar(3.4); beacon.position.y = 1.4; root.add(beacon);
     root.position.set(x, 0, z); root.scale.setScalar(0.001); this.stage.scene.add(root);
     this.cages.push({ root, cage, pr, beacon, x, lane, z, open: false, t: 0 });
@@ -595,7 +610,7 @@ export class Strike3D {
     const model = kind === 'heart' ? rigidModel(this.m.heart, 1.0) : rigidModel(this.m.crate, 1.0);
     model.position.y = 0.6; root.add(model);
     if (kind !== 'heart') model.userData.mats.forEach((m) => m.userData.u.tint.value.set(col).lerp(new THREE.Color('#ffffff'), 0.45));
-    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: col, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.85 }));
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: col, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.16 }));
     glow.scale.setScalar(3); glow.position.y = 1.1; root.add(glow);
     const ring = new THREE.Mesh(this.teleGeo, new THREE.MeshBasicMaterial({ map: fxTexture('circle_05'), color: col, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
     ring.scale.setScalar(2.2); ring.position.y = 0.05; root.add(ring);
@@ -654,8 +669,8 @@ export class Strike3D {
     // demo senza rullo: 0,8 × FTP, poi segue gli sforzi e fa gli scatti quando il gioco li chiede (si vede tutto il gioco)
     const wantSprint = this.block?.kind === 'sprint' || (this.boss?.phase === 3 && !this.boss.dead);
     const demoSprint = !connected && wantSprint && (this.st % 14) < 9;
-    const demoHard = this.block && isHard(this.block) && this.coach ? this.coach.target(this.block) * 1.03 : 0;
-    this.power = connected ? st.power || 0 : this.wk && this.block ? this.coach.target(this.block) : demoSprint ? ftp * 1.4 : Math.max(demoHard, ftp * (0.8 + Math.sin(this.t * 0.7) * 0.05));
+    const demoHard = this.block && isHard(this.block) && this.coach ? this.tgW() * 1.03 : 0;
+    this.power = connected ? st.power || 0 : this.wk && this.block ? this.tgW() : demoSprint ? ftp * 1.4 : Math.max(demoHard, ftp * (0.8 + Math.sin(this.t * 0.7) * 0.05));
     this.cadence = connected ? st.cadence || 0 : demoSprint ? 105 : 86;
     const kmh = connected ? this.hooks.speedKmh() : demoSprint ? 38 : 29;
     if (this.audio.song) this.audio.setTempo(this.audio.song.bpm * clamp((this.cadence || 85) / 88, 0.85, 1.25));
@@ -668,7 +683,7 @@ export class Strike3D {
     // chi smette di pedalare va in pausa (non perde): riparte da solo quando ricomincia
     if (connected && (this.state === 'play' || this.state === 'intro')) {
       if (this.power < 15 && this.cadence < 10) this.stopT += realDt; else this.stopT = 0;
-      if (!this.paused && this.stopT > 3) { this.paused = true; if (!this.wk) { this.hooks.setGrade(0); this.sentGrade = 0; } }
+      if (!this.paused && this.stopT > 3) this.paused = true;
       if (this.paused && (this.power > 40 || this.cadence > 30)) { this.paused = false; this.stopT = 0; this.say(t('games.shooter.resume'), HUD.lime, 1.2); }
       if (this.paused) { this.animate(0); return; }
     }
@@ -680,10 +695,10 @@ export class Strike3D {
     this.speed = clamp(2.2 + (kmh / 3.6) * 0.48, 3.2, 10.5);
     if (this.state === 'menu') { this.menu.update(realDt, { connected, power: st.power || 0 }); this.px += dt * 3; this.animate(dt); return; }
     // sprint: soglia dello scatto in % della FTP (135 %, scalata dal livello)
-    this.sprintW = this.coach ? this.coach.target({ kind: 'sprint', pct: 1.35 }) : Math.round(ftp * 1.35);
+    this.sprintW = this.coach ? Math.round(this.coach.target({ kind: 'sprint', pct: 1.35 }) * (this.effK || 1) / 5) * 5 : Math.round(ftp * 1.35);
     this.sprinting = this.wk ? this.block?.kind === 'sprint' && this.inZone() : this.power >= this.sprintW * TOL;
     if (this.state === 'intro') {
-      this.advance(realDt);
+      this.advance(realDt); this.syncTarget();
       this.px += this.speed * dt; this.animate(dt);
       if (this.stateT > 3.2) { this.state = 'play'; this.stateT = 0; }
       if (this.st > 2.4 && !this.firstSpawn) { this.firstSpawn = true; this.spawnPattern('pair'); this.dirT = 3; }
@@ -702,6 +717,7 @@ export class Strike3D {
     if (this.wk && this.wc.ended) { this.bi = this.blocks.length - 1; this.block = this.blocks[this.bi]; this.startCool(); return; } // l'allenamento è finito (anche senza defaticamento)
     this.updateBlock(realDt);
     if (this.state !== 'play') return;
+    this.syncTarget();
     this.px += this.speed * dt;
     this.idle += realDt;
     if ((!connected && this.idle > 5) || this.auto) this.autopilot();
@@ -752,9 +768,6 @@ export class Strike3D {
     const b = this.block; const S = this.blockStat;
     if (this.wk) this.band.add(dt, this.power, this.tgW(), this.st - b.stepStart);
     if (S) { S.sum += this.power * dt; S.time += dt; if (this.power >= this.tgW() * (b.kind === 'sprint' ? TOL : TOL)) S.zone += dt; }
-    // pendenza al rullo: facile nei recuperi, più dura negli sforzi
-    const g = GRADE[b.kind] ?? 1;
-    if (!this.wk && g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade(g); }
     // conto alla rovescia negli ultimi 3 s prima di uno sforzo
     const next = this.blocks[i + 1]; const left = b.t1 - this.st;
     if (next && isHard(next) && !isHard(b) && left < 3.05 && Math.ceil(left) !== this.beepN) { this.beepN = Math.ceil(left); if (this.beepN > 0) { this.audio.sfx('beep'); this.logEvent('count'); } }
@@ -790,7 +803,7 @@ export class Strike3D {
     if (this.boss) { if (!this.boss.dead) this.bossFlee(); else { this.blast.boom(this.boss.x, this.boss.aimY, this.boss.z, 2); this.removeBoss(); } }
     for (const s of this.strikes) for (const m of s.meshes) m.visible = false; this.strikes = []; this.beam.visible = false;
     this.overdrive = 0; this.audio.transpose = 0; this.weapon !== 'blaster' && this.setWeapon('blaster');
-    if (!this.wk) { this.hooks.setGrade(0); this.sentGrade = 0; }
+    this.hooks.setTarget?.(Math.round(this.coach.ftp * 0.5)); // a fine partita il rullo scende su un facile (con un allenamento comanda lui)
     const finished = true;
     const okRate = this.coach.okRate;
     // con un allenamento le stelle sono le stesse di tutti i giochi: tempo entro ±7 % del bersaglio (kit/workout-plan.js)
@@ -1082,7 +1095,7 @@ export class Strike3D {
         e.z += (LANES[this.lane] - e.z) * dt * 0.5;
         if (e.bombs >= 3) { e.x += this.speed * dt * 0.6; e.y += dt * 4; if (e.y > 9) this.poof(e); }
       } else if (e.type === 'barrier') {
-        if (e.root.userData.glow) e.root.userData.glow.material.opacity = 0.5 + 0.5 * Math.sin(e.t * 10);
+        if (e.root.userData.glow) e.root.userData.glow.material.opacity = 0.12 + 0.12 * Math.sin(e.t * 10);
       }
       const hy = e.def.hover ? 0.55 + Math.sin(e.t * 2.4) * 0.12 + (e.hoverY || 0) : 0;
       if (e.w) {
@@ -1478,7 +1491,7 @@ export class Strike3D {
     const x = this.px + 20 + this.rnd() * 30; const y = 10 + this.rnd() * 8; const z = (this.rnd() - 0.5) * 30;
     const col = ['#ff4d9d', '#4de3ff', '#ffd166', '#7dff6a', '#c77dff'][Math.floor(this.rnd() * 5)];
     for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2; this.blast.fx.spawn(x, y, z, { tex: 'spark', size: 0.9, life: 1.1, vx: 0, vy: Math.sin(a) * 7, vz: Math.cos(a) * 7, grow: 0, color: col }); }
-    this.blast.fx.spawn(x, y, z, { tex: 'flash', size: 6, life: 0.3, color: col });
+    this.blast.fx.spawn(x, y, z, { tex: 'flash', size: 4, life: 0.28, color: col });
     this.audio.sfx('boom');
   }
 
@@ -1495,7 +1508,7 @@ export class Strike3D {
     } else { P.root.position.set(this.px, 0, this.laneZ); P.root.rotation.set(0, -0.6, 0); P.pose(dt, 0, 0); }
     P.root.visible = !((this.invuln > 0 || this.ko > 0) && Math.floor((this.invuln + this.ko) * 12) % 2 && this.state === 'play');
     this.aura.position.set(this.px, 1.3, this.laneZ);
-    this.aura.material.opacity += ((od ? 0.45 : 0) - this.aura.material.opacity) * Math.min(1, dt * 6);
+    this.aura.material.opacity += ((od ? 0.12 : 0) - this.aura.material.opacity) * Math.min(1, dt * 6);
     this.aura.material.rotation += dt * 2;
     this.heroDome.visible = this.puShield > 0; if (this.puShield > 0) { this.heroDome.position.set(this.px, 0, this.laneZ); this.heroDome.scale.set(1.6, 2.4, 1.6); this.heroDome.material.opacity = this.puShield < 2 ? 0.25 + 0.25 * Math.sin(this.t * 20) : 0.35; this.heroDome.material.map.offset.y += dt * 0.3; }
     if (od && this.rnd() < dt * 18) this.blast.fx.spawn(this.px - 0.8, 0.5 + this.rnd(), this.laneZ + (this.rnd() - 0.5), { tex: 'blue', size: 0.5, life: 0.35, vx: -this.speed * 0.6, grow: -0.5 });
@@ -1515,7 +1528,7 @@ export class Strike3D {
     const B = this.boss;
     this.bossCam = (this.bossCam || 0) + ((B && !B.dead && !B.fleeing ? 1 : 0) - (this.bossCam || 0)) * Math.min(1, dt * 1.2);
     const bh = B ? clamp(B.h + (B.y0 || 0), 4, 10) : 5;
-    let fov = lerp(56, 46, k); let D = lerp(8, 9, k); let H0 = lerp(4.6, 3.8, k); let yaw = lerp(1.45, 1.42, k);
+    let fov = lerp(56, 46, k); let D = lerp(15, 18, k); let H0 = lerp(8.2, 6.4, k); let yaw = lerp(1.45, 1.42, k); // camera arretrata: l'eroe è una figura piccola (~12–15 % dell'altezza)
     let ax = lerp(-0.3, 0.05, k); let ay = lerp(-0.42, -0.4, k); // dove sta l'eroe sullo schermo (coordinate -1…1)
     D += this.bossCam * 1.6; H0 += this.bossCam * Math.max(0, bh - 3.6) * 0.8; ay -= this.bossCam * 0.16;
     if (this.state === 'intro') { const s = clamp(1 - this.stateT / 3, 0, 1); D *= 1 + s * s * 0.6; H0 *= 1 + s * s * 0.5; }
@@ -1587,27 +1600,25 @@ export class Strike3D {
     if (this.overdrive > 0) { const k = Math.min(1, this.overdrive / 0.6); ctx.fillStyle = `rgba(77,227,255,${0.1 * k})`; ctx.fillRect(0, 0, W, H); }
     if (this.state === 'menu') { this.menu.draw(ctx, W, H, { connected: this.hooks.connected() }); this.hooks.progress?.drawToasts(ctx, W, dt); return; }
     if (this.state === 'results') { this.drawResults(ctx, W, H, S); this.hooks.progress?.drawToasts(ctx, W, dt); return; } // il riepilogo sta da solo, senza la grafica di gioco
-    const pad = 10; const top = 60;
-    // riga in alto: punteggio · tempo e blocco · cuori
-    ctx.fillStyle = 'rgba(8,10,26,.62)'; rr(ctx, pad, top, W - 2 * pad, 40 * S, 12); ctx.fill();
-    const rowY = top + 29 * S;
-    txt(ctx, String(Math.round(this.score)), pad + 10, rowY, { size: 24 * S, color: HUD.white });
+    const pad = 10; const top = stripBottom(W, H) + 2;
+    if (this.state === 'play' || this.state === 'intro') drawWorkoutStrip(ctx, W, H, this.stripInfo());
+    // riga in alto: punteggio · tempo · cuori
+    ctx.fillStyle = 'rgba(8,10,26,.62)'; rr(ctx, pad, top, W - 2 * pad, 36 * S, 12); ctx.fill();
+    const rowY = top + 26 * S;
+    txt(ctx, String(Math.round(this.score)), pad + 10, rowY, { size: 22 * S, color: HUD.white });
     const heartW = 16 * S; const hx0 = W - pad - 8 - this.maxHp * heartW;
     for (let i = 0; i < this.maxHp; i++) txt(ctx, i < this.hp ? '♥' : '♡', hx0 + (i + 0.5) * heartW, rowY - 1, { size: 19 * S, align: 'center', color: i < this.hp ? '#ff4d6d' : '#77789a', stroke: null });
     const left = Math.max(0, (this.blocks?.total || 0) - (this.st || 0));
     const clock = `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`;
     const cx = (pad + 10 + 80 * S + hx0) / 2;
-    txt(ctx, clock, cx, rowY, { size: 24 * S, align: 'center', color: HUD.lime });
-    // profilo dell'allenamento: un blocco per tratto, alto quanto lo sforzo; il segno è il punto in cui sei
+    txt(ctx, clock, cx, rowY, { size: 22 * S, align: 'center', color: HUD.lime });
     // in orizzontale i pannelli stanno a sinistra: il centro resta libero per la strada e il boss
     const PW = W > H * 1.2 ? Math.min(W - 2 * pad, Math.max(420, W * 0.42)) : W - 2 * pad;
-    let y2 = top + 40 * S + 6;
-    this.drawProfile(ctx, pad, y2, PW, 24 * S); y2 += 24 * S + 6;
-    if (this.state === 'play' || this.state === 'intro') { y2 = this.drawBlockCard(ctx, pad, y2, PW, S); }
+    let y2 = top + 36 * S + 6;
     const B = this.boss;
     if (B && !B.dead && !B.fleeing && this.state === 'play') y2 = this.drawBossBar(ctx, pad, y2, PW, S, B);
     if (!this.hooks.connected()) { txt(ctx, t('games.common.demo'), pad + PW / 2, y2 + 12, { size: 12 * S, align: 'center', color: HUD.gold }); y2 += 18; }
-    if (PW < W - 2 * pad) y2 = top + 40 * S + 6; // a destra dei pannelli lo schermo è libero
+    if (PW < W - 2 * pad) y2 = top + 36 * S + 6; // a destra dei pannelli lo schermo è libero
     this.drawBottom(ctx, W, H, S, pad);
     // etichette sopra i robot con lo scudo: i watt che servono per romperlo
     this.drawShieldTags(ctx, W, S, y2);
@@ -1619,7 +1630,7 @@ export class Strike3D {
     }
     this.drawLaneHint(ctx, hp, S);
     const toast = this.hooks.progress?.toasts?.length > 0;
-    ctx.save(); ctx.translate(0, y2 - 50); this.hooks.progress?.drawToasts(ctx, W, dt); ctx.restore();
+    this.hooks.progress?.drawToasts(ctx, W, dt, y2, true); // sotto la striscia e la riga in alto, mai sopra
     this.msgs.draw(ctx, W, H, { u: S * 1.0, y: Math.max(y2 + 34 + (toast ? 56 : 0), H * 0.3) });
     for (const p of this.pops) {
       const k = 1 - p.t / p.life; const q = this.stage.project(p.x, p.y + k * 1.6, p.z);
@@ -1634,53 +1645,6 @@ export class Strike3D {
     if (this.state === 'intro') this.drawIntro(ctx, W, H, S);
     if (this.state === 'cool' || this.state === 'results') this.drawResults(ctx, W, H, S);
     if (this.paused) this.drawCard(ctx, W, H, S, t('games.shooter.paused'), HUD.gold, [t('games.shooter.pausedSub')], null);
-  }
-
-  drawProfile(ctx, x, y, w, h) {
-    const bl = this.blocks; if (!bl) return;
-    ctx.fillStyle = 'rgba(8,10,26,.55)'; rr(ctx, x, y, w, h, 6); ctx.fill();
-    const T = bl.total; const now = this.st || 0;
-    const col = { warm: '#7dd87d', rec: '#7dd87d', cool: '#7dd87d', effort: '#ff9f1c', mini: '#ff6b35', boss: '#ff2e63', sprint: '#4de3ff' };
-    for (const b of bl) {
-      const bx = x + 2 + (b.t0 / T) * (w - 4); const bw = Math.max(1, (b.dur / T) * (w - 4) - 1);
-      const bh = (h - 4) * clamp((b.pct - 0.35) / 1.05, 0.15, 1);
-      ctx.globalAlpha = b.t1 <= now ? 0.35 : 1;
-      ctx.fillStyle = col[b.kind]; ctx.fillRect(bx, y + h - 2 - bh, bw, bh);
-      if (b.kind === 'mini' || b.kind === 'boss') txt(ctx, '☠', bx + bw / 2, y + h - 3, { size: 11, align: 'center', color: '#ffffff', stroke: null });
-    }
-    ctx.globalAlpha = 1;
-    // esiti degli sforzi già fatti
-    const res = this.coach?.results || []; let ri = 0;
-    for (const b of bl) if (isHard(b) && b.t1 <= now && res[ri]) { const r = res[ri++]; const bx = x + 2 + ((b.t0 + b.dur / 2) / T) * (w - 4); txt(ctx, r.ok ? '✓' : '·', bx, y + 11, { size: 12, align: 'center', color: r.ok ? HUD.lime : '#ffffff', stroke: null }); }
-    const mx = x + 2 + clamp(now / T, 0, 1) * (w - 4);
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(mx - 1.5, y - 3, 3, h + 6);
-  }
-
-  // il blocco in corso: nome, tempo che manca, watt richiesti e barra della potenza
-  drawBlockCard(ctx, x, y, w, S) {
-    const b = this.block || this.blocks[0]; const hard = isHard(b);
-    const tg = this.tgW(); const left = Math.max(0, (this.wk ? b.stepEnd : b.t1) - (this.st || 0)); // con un allenamento: nome del passo e tempo che manca alla fine del passo
-    const colr = { warm: HUD.lime, rec: HUD.lime, cool: HUD.lime, effort: '#ff9f1c', mini: '#ff6b35', boss: '#ff4d6d', sprint: HUD.cyan }[b.kind];
-    const h = 54 * S;
-    ctx.fillStyle = 'rgba(8,10,26,.66)'; rr(ctx, x, y, w, h, 12); ctx.fill();
-    ctx.fillStyle = colr; rr(ctx, x, y, 6, h, 3); ctx.fill();
-    const name = this.wk ? (b.label || t(`games.wk.seg.${b.wkKind}`)) : t(`games.shooter.card.${b.kind}`);
-    txt(ctx, name, x + 14, y + 22 * S, { size: fitSize(ctx, name, w * 0.42, 19 * S), color: colr, italic: true });
-    txt(ctx, `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`, x + 14 + Math.min(measure(ctx, name, 19 * S), w * 0.42) + 10, y + 22 * S, { size: 16 * S, color: '#dfe3f0' });
-    const goal = !tg ? '' : hard ? t('games.shooter.card.hold', { w: tg }) : t('games.shooter.card.easy', { w: tg });
-    txt(ctx, goal, x + w - 10, y + 22 * S, { size: fitSize(ctx, goal, w * 0.45, 19 * S), align: 'right', color: HUD.white });
-    // barra: potenza attuale rispetto alla richiesta (segno bianco = richiesta)
-    const gx = x + 14; const gw = w - 28; const gy = y + 32 * S; const gh = 12 * S;
-    const max = Math.max(tg * 1.45, 50); const ok = hard ? this.power >= tg * TOL : true;
-    ctx.fillStyle = 'rgba(255,255,255,.14)'; rr(ctx, gx, gy, gw, gh, 5); ctx.fill();
-    ctx.fillStyle = hard ? (ok ? HUD.lime : '#ff9f1c') : '#7dd87d'; rr(ctx, gx, gy, Math.max(6, gw * clamp(this.power / max, 0, 1)), gh, 5); ctx.fill();
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(gx + gw * clamp(tg / max, 0, 1) - 1.5, gy - 4, 3, gh + 8);
-    if (hard && b.kind !== 'sprint') {
-      const ef = this.coach.efforts; const n = this.blocks.filter((q) => isHard(q) && q.kind !== 'sprint').length;
-      const lbl = t('games.shooter.card.efforts', { ok: ef.filter((r) => r.ok).length, n });
-      txt(ctx, lbl, x + w - 10, y + h + 14 * S, { size: 12 * S, align: 'right', color: '#dfe3f0', font: 'text' });
-    }
-    return y + h + (hard && b.kind !== 'sprint' ? 18 * S : 6);
   }
 
   drawBossBar(ctx, x, y, w, S, B) {

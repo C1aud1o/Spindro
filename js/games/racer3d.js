@@ -14,8 +14,9 @@ import { Quality } from './kit/quality.js';
 import { txt, panel, uiScale, powerColor, gradeColor, HUD, hudView, measure, paragraph, MessageQueue, FONT_DISPLAY, guardTrainer, trainerLostBanner } from './kit/hud.js';
 import { clamp, lerp, hash } from './engine.js';
 import { SONGS } from './audio.js';
-import { Race, buildTimeline, itemsFromWorkout, LANES, START, COOL } from './racer-sim.js';
+import { Race, buildTimeline, itemsFromWorkout, packPace, LANES, START, COOL } from './racer-sim.js';
 import { WorkoutClock, BandMeter, wkTarget } from './kit/workout-plan.js';
+import { drawWorkoutStrip, stripBottom, buildStrip } from './kit/workout-strip.js';
 import { GameMenu, ResultsView } from './kit/menu.js';
 import { makeRandom } from './kit/rng.js';
 import { t, fmtDec, ordinal } from '../i18n.js';
@@ -98,7 +99,6 @@ export class Racer3D {
     this.hud = hudCanvas; this.hooks = guardTrainer(hooks); this.audio = audio;
     this.active = false;
     const ls = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : Number(v); } catch { return d; } };
-    this.adaptMem = clamp(ls('racerAdapt', 0), -0.15, 0.15);
     this.seed = null; this.rnd = makeRandom(this.seed);
     // menu e risultati condivisi (kit/menu.js): durata e livello restano in racerDur / racerLevel
     this.menu = new GameMenu({
@@ -149,7 +149,6 @@ export class Racer3D {
     this.active = false;
     this.detach?.();
     this.audio.stopSong();
-    this.hooks.setGrade(null);
     this.disposeStage();
     this.stage?.dispose();
   }
@@ -678,7 +677,7 @@ export class Racer3D {
   newRace() {
     this.rnd = makeRandom(this.seed);
     const D = this.dur;
-    this.race = new Race({ tl: this.tl, duration: D, stage: this.stageIndex, level: this.level, adapt: this.wkItems ? 0 : this.adaptMem, names: RIVALS.map((r) => t(r.name)) });
+    this.race = new Race({ tl: this.tl, duration: D, stage: this.stageIndex, level: this.level, names: RIVALS.map((r) => t(r.name)) });
     this.rivals = this.race.rivals;
     this.rivals.forEach((r, i) => { r.name = t(RIVALS[i].name); r.color = RIVALS[i].color; r.line = t(RIVALS[i].line); r.said = 0; r.boost = 0; });
     this.s = START; this.x = 0; this.lane = 1; this.speed = 0; this.raceT = 0; this.capV = null; this.blockT = 0; this.bumpT = 0;
@@ -689,7 +688,7 @@ export class Racer3D {
     this.band = new BandMeter(); this.pwf = 0; this.manualT = 0; this.tgtW = 0;
     this.marker.visible = true; this.podiumLight.visible = false; this.msgs.clear();
     this.state = 'countdown'; this.stateT = 0; this.lastBeep = 4; this.hooks.runStart?.();
-    this.sentGrade = null; this.cheerT = 0; this.lastKSaid = false; this.camMode = 'chase'; this.camInit = false; this.prevPlace = 8;
+    this.tgtEff = 0; this.ergRatio = 1; this.cheerT = 0; this.lastKSaid = false; this.camMode = 'chase'; this.camInit = false; this.prevPlace = 8;
     this.audio.playSong(SONGS.race);
     this.say(t('games.racer.say.start'), HUD.cyan, 2.6, false, 2);
   }
@@ -699,12 +698,9 @@ export class Racer3D {
     if (this.state === 'menu' || this.state === 'loading') { this.menu.input(dir); return; }
     if (this.state === 'results') { this.results.input(dir); return; }
     if (this.state !== 'race' && this.state !== 'countdown') return;
-    // con un allenamento + / − scelgono la corsia (il cambio e l'intensità dell'allenamento non si toccano: il rullo è in ERG)
-    if (this.wk) { if (this.state === 'race') { this.lane = clamp(this.lane + (dir > 0 ? 1 : -1), 0, 2); this.manualT = 4; this.lean = dir > 0 ? 1 : -1; this.audio.sfx('select'); } return; }
-    // + / − restano il cambio: marce virtuali dell'app
-    this.hooks.shift?.(dir);
-    this.audio.sfx(dir > 0 ? 'shiftUp' : 'shiftDown');
-    this.gearFlash = 1.2;
+    // il rullo è sempre in ERG: il cambio non cambia nulla (la velocità del gioco viene dai watt), quindi + / − scelgono la corsia
+    // (con o senza allenamento): scia, monete o sorpasso a mano per qualche secondo
+    if (this.state === 'race') { this.lane = clamp(this.lane + (dir > 0 ? 1 : -1), 0, 2); this.manualT = 4; this.lean = dir > 0 ? 1 : -1; this.audio.sfx('select'); }
   }
 
   hold(dir) { if (this.state === 'menu' || this.state === 'loading') this.menu.hold(dir); }
@@ -741,7 +737,6 @@ export class Racer3D {
     this.connected = connected;
     this.power = connected ? st.power || 0 : this.wk && this.tgtW ? this.tgtW : (demoBurst ? 1.3 : 0.8 + Math.sin(this.t * 0.7) * 0.04) * this.ftp;
     this.cadence = connected ? st.cadence || 0 : demoBurst ? 104 : 88;
-    this.gear = st.gear;
     this.sprinting = this.power >= this.ftp * 1.15;
     if (this.audio.song) this.audio.setTempo(this.audio.song.bpm * clamp((this.cadence || 85) / 88, 0.85, 1.2));
   }
@@ -750,10 +745,10 @@ export class Racer3D {
     this.t += realDt;
     this.sense(realDt);
     this.msgs.update(realDt);
-    this.gearFlash = Math.max(0, (this.gearFlash || 0) - realDt);
     if (this.state === 'loading' || this.state === 'error' || this.state === 'menu') return;
     this.stateT += realDt;
     if (this.wk && (this.state === 'countdown' || this.state === 'race')) this.wkTick(realDt);
+    if (this.state === 'countdown' || this.state === 'race') this.ergTick();
     if (this.state === 'countdown') {
       const left = 3 - Math.floor(this.stateT);
       if (left !== this.lastBeep && left > 0) { this.lastBeep = left; this.audio.sfx('beep'); }
@@ -776,7 +771,7 @@ export class Racer3D {
     // la corsia: scia del corridore davanti, altrimenti le monete; si cambia anche per sorpassare chi blocca
     this.chooseLine(dt);
     this.x = lerp(this.x, LANES[this.lane], Math.min(1, dt * 2.2));
-    const e = this.power / this.ftp;
+    const e = this.power / this.ftp / this.ergRatio; // si giudica rispetto al bersaglio davvero chiesto (intensità a mano): 100 % = bersaglio centrato
     pl.s = this.s; pl.speed = this.speed;
     if (this.wk) race.t = Math.max(0, this.wc.el - this.wkStart) - dt; // il tempo della gara è quello dell'allenamento
     race.step(dt, { e, x: this.x });
@@ -785,9 +780,7 @@ export class Racer3D {
     for (const ev of race.events.splice(0)) this.onEvent(ev);
     this.updateRivalsLook(dt);
     const p = this.at(this.s);
-    this.grade = clamp(p.grade, -4, 7);
-    const g = Math.round(this.grade * 2) / 2;
-    if (!this.wk && g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade(g); }
+    this.grade = clamp(p.grade, -4, 7); // solo visivo: il rullo non cambia pendenza
     if (this.draft >= 1) { this.draftAcc = (this.draftAcc || 0) + dt; if (this.draftAcc >= 1) { this.draftAcc -= 1; this.prog('draftSec', 1, 1); } }
     // tifo: quando passi fra il pubblico
     this.cheerT -= dt;
@@ -798,6 +791,43 @@ export class Racer3D {
     this.prevPlace = place;
     this.standing = race.ranking().map((q) => (q.me ? { name: 'TU', me: true, d: q.s, color: PLAYER_COLOR } : { name: this.rivals[q.i].name, d: q.s, color: this.rivals[q.i].color, r: this.rivals[q.i] }));
     if (race.checkEnd() || (this.wk && this.wc.ended)) this.finish();
+  }
+
+  // ERG: il bersaglio del momento va al rullo ogni frame; l'host restituisce i watt davvero richiesti (bersaglio × intensità a mano,
+  // o l'ERG dal vivo dell'allenamento). Bersaglio:
+  //   con un allenamento: i watt del passo (wkTarget);
+  //   senza: l'obiettivo del momento in % FTP × FTP quando c'è (tenere: fuga, salita, finale; scatto: solo nel tratto della volata),
+  //   altrimenti il ritmo del gruppo in quel momento (pace × livello × FTP: partenza, recupero, inseguimento, tratto prima dello scatto).
+  baseTarget() {
+    if (this.wk) return this.tgtW || Math.round(this.ftp * 0.5);
+    const race = this.race; const m = race.moment(); const ob = race.obj; const pl = race.player;
+    let pct = null;
+    if (ob && !ob.done && ob.pct != null) {
+      if (ob.type === 'hold') pct = ob.pct;
+      else if (ob.type === 'kick') { const line = race.tl.lines.find((l) => l.mi === m.i)?.s ?? m.s1; if (pl.s > line - 170 && pl.s < line + 12) pct = ob.pct; }
+    }
+    if (pct == null) pct = packPace(m, race.frAt(m, pl.s), 99, race.scale);
+    return Math.round((pct * this.ftp) / 5) * 5;
+  }
+  ergTick() {
+    const base = this.baseTarget();
+    const eff = this.hooks.setTarget ? Math.round(this.hooks.setTarget(base)) : base;
+    this.tgtEff = eff; this.ergRatio = base > 0 ? clamp(eff / base, 0.5, 1.6) : 1;
+  }
+
+  // la striscia comune: con un allenamento i suoi passi, senza i momenti della tappa (ritmo / obiettivo in watt, tempo che resta)
+  stripInfo() {
+    const bias = this.hooks.bias?.() ?? 1; const ftp = this.ftp || 200;
+    if (this.wk) {
+      const segs = this.wk.segs.map((g) => ({ t0: g.t0, t1: g.t1, kind: g.kind, watts: wkTarget(g, (g.t0 + g.t1) / 2), label: g.label || null, stepStart: g.stepStart, stepEnd: g.stepEnd }));
+      return buildStrip({ segs, el: this.wc?.el ?? 0, total: this.wk.total, target: this.tgtEff || this.tgtW, ftp, bias, wk: true });
+    }
+    const race = this.race; if (!race) return null;
+    const sc = race.scale; const ms = race.tl.moments; const m = race.moment();
+    const segs = ms.map((g) => ({ t0: g.t0, t1: g.t1, kind: g.kind === 'recover' ? 'rec' : g.kind, watts: Math.round((((g.obj?.pct ?? g.pace) * sc * ftp) / 5) * 5 * bias) }));
+    // senza allenamento i momenti seguono la strada, non l'orologio: il tempo nel momento è l'avanzamento in metri (chi va più forte lo finisce prima)
+    const el = m.t0 + 0.05 + clamp(race.frAt(m, race.player.s), 0, 1) * Math.max(0, m.t1 - m.t0 - 0.1);
+    return buildStrip({ segs, el, total: ms[ms.length - 1].t1, target: this.tgtEff || segs[m.i]?.watts, ftp, bias });
   }
 
   // tempo dell'allenamento, passo in corso e bersaglio (watt chiesti adesso), tempo entro ±7 %
@@ -920,17 +950,16 @@ export class Racer3D {
     const best = Number(localStorage.getItem(key)) || Infinity;
     this.newBest = !this.wk && crossed && this.finishT < best;
     if (this.newBest) localStorage.setItem(key, this.finishT.toFixed(1));
-    // stelle e livello adattivo restano per la prossima tappa
+    // le stelle restano per la prossima tappa
     const sk = `racerStars${this.durIdx}_${this.level}`; const prev = Number(localStorage.getItem(sk)) || 0;
     this.newStars = !this.wk && res.stars > prev; if (this.newStars) localStorage.setItem(sk, res.stars);
-    if (!this.wk) { this.adaptMem = race.adapt; try { localStorage.setItem('racerAdapt', race.adapt); } catch { /* niente storage */ } }
     this.hooks.runEnd?.({ game: 'racer', stage: this.stageIndex, score: Math.round(this.finishT * 10) / 10 });
     this.prog('races', 1, 60 + ([100, 70, 50][place - 1] || 0) + res.stars * 20);
     if (place <= 3) this.prog('podiums', 1, 0);
     if (place === 1) { this.prog('wins', 1, 0); this.hooks.progress?.addToList('tracksWon', this.stageIndex); }
     if (this.leader('green')?.name === 'TU') { this.prog('green', 1, 80); this.prog('jerseys', 1, 0); }
     if (this.leader('kom')?.name === 'TU') { this.prog('kom', 1, 80); this.prog('jerseys', 1, 0); }
-    if (!this.wk) this.hooks.setGrade(0);
+    this.hooks.setTarget?.(Math.round(this.ftp * 0.5)); // a fine tappa il rullo scende su un facile
   }
 
   toPodium() {
@@ -1095,9 +1124,10 @@ export class Racer3D {
     if (this.state === 'error') { txt(ctx, t('ui.error', { error: this.error }), W / 2, H / 2, { size: 15, align: 'center', color: '#ff6b6b' }); return; }
     if (this.state === 'menu') return this.drawMenu(ctx, W, H, dt);
     if (this.state === 'results') return this.drawResults(ctx, W, H, dt);
-    const u = uiScale(W, H); const top = 56;
+    const u = uiScale(W, H); const top = stripBottom(W, H) - 6 * u; // sotto la striscia comune dell'allenamento
     if (this.state === 'finishCam') return this.drawFinish(ctx, W, H, u, dt);
     const race = this.race;
+    drawWorkoutStrip(ctx, W, H, this.stripInfo());
     this.drawTags(ctx, W, H, u);
     // posizione (in alto a sinistra)
     const place = this.place();
@@ -1120,27 +1150,23 @@ export class Racer3D {
     if (!this.wk) txt(ctx, left >= 1000 ? `${fmtDec(left / 1000, 1)} km` : `${Math.round(left / 10) * 10} m`, W / 2, top + 52 * u, { size: 17 * u, align: 'center', color: left < 500 ? HUD.red : HUD.dim });
     // marcia e cadenza (sotto la posizione)
     const gy = top + 64 * u;
-    if (this.gear != null) {
-      panel(ctx, 14, gy, 104 * u, 32 * u, { fill: this.gearFlash > 0 ? 'rgba(217,255,61,.85)' : 'rgba(12,12,18,.55)' });
-      txt(ctx, t('games.racer.gear', { n: this.gear }), 14 + 52 * u, gy + 23 * u, { size: 19 * u, align: 'center', color: this.gearFlash > 0 ? '#15141b' : HUD.white, stroke: this.gearFlash > 0 ? null : undefined });
-    }
-    txt(ctx, `${Math.round(this.cadence || 0)} rpm`, 14, gy + 56 * u, { size: 18 * u, color: HUD.dim });
+    txt(ctx, `${Math.round(this.cadence || 0)} rpm`, 14, gy + 18 * u, { size: 18 * u, color: HUD.dim });
     // scia
     if (this.draft > 0.05) {
       // the pill lives in the free band between the gear pill (left) and the "% FTP" readout (right): it never touches either
-      const left = 14 + 104 * u + 8; const right = W - 14 - measure(ctx, `${Math.round((this.power / this.ftp) * 100)} % FTP`, 22 * u) - 8;
+      const left = 14 + 80 * u + 8; const right = W - 14 - measure(ctx, `${Math.round((this.power / this.ftp) * 100)} % FTP`, 22 * u) - 8;
       const bw = clamp(right - left, 70, 130 * u); const bx = clamp(W / 2 - bw / 2, left, Math.max(left, right - bw)); const by = top + 62 * u;
       panel(ctx, bx, by, bw, 26 * u, { fill: 'rgba(12,12,18,.55)' });
       ctx.fillStyle = this.draft >= 1 ? HUD.cyan : '#2a6f97'; ctx.fillRect(bx + 3, by + 3, (bw - 6) * this.draft, 20 * u);
       txt(ctx, this.draft >= 1 ? t('games.racer.inDraft') : t('games.racer.drafting'), bx + bw / 2, by + 19 * u, { size: 14 * u, align: 'center', maxW: bw - 8 });
     }
     // obiettivo: cosa fare ora e a che punto sei
-    const objBottom = this.drawObjective(ctx, W, u, top + 132 * u);
+    const objBottom = this.drawObjective(ctx, W, u, top + 124 * u);
     // classifica corta: davanti e dietro di te, con i distacchi in secondi
     this.drawStandings(ctx, W, H, u);
     this.drawProfile(ctx, W, H, u);
     // testi a comparsa, sotto la scheda dell'obiettivo
-    this.msgs.draw(ctx, W, H, { u, y: objBottom + 34 * u });
+    this.msgs.draw(ctx, W, H, { u, y: W > H * 1.15 ? top + 100 * u : objBottom + 34 * u }); // in orizzontale la scheda è a sinistra: i messaggi stanno sopra il gruppo, sotto il tempo
     // testi che salgono dal corridore
     const v3 = new THREE.Vector3();
     for (const q of this.pops) {
@@ -1167,7 +1193,6 @@ export class Racer3D {
 
   // scheda dell'obiettivo (sempre visibile): il momento della tappa, il ritmo da tenere in % FTP e in watt, la barra di avanzamento
   drawObjective(ctx, W, u, y) {
-    if (this.wk) return this.drawWkCard(ctx, W, u, y);
     const race = this.race; const pl = race.player; const ob = race.obj; const m = race.moment(); const nx = race.tl.moments[race.mi + 1];
     const soon = nx && nx.obj && nx.obj.type !== 'rest' && race.announced.has(nx.i) && pl.s < nx.s0 && (!ob || ob.done || ob.type === 'stay');
     let kind = m.kind; let pct = null; let sec = null; let frac = 0; let status = ''; let extra = null; let mm = m;
@@ -1175,16 +1200,16 @@ export class Racer3D {
     else if (ob && !ob.done) { pct = ob.pct; sec = ob.sec; frac = ob.type === 'hold' || ob.type === 'kick' ? ob.bar / ob.sec : 0; if (ob.type === 'stay') frac = clamp(1 - Math.max(0, race.P - pl.s) / 25, 0, 1); if (ob.type === 'close') { const r = this.rivals[race.escapee]; extra = r ? first(r.name) : ''; const g = r ? Math.max(0, race.gapSec(r)) : 0; frac = clamp(1 - g / 30, 0, 1); status = `+${Math.round(g)} s`; } }
     else if (ob && ob.done) { status = '✓'; frac = 1; pct = ob.pct; sec = ob.sec; }
     else if (m.kind === 'recover') pct = null;
-    const col = KIND_COLORS[kind] || HUD.cyan; const w = Math.min(W - 28, 350 * u); const x = (W - w) / 2; const h = 60 * u;
+    // in orizzontale la scheda sta a sinistra (sotto la posizione): al centro coprirebbe il gruppo
+    const wide = this.W > this.H * 1.15; const col = KIND_COLORS[kind] || HUD.cyan; const w = Math.min(W - 28, 350 * u); const x = wide ? 14 : (W - w) / 2; const h = 60 * u;
     panel(ctx, x, y, w, h, { fill: 'rgba(12,12,18,.7)', border: soon ? 'rgba(255,255,255,.45)' : col });
     ctx.fillStyle = col; ctx.fillRect(x + 6, y + 8 * u, 5 * u, h - 16 * u);
-    const pct5 = pct != null ? Math.round(pct * 20) * 5 : null; const watts = pct != null ? Math.round((pct * this.ftp) / 5) * 5 : null;
+    const pct5 = pct != null ? Math.round(pct * 20) * 5 : null;
     let title;
     if (!ob && !soon) title = t(kind === 'recover' ? 'games.racer.obj.recover' : 'games.racer.obj.start');
     else if (kind === 'start' && !soon) title = t('games.racer.obj.start');
     else title = t(`games.racer.obj.${kind}`, { pct: pct5, sec, name: extra || '' });
-    txt(ctx, title, x + 20 * u, y + 25 * u, { size: 19 * u, color: col, maxW: w - 40 * u - (watts ? 70 * u : 0) });
-    if (watts && !(ob && ob.type === 'close')) txt(ctx, `≈ ${watts} W`, x + w - 12 * u, y + 25 * u, { size: 19 * u, align: 'right' });
+    txt(ctx, title, x + 20 * u, y + 25 * u, { size: 19 * u, color: col, maxW: w - 40 * u });
     // seconda riga: stato / avanzamento
     const by = y + 36 * u; const bw = w - 34 * u;
     ctx.fillStyle = 'rgba(255,255,255,.16)'; ctx.fillRect(x + 20 * u, by, bw, 8 * u);
@@ -1194,23 +1219,6 @@ export class Racer3D {
     if (!ob && !soon && kind === 'recover') line2 = t('games.racer.obj.recoverHint');
     if (!soon && kind === 'start' && (!ob || ob.type === 'stay')) line2 = t('games.racer.obj.stayHint');
     txt(ctx, line2, x + 20 * u, y + 56 * u, { size: 13 * u, color: soon ? HUD.gold : HUD.dim, font: 'text', maxW: w - 30 * u });
-    return y + h;
-  }
-
-  // con un allenamento: nome del passo, watt del bersaglio e tempo che manca alla fine del passo (la striscia dell'app è nascosta)
-  drawWkCard(ctx, W, u, y) {
-    const seg = this.wkSeg || this.wk.segs[0]; const race = this.race; const ob = race.obj; const m = race.moment();
-    const col = KIND_COLORS[m.kind] || HUD.cyan; const w = Math.min(W - 28, 350 * u); const x = (W - w) / 2; const h = 60 * u;
-    const left = Math.max(0, Math.ceil(seg.stepEnd - this.wc.el));
-    panel(ctx, x, y, w, h, { fill: 'rgba(12,12,18,.7)', border: col });
-    ctx.fillStyle = col; ctx.fillRect(x + 6, y + 8 * u, 5 * u, h - 16 * u);
-    txt(ctx, seg.label || t(`games.wk.seg.${seg.kind}`), x + 20 * u, y + 25 * u, { size: 19 * u, color: col, maxW: w - 40 * u - 80 * u });
-    txt(ctx, `${this.tgtW} W`, x + w - 12 * u, y + 25 * u, { size: 19 * u, align: 'right' });
-    const by = y + 36 * u; const bw = w - 34 * u;
-    ctx.fillStyle = 'rgba(255,255,255,.16)'; ctx.fillRect(x + 20 * u, by, bw, 8 * u);
-    const frac = ob && ob.type === 'hold' ? ob.bar / ob.sec : 1 - left / Math.max(1, seg.stepEnd - seg.stepStart);
-    ctx.fillStyle = col; ctx.fillRect(x + 20 * u, by, bw * clamp(frac, 0, 1), 8 * u);
-    txt(ctx, t('games.wk.left', { left: `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` }), x + 20 * u, y + 56 * u, { size: 13 * u, color: HUD.dim, font: 'text', maxW: w - 30 * u });
     return y + h;
   }
 

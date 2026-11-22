@@ -9,8 +9,8 @@ const CELL = 6;       // m: una cellula di scenografia
 const BEHIND = 25; const AHEAD = 140;
 
 export const NIGHT = {
-  top: '#1b2a66', horizon: '#7488cc', bottom: '#33427a', glow: '#cfdcff', sunDir: [-0.35, 0.42, 0.83],
-  sun: '#c4d2ff', sunI: 2.9, hemiSky: '#b6c6ff', hemiGround: '#586690', hemiI: 2.9, fog: '#5c70b4',
+  top: '#141a3a', horizon: '#4d5683', bottom: '#2a3253', glow: '#aab6d8', sunDir: [-0.35, 0.42, 0.83],
+  sun: '#b4c0e0', sunI: 2.1, hemiSky: '#98a4cc', hemiGround: '#444b68', hemiI: 2.0, fog: '#343c5e',
 };
 
 // ----- cielo, luna, stelle, nebbia, luci -----
@@ -21,8 +21,8 @@ export function buildSky(scene, quality) {
   const dir = new THREE.Vector3(...NIGHT.sunDir).normalize();
   const moon = new THREE.Group();
   const disc = new THREE.Mesh(new THREE.CircleGeometry(15, 40), new THREE.MeshBasicMaterial({ color: '#f6f2dc', fog: false, depthWrite: false }));
-  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: '#9db4ff', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0.55 }));
-  halo.scale.setScalar(150); halo.position.z = -1;
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: '#9db4ff', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0.1 }));
+  halo.scale.setScalar(90); halo.position.z = -1;
   moon.add(halo, disc); moon.renderOrder = -5; disc.renderOrder = -5; halo.renderOrder = -6;
   scene.add(moon);
   // stelle
@@ -151,19 +151,19 @@ export class Scenery {
 export class LampLights {
   constructor(scene, lampHeight = 5.2) {
     this.h = lampHeight; this.pts = [];
-    for (let i = 0; i < 3; i++) { const l = new THREE.PointLight('#ffb866', 70, 30, 1.6); l.position.set(0, lampHeight, 0); scene.add(l); this.pts.push(l); }
+    for (let i = 0; i < 3; i++) { const l = new THREE.PointLight('#ffb866', 40, 30, 1.6); l.position.set(0, lampHeight, 0); scene.add(l); this.pts.push(l); }
     // alone dei fanali (Points additivo con la texture Kenney) e pozza di luce a terra
     const N = 20; this.N = N;
     const g = new THREE.BufferGeometry(); this.pos = new Float32Array(N * 3); g.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
-    this.points = new THREE.Points(g, new THREE.PointsMaterial({ map: poolTexture(), color: '#ffc27a', size: 2.6, sizeAttenuation: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.75, fog: true }));
+    this.points = new THREE.Points(g, new THREE.PointsMaterial({ map: poolTexture(), color: '#ffc27a', size: 1.2, sizeAttenuation: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.22, fog: true }));
     this.points.frustumCulled = false; scene.add(this.points);
     const pool = new THREE.PlaneGeometry(1, 1); pool.rotateX(-Math.PI / 2);
-    this.pool = new THREE.InstancedMesh(pool, new THREE.MeshBasicMaterial({ map: poolTexture(), color: '#ffb866', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.5 }), N);
+    this.pool = new THREE.InstancedMesh(pool, new THREE.MeshBasicMaterial({ map: poolTexture(), color: '#ffb866', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.3 }), N);
     this.pool.frustumCulled = false; this.pool.count = 0; scene.add(this.pool);
   }
   update(lamps, z) {
     const near = lamps.filter((l) => l.z > z - 8).sort((a, b) => a.z - b.z);
-    this.pts.forEach((l, i) => { const lm = near[i]; if (lm && !l.userData.off) { l.intensity = 70; l.position.set(lm.x * 0.8, this.h, lm.z); } else l.intensity = 0; });
+    this.pts.forEach((l, i) => { const lm = near[i]; if (lm && !l.userData.off) { l.intensity = 40; l.position.set(lm.x * 0.8, this.h, lm.z); } else l.intensity = 0; });
     const n = Math.min(this.N, near.length);
     for (let i = 0; i < n; i++) {
       const lm = near[i]; this.pos[i * 3] = lm.x - lm.side * 0.0; this.pos[i * 3 + 1] = this.h + 0.1; this.pos[i * 3 + 2] = lm.z;

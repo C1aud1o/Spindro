@@ -2,9 +2,9 @@
 // Come Horde Run: 5/10/20 minuti, curva in % della FTP (avvio facile, ondate di sforzo e recupero, finale più duro,
 // 30 s di defaticamento = la discesa verso la pista). In più: la quota dell'aereo È la percentuale di FTP
 // (in basso 50 %, in alto 130 %), quindi il percorso di anelli è il profilo dell'allenamento. Vedi docs/giochi-design.md §1.
-import { DURATIONS, LEVELS, WARM_S, COOL_S, ADAPT_MAX, Adapter, segAt, targetPct, targetW, WK_KIND, planFromWorkout as workoutBase } from './horde-plan.js';
+import { DURATIONS, LEVELS, WARM_S, COOL_S, segAt, targetPct, targetW, WK_KIND, planFromWorkout as workoutBase } from './horde-plan.js';
 
-export { DURATIONS, LEVELS, WARM_S, COOL_S, ADAPT_MAX, Adapter, segAt, targetPct, targetW };
+export { DURATIONS, LEVELS, WARM_S, COOL_S, segAt, targetPct, targetW };
 export const CLIMB_S = 10;      // la salita ripida (scatto)
 export const PCT_LO = 0.5;      // base dello schermo
 export const PCT_HI = 1.3;      // cima dello schermo
@@ -53,14 +53,14 @@ export const pctOf = (y) => PCT_LO + (y - Y_LO) / (Y_HI - Y_LO) * (PCT_HI - PCT_
 
 // profilo dolce: i passaggi fra un tratto e l'altro sono rampe (3 s, 1,6 s verso la salita ripida), così la rotta
 // è una curva da volare e non un grafico a gradini. t in secondi di partita.
-export function profilePct(plan, t, levelK, adapt) {
+export function profilePct(plan, t, levelK) {
   const segs = plan.segs; const i = Math.max(0, segs.findIndex((s) => t >= s.t0 && t < s.t1));
-  const s = segs[i]; const here = targetPct(s, levelK, adapt);
+  const s = segs[i]; const here = targetPct(s, levelK);
   const ramp = (a, b) => (b.kind === 'climb' ? 1.6 : 3);
   let v = here;
   const prev = segs[i - 1]; const next = segs[i + 1];
-  if (prev) { const r = ramp(prev, s) / 2; const d = t - s.t0; if (d < r) v = lerp(lerp(targetPct(prev, levelK, adapt), here, 0.5), here, smooth(d / r)); }
-  if (next && v === here) { const r = ramp(s, next) / 2; const d = s.t1 - t; if (d < r) v = lerp(lerp(targetPct(next, levelK, adapt), here, 0.5), here, smooth(d / r)); }
+  if (prev) { const r = ramp(prev, s) / 2; const d = t - s.t0; if (d < r) v = lerp(lerp(targetPct(prev, levelK), here, 0.5), here, smooth(d / r)); }
+  if (next && v === here) { const r = ramp(s, next) / 2; const d = s.t1 - t; if (d < r) v = lerp(lerp(targetPct(next, levelK), here, 0.5), here, smooth(d / r)); }
   return v;
 }
 

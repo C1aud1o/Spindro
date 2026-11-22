@@ -1,9 +1,13 @@
 // Qualità grafica a 3 livelli. In automatico si misura il frame rate dei primi secondi di gioco
 // e si scende di livello se il telefono fatica. Si può fissare in Impostazioni.
+// Bagliore (bloom): soglia ALTA e forza BASSA su ogni livello. Solo il livello alto lo accende; gli altri portano gli stessi valori,
+// così un bagliore acceso a mano (o un livello futuro) resta opaco e non diventa un alone al neon. Le luci vere (lampioni, vampate)
+// sfiorano la soglia; personaggi, raccolti e superfici illuminate non la raggiungono mai (sotto 1.0 nello spazio lineare).
+const BLOOM_SOFT = { bloomThreshold: 2.2, bloomStrength: 0.1, bloomRadius: 0.12 };
 export const LEVELS = {
-  high: { pixelRatio: 1.5, shadows: true, shadowMap: 1024, bloom: true, density: 1, crowd: 1 },
-  medium: { pixelRatio: 1.0, shadows: true, shadowMap: 512, bloom: false, density: 0.7, crowd: 0.6 },
-  low: { pixelRatio: 0.75, shadows: false, shadowMap: 256, bloom: false, density: 0.4, crowd: 0.3 },
+  high: { pixelRatio: 1.5, shadows: true, shadowMap: 1024, bloom: true, ...BLOOM_SOFT, density: 1, crowd: 1 },
+  medium: { pixelRatio: 1.0, shadows: true, shadowMap: 512, bloom: false, ...BLOOM_SOFT, density: 0.7, crowd: 0.6 },
+  low: { pixelRatio: 0.75, shadows: false, shadowMap: 256, bloom: false, ...BLOOM_SOFT, density: 0.4, crowd: 0.3 },
 };
 const ORDER = ['high', 'medium', 'low'];
 

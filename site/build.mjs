@@ -303,7 +303,7 @@ for (const lang of cfg.langs) {
         const st = h.stages[i];
         return `<section class="stage${flip ? ' flip' : ''}" id="${st.id}"><div class="wrap stage-grid"><div class="stage-copy">${bib(i)}<h2>${esc(st.title)}</h2><p class="lead">${esc(st.text)}</p><dl class="roadbook">${st.rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl></div><figure class="stage-shot"><div class="phone">${shotImg(st.img, lang, st.alt)}</div></figure></div></section>`;
       };
-      const gameShots = ['game-racer', 'game-horde', 'game-strike', 'game-gruppetto', 'game-planata', 'game-mattoni'];
+      const gameShots = ['game-strike', 'game-horde', 'game-gruppetto', 'game-racer', 'game-planata', 'game-mattoni'];
       return {
         heroImg: shotImg('home', lang, h.heroAlt, { eager: true }),
         routeSvg,

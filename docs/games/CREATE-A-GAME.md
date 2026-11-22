@@ -74,7 +74,9 @@ If you do not write a language, put the English text there and say so in the pul
 Open `index.html?game=mygame&demo=1`. Edit `js/games/mygame/index.js`:
 
 - `update(dt)` runs every frame: read the rider with `this.hooks.stats()` → `{ power, cadence, gear, heartRate }` and the
-  FTP with `this.hooks.ftp()`. **All targets are a fraction of FTP** (`0.9 * ftp`), never fixed watts.
+  FTP with `this.hooks.ftp()`. **All targets are a fraction of FTP** (`0.9 * ftp`), never fixed watts. Every frame of a run pass the
+  current target to `this.hooks.setTarget(w)` (the trainer stays in ERG on it) and use the watts it returns; draw the shared
+  workout strip (`kit/workout-strip.js`) and expose `stripInfo()`. See `docs/games/API.md`, "ERG and the workout strip". `js/games/template/tempo.js` does all of it.
 - `draw(dt)` draws on the canvas with the shared HUD helpers (`txt`, `panel`) from `kit/hud.js`.
 - `input(dir)` receives **exactly +1 or −1** (Zwift Click or keys `+`/`-`/`A`/`D`): give it one meaningful action.
   Every game must be playable with + / − and the pedals alone.

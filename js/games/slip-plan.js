@@ -2,8 +2,8 @@
 // Ogni partita dura 5, 10 o 20 minuti e segue una curva in % della FTP: avvio facile, ondate (ritmo → sforzo → recupero),
 // scatti di volata, finale più duro, 30 s di defaticamento. Vedi docs/giochi-design.md §1 e docs/slipstream.md.
 // Durate, livelli, adattamento e tratti sono gli stessi di Horde Run (horde-plan.js).
-import { DURATIONS, LEVELS, WARM_S, COOL_S, SPRINT_S, ADAPT_MAX, Adapter, segAt, targetPct, targetW, planFromWorkout as workoutBase } from './horde-plan.js';
-export { DURATIONS, LEVELS, WARM_S, COOL_S, SPRINT_S, ADAPT_MAX, Adapter, segAt, targetPct, targetW };
+import { DURATIONS, LEVELS, WARM_S, COOL_S, SPRINT_S, segAt, targetPct, targetW, planFromWorkout as workoutBase } from './horde-plan.js';
+export { DURATIONS, LEVELS, WARM_S, COOL_S, SPRINT_S, segAt, targetPct, targetW };
 
 const lerp = (a, b, k) => a + (b - a) * k;
 

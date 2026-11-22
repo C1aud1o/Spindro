@@ -19,7 +19,7 @@ await page.waitForFunction(() => window.__game?.state === 'select', null, { time
 
 const rows = [];
 for (const pw of POWERS) {
-  await page.evaluate(({ MIN, LEVEL }) => { const g = window.__game; g.durIdx = [5, 10, 20].indexOf(MIN); g.level = LEVEL; g.adaptMem = 0; g.selT = 1; g.begin(); }, { MIN, LEVEL });
+  await page.evaluate(({ MIN, LEVEL }) => { const g = window.__game; g.durIdx = [5, 10, 20].indexOf(MIN); g.level = LEVEL; g.selT = 1; g.begin(); }, { MIN, LEVEL });
   await page.waitForFunction(() => window.__game.state === 'countdown', null, { timeout: 150000 });
   const res = await page.evaluate(({ pw }) => {
     const g = window.__game;

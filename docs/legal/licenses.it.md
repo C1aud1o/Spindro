@@ -55,7 +55,7 @@ Ogni cartella ha il `License.txt` originale. **Grazie, Kenney e Quaternius.**
 
 ## Modelli generati per il progetto
 
-I modelli in `assets/3d/meshy/` (edifici, veicoli, personaggi e scenari) e le icone 3D della schermata principale (`assets/icons/`) sono stati generati per Spindro con lo strumento di IA **Meshy** (https://www.meshy.ai). Sono usati secondo i termini di servizio di Meshy e del piano usato: i modelli generati con il piano gratuito di Meshy sono con licenza [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.it) e sono attribuiti a **Meshy** (https://www.meshy.ai); quelli fatti con un piano a pagamento non richiedono attribuzione. Quale modello venga da quale piano non è registrato, quindi tutti sono citati qui. Gli script di generazione sono in `scripts/meshy/` (i file che ne escono passano da `shrink.py` / `decimate.py`; i personaggi ricevono lo scheletro nel gioco, `js/games/kit/autorig.js`).
+I modelli in `assets/3d/meshy/` (edifici, veicoli, personaggi e scenari) sono stati generati per Spindro con lo strumento di IA **Meshy** (https://www.meshy.ai). Sono usati secondo i termini di servizio di Meshy e del piano usato: i modelli generati con il piano gratuito di Meshy sono con licenza [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.it) e sono attribuiti a **Meshy** (https://www.meshy.ai); quelli fatti con un piano a pagamento non richiedono attribuzione. Quale modello venga da quale piano non è registrato, quindi tutti sono citati qui. Gli script di generazione sono in `scripts/meshy/` (i file che ne escono passano da `shrink.py` / `decimate.py`; i personaggi ricevono lo scheletro nel gioco, `js/games/kit/autorig.js`).
 
 ## Altre risorse
 

@@ -98,7 +98,7 @@ test('allenamenti: si apre, si avvia, menu Click pedalando e termina', async ({ 
 test('giochi: menu giochi, avvio e chiusura di Turbo Pedali, ritorno alla home', async ({ page }) => {
   await goTo(page, '#openGame'); await hold(page, +1);
   await expect(page.locator('#gameMenu')).toBeVisible();
-  expect((await focusInfo(page)).attrs).toContain('data-game=racer'); // parte dal primo gioco
+  expect((await focusInfo(page)).attrs).toContain('data-game=shooter'); // parte dal primo gioco
   await hold(page, +1);
   await expect.poll(() => page.evaluate(() => window.__game?.state), { timeout: 120_000 }).toBe('menu');
   // nel gioco i tasti sono del gioco; tieni − apre il menu

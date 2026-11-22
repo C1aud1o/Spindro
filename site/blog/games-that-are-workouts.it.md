@@ -17,9 +17,9 @@ Tutto è espresso in **percentuale della tua FTP**. Il recupero sta attorno al 5
 
 ![Breakaway, il gioco della corsa a tappe: un obiettivo in salita al 90% della FTP mentre il gruppo corre di fianco.](shot:game-racer)
 
-## Tre livelli e una difficoltà che si adatta
+## Tre livelli e bersagli che restano fermi
 
-Facile, normale e difficile spostano le percentuali di circa il 10% in un senso o nell'altro. In più il gioco si adatta un poco: dopo due sforzi falliti di fila le richieste scendono del 5%, dopo tre riusciti salgono del 5%, entro un limite del 15% per parte. Lo scopo è tenerti nella zona in cui lo sforzo è duro ma non impossibile.
+Facile, normale e difficile spostano le percentuali di circa il 10% in un senso o nell'altro. I watt richiesti sono solo la percentuale del piano per la tua FTP, più il livello scelto nel menu. Niente li cambia di nascosto durante la partita: il numero sullo schermo è un numero di cui ti puoi fidare.
 
 ## Qualcosa da fare ogni pochi secondi
 

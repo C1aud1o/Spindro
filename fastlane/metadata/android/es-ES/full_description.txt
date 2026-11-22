@@ -13,7 +13,7 @@ CUATRO FORMAS DE PEDALEAR
 Cambia con los botones de pantalla, el teclado, mandos Bluetooth o un Zwift Click (soporte experimental; también se reconocen Zwift Play y Zwift Ride).
 
 JUEGOS QUE SE JUEGAN CON LAS PIERNAS
-Seis juegos 3D que son entrenamientos: Breakaway (una carrera por etapas), Horde Run, Pedal Strike, Slipstream, Updraft y Feed Zone. Cada uno es una sesión de 5, 10 o 20 minutos en porcentaje de tu FTP, con tres niveles y un solo menú. Las subidas de Breakaway llegan al rodillo como pendiente real.
+Seis juegos 3D que son entrenamientos: Pedal Strike, Horde Run, Slipstream, Breakaway (una carrera por etapas), Updraft y Feed Zone. Cada uno es una sesión de 5, 10 o 20 minutos en porcentaje de tu FTP, con tres niveles y un solo menú. Las subidas de Breakaway llegan al rodillo como pendiente real.
 
 ENTRENAMIENTOS ESTRUCTURADOS
 • Entrenos ERG calculados sobre tu FTP (sweet spot, umbral, VO2max, pirámide, 30/30…) y test de FTP en rampa.

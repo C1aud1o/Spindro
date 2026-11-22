@@ -12,7 +12,7 @@ export const HUD = { lime: '#d9ff3d', cyan: '#4de3ff', red: '#ff5a6a', gold: '#f
 let fontsReady = false;
 export function loadHudFonts() {
   if (typeof document === 'undefined' || !document.fonts) return Promise.resolve();
-  return Promise.all(['400 32px "Spindro Display"', '700 16px "Spindro Text"', '900 16px "Spindro Text"'].map((f) => document.fonts.load(f).catch(() => null)))
+  return Promise.all(['400 32px "Spindro Display"', '700 16px "Spindro Text"', '900 16px "Spindro Text"', '600 16px "Barlow Condensed"', '700 16px "Barlow Condensed"'].map((f) => document.fonts.load(f).catch(() => null)))
     .then(() => { fontsReady = true; });
 }
 loadHudFonts();

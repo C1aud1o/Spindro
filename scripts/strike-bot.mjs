@@ -33,10 +33,10 @@ for (const k of LEVELS) {
     const ev = g.ev.filter((e) => e.k !== 'start').map((e) => e.t);
     let gap = ev[0] || 0; const gaps = []; for (let i = 1; i < ev.length; i++) { gap = Math.max(gap, ev[i] - ev[i - 1]); if (ev[i] - ev[i - 1] > 4) gaps.push(`${ev[i - 1].toFixed(0)}+${(ev[i] - ev[i - 1]).toFixed(1)}`); } gap = Math.max(gap, end - ev[ev.length - 1]);
     const coolT = g.blocks[g.blocks.length - 1].t0; const play = ev.filter((t) => t < coolT);
-    return { stars: g.result?.stars ?? 0, first: ev[0], gap, perMin: play.length / (coolT / 60), ok: g.result?.ok, n: g.result?.n, boss: g.bossDown, mini: g.miniDown, hits: g.hitsTaken, kos: g.kos, score: Math.round(g.score), kills: g.kills, adapt: g.coach.adapt, st: g.st, endT: end, nn: n, res: g.coach.results.map((x) => `${x.kind[0]}${x.target}${x.ok ? '✓' : '✗'}`).join(' '), state: g.state, gaps: gaps.join(' ') };
+    return { stars: g.result?.stars ?? 0, first: ev[0], gap, perMin: play.length / (coolT / 60), ok: g.result?.ok, n: g.result?.n, boss: g.bossDown, mini: g.miniDown, hits: g.hitsTaken, kos: g.kos, score: Math.round(g.score), kills: g.kills, st: g.st, endT: end, nn: n, res: g.coach.results.map((x) => `${x.kind[0]}${x.target}${x.ok ? '✓' : '✗'}`).join(' '), state: g.state, gaps: gaps.join(' ') };
   }, { W: Math.round(k * FTP) });
   rows.push({ k, ...r });
-  console.log(`${k.toFixed(1)}×FTP: ${'★'.repeat(r.stars)}${'☆'.repeat(3 - r.stars)} · primo evento ${r.first.toFixed(1)} s · max senza eventi ${r.gap.toFixed(1)} s · ${r.perMin.toFixed(0)} eventi/min · sforzi ${r.ok}/${r.n} · mini ${r.mini ? 'sì' : 'no'} · boss ${r.boss ? 'sì' : 'no'} · colpi presi ${r.hits} (KO ${r.kos}) · uccisioni ${r.kills} · punti ${r.score} · adatta ${r.adapt} · ${r.state} ${r.st?.toFixed(0)}/${r.endT} n${r.nn} · ${r.res}${args.includes('--gaps') ? ` · buchi ${r.gaps}` : ''}`);
+  console.log(`${k.toFixed(1)}×FTP: ${'★'.repeat(r.stars)}${'☆'.repeat(3 - r.stars)} · primo evento ${r.first.toFixed(1)} s · max senza eventi ${r.gap.toFixed(1)} s · ${r.perMin.toFixed(0)} eventi/min · sforzi ${r.ok}/${r.n} · mini ${r.mini ? 'sì' : 'no'} · boss ${r.boss ? 'sì' : 'no'} · colpi presi ${r.hits} (KO ${r.kos}) · uccisioni ${r.kills} · punti ${r.score} · ${r.state} ${r.st?.toFixed(0)}/${r.endT} n${r.nn} · ${r.res}${args.includes('--gaps') ? ` · buchi ${r.gaps}` : ''}`);
   await page.evaluate(() => { const g = window.__game; g.stateT = 5; g.input(-1); }); // torna al menu
 }
 console.log('\n| Potenza | Stelle | Primo evento | Max senza eventi | Eventi/min | Sforzi riusciti | Boss |');
