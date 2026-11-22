@@ -14,6 +14,7 @@ import { SONGS } from './audio.js';
 import { GameMenu, ResultsView, LENGTHS } from './kit/menu.js';
 import { makeRandom } from './kit/rng.js';
 import { DURATIONS, LEVELS, COOL_S, SPEED, RING_EVERY, FIRST_RING, Y_LO, Y_HI, PCT_LO, PCT_HI, buildPlan, planFromWorkout, segAt, targetW, targetPct, profilePct, altOf, pctOf, starsFor, nextStarHint } from './planata-plan.js';
+import { drawWorkoutStrip, stripBottom, stripFromPlan } from './kit/workout-strip.js';
 import { WorkoutClock, BandMeter, workoutStars } from './kit/workout-plan.js';
 
 const PLANE_SPAN = 8;       // apertura alare (m)
@@ -21,7 +22,7 @@ const RIDER_S = 1.75;       // scala del ciclista (più grande del vero: si legg
 const RIDER_Z = -0.6;       // posizione lungo la fusoliera
 const GUST_DROP = 1.0;      // di quanto spinge giù una raffica (m)
 const LAND_S = 6;           // secondi di discesa finale
-const CAM_BACK = 10; const CAM_UP = 5.0; const CAM_BACK_T = 9; const CAM_UP_T = 6.2;
+const CAM_BACK = 16; const CAM_UP = 7.0; const CAM_BACK_T = 15; const CAM_UP_T = 8.5;
 // la pista: i laghi e gli alberi la lasciano libera
 let RUNWAY_Z = null;
 function setRunway(z) { RUNWAY_Z = z; }
@@ -246,7 +247,7 @@ export class Planata {
     } catch (err) { console.error(err); this.state = 'error'; this.error = err.message; }
   }
 
-  stop() { this.active = false; (this.detach || []).forEach((f) => f()); this.audio.stopSong(); this.hooks.setGrade(null); this.stage?.dispose(); }
+  stop() { this.active = false; (this.detach || []).forEach((f) => f()); this.audio.stopSong(); this.stage?.dispose(); }
 
   // ---------- scena ----------
   build() {
@@ -302,7 +303,7 @@ export class Planata {
     }
     this.filmGeo = new THREE.CircleGeometry(RING_R - 0.4, 28);
     this.beamGeo = new THREE.CylinderGeometry(0.09, 0.09, 1, 5, 1, true).translate(0, 0.5, 0);
-    this.beamMat = new THREE.MeshBasicMaterial({ color: '#fff2c0', transparent: true, opacity: 0.2, depthWrite: false, blending: THREE.AdditiveBlending });
+    this.beamMat = new THREE.MeshBasicMaterial({ color: '#fff2c0', transparent: true, opacity: 0.09, depthWrite: false, blending: THREE.AdditiveBlending });
     // stella: moneta d'oro piatta con un anello più chiaro, grande abbastanza da leggersi
     this.coinGeo = new THREE.CylinderGeometry(0.75, 0.75, 0.16, 14).rotateX(Math.PI / 2);
     this.coinMat = new THREE.MeshBasicMaterial({ color: '#ffcf3a' });
@@ -444,7 +445,7 @@ export class Planata {
     this.state = 'results'; this.stateT = 0; this.finished = true; this.rollV = SPEED * 0.55;
     this.audio.stopSong(); this.audio.sfx('win');
     this.hooks.runEnd?.({ game: 'planata', score: Math.round(this.score) });
-    if (!this.wk) this.hooks.setGrade(0);
+    this.hooks.setTarget?.(Math.round(this.ftp * 0.5)); // a fine partita il rullo scende su un facile (con un allenamento comanda lui)
   }
 
   // ---------- eventi: tutto ciò che chiede o premia qualcosa (si misura nel test) ----------
@@ -653,13 +654,11 @@ export class Planata {
     let seg = segAt(this.plan, this.el); const idx = this.plan.segs.indexOf(seg);
     if (idx !== this.segIdx) { this.enterSeg(idx); seg = this.seg; }
     if (this.el >= this.total) { this.finish(); return; }
-    const tgt = targetW(seg, ftp, this.level.k, this.el); this.tgtW = tgt;
+    const tgt = this.erg(targetW(seg, ftp, this.level.k, this.el)); this.tgtW = tgt; // il rullo va in ERG su questo bersaglio
     seg.inT += dt;
     if (this.wk) this.band.add(dt, this.pw, tgt, this.el - seg.stepStart);
     if ((seg.kind === 'effort' || seg.kind === 'climb') && seg.inT > (seg.kind === 'climb' ? 2 : 4) && this.pw >= 0.92 * tgt) seg.okT += dt;
     this.inTarget = this.pw >= 0.92 * tgt; this.sprinting = seg.kind === 'climb' && this.inTarget;
-    const g = seg.kind === 'rest' || seg.kind === 'cool' ? 0 : seg.kind === 'warm' ? 1 : seg.kind === 'pace' ? 2 : 3;
-    if (!this.wk && g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade(g); }
     this.hurtT = Math.max(0, this.hurtT - dt); this.hurtFlash = Math.max(0, (this.hurtFlash || 0) - dt); this.boostT = Math.max(0, this.boostT - dt); this.manualT = Math.max(0, this.manualT - dt);
     // quota: la potenza (smussata) è la percentuale di FTP; l'aereo la insegue morbido, come un volo e non un grafico
     // Quota = watt. Con un allenamento il rullo è in ERG e segue da solo il bersaglio: la quota segue il profilo dell'allenamento
@@ -834,6 +833,11 @@ export class Planata {
   // in alto: punteggio · ondata n/N · combo; sotto la richiesta del momento (tratto, watt, tempo) e le barre;
   // poi l'obiettivo (anelli di quest'ondata, distanza dalla pista). A destra l'altimetro, in basso la potenza.
   // Tutto con kit/hud.js: leggibile da 1 m, senza sovrapposizioni.
+  // la striscia comune dell'allenamento (kit/workout-strip.js)
+  stripInfo() { return stripFromPlan(this.plan, { el: this.el, ftp: this.ftp, target: this.tgtW || targetW(this.seg, this.ftp, this.level.k, this.el), bias: this.hooks.bias?.() ?? 1, targetWfn: (g) => targetW(g, this.ftp, this.level.k) }); }
+  // ERG: il bersaglio del gioco va al rullo; restituisce i watt davvero richiesti
+  erg(w) { return this.hooks.setTarget ? Math.round(this.hooks.setTarget(w)) : w; }
+
   drawHud(dt) {
     const { ctx, W, H } = this.stage;
     ctx.clearRect(0, 0, W, H); hudView(ctx, W, H);
@@ -841,7 +845,8 @@ export class Planata {
     if (this.state === 'error') { hudText(ctx, t('ui.error', { error: this.error }), W / 2, H / 2, { size: 14, align: 'center', color: '#ff6b6b' }); return; }
     if (this.state === 'menu') { this.menu.draw(ctx, W, H, { connected: this.hooks.connected() }); this.hooks.progress?.drawToasts(ctx, W, dt); return; }
     if (this.state === 'results') { if (this.result) this.drawResult(ctx, W, H, true); this.hooks.progress?.drawToasts(ctx, W, dt, W > H * 1.15 ? Math.round(H * 0.78) : 330, true); return; }
-    const seg = this.seg; const pad = 12; const y0 = 84; const ftp = this.ftp;
+    const seg = this.seg; const pad = 12; const y0 = stripBottom(W, H) + 22; const ftp = this.ftp; // sotto la striscia dell'allenamento (kit/workout-strip.js)
+    drawWorkoutStrip(ctx, W, H, this.stripInfo());
     const col = SEG_COLOR[seg.kind]; const tw = this.tgtW || targetW(seg, ftp, this.level.k, this.el);
     // riga in alto
     ctx.fillStyle = 'rgba(8,10,26,.62)'; rrect(ctx, pad - 4, y0 - 22, W - 2 * pad + 8, 36, 10); ctx.fill();
@@ -850,23 +855,7 @@ export class Planata {
     hudText(ctx, wn, W / 2, y0 + 3, { size: W < 400 ? 19 : 22, align: 'center', color: '#d9ff3d', maxW: W - 2 * (pad + 100) });
     if (this.combo > 1) hudText(ctx, `×${Math.min(this.combo, 8)}`, W - pad - 6, y0 + 5, { size: 26, align: 'right', color: HUD.gold, maxW: 90 });
     else if (this.boostT > 0) hudText(ctx, '×2', W - pad - 6, y0 + 5, { size: 26, align: 'right', color: '#ffe27a', maxW: 90 });
-    // la richiesta del momento
-    const by = y0 + 22; const bh2 = 44;
-    ctx.fillStyle = 'rgba(8,10,26,.72)'; rrect(ctx, pad - 4, by, W - 2 * pad + 8, bh2, 12); ctx.fill();
-    ctx.fillStyle = col; rrect(ctx, pad - 4, by, 7, bh2, 3); ctx.fill();
-    const left = Math.max(0, Math.ceil((this.wk ? seg.stepEnd : seg.t1) - this.el)); // con un allenamento: nome del passo e tempo che manca alla fine del passo
-    hudText(ctx, this.wk ? (seg.label || t(`games.wk.seg.${seg.wkKind}`)) : t(`games.planata.seg.${seg.kind}`), pad + 12, by + 29, { size: 21, color: col, maxW: W * 0.34 });
-    const calm = seg.kind === 'rest' || seg.kind === 'cool' || seg.kind === 'warm';
-    hudText(ctx, `${tw} W`, W / 2 + 8, by + 32, { size: 32, align: 'center', color: this.inTarget || calm ? '#ffffff' : '#ffd34d', maxW: W * 0.34 });
-    hudText(ctx, `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`, W - pad - 4, by + 29, { size: 21, align: 'right', color: '#e8e8f4', maxW: 70 });
-    const segK = this.wk ? clamp((seg.stepEnd - this.el) / (seg.stepEnd - seg.stepStart), 0, 1) : clamp((seg.t1 - this.el) / (seg.t1 - seg.t0), 0, 1);
-    ctx.fillStyle = 'rgba(255,255,255,.18)'; rrect(ctx, pad, by + bh2 + 4, W - 2 * pad, 6, 3); ctx.fill();
-    ctx.fillStyle = col; rrect(ctx, pad, by + bh2 + 4, Math.max(6, (W - 2 * pad) * segK), 6, 3); ctx.fill();
-    const ty = by + bh2 + 15; const tk = clamp(this.el / this.total, 0, 1);
-    ctx.fillStyle = 'rgba(255,255,255,.14)'; rrect(ctx, pad, ty, W - 2 * pad, 5, 2.5); ctx.fill();
-    ctx.fillStyle = '#d9ff3d'; rrect(ctx, pad, ty, Math.max(5, (W - 2 * pad) * tk), 5, 2.5); ctx.fill();
-    ctx.fillStyle = 'rgba(8,10,26,.9)';
-    for (const [i, s] of this.plan.segs.entries()) if (this.wk ? (s.wave >= 1 && s.wave !== this.plan.segs[i - 1]?.wave) : s.kind === 'pace') ctx.fillRect(pad + (W - 2 * pad) * (s.t0 / this.total) - 1, ty - 1, 2, 7);
+    const calm = seg.kind === 'rest' || seg.kind === 'cool' || seg.kind === 'warm'; const ty = y0 + 8;
     // obiettivo: anelli di quest'ondata e distanza dalla pista
     const gy = ty + 14; const pw2 = (W - 2 * pad - 8) / 2; const gh = 28;
     const a = this.waveHit[seg.wave] || 0; const b = this.waveRings[seg.wave] || 0; const dist = Math.max(0, this.total - this.el) * SPEED;

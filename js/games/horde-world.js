@@ -9,8 +9,8 @@ const CELL = 6;       // m: una cellula di scenografia
 const BEHIND = 25; const AHEAD = 140;
 
 export const NIGHT = {
-  top: '#1b2a66', horizon: '#7488cc', bottom: '#33427a', glow: '#cfdcff', sunDir: [-0.35, 0.42, 0.83],
-  sun: '#c4d2ff', sunI: 2.9, hemiSky: '#b6c6ff', hemiGround: '#586690', hemiI: 2.9, fog: '#5c70b4',
+  top: '#141a3a', horizon: '#4d5683', bottom: '#2a3253', glow: '#aab6d8', sunDir: [-0.35, 0.42, 0.83],
+  sun: '#b4c0e0', sunI: 2.1, hemiSky: '#98a4cc', hemiGround: '#444b68', hemiI: 2.0, fog: '#343c5e',
 };
 
 // ----- cielo, luna, stelle, nebbia, luci -----
@@ -21,8 +21,8 @@ export function buildSky(scene, quality) {
   const dir = new THREE.Vector3(...NIGHT.sunDir).normalize();
   const moon = new THREE.Group();
   const disc = new THREE.Mesh(new THREE.CircleGeometry(15, 40), new THREE.MeshBasicMaterial({ color: '#f6f2dc', fog: false, depthWrite: false }));
-  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: '#9db4ff', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0.3 }));
-  halo.scale.setScalar(120); halo.position.z = -1;
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: '#9db4ff', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0.1 }));
+  halo.scale.setScalar(90); halo.position.z = -1;
   moon.add(halo, disc); moon.renderOrder = -5; disc.renderOrder = -5; halo.renderOrder = -6;
   scene.add(moon);
   // stelle

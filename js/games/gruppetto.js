@@ -18,6 +18,7 @@ import { SONGS } from './audio.js';
 import { GameMenu, ResultsView } from './kit/menu.js';
 import { makeRandom } from './kit/rng.js';
 import { DURATIONS, LEVELS, COOL_S, buildPlan, planFromWorkout, WARM_BRIDGE, segAt, targetW, closingSpeed, HOLD_PCT, DROP_AFTER, starsFor, nextStarHint } from './slip-plan.js';
+import { drawWorkoutStrip, stripBottom, stripFromPlan } from './kit/workout-strip.js';
 import { WorkoutClock, BandMeter, workoutStars, SETTLE_S } from './kit/workout-plan.js';
 
 const A = 'assets/3d';
@@ -33,11 +34,10 @@ const TARGET_K = 1.22;        // chi scatta davanti è un po' più grande: si le
 const SLOT_X = 1.05;          // il gruppo sta ai due lati, dietro di te
 const ROW_DZ = 2.5;           // e in file da due
 const ROW_Z0 = 2.8;           // prima fila dietro di te
-const CAM_H = 4.8; const CAM_BACK = 12.5; const CAM_LOOK = 11; // camera: dietro e un po' sopra, l'orizzonte resta sotto le barre
+const CAM_H = 7.2; const CAM_BACK = 19.5; const CAM_LOOK = 13; // camera: dietro e un po' sopra, l'orizzonte resta sotto le barre
 const HIDE_REL = -9;          // oltre questa distanza dietro il giocatore sono dietro la camera: non si disegnano
 const TICK = 2.8;             // un controllo del ritmo ogni 2,8 s
 const SEG_COLOR = { warm: '#7fd1ff', pace: '#9ad64b', effort: '#ffb020', sprint: '#ff4d6d', rest: '#4de3b0', cool: '#7fd1ff' };
-const GRADE = { warm: 1, pace: 3, effort: 2, sprint: 4, rest: 0, cool: 0 };
 const smooth = (x) => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
 const laneX = (l) => -l * LANE_W; // la destra dello schermo è −X (la camera guarda verso +Z)
 
@@ -96,7 +96,7 @@ export class Gruppetto {
     } catch (err) { console.error(err); this.state = 'error'; this.error = err.message; }
   }
 
-  stop() { this.active = false; for (const d of this.detach || []) d(); this.detach = []; this.audio.stopSong(); this.hooks.setGrade(null); this.stage?.dispose(); }
+  stop() { this.active = false; for (const d of this.detach || []) d(); this.detach = []; this.audio.stopSong(); this.stage?.dispose(); }
 
   // ---------- scena ----------
   build() {
@@ -319,7 +319,7 @@ export class Gruppetto {
     const pts = n * (100 + this.group.length * 8) * (seg.kind === 'sprint' ? 2 : 1);
     this.score += pts; this.ev('catch');
     this.audio.sfx('rescue'); this.shake.add(0.35); this.prog('rescued', n, 3 * n);
-    for (const R of b.riders) { this.fx.spawn(R.x, 1.4, R.z, { tex: 'green', size: 2.2, life: 0.4 }); this.fx.spawn(R.x, 1.2, R.z, { tex: 'spark', size: 1.4, life: 0.5, grow: 1.5 }); }
+    for (const R of b.riders) { this.fx.spawn(R.x, 1.4, R.z, { tex: 'spark', size: 0.9, life: 0.4 }); this.fx.spawn(R.x, 1.2, R.z, { tex: 'spark', size: 0.7, life: 0.4, grow: 1.5 }); }
     this.pop(`+${pts}`, '#ffd166', this.x, 2.5, this.z, 1.3, 1);
     if (navigator.vibrate) navigator.vibrate(30);
     if (seg.kind === 'effort' || seg.kind === 'sprint') {
@@ -392,13 +392,12 @@ export class Gruppetto {
     let seg = segAt(this.plan, this.el); const idx = this.plan.segs.indexOf(seg);
     if (idx !== this.segIdx) { this.enterSeg(idx); seg = this.seg; }
     if (this.el >= this.total) return this.finish();
-    const tgt = this.tgtNow(); this.tgtW = tgt; seg.inT += dt;
+    const tgt = this.erg(this.tgtNow()); this.tgtW = tgt; seg.inT += dt; // il rullo va in ERG su questo bersaglio
     if (this.wk) this.band.add(dt, this.pw, tgt, this.el - seg.stepStart);
     const zone = this.pw >= HOLD_PCT * tgt; this.inTarget = this.pw >= 0.92 * tgt; this.holdOk = zone;
     this.sprinting = seg.kind === 'sprint' && zone;
     const vT = seg.kind === 'sprint' ? V_SPRINT : V_BASE; this.v += (vT - this.v) * Math.min(1, dt * 2);
     this.z += this.v * dt;
-    const g = GRADE[seg.kind] ?? 0; if (!this.wk && g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade(g); }
 
     // corsia: il giocatore scivola verso quella scelta; senza rullo (demo) la scelta giusta è automatica
     this.updateAssist(dt);
@@ -557,7 +556,7 @@ export class Gruppetto {
     this.state = 'results'; this.stateT = 0; this.finished = true; this.results.reset();
     this.audio.stopSong(); this.audio.sfx('win');
     this.hooks.runEnd?.({ game: 'gruppetto', score: this.score });
-    if (!this.wk) this.hooks.setGrade(0);
+    this.hooks.setTarget?.(Math.round(this.ftp * 0.5)); // a fine partita il rullo scende su un facile (con un allenamento comanda lui)
   }
 
   // ---------- vista ----------
@@ -596,6 +595,11 @@ export class Gruppetto {
   // ---------- interfaccia ----------
   // in alto: punti · ponte n/N · corridori presi; sotto la richiesta del momento e le barre; poi l'obiettivo (metri al prossimo corridore).
   // in basso la potenza con il numero grande e il bersaglio, a destra il gruppo (il tuo punteggio vero).
+  // la striscia comune dell'allenamento (kit/workout-strip.js)
+  stripInfo() { return stripFromPlan(this.plan, { el: this.el, ftp: this.ftp, target: this.tgtW || this.tgtNow(), bias: this.hooks.bias?.() ?? 1, targetWfn: (g) => targetW(g, this.ftp, this.level.k) }); }
+  // ERG: il bersaglio del gioco va al rullo; restituisce i watt davvero richiesti
+  erg(w) { return this.hooks.setTarget ? Math.round(this.hooks.setTarget(w)) : w; }
+
   drawHud(dt) {
     const { ctx, W, H } = this.stage;
     ctx.clearRect(0, 0, W, H); hudView(ctx, W, H);
@@ -603,30 +607,15 @@ export class Gruppetto {
     if (this.state === 'error') { hudText(ctx, t('ui.error', { error: this.error }), W / 2, H / 2, { size: 14, align: 'center', color: '#ff6b6b' }); return; }
     if (this.state === 'menu') { this.menu.draw(ctx, W, H, { connected: this.hooks.connected() }); this.hooks.progress?.drawToasts(ctx, W, dt); return; }
     if (this.state === 'results') { this.drawResult(ctx, W, H); this.hooks.progress?.drawToasts(ctx, W, dt); return; }
-    const seg = this.seg; const pad = 12; const y0 = 84;
+    const seg = this.seg; const pad = 12; const y0 = stripBottom(W, H) + 22; // sotto la striscia dell'allenamento (kit/workout-strip.js)
+    drawWorkoutStrip(ctx, W, H, this.stripInfo());
     // riga in alto: punti · ponte · presi x/y
     ctx.fillStyle = 'rgba(8,10,26,.62)'; rrect(ctx, pad - 4, y0 - 22, W - 2 * pad + 8, 36, 10); ctx.fill();
     hudText(ctx, String(Math.round(this.score)), pad + 6, y0 + 5, { size: 26, maxW: 96 });
     const wn = seg.kind === 'warm' ? t('games.gruppetto.seg.warm') : seg.kind === 'cool' ? t('games.gruppetto.seg.cool') : t('games.gruppetto.waveOf', { n: seg.wave, m: this.plan.N });
     hudText(ctx, wn, W / 2 - 10, y0 + 3, { size: W < 400 ? 18 : 21, align: 'center', color: '#d9ff3d', maxW: W * 0.3 });
     hudText(ctx, t('games.gruppetto.caughtHud', { a: this.caught, b: this.plan.riders }), W - pad - 4, y0 + 3, { size: W < 400 ? 19 : 22, align: 'right', color: '#ffffff', maxW: W * 0.34 });
-    // la richiesta del momento: tratto, watt, tempo che manca
-    const col = SEG_COLOR[seg.kind]; const by = y0 + 22; const bh2 = 44;
-    ctx.fillStyle = 'rgba(8,10,26,.72)'; rrect(ctx, pad - 4, by, W - 2 * pad + 8, bh2, 12); ctx.fill();
-    ctx.fillStyle = col; rrect(ctx, pad - 4, by, 7, bh2, 3); ctx.fill();
-    const tw = this.tgtW || this.tgtNow(); const left = Math.max(0, Math.ceil((this.wk ? seg.stepEnd : seg.t1) - this.el)); // con un allenamento: nome del passo e tempo che manca alla fine del passo
-    const easy = seg.kind === 'rest' || seg.kind === 'cool' || seg.kind === 'warm';
-    hudText(ctx, this.wk ? (seg.label || t(`games.wk.seg.${seg.wkKind}`)) : t(`games.gruppetto.seg.${seg.kind}`), pad + 12, by + 29, { size: 21, color: col, maxW: W * 0.34 });
-    hudText(ctx, `${tw} W`, W / 2 + 8, by + 32, { size: 32, align: 'center', color: this.inTarget || easy ? '#ffffff' : '#ffd34d', maxW: W * 0.34 });
-    hudText(ctx, `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`, W - pad - 4, by + 29, { size: 21, align: 'right', color: '#e8e8f4', maxW: 70 });
-    const segK = this.wk ? clamp((seg.stepEnd - this.el) / (seg.stepEnd - seg.stepStart), 0, 1) : clamp((seg.t1 - this.el) / (seg.t1 - seg.t0), 0, 1);
-    ctx.fillStyle = 'rgba(255,255,255,.18)'; rrect(ctx, pad, by + bh2 + 4, W - 2 * pad, 6, 3); ctx.fill();
-    ctx.fillStyle = col; rrect(ctx, pad, by + bh2 + 4, Math.max(6, (W - 2 * pad) * segK), 6, 3); ctx.fill();
-    const ty = by + bh2 + 15; const tk = clamp(this.el / this.total, 0, 1);
-    ctx.fillStyle = 'rgba(255,255,255,.14)'; rrect(ctx, pad, ty, W - 2 * pad, 5, 2.5); ctx.fill();
-    ctx.fillStyle = '#d9ff3d'; rrect(ctx, pad, ty, Math.max(5, (W - 2 * pad) * tk), 5, 2.5); ctx.fill();
-    ctx.fillStyle = 'rgba(8,10,26,.9)';
-    for (const [i, s] of this.plan.segs.entries()) if (this.wk ? (s.wave >= 1 && s.wave !== this.plan.segs[i - 1]?.wave) : s.kind === 'pace') ctx.fillRect(pad + (W - 2 * pad) * (s.t0 / this.total) - 1, ty - 1, 2, 7);
+    const col = SEG_COLOR[seg.kind]; const tw = this.tgtW || this.tgtNow(); const easy = seg.kind === 'rest' || seg.kind === 'cool' || seg.kind === 'warm'; const ty = y0 + 8;
     const goalBottom = ty + 14 + 46; this.drawGoal(ctx, W, H, ty + 14, col);
     if (!this.connected) hudText(ctx, t('games.common.demo'), W / 2, H - 6, { size: 13, align: 'center', color: '#ffd34d' });
 

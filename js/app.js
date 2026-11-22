@@ -377,6 +377,8 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && playingNow() && !activeGame?.active) { e.preventDefault(); clickNav.back(); return; }
   if (activeGame?.active) {
     const d = keyDir(e.key);
+    if (e.key === '[' || e.key === ']') { e.preventDefault(); if (!e.repeat) gameBiasStep(e.key === ']' ? 1 : -1); return; } // intensità a mano
+    if (e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); if (!e.repeat) gameBiasStep(e.key === 'ArrowUp' ? 1 : -1); return; }
     if (d) { e.preventDefault(); if (!e.repeat) { activeGame.input(d); activeGame.hold?.(d); } }
     if (e.key === 'Escape') closeGame();
     return;
@@ -1298,10 +1300,31 @@ if (GarminBridge) {
 }
 
 // ---------- Gioco ----------
-let gradeBeforeGame = 0; let modeBeforeGame = null;
+let gradeBeforeGame = 0; let modeBeforeGame = null; let ergBeforeGame = null;
+// ERG nei giochi: il rullo è SEMPRE in ERG sul bersaglio del gioco (con o senza allenamento), con lo stesso rinvio ogni ~2 s della
+// schermata di guida. `setTarget(w)` lo chiama il gioco a ogni fotogramma con i watt del suo bersaglio; restituisce i watt davvero
+// richiesti al rullo (bersaglio × intensità regolata a mano), che il gioco mostra e usa per giudicare. Con un allenamento in corso
+// comanda l'allenamento (tickWorkout): si restituisce il suo valore, regolato dall'intensità dell'allenamento.
+let gameBias = 1; let gameBaseW = null;
+const clampBias = (b) => Math.min(1.5, Math.max(0.5, +b.toFixed(2)));
+function gameErg(w) {
+  if (workout && !workout.w.test) return state.erg;
+  if (w == null || !Number.isFinite(w)) return state.erg;
+  gameBaseW = w;
+  const eff = Math.min(MAX_W, Math.max(0, Math.round(w * gameBias)));
+  if (state.mode !== 'erg') setMode('erg');
+  if (state.erg !== eff) { state.erg = eff; syncInputs(); render(); applyMode(true); }
+  return eff;
+}
+// intensità a mano durante un gioco (tasti [ e ] o Maiusc + frecce; stessa regola dell'allenamento: 5 % a passo, 50–150 %)
+function gameBiasStep(dir) {
+  if (workout && !workout.w.test) { step(dir); return; }
+  gameBias = clampBias(gameBias + dir * 0.05); toast(t('workout.intensity', { pct: Math.round(gameBias * 100) }));
+  if (gameBaseW != null) gameErg(gameBaseW);
+}
 function workoutForGames() {
   if (!workout) return null;
-  const w = workout.w; const k = w.test ? 1 : workout.bias; let t0 = 0;
+  const w = workout.w; const k = 1; let t0 = 0; // i passi sono quelli nominali: l'intensità a mano la applica il rullo (hooks.setTarget / hooks.bias)
   const steps = w.steps.map((x, i) => {
     const a = workout.wattsOf(x, 0) * k; const b = workout.wattsOf(x, x.d) * k; const watts = Math.round((a + b) / 2);
     const pct = +(watts / state.ftp).toFixed(3);
@@ -1353,12 +1376,9 @@ const gameHooks = {
   // Con un allenamento in corso setGrade viene ignorato: il rullo resta in ERG sui watt dell'allenamento.
   workout: () => workoutForGames(),
   workoutHud: true, // i giochi mostrano il passo dell'allenamento nel proprio HUD: la striscia dell'app sta nascosta
-  setGrade: (g) => {
-    if (workout) return; // l'ERG dell'allenamento non si tocca
-    // stessa regola dei percorsi: la pendenza arriva al rullo scalata dal "realismo salite" (default 50%)
-    state.grade = g == null ? gradeBeforeGame : Math.round(Math.max(-10, Math.min(15, g)) * routeRealism * 2) / 2;
-    syncInputs(); render(); applyMode(true);
-  },
+  setTarget: (w) => gameErg(w),
+  bias: () => (workout && !workout.w.test ? workout.bias : gameBias),
+  setGrade: () => {}, // vecchia API: la pendenza non si manda più, il rullo resta in ERG sul bersaglio del gioco (setTarget)
 };
 const gameAudio = new GameAudio();
 // sblocco dell'audio al primo tocco (WebView e browser lo tengono sospeso finché l'utente non interagisce)
@@ -1433,10 +1453,11 @@ async function startGame(kind) {
   track('game', kind);
   gameAudio.ensure(); // l'audio va sbloccato da un tocco dell'utente
   gradeBeforeGame = state.grade;
-  // il gioco controlla la pendenza: serve la modalità Cambio o Pendenza. Con un allenamento in corso no: l'ERG resta sui suoi watt.
-  if (!workout && state.mode !== 'gears' && state.mode !== 'sim') {
-    modeBeforeGame = state.mode; // a fine gioco si torna a quella
-    setMode('gears');
+  // ERG sul bersaglio del gioco, sempre. Con un allenamento in corso il rullo è già in ERG sui suoi watt.
+  gameBias = 1; gameBaseW = null;
+  if (!workout) {
+    modeBeforeGame = state.mode; ergBeforeGame = state.erg; // a fine gioco si torna a modalità e watt di prima
+    if (state.mode !== 'erg') setMode('erg');
   }
   if (trainer.connected && !state.ride.running) $('startStop').click();
   $('gameMenu').hidden = true;
@@ -1453,8 +1474,8 @@ function closeGame() {
   if (activeGame) { // dal gioco si torna al menu, dal menu si esce
     activeGame.stop();
     activeGame = null; activeKind = null;
-    if (modeBeforeGame && state.mode === 'gears' && !workout) { setMode(modeBeforeGame); state.grade = gradeBeforeGame; syncInputs(); render(); applyMode(true); }
-    modeBeforeGame = null;
+    if (modeBeforeGame && !workout) { setMode(modeBeforeGame); state.grade = gradeBeforeGame; if (ergBeforeGame != null) state.erg = ergBeforeGame; syncInputs(); render(); applyMode(true); }
+    modeBeforeGame = null; ergBeforeGame = null; gameBaseW = null; gameBias = 1;
     clearInterval(gameSampler); gameSampler = null; gamePower = []; gameRunT0 = 0;
     openGame();
     return;

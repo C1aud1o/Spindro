@@ -17,6 +17,7 @@ import { makeRandom } from './kit/rng.js';
 import { SONGS } from './audio.js';
 import { DURATIONS, LEVELS, COOL_S, buildPlan, planFromWorkout, segAt, composAt, targetW, targetPct, starsFor, nextStarHint } from './horde-plan.js';
 import { WorkoutClock, BandMeter, workoutStars } from './kit/workout-plan.js';
+import { drawWorkoutStrip, stripBottom, stripFromPlan } from './kit/workout-strip.js';
 
 const M = 'assets/3d/meshy';
 const ROAD = 5.2;           // metà larghezza percorribile (la strada è larga 13 m, il resto è cancellata)
@@ -24,6 +25,7 @@ const NUDGE = 1.5;          // spostamento di un tocco singolo
 const STEER = 8;            // m/s tenendo premuto
 const SPAWN_Z = 92;         // i nemici nascono oltre dove finisce la nebbia (92 m): emergono, non compaiono
 const GATE_Z = 100;
+const CAM_Y = 6.6; const CAM_BACK = 13.2; const CAM_LOOK = 9; // telecamera: altezza, distanza dietro il ciclista, punto guardato davanti
 const BOSS_RANGE = 40;      // il Custode è grande: lo si colpisce da più lontano
 const MAX_BULLETS = 80;     // colpi con la scia in volo insieme; oltre, il danno arriva subito
 const FIRE_RANGE = 15;      // si spara dentro questa distanza: l'orda arriva vicina prima di cadere         // anche i portali
@@ -141,7 +143,7 @@ export class Horde {
   }
 
   stop() {
-    this.active = false; this.audio.stopSong(); this.hooks.setGrade(null);
+    this.active = false; this.audio.stopSong();
     for (const d of this.detach) d(); this.detach = [];
     for (const m of this.litMats || []) m.emissive?.set('#000000');
     this.stage?.dispose();
@@ -164,13 +166,12 @@ export class Horde {
       if (def.boss) continue;
       this.far[type] = new FarCrowd(scene, bakePose(this.farKits[type], def.style), enemyMaterial(this.farKits[type].tpl.map, def.h, { far: true }), MAX_ALIVE);
     }
-    // gemma: gioiello Kenney (Platformer Kit, CC0) con un alone che il bagliore fa brillare
+    // gemma: gioiello Kenney (Platformer Kit, CC0), opaco: niente alone
     const jb = new THREE.Box3().setFromObject(this.m.jewel.scene); this.gemScale = 0.75 / ((jb.max.y - jb.min.y) || 1);
-    this.gemGlow = new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: '#5fd4ff', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.4 });
     // i nemici sono scuri sull'asfalto: un po' di luce propria li fa leggere (la sagoma si stacca dalla strada)
     // (i materiali sono condivisi con gli altri giochi: alla chiusura si rimettono come prima)
     this.litMats = [...Object.values(this.kits).map((k) => k.material), ...Object.entries(this.farKits).map(([type, k]) => enemyMaterial(k.tpl.map, ENEMIES[type].h, { far: true }))];
-    for (const m of this.litMats) m.emissive?.set('#38446f');
+    for (const m of this.litMats) m.emissive?.set('#1a2140');
     this.initGuns(); this.initPortal();
     this.pops = [];
     this.applyQuality(this.quality.cfg);
@@ -310,7 +311,7 @@ export class Horde {
       const a = { r, slot, fireT: 0.15 + this.rnd() * 0.3, x: this.x + slot[0] * 0.3, z: this.z + 1.5, born: 0 };
       r.root.position.set(a.x, 0, a.z); r.root.scale.setScalar(RIDER_S * 0.2);
       this.allies.push(a);
-      this.fx.spawn(a.x, 1.6, a.z + 1, { tex: 'green', size: 2.2, life: 0.4 });
+      this.fx.spawn(a.x, 1.6, a.z + 1, { tex: 'green', size: 1.1, life: 0.4 });
     }
     this.say(t('games.horde.alliesSay', { n: this.allies.length }), '#06d6a0', 1.4);
   }
@@ -530,7 +531,7 @@ export class Horde {
     const idx = this.plan.segs.indexOf(seg);
     if (idx !== this.segIdx) { this.enterSeg(idx); seg = this.seg; }
     if (this.el >= this.total) return this.finish();
-    const tgt = targetW(seg, ftp, this.level.k, this.el);
+    const tgt = this.erg(targetW(seg, ftp, this.level.k, this.el)); // il rullo va in ERG su questo bersaglio (con intensità a mano o dell'allenamento)
     seg.inT += dt;
     if (this.wk) this.band.add(dt, this.pw, tgt, this.el - seg.stepStart);
     if ((seg.kind === 'effort' || seg.kind === 'sprint') && seg.inT > (seg.kind === 'sprint' ? 2 : 4) && this.pw >= 0.92 * tgt) seg.okT += dt;
@@ -550,8 +551,6 @@ export class Horde {
     if (this.held) { this.heldT += dt; if (this.heldT > 0.12) this.tx = clamp(this.tx - this.held * STEER * dt, -ROAD, ROAD); }
     this.x = lerp(this.x, this.tx, 1 - Math.exp(-dt * 9));
     this.shake = Math.max(0, this.shake - dt); this.hurtT = Math.max(0, this.hurtT - dt); this.hurtFlash = Math.max(0, (this.hurtFlash || 0) - dt);
-    const g = this.bossAlive ? 4 : seg.kind === 'rest' || seg.kind === 'cool' ? 0 : seg.kind === 'warm' ? 1 : seg.kind === 'pace' ? 2 : 3;
-    if (!this.wk && g !== this.sentGrade) { this.sentGrade = g; this.hooks.setGrade(g); } // con un allenamento il rullo resta in ERG: la pendenza non si tocca
 
     this.directorTick(dt, seg);
     if (seg.kind !== 'cool') { this.trailT -= dt; if (this.trailT <= 0) { this.spawnTrail(this.z + SPAWN_Z); this.trailT = 6 + this.rnd() * 3; } }
@@ -573,7 +572,7 @@ export class Horde {
     this.state = 'results'; this.stateT = 0; this.finished = true;
     this.audio.stopSong(); this.audio.sfx('win'); this.results.reset();
     this.hooks.runEnd?.({ game: 'horde', score: this.score });
-    if (!this.wk) this.hooks.setGrade(0);
+    this.hooks.setTarget?.(Math.round(this.ftp * 0.5)); // a fine partita il rullo scende su un facile (con un allenamento comanda lui)
   }
 
   // ---------- portali: arco di pietra Meshy con energia colorata per tipo ----------
@@ -617,7 +616,7 @@ export class Horde {
         g.def.apply(this);
         this.say(t(g.def.text), g.def.color, 1.6, true);
         this.audio.sfx('rescue'); this.ev('gate');
-        this.fx.spawn(g.x, 2.2, g.z + 1, { tex: 'blue', size: 3, life: 0.35 });
+        this.fx.spawn(g.x, 2.2, g.z + 1, { tex: 'blue', size: 1.6, life: 0.35 });
         g.taken = true;
       } else g.fade = 0.01;
       g.passT = 0;
@@ -736,9 +735,8 @@ export class Horde {
   addGem(x, z, trail = false) {
     const mesh = new THREE.Group();
     const jewel = this.m.jewel.scene.clone(true); jewel.scale.setScalar(this.gemScale); mesh.add(jewel);
-    const halo = new THREE.Sprite(this.gemGlow); halo.scale.setScalar(1.2); halo.position.y = 0.35; mesh.add(halo);
     mesh.position.set(x, 0.6, z);
-    this.stage.scene.add(mesh); this.gems.push({ mesh, halo, t: this.rnd() * 3, trail });
+    this.stage.scene.add(mesh); this.gems.push({ mesh, t: this.rnd() * 3, trail });
   }
   dropGem(x, z, n) {
     for (let i = 0; i < n; i++) this.addGem(clamp(x + (this.rnd() - 0.5) * (n > 1 ? 4 : 0.5), -ROAD, ROAD), z + (this.rnd() - 0.5) * (n > 1 ? 4 : 0.5));
@@ -758,13 +756,12 @@ export class Horde {
       // restano a terra: le prendi passandoci vicino (il magnete ha raggio 4 m)
       if (d < (g.trail ? 2.6 : 4) || g.pull) {
         g.pull = true;
-        g.halo.scale.setScalar(1.6 * clamp((d - 0.6) / 3, 0.12, 1)); // the additive halo shrinks while the gem is pulled in: it used to wash the rider's jersey out to white
         const step = Math.min(d, 26 * dt);
         g.mesh.position.x += (dx / d) * step; g.mesh.position.z += (dz / d) * step;
         if (d < 1.1) {
           g.done = true; this.stage.scene.remove(g.mesh); this.xp += 1; this.score += 5; this.ev('gem');
           this.audio.sfx('coin'); this.gemAcc = (this.gemAcc || 0) + 1;
-          this.fx.spawn(this.x, 1.4, this.z, { tex: 'green', size: 1.6, life: 0.35, grow: 1.2, spin: 4 });
+          this.fx.spawn(this.x, 1.4, this.z, { tex: 'spark', size: 0.6, life: 0.3, grow: 0.8, spin: 4 });
           if (this.xp >= this.xpNeed()) this.evolve();
         }
       } else if (dz > 10) { g.done = true; this.stage.scene.remove(g.mesh); } // solo quando è dietro la telecamera
@@ -905,24 +902,29 @@ export class Horde {
     this.camera(dt);
   }
 
-  // telecamera bassa e vicina: il ciclista è grande, l'orda riempie lo schermo
+  // telecamera alta e indietro: il ciclista è una figura piccola (8–12 % dell'altezza dello schermo) e si legge l'orda che arriva
   camera(dt) {
     const cam = this.stage.camera;
     const sx = this.shake > 0 ? (this.rnd() - 0.5) * this.shake * 0.6 : 0;
     const sy = this.shake > 0 ? (this.rnd() - 0.5) * this.shake * 0.3 : 0;
-    const target = new THREE.Vector3(this.x * 0.6 + sx, 3.3 + sy, this.z - 7.0);
+    const target = new THREE.Vector3(this.x * 0.6 + sx, CAM_Y + sy, this.z - CAM_BACK);
     if (!this.camInit) { cam.position.copy(target); this.camInit = true; }
     cam.position.lerp(target, 1 - Math.exp(-dt * 6));
     // solo nel menu: il ciclista sta nella fascia libera (verticale: tra testo e tasto; orizzontale: a destra della colonna di testo)
     const { W, H } = this.stage; const m = this.menu; const menuOn = this.state === 'menu' && m.contentBottom;
     const wantX = menuOn && W > H * 1.15 ? -1.3 : 0; const wantY = menuOn && W <= H * 1.15 ? 0.55 : 0;
     this.menuOffX = lerp(this.menuOffX || 0, wantX, 1 - Math.exp(-dt * 4)); this.menuOffY = lerp(this.menuOffY || 0, wantY, 1 - Math.exp(-dt * 4));
-    cam.lookAt(this.x * 0.7 + this.menuOffX, 0.8 + this.menuOffY, this.z + 8);
+    cam.lookAt(this.x * 0.7 + this.menuOffX, 0.6 + this.menuOffY, this.z + CAM_LOOK);
     const wantFov = 60 + (this.overdrive > 0 ? 4 : 0);
     this.fov = lerp(this.fov, wantFov, 1 - Math.exp(-dt * 5));
     cam.fov = this.fov; cam.far = 520; cam.updateProjectionMatrix();
     this.sky.follow(cam, this.x, this.z);
   }
+
+  // la striscia comune dell'allenamento: con un allenamento i suoi passi, senza il piano della partita (stessi campi)
+  stripInfo() { return stripFromPlan(this.plan, { el: this.el, ftp: this.ftp, target: this.tgtW || targetW(this.seg, this.ftp, this.level.k, this.el), bias: this.hooks.bias?.() ?? 1, targetWfn: (g) => targetW(g, this.ftp, this.level.k) }); }
+  // ERG: il bersaglio del gioco va al rullo; restituisce i watt davvero richiesti
+  erg(w) { return this.hooks.setTarget ? Math.round(this.hooks.setTarget(w)) : w; }
 
   // ---------- interfaccia ----------
   // in alto: punteggio · ondata n/N · cuori; sotto, la richiesta del momento (tratto, watt, tempo) e le barre.
@@ -935,7 +937,8 @@ export class Horde {
     if (this.state === 'menu') { this.drawMenu(ctx, W, H, dt); return; }
     if (this.state === 'results' && this.result) { this.drawOver(ctx, W, H, dt); return; }
     const w = WEAPONS[this.weapon]; const seg = this.seg;
-    const pad = 12; const y0 = 84; // sotto la barra del gioco (titolo, audio, esci)
+    const pad = 12; const y0 = stripBottom(W, H) + 22; // sotto la striscia dell'allenamento (kit/workout-strip.js), che sta sotto la barra del gioco
+    drawWorkoutStrip(ctx, W, H, this.stripInfo());
     // riga in alto
     ctx.fillStyle = 'rgba(8,10,26,.62)'; rrect(ctx, pad - 4, y0 - 22, W - 2 * pad + 8, 36, 10); ctx.fill();
     hudText(ctx, String(this.score), pad + 6, y0 + 5, { size: 26, maxW: 100 });
@@ -943,25 +946,7 @@ export class Horde {
     hudText(ctx, wn, W / 2, y0 + 3, { size: W < 400 ? 19 : 22, align: 'center', color: '#d9ff3d', maxW: W - 2 * (pad + 100) });
     let hx = W - pad - 4 - (this.maxHp - 1) * 18;
     for (let i = 0; i < this.maxHp; i++) { hudText(ctx, i < this.hp ? '♥' : '♡', hx + i * 18, y0 + 4, { size: 21, color: i < this.hp ? '#ff4d6d' : '#7a7a99', align: 'center' }); }
-    // la richiesta del momento: tratto, watt, tempo che manca
-    const col = SEG_COLOR[seg.kind]; const by = y0 + 22; const bh2 = 44;
-    ctx.fillStyle = 'rgba(8,10,26,.72)'; rrect(ctx, pad - 4, by, W - 2 * pad + 8, bh2, 12); ctx.fill();
-    ctx.fillStyle = col; rrect(ctx, pad - 4, by, 7, bh2, 3); ctx.fill();
-    const tw = this.tgtW || targetW(seg, this.ftp, this.level.k, this.el);
-    // con un allenamento: nome del passo e tempo che manca alla fine del passo (la striscia dell'app è nascosta)
-    const left = Math.max(0, Math.ceil((this.wk ? seg.stepEnd : seg.t1) - this.el));
-    hudText(ctx, this.wk ? (seg.label || t(`games.wk.seg.${seg.wkKind}`)) : t(`games.horde.seg.${seg.kind}`), pad + 12, by + 29, { size: 21, color: col, maxW: W * 0.34 });
-    hudText(ctx, `${tw} W`, W / 2 + 8, by + 32, { size: 32, align: 'center', color: this.inTarget || seg.kind === 'rest' || seg.kind === 'cool' || seg.kind === 'warm' ? '#ffffff' : '#ffd34d', maxW: W * 0.34 });
-    hudText(ctx, `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`, W - pad - 4, by + 29, { size: 21, align: 'right', color: '#e8e8f4', maxW: 70 });
-    // barra del tratto (cala) e barra dell'allenamento intero con i confini delle ondate
-    const segK = this.wk ? clamp((seg.stepEnd - this.el) / (seg.stepEnd - seg.stepStart), 0, 1) : clamp((seg.t1 - this.el) / (seg.t1 - seg.t0), 0, 1);
-    ctx.fillStyle = 'rgba(255,255,255,.18)'; rrect(ctx, pad, by + bh2 + 4, W - 2 * pad, 6, 3); ctx.fill();
-    ctx.fillStyle = col; rrect(ctx, pad, by + bh2 + 4, Math.max(6, (W - 2 * pad) * segK), 6, 3); ctx.fill();
-    const ty = by + bh2 + 15; const tk = clamp(this.el / this.total, 0, 1);
-    ctx.fillStyle = 'rgba(255,255,255,.14)'; rrect(ctx, pad, ty, W - 2 * pad, 5, 2.5); ctx.fill();
-    ctx.fillStyle = '#d9ff3d'; rrect(ctx, pad, ty, Math.max(5, (W - 2 * pad) * tk), 5, 2.5); ctx.fill();
-    ctx.fillStyle = 'rgba(8,10,26,.9)';
-    for (const [i, s] of this.plan.segs.entries()) if (this.wk ? (s.wave >= 1 && s.wave !== this.plan.segs[i - 1]?.wave) : s.kind === 'pace') ctx.fillRect(pad + (W - 2 * pad) * (s.t0 / this.total) - 1, ty - 1, 2, 7);
+    const col = SEG_COLOR[seg.kind]; const tw = this.tgtW || targetW(seg, this.ftp, this.level.k, this.el); const ty = y0 + 8;
     // vita del Custode
     const boss = this.enemies.find((e) => e.def.boss && !e.dead);
     let nextY = ty + 24;
