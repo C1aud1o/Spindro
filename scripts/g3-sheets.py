@@ -21,7 +21,7 @@ def sheet(w, h, title):
 
 def scale(b, a, out):
     pad = 18; top = 64; rowh = 420
-    cols = [('desktop 1280x720', '-d', 1), ('phone 390x844', '-p', 1)]
+    cols = [('desktop', '-d', 1), ('phone', '-p', 1)]
     rows = [('Horde Run', 'horde'), ('Feed Zone', 'mattoni')]
     tiles = []
     for name, g in rows:
@@ -47,7 +47,7 @@ def light(b, a, out):
     tw = round(390 * th / 780)
     W = pad + len(GAMES) * (tw + pad) + 150; H = top + len(cells) * (th + 26 + pad) // 1
     # one row per (quality, before/after), one column per game
-    im, d = sheet(W, H, 'G3 light: matte look, no halos, bloom threshold high / strength low on every preset (390x780, 90 s into a run)')
+    im, d = sheet(W, H, 'G3 light: matte look, no halos, bloom soft on every preset (390x780)')
     for i, (gid, name) in enumerate(GAMES): d.text((150 + pad + i * (tw + pad), 62), name, font=font(16), fill=FG)
     y = top
     for q, lab, dd in cells:
@@ -61,7 +61,7 @@ def strip(dr, out):
     pad = 12
     items = [g for g, _ in GAMES] + ['video']
     names = dict(GAMES); names['video'] = 'Video ride'
-    rows = [('plan', 'no workout: the game\'s own plan'), ('wk', 'with a workout')]
+    rows = [('plan', 'own plan'), ('wk', 'workout')]
     sizes = [('1280x720', 'desktop', 380), ('390x844', 'phone', 380)]
     cellw = {}; # per size row height 380
     tiles = []

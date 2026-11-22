@@ -31,7 +31,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const srv = spawn(process.execPath, [join(ROOT, 'tests/serve.mjs')], { env: { ...process.env, PORT: String(PORT) }, stdio: 'ignore' });
 await sleep(1000);
 const TICK = 'if (typeof g.sense === "function" && typeof g.step === "function" && typeof g.view === "function") { g.t += dt; g.sense(dt); g.msgs.update(dt); g.stateT += dt; if (g.state === "play") g.step(dt); g.view(dt); } else g.update(dt, dt);';
-const run = (page, sec) => page.evaluate(([sec, TICK]) => { const g = window.__game; const dt = 1 / 30; const f = new Function('g', 'dt', TICK); for (let i = 0; i < sec * 30; i++) f(g, dt); }, [sec, TICK]);
+const run = (page, sec) => (page.__real ? sleep(sec * 1000) : page.evaluate(([sec, TICK]) => { const g = window.__game; const dt = 1 / 30; const f = new Function('g', 'dt', TICK); for (let i = 0; i < sec * 30; i++) f(g, dt); }, [sec, TICK]));
 const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || '/opt/pw-browsers/chromium', args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
 for (const game of GAMES) {
   if (game === 'video' && !WK) continue;
@@ -53,9 +53,12 @@ for (const game of GAMES) {
   await page.evaluate((c) => document.querySelector(`[data-game="${c}"]`).click(), game);
   if (game === 'video') { await sleep(2500); await page.screenshot({ path: join(OUT, `video-wk-${VW}x${VH}${TAG}.png`) }); console.log(game, 'done'); await ctx.close(); continue; }
   await page.waitForFunction(() => window.__game?.state === 'menu', null, { timeout: 120000 });
-  await page.evaluate(() => { window.__game.active = false; });
-  await run(page, 0.8);
+  page.__real = game === 'racer'; // real time for the racer
+  if (game !== 'racer') await page.evaluate(() => { window.__game.active = false; }); // racer keeps its own loop (it finishes loading there)
+  await run(page, game === 'racer' ? 3 : 0.8);
   await page.evaluate(() => { const g = window.__game; if (g.menu?.start) { g.menu.age = 1; g.menu.start(); } else { g.stateT = 5; g.selT = 1; if (typeof g.begin === 'function') g.begin(); else g.input(1); } });
+  for (let i = 0; i < 40 && (await page.evaluate(() => window.__game.state)) === 'loading'; i++) { await run(page, 1); await sleep(200); }
+  await page.evaluate(async () => { const g = window.__game; for (let i = 0; i < 4 && /menu|select/.test(g.state); i++) { g.stateT = 5; g.selT = 1; g.input(1); await new Promise((r) => setTimeout(r, 300)); if (/menu|select/.test(g.state) && typeof g.begin === 'function') g.begin(); } });
   await run(page, AT);
   await page.evaluate(() => { const g = window.__game; g.msgs?.clear?.(); g.stage.render(); if (g.drawHud) g.drawHud(1 / 30); });
   await page.screenshot({ path: join(OUT, `${game}-${WK ? 'wk' : 'plan'}-${VW}x${VH}${TAG}.png`) });
