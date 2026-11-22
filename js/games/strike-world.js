@@ -266,7 +266,7 @@ export class World {
     if (L.id !== 'harbor') {
       const g = new THREE.Group();
       const disc = new THREE.Mesh(new THREE.CircleGeometry(L.night ? 14 : 26, 40), new THREE.MeshBasicMaterial({ color: L.night ? '#f4f0ff' : '#fff1c8', fog: false, depthWrite: false }));
-      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: L.night ? '#a58cff' : '#ffb070', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: L.night ? 0.35 : 0.5 }));
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: fxTexture('light_01'), color: L.night ? '#a58cff' : '#ffb070', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: L.night ? 0.14 : 0.2 }));
       halo.scale.setScalar(L.night ? 150 : 260); halo.position.z = -1;
       g.add(halo, disc); disc.renderOrder = -5; halo.renderOrder = -6; this.root.add(g); this.orb = g;
     } else this.orb = null;

@@ -36,9 +36,9 @@ export class Skeleton3D {
     camera.position.set(0, 2.6, -5.5); camera.lookAt(0, 1.2, 2);
     this.state = 'menu'; this.menu.reset();
   }
-  stop() { this.active = false; (this.detach || []).forEach((f) => f()); this.hooks.setGrade(null); this.stage?.dispose(); }
+  stop() { this.active = false; (this.detach || []).forEach((f) => f()); this.stage?.dispose(); }
   end() { if (this.state === 'play') this.finish(); }
-  input(dir) { this.audio?.ensure(); if (this.state === 'menu') this.menu.input(dir); else if (this.state === 'results') this.results.input(dir); else if (this.state === 'play') this.hooks.shift?.(dir); }
+  input(dir) { this.audio?.ensure(); if (this.state === 'menu') this.menu.input(dir); else if (this.state === 'results') this.results.input(dir); /* in play: give + / − ONE job */ }
   hold(dir) { if (this.state === 'menu') this.menu.hold(dir); }
   begin() { this.el = 0; this.state = 'play'; this.hooks.runStart?.(); this.audio?.sfx('go'); }
   finish() { this.state = 'results'; this.results.reset(); this.result = { stars: 1 }; this.audio?.sfx('win'); }

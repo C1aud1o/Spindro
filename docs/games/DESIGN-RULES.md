@@ -45,8 +45,19 @@ New games add their own row here when they are accepted. `tempo` (and the `skele
   game, explained in one line in the menu. A long press of − is a pause (handled by the app).
 - No punishment for pushing harder. No "game over" in the first minute. A rider who stops pedalling pauses the game and does not lose.
 
+## 3b. The trainer is always in ERG
+- In every game, with or without a workout, the trainer is in **ERG on the game's current target** for the whole run
+  (`hooks.setTarget`, see API.md): never slope, resistance or gears mode, never a stopped target. A manual intensity (keys `[` / `]`)
+  keeps working and is shown in the workout strip.
+- **One workout strip** (`kit/workout-strip.js`), the same everywhere: kind and step, target watts and % FTP, time left, next step,
+  the whole workout with the current position, elapsed / total. Without a workout it is fed by the game's own plan.
+
 ## 4. It must look good
-- The character takes **at least 14 %** of the screen height at 390×780; important enemies and targets at least 8 %.
+- The playfield must be readable: the player's character is a **small figure, about 8–12 % of the screen height** (Horde Run, Feed Zone and
+  the camera of every game: pulled back, never a close-up), enemies and targets at least 4–6 %, on 16:9 desktop (1280×720, 1920×1080)
+  and on a portrait phone (390×844). Hitboxes do not follow the camera: balance stays as it is.
+- **Matte, not neon**: no halos around characters or pickups, no blown-out whites, emissive only as a small accent. Bloom threshold high
+  and strength low on every preset (`kit/quality.js`); lime `#D9FF3D` is used sparingly, like in the flat UI.
 - No half-empty screen: the camera frames the action, not the asphalt.
 - Text with the shared system (`js/games/kit/hud.js`): no overlaps, no text off screen, numbers readable from a metre away.
 - **No defects in motion**: no object popping in near the camera, no model passing through another, no flicker of
@@ -78,6 +89,7 @@ This is what a reviewer ticks before merging a game (the same list is in the pul
 - [ ] **Registry**: one entry in `js/games/registry.js`, the id follows the naming rule in [API.md](API.md); the card shows in the list.
 - [ ] **Bot check**: `npm run game:check -- <id>` passes; the table is in the pull request (rules in §1, §2, §5).
 - [ ] **+ / − only**: playable start to finish with + and − (and the pedals): menu, run, results. No touch needed.
+- [ ] **ERG and strip**: `hooks.setTarget(w)` every frame of the run (the returned watts are shown and judged), the shared workout strip drawn and exposed as `stripInfo()`, no slope/gears mode, no target block of your own.
 - [ ] **Workout mode**: with a workout under the game, the run follows it, ends with it, stars by the shared rule (§1).
 - [ ] **No pressure**: pushing harder is never punished, stopping pedalling pauses, no game over in the first minute (§3).
 - [ ] **Text through i18n**: every visible string is `t('games.<id>...')` and exists in all five `locales/*.json`; `node tests/i18n-check.mjs` passes.

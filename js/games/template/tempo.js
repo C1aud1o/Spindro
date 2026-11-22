@@ -9,6 +9,7 @@ import { GameMenu, ResultsView } from '../kit/menu.js';
 import { txt, panel, HUD, hudView, uiScale, loadHudFonts } from '../kit/hud.js';
 import { WorkoutClock, wkTarget, workoutStars, BAND, SETTLE_S } from '../kit/workout-plan.js';
 import { makeRandom } from '../kit/rng.js';
+import { buildStrip, drawWorkoutStrip } from '../kit/workout-strip.js';
 
 const ID = 'tempo';                    // = registry id: strings are games.tempo.*, storage keys start with "tempo"
 const LENGTHS = [1, 2, 3]; const BLOCK = 15; // session lengths in minutes (the menu shows these instead of 5 / 10 / 20), blocks of 15 s
@@ -46,7 +47,6 @@ export class Tempo {
   }
   stop() {                              // leave: undo everything start() did
     this.active = false; window.removeEventListener('resize', this.onResize); (this.detach || []).forEach((f) => f());
-    this.hooks.setGrade(null);          // give the trainer's slope back to the app (harmless if you never set one)
     this.ctx?.setTransform(1, 0, 0, 1, 0, 0); this.ctx?.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
   end() { if (this.state === 'play') this.finish(); }   // optional: finish now (tests and the bot harness use it)
@@ -56,7 +56,7 @@ export class Tempo {
     this.audio?.ensure();
     if (this.state === 'menu') this.menu.input(dir);
     else if (this.state === 'results') this.results.input(dir);
-    else if (this.state === 'play') this.hooks.shift?.(dir);   // + / − = gear up / down: with a trainer in Gears mode they change the load
+    // in play + / − have no job in Tempo: the trainer is in ERG on the target (a real game gives them ONE job: steer, aim, fire...)
   }
   hold(dir) { if (this.state === 'menu') this.menu.hold(dir); }   // long press on + starts from the menu
 
@@ -85,6 +85,7 @@ export class Tempo {
     if (!this.plan && (newBest || stars > (prev?.stars || 0))) this.hooks.progress?.saveBest(ID, key, { score: Math.max(score, prev?.score || 0), stars: Math.max(stars, prev?.stars || 0) });
     this.result = { stars, ratio, score, best: Math.max(score, prev?.score || 0), newBest, wk: !!this.plan };
     this.state = 'results'; this.results.reset(); this.audio?.sfx('win');
+    this.hooks.setTarget?.(Math.round(this.ftp * 0.5));   // the run is over: the trainer eases to an easy 50 % FTP (a running workout keeps control)
     // Only games with a leaderboard report here: this.hooks.runEnd({ game: ID, score }). Tempo has none.
   }
 
@@ -98,6 +99,9 @@ export class Tempo {
     if (this.wait) return;
     this.el = this.plan ? this.clock.tick(dt) : this.el + dt;
     const tg = this.target();
+    // ERG: ALWAYS pass the current target to the app (every frame). The trainer goes to ERG on it; you get back the watts really requested
+    // (the target x the rider's manual intensity, or the workout's live ERG): show and judge with THAT number.
+    tg.w = this.shown = this.hooks.setTarget ? Math.round(this.hooks.setTarget(tg.w)) : tg.w;
     // The green: from 7 % under the target up. Pushing harder is never punished (docs/games/DESIGN-RULES.md §3); a workout is stricter: ±7 %.
     const inBand = power >= (1 - BAND) * tg.w && (!this.plan || power <= (1 + BAND) * tg.w);
     if (tg.since >= SETTLE_S) { this.totT += dt; tg.c.tot += dt; if (inBand) { this.inT += dt; tg.c.in += dt; } }        // the first seconds of a block are not judged
@@ -106,6 +110,11 @@ export class Tempo {
     else if (this.el >= this.nextTick) { this.nextTick += 4; this.ev('tick'); this.audio?.sfx(inBand ? 'coin' : 'shiftDown'); }
     this.fill = Math.max(0, Math.min(1, this.fill + (inBand ? dt / 8 : -dt / 14)));     // the bar rises in the green, sinks slowly outside
     if (this.el >= this.total || this.clock.ended) this.finish();
+  }
+  // The shared workout strip (kit/workout-strip.js): the SAME one in every game. Normalise your plan to { t0, t1, kind, watts, label }.
+  stripInfo() {
+    const segs = this.cells.map((c) => ({ t0: c.t0, t1: c.t1, kind: c.seg?.kind || 'pace', watts: c.w, label: c.label, stepStart: c.seg?.stepStart, stepEnd: c.seg?.stepEnd }));
+    return buildStrip({ segs, el: this.el, total: this.total, target: this.shown ?? this.target().w, ftp: this.ftp, bias: this.hooks.bias?.() ?? 1, wk: !!this.plan });
   }
   // The bot harness (npm run game:check) reads these: when things happened, so it can check "first event within 8 s, never 5 s of nothing".
   ev(kind) { if (this.evLog.length < 20000) this.evLog.push({ t: this.el, k: kind }); }
@@ -134,8 +143,8 @@ export class Tempo {
     }
     if (this.state === 'results') { this.drawResults(); return; }
     const { power } = this.hooks.stats(); const tg = this.target(); const cx = W / 2; const bw = Math.min(W - 40, 420 * u);
-    txt(ctx, tg.label || t('games.tempo.target'), cx, 130 * u, { size: 20 * u, align: 'center', color: HUD.dim, font: 'text', maxW: bw });
-    txt(ctx, `${tg.w} W`, cx, 200 * u, { size: 72 * u, align: 'center', color: HUD.lime, maxW: bw });
+    drawWorkoutStrip(ctx, W, H, this.stripInfo());                  // kind, label, target, time left, next step, the whole session
+    txt(ctx, `${tg.w} W`, cx, 218 * u, { size: 72 * u, align: 'center', color: HUD.lime, maxW: bw });
     // the gauge: green zone = ±7 % of the target, the marker is your power (scale 50 %–150 % of the target)
     const gy = 260 * u; const x = (w) => cx - bw / 2 + bw * Math.max(0, Math.min(1, (w / tg.w - 0.5)));
     panel(ctx, cx - bw / 2, gy, bw, 34 * u, { r: 17 * u, fill: 'rgba(255,255,255,.12)' });
@@ -144,7 +153,6 @@ export class Tempo {
     txt(ctx, `${Math.round(power)} W`, cx, gy + 96 * u, { size: 56 * u, align: 'center', maxW: bw });
     panel(ctx, cx - bw / 2, gy + 130 * u, bw, 16 * u, { r: 8 * u, fill: 'rgba(255,255,255,.12)' });                 // the "tempo" bar
     panel(ctx, cx - bw / 2, gy + 130 * u, Math.max(16 * u, bw * this.fill), 16 * u, { r: 8 * u, fill: this.fill > 0.5 ? '#2bd67b' : HUD.gold });
-    const left = Math.max(0, Math.ceil(this.total - this.el)); txt(ctx, `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`, W - 16, 92 * u, { size: 26 * u, align: 'right' });          // below the app's top bar
     this.drawProfile(cx - bw / 2, gy + 190 * u, bw, 150 * u);
     if (this.wait) txt(ctx, t('games.tempo.keep'), cx, H - 60 * u, { size: 24 * u, align: 'center', color: HUD.gold, maxW: bw });
     this.hooks.progress?.drawToasts(ctx, W, dt);

@@ -102,11 +102,13 @@ The second constructor argument. This is the **complete** list.
 | `connected()` | `() => boolean` | a trainer is connected. `false` = demo (in development: the demo rider answers `true`) |
 | `stats()` | `() => { power, cadence, gear, heartRate }` | `power` W (integer 0–2500), `cadence` rpm (integer), `gear` 1-based virtual gear in Gears mode else `null`, `heartRate` bpm or `null` |
 | `ftp()` | `() => number` | the rider's FTP in watts. Everything is in % of it: `Math.max(80, hooks.ftp?.() \|\| 200)` |
-| `speedKmh()` | `() => number` | speed, km/h (virtual speed in Gears mode) |
-| `shift(dir)` | `(±1) => void` | virtual gear up/down (Gears mode): the way a game reacts to + / − when its own action is "pedal harder / easier" |
-| `setGrade(g)` | `(number\|null) => void` | gradient sent to the trainer, % (−10…15, scaled by the rider's "climb realism"). `null` gives control back; call it in `stop()`. Ignored while a workout runs (ERG stays on the workout's watts) |
+| `speedKmh()` | `() => number` | speed, km/h (the trainer's, the trainer is always in ERG) |
+| `shift(dir)` | `(±1) => void` | virtual gear up/down. The trainer is always in ERG on the game's target, so a gear no longer changes the load: do not use it for the game's own action |
+| `setTarget(w)` | `(number) => number` | **ERG, mandatory every frame of a run** (warm-up, efforts, recoveries, cool-down): the game's current target in watts. The app puts the trainer in ERG on it (same ~2 s keepalive as the dashboard) and **returns the watts really requested** = the target × the rider's manual intensity (keys `[` / `]`), or the workout's live ERG while a workout runs. Show and judge with the returned number. At the end of the run call `setTarget(0.5 × ftp)` (ignored while a workout runs). Nothing may change the target automatically: it is plan % × FTP (+ the level chosen in the menu), or exactly the workout's watts |
+| `bias()` | `() => number` | the manual intensity, 1 = none (0.5–1.5, 5 % steps): the strip shows it |
+| `setGrade(g)` | `(any) => void` | **obsolete, does nothing**: games never use slope or gears mode |
 | `workout()` | `() => WorkoutInfo\|null` | the workout in progress under the game, or `null` (see "Workout mode") |
-| `workoutHud` | `boolean` | `true`: the game shows the workout step in its own HUD (the app's strip is then hidden) |
+| `workoutHud` | `boolean` | `true`: the game draws the workout strip itself (kit/workout-strip.js; the app's strip is then hidden) |
 | `runStart()` | `() => void` | call when a run really starts: the app starts timing it |
 | `runEnd(r)` | `({ game, stage?, score }) => void` | call when a run ends **only if the game has a leaderboard** (the app submits `score` for `game` when the rider is signed in, ≥ 20 s, trainer connected) |
 | `close()` | `() => void` | back to the games list (the `−` button on the results screen) |
@@ -177,7 +179,7 @@ this.results.draw(ctx, W, H, { title, subtitle, stars, criteria: [{ ok, label }]
 ## Workout mode
 
 When the rider follows a workout, `hooks.workout()` returns `{ name, total, elapsed, steps: [{ t0, dur, pct, watts, kind, w0, w1, label }] }`
-(seconds, fraction of FTP, watts) and the trainer stays in ERG on the workout's watts: **the game does not decide the load,
+(seconds, fraction of FTP, watts, nominal: the rider's manual intensity is applied by the app and returned by `setTarget`) and the trainer stays in ERG on the workout's watts: **the game does not decide the load,
 the workout does**. Use `kit/workout-plan.js`:
 
 - `new WorkoutClock(hooks)`: `begin(ftp)` → plan or `null`; `tick(dt)` → workout time (it follows the app if it jumps); `.ended`.
@@ -186,6 +188,19 @@ the workout does**. Use `kit/workout-plan.js`:
 
 A game that ignores the plan is not finished: the menu already shows the workout, so the run must follow it, end with it and
 give stars by that rule. Personal bests are not saved from a workout run (the load was not the game's).
+
+## ERG and the workout strip (every game, with or without a workout)
+
+- **ERG always**: pass the game's current target to `hooks.setTarget(w)` on every frame of a run and use the number it returns for the
+  display and for "in the zone". The trainer never goes to slope, resistance or gears mode. `+` / `−` keep ONE job in the game;
+  the rider's manual intensity is on the keys `[` and `]` (and shown by the strip).
+- **One workout strip**: `kit/workout-strip.js`, identical in all games and the video ride, in the same place (under the app's title
+  bar), Barlow Condensed: kind and step label, target watts and % FTP, time left in the step, the next step (watts + duration), the whole
+  workout as a bar profile with the current position, elapsed / total. Normalise your plan to `{ t0, t1, kind, watts, label?, stepStart?, stepEnd? }`
+  and call `buildStrip(...)` (or `stripFromPlan(plan, ...)` for the horde family of plans) → `info`; draw with `drawWorkoutStrip(ctx, W, H, info)`,
+  which returns the y where the game's own HUD can start (`stripBottom(W, H)`). Expose it as a public `stripInfo()` method (tests compare
+  `stripInfo().target` with the last ERG command). Without a workout the same strip is fed by the game's own plan. Do not draw a second
+  target block of your own.
 
 ## What a game must never do
 
