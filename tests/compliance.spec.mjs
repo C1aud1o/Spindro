@@ -101,6 +101,8 @@ test('Content-Security-Policy: presente, restrittiva e senza violazioni usando l
     await load('script', { src: 'https://evil.example/x.js' });
     await load('iframe', { src: 'https://evil.example/' });
     await fetch('https://evil.example/').catch(() => {});
+    // gli eventi di violazione arrivano in un secondo momento: si aspetta che siano registrati (fino a 3 s)
+    for (let i = 0; i < 30 && window.__csp.length < before + 2; i++) await new Promise((r) => setTimeout(r, 100));
     return { ok: window.__csp.slice(0, before), blocked: window.__csp.slice(before) };
   });
   expect(res.ok).toEqual([]);
