@@ -1,0 +1,253 @@
+diff --git a/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/BluetoothLe.kt b/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/BluetoothLe.kt
+index 21a1ff3..92e9703 100644
+--- a/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/BluetoothLe.kt
++++ b/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/BluetoothLe.kt
+@@ -159,7 +159,7 @@ class BluetoothLe : Plugin() {
+     @PluginMethod
+     fun isEnabled(call: PluginCall) {
+         assertBluetoothAdapter(call) ?: return
+-        val enabled = bluetoothAdapter?.isEnabled == true
++        val enabled = try { bluetoothAdapter?.isEnabled == true } catch (e: SecurityException) { false }
+         val result = JSObject()
+         result.put("value", enabled)
+         call.resolve(result)
+@@ -333,8 +333,14 @@ class BluetoothLe : Plugin() {
+                         if (scanResponse.device == null) {
+                             call.reject("No device found.")
+                         } else {
+-                            val bleDevice = getBleDevice(scanResponse.device)
+-                            call.resolve(bleDevice)
++                            // Spindro patch: runs on the main thread (dialog click); getBleDevice reads name/uuids (BLUETOOTH_CONNECT)
++                            try {
++                                val bleDevice = getBleDevice(scanResponse.device)
++                                call.resolve(bleDevice)
++                            } catch (e: RuntimeException) {
++                                Logger.error(TAG, "Error reading the selected device: ${e.localizedMessage}", e)
++                                call.reject("Could not read the selected device: ${e.javaClass.simpleName} ${e.localizedMessage ?: ""}".trim())
++                            }
+                         }
+                     } else {
+                         call.reject(scanResponse.message)
+diff --git a/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/Device.kt b/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/Device.kt
+index 711697f..9a3ddcd 100644
+--- a/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/Device.kt
++++ b/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/Device.kt
+@@ -114,6 +114,16 @@ class Device(
+         override fun onConnectionStateChange(
+             gatt: BluetoothGatt, status: Int, newState: Int
+         ) {
++            // Spindro patch: GATT callbacks run on a HandlerThread nobody supervises; an exception here ends the process.
++            try {
++                handleConnectionStateChange(status, newState)
++            } catch (e: RuntimeException) {
++                Logger.error(TAG, "onConnectionStateChange failed: ${e.localizedMessage}", e)
++                reject("connect", "Connection state error: ${e.javaClass.simpleName} ${e.localizedMessage ?: ""}".trim())
++            }
++        }
++
++        private fun handleConnectionStateChange(status: Int, newState: Int) {
+             if (newState == BluetoothProfile.STATE_CONNECTED) {
+                 connectionState = STATE_CONNECTED
+                 // service discovery is required to use services
+@@ -139,7 +149,13 @@ class Device(
+                 resolve("discoverServices", "Services discovered.")
+                 if (connectCallOngoing()) {
+                     // Try requesting a larger MTU. Maximally supported MTU will be selected.
+-                    requestMtu(REQUEST_MTU)
++                    try {
++                        requestMtu(REQUEST_MTU)
++                    } catch (e: RuntimeException) {
++                        // Spindro patch: SecurityException/IllegalState here used to end the process
++                        Logger.error(TAG, "requestMtu failed: ${e.localizedMessage}", e)
++                        reject("connect", "requestMtu failed: ${e.javaClass.simpleName}")
++                    }
+                 }
+             } else {
+                 reject("discoverServices", "Service discovery failed.")
+@@ -237,7 +253,11 @@ class Device(
+             val data = characteristic.value
+             if (data != null) {
+                 val value = bytesToString(data)
+-                callbackMap[notifyKey]?.invoke(CallbackResponse(true, value))
++                try {
++                    callbackMap[notifyKey]?.invoke(CallbackResponse(true, value))
++                } catch (e: RuntimeException) {
++                    Logger.error(TAG, "notification callback failed: ${e.localizedMessage}", e)
++                }
+             }
+         }
+ 
+@@ -249,7 +269,11 @@ class Device(
+             super.onCharacteristicChanged(gatt, characteristic, data)
+             val notifyKey = "notification|${characteristic.service.uuid}|${characteristic.uuid}"
+             val value = bytesToString(data)
+-            callbackMap[notifyKey]?.invoke(CallbackResponse(true, value))
++            try {
++                callbackMap[notifyKey]?.invoke(CallbackResponse(true, value))
++            } catch (e: RuntimeException) {
++                Logger.error(TAG, "notification callback failed: ${e.localizedMessage}", e)
++            }
+         }
+ 
+         @TargetApi(Build.VERSION_CODES.S_V2)
+@@ -328,24 +352,40 @@ class Device(
+         }
+         bluetoothGatt?.close()
+         connectionState = STATE_CONNECTING
+-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+-            initializeCallbacksHandlerThread()
+-            bluetoothGatt = device.connectGatt(
+-                context,
+-                false,
+-                gattCallback,
+-                BluetoothDevice.TRANSPORT_LE,
+-                BluetoothDevice.PHY_OPTION_NO_PREFERRED,
+-                callbacksHandler
+-            )
+-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+-            bluetoothGatt = device.connectGatt(
+-                context, false, gattCallback, BluetoothDevice.TRANSPORT_LE
+-            )
+-        } else {
+-            bluetoothGatt = device.connectGatt(
+-                context, false, gattCallback
+-            )
++        try {
++            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
++                // Spindro patch: a previous attempt left its thread running; do not leak one per connect
++                cleanupCallbacksHandlerThread()
++                initializeCallbacksHandlerThread()
++                bluetoothGatt = device.connectGatt(
++                    context,
++                    false,
++                    gattCallback,
++                    BluetoothDevice.TRANSPORT_LE,
++                    BluetoothDevice.PHY_OPTION_NO_PREFERRED,
++                    callbacksHandler
++                )
++            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
++                bluetoothGatt = device.connectGatt(
++                    context, false, gattCallback, BluetoothDevice.TRANSPORT_LE
++                )
++            } else {
++                bluetoothGatt = device.connectGatt(
++                    context, false, gattCallback
++                )
++            }
++        } catch (e: RuntimeException) {
++            // Spindro patch: SecurityException (permission revoked), IllegalStateException (Bluetooth off)...
++            Logger.error(TAG, "connectGatt failed: ${e.localizedMessage}", e)
++            connectionState = STATE_DISCONNECTED
++            bluetoothGatt = null
++            reject(key, "Connect failed: ${e.javaClass.simpleName} ${e.localizedMessage ?: ""}".trim())
++            return
++        }
++        if (bluetoothGatt == null) {
++            connectionState = STATE_DISCONNECTED
++            reject(key, "Connect failed: the system returned no GATT connection.")
++            return
+         }
+         setConnectionTimeout(key, "Connection timeout.", bluetoothGatt, timeout)
+     }
+diff --git a/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/DeviceScanner.kt b/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/DeviceScanner.kt
+index 5584781..9028ab5 100644
+--- a/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/DeviceScanner.kt
++++ b/node_modules/@capacitor-community/bluetooth-le/android/src/main/java/com/capacitorjs/community/plugins/bluetoothle/DeviceScanner.kt
+@@ -1,6 +1,7 @@
+ package com.capacitorjs.community.plugins.bluetoothle
+ 
+ import android.annotation.SuppressLint
++import android.app.Activity
+ import android.app.AlertDialog
+ import android.bluetooth.BluetoothAdapter
+ import android.bluetooth.BluetoothDevice
+@@ -95,8 +96,30 @@ class DeviceScanner(
+         if (!isScanning) {
+             setTimeoutForStopScanning()
+             Logger.debug(TAG, "Start scanning.")
+-            isScanning = true
+-            bluetoothLeScanner?.startScan(scanFilters, scanSettings, scanCallback)
++            // Spindro patch: the scanner is null when Bluetooth is off, and startScan can throw (SecurityException when
++            // BLUETOOTH_SCAN was revoked, IllegalStateException/IllegalArgumentException on odd filters). startScanning runs on the
++            // Capacitor plugin thread, so an exception used to take the whole app down; and with a null scanner the dialog
++            // stayed open forever listing nothing. Report a clear failure instead.
++            val scanner = bluetoothLeScanner
++            if (scanner == null) {
++                isScanning = false
++                stopScanHandler?.removeCallbacksAndMessages(null)
++                stopScanHandler = null
++                savedCallback?.invoke(ScanResponse(false, "Bluetooth is turned off or the BLE scanner is unavailable.", null))
++                savedCallback = null
++                return
++            }
++            try {
++                scanner.startScan(scanFilters, scanSettings, scanCallback)
++            } catch (e: RuntimeException) {
++                Logger.error(TAG, "startScan failed: ${e.localizedMessage}", e)
++                isScanning = false
++                stopScanHandler?.removeCallbacksAndMessages(null)
++                stopScanHandler = null
++                savedCallback?.invoke(ScanResponse(false, "Scan failed to start: ${e.javaClass.simpleName} ${e.localizedMessage ?: ""}".trim(), null))
++                savedCallback = null
++                return
++            }
+             if (showDialog) {
+                 dialogHandler = Handler(Looper.getMainLooper())
+                 showDeviceList()
+@@ -133,11 +156,27 @@ class DeviceScanner(
+         }
+         Logger.debug(TAG, "Stop scanning.")
+         isScanning = false
+-        bluetoothLeScanner?.stopScan(scanCallback)
++        try {
++            bluetoothLeScanner?.stopScan(scanCallback)
++        } catch (e: RuntimeException) {
++            // Bluetooth switched off or permission revoked while scanning: nothing left to stop
++            Logger.error(TAG, "stopScan failed: ${e.localizedMessage}", e)
++        }
+     }
+ 
+     private fun showDeviceList() {
+         dialogHandler?.post {
++            // Spindro patch: this runs on the main thread. If the activity is finishing or gone (user left the app while the
++            // permission dialog was open, rotation, process restore) AlertDialog.show() throws WindowManager.BadTokenException,
++            // which nobody catches on the main thread: crash. Also any failure while building the dialog must not kill the app.
++            val activity = context as? Activity
++            if (activity != null && (activity.isFinishing || activity.isDestroyed)) {
++                stopScanning()
++                savedCallback?.invoke(ScanResponse(false, "requestDevice cancelled: the app window is closing.", null))
++                savedCallback = null
++                return@post
++            }
++            try {
+             val builder = AlertDialog.Builder(context)
+             builder.setTitle(displayStrings.scanning)
+             builder.setCancelable(true)
+@@ -147,8 +186,12 @@ class DeviceScanner(
+             builder.setAdapter(adapter) { dialog, index ->
+                 stopScanning()
+                 dialog.dismiss()
+-                val device = deviceList.getDevice(index)
+-                savedCallback?.invoke(ScanResponse(true, device.address, device))
++                val device = try { deviceList.getDevice(index) } catch (e: RuntimeException) { null }
++                if (device == null) {
++                    savedCallback?.invoke(ScanResponse(false, "The selected device is no longer available.", null))
++                } else {
++                    savedCallback?.invoke(ScanResponse(true, device.address, device))
++                }
+                 savedCallback = null
+             }
+             builder.setNegativeButton(displayStrings.cancel) { dialog, _ ->
+@@ -173,6 +216,12 @@ class DeviceScanner(
+             }
+             dialog = builder.create()
+             dialog?.show()
++            } catch (e: RuntimeException) {
++                Logger.error(TAG, "Could not show the device dialog: ${e.localizedMessage}", e)
++                stopScanning()
++                savedCallback?.invoke(ScanResponse(false, "Could not show the device picker: ${e.javaClass.simpleName} ${e.localizedMessage ?: ""}".trim(), null))
++                savedCallback = null
++            }
+         }
+     }
+ 

@@ -1488,5 +1488,17 @@
   "connect.unsupported.safari": "Safari no admite Bluetooth en apps web. Abre Spindro en Chrome o Edge en tu Mac o PC.",
   "update.ready": "Hay una nueva versión lista",
   "update.reload": "Recargar",
-  "games.common.trainerLost": "Rodillo desconectado: esperando a que vuelva"
+  "games.common.trainerLost": "Rodillo desconectado: esperando a que vuelva",
+  "crash.title": "Spindro se cerró de forma inesperada la última vez",
+  "crash.body": "Algo salió mal y la aplicación se detuvo. El informe de abajo solo se guardó en tu teléfono. Cópialo o compártelo con el desarrollador para que se pueda corregir el problema. No contiene datos personales.",
+  "crash.report": "Informe del cierre",
+  "crash.copy": "Copiar",
+  "crash.copied": "Copiado al portapapeles.",
+  "crash.copyFail": "No se pudo copiar: selecciona el texto y cópialo a mano.",
+  "crash.share": "Compartir",
+  "crash.shareFail": "Aquí no se puede compartir: usa Copiar.",
+  "diag.button": "Copiar diagnóstico",
+  "diag.hint": "Copia los últimos pasos de Bluetooth y los errores, para pegarlos en un informe de error. No se envía nada.",
+  "diag.copied": "Diagnóstico copiado.",
+  "diag.copyFail": "No se pudo copiar."
 }

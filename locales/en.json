@@ -1488,5 +1488,17 @@
   "connect.unsupported.other": "This browser can't use Bluetooth. On PC, Mac and Android use Chrome or Edge, or on Android the Spindro app.",
   "connect.unsupported.safari": "Safari does not support Bluetooth for web apps. Open Spindro in Chrome or Edge on your Mac or PC.",
   "update.ready": "A new version is ready",
-  "update.reload": "Reload"
+  "update.reload": "Reload",
+  "crash.title": "Spindro closed unexpectedly last time",
+  "crash.body": "Something went wrong and the app stopped. The report below was saved on your phone only. Copy it or share it with the developer so the problem can be fixed. It contains no personal data.",
+  "crash.report": "Crash report",
+  "crash.copy": "Copy",
+  "crash.copied": "Copied to the clipboard.",
+  "crash.copyFail": "Copy failed: select the text and copy it by hand.",
+  "crash.share": "Share",
+  "crash.shareFail": "Sharing is not available here: use Copy.",
+  "diag.button": "Copy diagnostics",
+  "diag.hint": "Copies the latest Bluetooth steps and errors, so you can paste them in a bug report. Nothing is sent anywhere.",
+  "diag.copied": "Diagnostics copied.",
+  "diag.copyFail": "Copy failed."
 }

@@ -1,6 +1,7 @@
 import { strictSet } from './storage-guard.js'; // primissimo: se il localStorage è vietato, ripiega su una memoria temporanea prima che gli altri moduli lo leggano
 import { t, applyI18n, LANGS, setLang, getLang, fmtDate, fmtDec, fmtNum } from './i18n.js'; // per primo: carica le traduzioni prima del render
-import { isNative, GarminBridge, BLE } from './native.js'; // nell'app installa il Bluetooth nativo
+import { attachLog, diaryText, diagnosticsText, copyToClipboard, checkNativeCrash, checkBridge, record as diaryRecord } from './crashreport.js'; // per primo: vede anche gli errori degli altri moduli
+import { isNative, GarminBridge, BLE, setNativeLogger } from './native.js'; // nell'app installa il Bluetooth nativo
 import { Trainer } from './trainers/index.js';
 import { Devices } from './devices.js';
 import { initDevicesUi, problemHtml } from './devices-ui.js';
@@ -81,8 +82,11 @@ const rememberErg = () => { ergTouched = true; writeStore('ergW', String(state.e
 function log(msg) {
   const el = $('log');
   if (!el) return;
-  el.textContent = `${new Date().toLocaleTimeString()}  ${msg}\n` + el.textContent.slice(0, 2000);
+  el.textContent = `${new Date().toLocaleTimeString()}  ${msg}\n` + el.textContent.slice(0, 12000);
 }
+// errori JS non gestiti e passi del collegamento Bluetooth nativo: nel registro dell'app e nel diario salvato (js/crashreport.js)
+attachLog(log);
+setNativeLogger(diaryRecord);
 function setStatus(id, text, ok) {
   const el = $(id);
   el.textContent = text;
@@ -1074,7 +1078,7 @@ function renderWelcome() {
 trainer.addEventListener('connected', () => renderWelcome());
 trainer.addEventListener('disconnected', () => renderWelcome());
 
-setupDebug({ trainer, click, hrm, extra: [{ dbg: pmDbg }, garminDbg], appLog: () => $('log').textContent });
+setupDebug({ trainer, click, hrm, extra: [{ dbg: pmDbg }, garminDbg], appLog: () => `${$('log').textContent}\n\n=== Diary ===\n${diaryText()}` });
 const showVersion = () => { $('appVersion').textContent = t('about.version', { platform: isNative ? t('about.android') : 'Web', build: BUILD }) + (CHANNEL === 'beta' ? ' · BETA' : ''); }; // "BETA" è un'etichetta, non si traduce
 if (CHANNEL === 'beta') $('betaBadge').hidden = false;
 showVersion();
@@ -1967,6 +1971,15 @@ window.addEventListener('langchange', () => {
 
 // ---------- Account facoltativo: compare solo se js/config.js ha FIREBASE_CONFIG ----------
 initAccount();
+
+// ---------- Diagnostica: "Copia diagnostica" e report dell'ultimo arresto anomalo nativo (js/crashreport.js) ----------
+$('copyDiag').addEventListener('click', async () => {
+  let env = '';
+  try { env = (await GarminBridge?.environment?.())?.text || ''; } catch { /* APK senza questo metodo */ }
+  toast(t((await copyToClipboard(diagnosticsText({ appLog: $('log').textContent, native: isNative, env }))) ? 'diag.copied' : 'diag.copyFail'));
+});
+checkBridge({ native: isNative });
+if (isNative) setTimeout(() => { checkNativeCrash({ plugin: GarminBridge }).catch(() => {}); }, 600);
 
 // l'app è pronta (testi tradotti, schede disegnate): la pagina può comparire (vedi css "Primo avvio")
 document.documentElement.classList.add('ready');

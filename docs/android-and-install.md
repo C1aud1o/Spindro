@@ -27,6 +27,27 @@ https://spindro.fit/beta/ (see [environments.md](environments.md)).
   `blob:`/`data:` in `connect-src`/`img-src` (three.js loaders), `'wasm-unsafe-eval'` + `worker-src blob:` (meshopt decoder),
   `style-src 'unsafe-inline'` (style attributes) and the YouTube script/frame hosts are required and present. `tests/csp.spec.mjs` checks them
   in a browser. If `FIREBASE_CONFIG` or `STRAVA_PROXY` are ever set, add their hosts (`js/config.js` says so).
+  **Bridge injection**: Capacitor puts its native bridge into the page with `WebViewCompat.addDocumentStartJavaScript` (not subject to the CSP).
+  Only on a WebView without `DOCUMENT_START_SCRIPT` support does it fall back to an *inline* `<script>` inside the served HTML, which this
+  CSP blocks: the page then runs as a plain web page (no `Capacitor`, no `navigator.bluetooth`). We keep the CSP strict; `CrashRecorder`
+  writes whether the installed WebView supports the feature into every report and `js/crashreport.js` logs "Android WebView without Capacitor
+  bridge" when it happens.
+
+## Crash diagnostics and plugin patches
+
+- **`CrashRecorder.java`** (installed first in `MainActivity.onCreate`): an uncaught-exception handler writes `files/crash-report.txt` (stack,
+  thread, device model, Android version, app version, WebView, last "breadcrumbs") and then calls the previous handler. Native crashes with no
+  Java exception (signal in the Bluetooth stack, ANR) are recovered on Android 11+ from `ApplicationExitInfo`. Nothing leaves the phone.
+- **Next launch**: `js/crashreport.js` asks `GarminBridge.getCrashReport()`; if there is one it shows "Spindro closed unexpectedly last time" with
+  Copy / Share (same `shareFile` path as FIT export). The file is deleted (`clearCrashReport`) only when the person presses Close.
+- **Breadcrumbs**: the Bluetooth bridge (`js/native.js`) logs every connect step to the in-app log, to a saved diary (`localStorage.diagLog`) and to
+  the native breadcrumbs. Unhandled JS errors and rejections go to the same places. *Settings → Copy diagnostics* copies it all.
+- **Patches** (`patches/`, applied by `npm ci` via `postinstall: patch-package`; regenerate with `npx patch-package <pkg>` after a version bump,
+  `tests/android-hardening.spec.mjs` fails if the patch file name no longer matches the version):
+  - `@capacitor/android` `Bridge.java` ~l.857: an exception inside any plugin method was rethrown as `RuntimeException` on the
+    "CapacitorPlugins" thread, killing the whole process; it now rejects the call ("Native error in Plugin.method (…)").
+  - `@capacitor-community/bluetooth-le` `DeviceScanner.kt` (null scanner / `startScan` and `stopScan` exceptions, `AlertDialog.show()` on a
+    finishing activity), `BluetoothLe.kt` (picker callback on the main thread), `Device.kt` (`connectGatt`, GATT callbacks on an unsupervised thread).
 
 ## Build
 

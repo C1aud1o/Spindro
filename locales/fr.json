@@ -1488,5 +1488,17 @@
   "connect.unsupported.safari": "Safari ne prend pas en charge le Bluetooth pour les applis web. Ouvre Spindro dans Chrome ou Edge sur ton Mac ou ton PC.",
   "update.ready": "Une nouvelle version est prête",
   "update.reload": "Recharger",
-  "games.common.trainerLost": "Home-trainer déconnecté : en attente de reconnexion"
+  "games.common.trainerLost": "Home-trainer déconnecté : en attente de reconnexion",
+  "crash.title": "Spindro s'est fermé de façon inattendue la dernière fois",
+  "crash.body": "Un problème est survenu et l'application s'est arrêtée. Le rapport ci-dessous n'est enregistré que sur ton téléphone. Copie-le ou partage-le avec le développeur pour que le problème soit corrigé. Il ne contient aucune donnée personnelle.",
+  "crash.report": "Rapport de plantage",
+  "crash.copy": "Copier",
+  "crash.copied": "Copié dans le presse-papiers.",
+  "crash.copyFail": "Échec de la copie : sélectionne le texte et copie-le à la main.",
+  "crash.share": "Partager",
+  "crash.shareFail": "Le partage n'est pas disponible ici : utilise Copier.",
+  "diag.button": "Copier les diagnostics",
+  "diag.hint": "Copie les dernières étapes Bluetooth et les erreurs, à coller dans un signalement. Rien n'est envoyé.",
+  "diag.copied": "Diagnostics copiés.",
+  "diag.copyFail": "Échec de la copie."
 }
