@@ -48,7 +48,7 @@ export function pickSpatial(rects, cur, dir, wrap = true) {
   return best;
 }
 
-export function createClickNav({ enabled = () => true, playing = () => false, inGame = () => false, caps = () => TWO_KEY, blocked = () => false, menuItems, back, prefer, undo, onChange }) {
+export function createClickNav({ enabled = () => true, playing = () => false, inGame = () => false, caps = () => TWO_KEY, blocked = () => false, remote = () => false, menuItems, back, prefer, undo, onChange }) {
   const menu = document.createElement('div'); menu.id = 'clickMenu'; menu.className = 'click-menu'; menu.hidden = true;
   menu.innerHTML = `<div class="cm-box"><p class="cm-title">${t('clicknav.title')}</p><div class="cm-list"></div></div>`;
   document.body.appendChild(menu);
@@ -112,6 +112,7 @@ export function createClickNav({ enabled = () => true, playing = () => false, in
   const hold = (k) => `${t('legend.hold')} ${kk(k)}`;
   function legendContext() {
     if (nav.active) return nav.grab ? 'grab' : 'menu';
+    if (remote()) return 'remote';
     return inGame() ? 'game' : 'ride';
   }
   /** Testo della legenda (HTML con piccole icone dei tasti) per un contesto e per ciò che il controller sa fare. Pura rispetto al DOM. */
@@ -130,6 +131,16 @@ export function createClickNav({ enabled = () => true, playing = () => false, in
       if (arrows && pm && focusIsValue) parts.push(`${kk('+', '−')} ${t('legend.change')}`);
       parts.push(`${sel} ${t('legend.choose')}`);
       parts.push(`${bk} ${t('legend.back')}`);
+    } else if (ctx === 'remote') {
+      parts.push(`<b class="rm-chip">${t('legend.remote')}</b>`);
+      if (arrows) {
+        parts.push(`${kk('▲', '▼')} ${t('legend.volume')}`, `${kk('◀', '▶')} ${t('legend.seek')}`);
+        if (c.ok) parts.push(`${kk('A')} ${t('legend.playpause')}`);
+        if (c.back) parts.push(`${kk('B')} ${t('legend.browserBack')}`);
+        parts.push(`${c.menu ? kk('☰') : hold('−')} ${t('legend.menu')}`);
+      } else {
+        parts.push(`${kk('+', '−')} ${t('legend.seek')}`, `${hold('−')} ${t('legend.menu')}`);
+      }
     } else if (ctx === 'game') {
       parts.push(`${pm ? kk('+', '−') : kk('▲', '▼')}${arrows && c.left ? kk('◀', '▶') : ''} ${t('legend.game')}`);
       parts.push(`${arrows && c.back ? hold('B') : c.menu && !pm ? kk('☰') : hold('−')} ${t('legend.menu')}`);
@@ -155,7 +166,7 @@ export function createClickNav({ enabled = () => true, playing = () => false, in
   function renderMenu() {
     const items = menuItems();
     menu.querySelector('.cm-title').textContent = t('clicknav.title');
-    menu.querySelector('.cm-list').innerHTML = items.map((it, i) => `<button type="button" data-i="${i}">${icon(it.icon, 'ico-line cm-ico')}<span>${it.label}</span></button>`).join('');
+    menu.querySelector('.cm-list').innerHTML = items.map((it, i) => (it.heading ? `<p class="cm-head">${it.label}</p>` : `<button type="button" data-i="${i}">${icon(it.icon, 'ico-line cm-ico')}<span>${it.label}</span></button>`)).join('');
     menu.querySelectorAll('.cm-list button').forEach((b) => b.addEventListener('click', () => {
       const it = items[+b.dataset.i]; menu.hidden = true; nav.scope = null;
       it.run(); setTimeout(sync, 120);
@@ -180,7 +191,7 @@ export function createClickNav({ enabled = () => true, playing = () => false, in
     if (blocked()) { if (nav.active) stop(); bar.hidden = true; document.body.classList.remove('click-legend'); document.documentElement.style.removeProperty('--legend-h'); return; }
     const open = overlay();
     if (!enabled() && !open) nav.sticky = false;
-    const want = enabled() ? (open || !playing()) : (nav.sticky && open);
+    const want = enabled() ? (open || (!playing() && !remote())) : (nav.sticky && open); // in modalità Remote il Click non naviga in Spindro finché non si apre il menu
     if (want && !nav.active) start();
     else if (!want && nav.active) stop();
     else if (nav.active) { if (scope() !== nav.scope) refresh(); else showBar(); }

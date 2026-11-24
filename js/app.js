@@ -31,6 +31,9 @@ import * as challenges from './challenges.js';
 import { initPlans } from './plans-ui.js';
 import { loadFactor, runCalibration, DEFAULT_FACTOR } from './calibrate.js';
 import { createClickNav } from './clicknav.js';
+import { startTicker } from './ticker.js';
+import { createRemote, remoteCommandFor, COMMANDS as REMOTE_COMMANDS, GUIDE_URL as REMOTE_GUIDE } from './remote.js';
+import { miniSupported, createMini } from './miniwin.js';
 import { createClickCheck } from './clickcheck.js';
 import { ask } from './dialog.js';
 import { parseGpx, at as routeAt, SAMPLES as ROUTES, drawElevation, drawMap } from './route.js';
@@ -72,6 +75,120 @@ const state = {
   ride: { running: false, start: 0, elapsed: 0, distance: 0, energy: 0, powerSum: 0, samples: 0, log: [], saved: true },
   hrFromSensor: false,
 };
+
+// ---------- Finestra mini e modalità Remote (js/miniwin.js, js/remote.js, estensione "Spindro Remote": docs/extension.md) ----------
+let remoteNote = { text: '', until: 0 };
+const noteRemote = (text) => { remoteNote = { text, until: Date.now() + 6000 }; mini.update(); };
+function onRemoteChange() {
+  if (remote.mode && !remote.available) remote.mode = false;
+  document.body.classList.toggle('remote-on', remote.mode);
+  const badge = document.getElementById('remoteBadge'); if (badge) badge.hidden = !remote.mode;
+  const mb = document.getElementById('miniBtn'); if (mb) mb.hidden = !miniSupported();
+  mini.update();
+}
+const remote = createRemote({ onChange: () => onRemoteChange() });
+const remoteOn = () => remote.mode && !activeGame?.active && !clickCheck.isOpen() && !clickNav.active;
+function remoteErrorText(err) {
+  const code = err?.code || 'internal';
+  const site = err?.detail?.origin ? String(err.detail.origin).replace(/^https?:\/\//, '') : '';
+  const key = `remote.err.${code}`; const txt = t(key, { site });
+  return txt === key ? t('remote.err.internal') : txt;
+}
+async function remoteRun(cmd, args) {
+  const res = await remote.send(cmd, args);
+  if (!res.ok) { const msg = remoteErrorText(res.error); toast(msg); noteRemote(msg); } else noteRemote(t(`remote.cmd.${cmd}`));
+  return res;
+}
+let minusDownAt = 0;
+function remotePress(role) {
+  if (role === 'minus') { minusDownAt = performance.now(); return; } // "−" agisce al rilascio: se è una pressione lunga apre il menu
+  const cmd = remoteCommandFor(role);
+  if (cmd) remoteRun(cmd);
+}
+function remoteRelease(role) {
+  if (role !== 'minus' || !minusDownAt) return;
+  const held = performance.now() - minusDownAt; minusDownAt = 0;
+  if (held < 780 && remote.mode && !clickNav.active) remoteRun(remoteCommandFor('minus'));
+}
+function showRemoteHelp() {
+  ask(t('remote.needExt'), { ok: t('remote.openGuide'), cancel: t('ui.cancel') }).then((yes) => { if (yes) window.open(REMOTE_GUIDE, '_blank', 'noopener'); });
+}
+function setRemoteMode(on) {
+  if (on && !remote.available) { showRemoteHelp(); return false; }
+  remote.setMode(on); onRemoteChange(); clickNav.sync();
+  toast(t(remote.mode ? 'remote.on' : 'remote.off'));
+  return remote.mode;
+}
+const toggleRemote = () => setRemoteMode(!remote.mode);
+
+function miniModel() {
+  const r = state.ride; const wk = workout; const st = wk ? wkSt : null;
+  const target = wk && st ? st.target : state.mode === 'erg' ? state.erg : null;
+  const shown = wk ? wk.t : r.elapsed;
+  return {
+    mode: remote.mode ? 'remote' : 'spindro', remoteAvailable: remote.available,
+    power: state.data.power || 0, target, pct: target != null && state.ftp ? Math.round((target / state.ftp) * 100) : null,
+    workout: !!wk, adjust: wk && !wk.w.test ? 'bias' : 'watts',
+    step: wk && st ? st.x.label : '', left: wk && st ? fmtClock(st.left) : '',
+    next: wk && st ? (st.next ? t('workout.next', { label: st.next.label, watts: st.nextW }) : t('workout.lastStep')) : '',
+    elapsed: fmtClock(shown), total: wk ? fmtClock(wk.total) : '', progress: wk && wk.total ? wk.t / wk.total : 0,
+    cadence: $('cadence').textContent, hr: $('hr').textContent,
+    bias: wk && !wk.w.test ? `${Math.round(wk.bias * 100)}%` : '--',
+    paused: !r.running && (!!r.log.length || !!wk),
+    last: remoteNote.until > Date.now() ? remoteNote.text : '',
+  };
+}
+const mini = createMini({
+  t, getModel: miniModel,
+  actions: {
+    pause: () => $('startStop').click(),
+    biasDown: () => step(-1), biasUp: () => step(+1),
+    remote: () => toggleRemote(),
+    spindro: () => { if (remote.available) remote.send('focusSpindro'); try { window.focus(); } catch { /* il browser può rifiutare */ } },
+    close: () => mini.close(),
+    closed: () => { document.body.classList.remove('mini-open'); const b = document.getElementById('miniBtn'); if (b) b.setAttribute('aria-pressed', 'false'); },
+  },
+});
+let miniPending = null;
+async function openMini() {
+  if (!miniSupported()) { toast(t('mini.unsupported')); return false; }
+  try {
+    await mini.open();
+    document.body.classList.add('mini-open'); document.getElementById('miniBtn')?.setAttribute('aria-pressed', 'true');
+    return true;
+  } catch (err) {
+    // Document PiP vuole un gesto dell'utente: un tasto del Click (Bluetooth) non lo è. Si riprova al primo clic o tasto nella scheda.
+    if (err?.name === 'NotAllowedError' || err?.name === 'SecurityError') {
+      toast(t('mini.needGesture'));
+      if (!miniPending) {
+        miniPending = () => { for (const ev of ['pointerdown', 'keydown']) window.removeEventListener(ev, miniPending, true); miniPending = null; openMini(); };
+        for (const ev of ['pointerdown', 'keydown']) window.addEventListener(ev, miniPending, true);
+      }
+    } else toast(t('mini.unsupported'));
+    return false;
+  }
+}
+const toggleMini = () => (mini.isOpen ? (mini.close(), false) : openMini());
+window.addEventListener('pagehide', () => { if (mini.isOpen) mini.close(); });
+document.getElementById('miniBtn')?.addEventListener('click', () => toggleMini()); onRemoteChange();
+window.rfRemote = remote; window.rfMini = mini; // per i test
+
+/** Voci del menu Click per la finestra mini e la modalità Remote: `top` (poche, in alto) e `cmds` (un elenco di tutti i comandi, solo in Remote). */
+function remoteMenu(rec) {
+  const offer = remote.available || miniSupported();
+  if (!offer) return { top: [], cmds: [] };
+  const top = [];
+  if (remote.available || miniSupported()) top.push({ icon: 'remote', label: t(remote.mode ? 'clickmenu.remoteOff' : 'clickmenu.remoteOn'), run: () => setRemoteMode(!remote.mode) });
+  if (miniSupported()) top.push({ icon: 'mini', label: t(mini.isOpen ? 'clickmenu.miniClose' : 'clickmenu.mini'), run: () => toggleMini() });
+  const cmds = [];
+  if (remote.mode) {
+    top.push({ icon: 'plus', label: t('clickmenu.adjUp'), run: () => step(+1) }, { icon: 'minus', label: t('clickmenu.adjDown'), run: () => step(-1) });
+    cmds.push({ heading: true, label: t('clickmenu.remoteHead') });
+    const ICON = { playPause: 'play', seekBack: 'seekBack', seekFwd: 'seekFwd', volumeUp: 'soundOn', volumeDown: 'soundOn', mute: 'soundOff', fullscreen: 'mini', back: 'exit', focusSpindro: 'home', focusTarget: 'video' };
+    for (const c of REMOTE_COMMANDS) cmds.push({ icon: ICON[c] || 'remote', label: t(`remote.cmd.${c}`), run: () => remoteRun(c) });
+  }
+  return { top, cmds };
+}
 // Obiettivo dell'ERG libero: 60% della FTP finché non lo si cambia a mano, poi si ricorda l'ultimo valore
 const ergDefault = () => Math.min(600, Math.max(50, Math.round(state.ftp * 0.6 / 5) * 5));
 let ergTouched = Number(readStore('ergW')) >= 0 && readStore('ergW') != null;
@@ -206,14 +323,24 @@ trainer.addEventListener('data', (e) => {
 click.addEventListener('connected', () => refreshDeviceBar());
 click.addEventListener('disconnected', () => refreshDeviceBar());
 // Controller Zwift: il driver emette ROLI (press / release con il ruolo, shift, hold, combo); vedi js/click.js e docs/click-navigazione.md
-click.addEventListener('shift', (e) => { if (clickCheck.isOpen()) return; clickNav.sync(); if (clickNav.active) return; if (activeGame?.active) activeGame.input(e.detail); else step(e.detail); });
-click.addEventListener('press', (e) => clickNav.key(e.detail.role, true));
-click.addEventListener('release', (e) => clickNav.key(e.detail.role, false));
+click.addEventListener('shift', (e) => { if (clickCheck.isOpen()) return; clickNav.sync(); if (clickNav.active || remoteOn()) return; if (activeGame?.active) activeGame.input(e.detail); else step(e.detail); });
+click.addEventListener('press', (e) => {
+  const role = e.detail.role;
+  clickNav.sync();
+  // modalità Remote: il tasto comanda l'altra scheda. Solo "−" arriva anche alla navigazione, per la pressione lunga che apre il menu
+  if (remoteOn()) { remotePress(role); if (role !== 'minus') return; }
+  clickNav.key(role, true);
+});
+click.addEventListener('release', (e) => {
+  const role = e.detail.role;
+  clickNav.key(role, false);
+  remoteRelease(role);
+});
 click.addEventListener('combo', () => { if (clickCheck.isOpen()) return; clearTimeout(mediaTimer); clickNav.toggle(); }); // + e − insieme (o il tasto Zwift) aprono/chiudono il menu
 click.addEventListener('hold', (e) => {
   if (clickCheck.isOpen()) return;
   clickNav.sync();
-  if (clickNav.active) return;
+  if (clickNav.active || remoteOn()) return;
   if (activeGame?.active) activeGame.hold?.(e.detail);
   // pressione lunga = comandi musica (solo app Android): annulla il cambio fatto dalla pressione breve
   clearTimeout(mediaTimer);
@@ -377,6 +504,10 @@ window.addEventListener('keydown', (e) => {
   clickNav.sync();
   const role = keyRole(e.key);
   if (clickNav.active && role) { e.preventDefault(); if (!e.repeat) clickNav.key(role, true); return; }
+  if (remoteOn() && !layerOpen() && !e.ctrlKey && !e.metaKey && !e.altKey) { // modalità Remote: stessi ruoli del Click, da tastiera
+    const cmd = remoteCommandFor(role);
+    if (cmd) { e.preventDefault(); if (!e.repeat || /^(seek|volume)/.test(cmd)) remoteRun(cmd); return; }
+  }
   if (e.key === 'Escape' && !activeGame?.active && !e.repeat && layerOpen()) { e.preventDefault(); closeTopLayer(); return; }
   if (e.key === 'Escape' && playingNow() && !activeGame?.active) { e.preventDefault(); clickNav.back(); return; }
   if (activeGame?.active) {
@@ -393,6 +524,8 @@ window.addEventListener('keydown', (e) => {
   // scorciatoie da PC (solo se nessun pannello è aperto e non si sta scrivendo)
   if (e.target.tagName === 'TEXTAREA' || document.querySelector('.sheet:not([hidden])') || !$('gamePanel').hidden) return;
   if (e.key === ' ' && !e.repeat) { e.preventDefault(); $('startStop').click(); }
+  if ((e.key === 'p' || e.key === 'P') && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey && miniSupported()) { e.preventDefault(); toggleMini(); }
+  if ((e.key === 'r' || e.key === 'R') && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); toggleRemote(); }
   if ((e.key === 'g' || e.key === 'G') && !e.repeat) openGame();
 });
 
@@ -531,8 +664,8 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && (state.ride.running || activeGame) && (!wakeLock || wakeLock.released)) requestWakeLock();
 });
 
-// Ciclo principale: 1 Hz
-setInterval(() => {
+// Ciclo principale: 1 Hz (js/ticker.js: batte anche con la scheda nascosta)
+const mainTicker = startTicker(() => {
   const d = state.data;
   state.cadenceSmooth = state.cadenceSmooth * 0.5 + (d.cadence || 0) * 0.5;
   state.speedSmooth = state.speedSmooth * 0.5 + ((d.speed || 0) / 3.6) * 0.5;
@@ -572,9 +705,11 @@ setInterval(() => {
   autoPauseCheck();
   render();
 }, 1000);
+window.__ticker = mainTicker; // per i test
 
 // ---------- Allenamenti strutturati ----------
 let ergBeforeWorkout = null; // obiettivo dell'ERG libero, da rimettere quando l'allenamento finisce
+let wkSt = null; // ultimo stato del passo (per la finestra mini)
 let workout = null; let wkLast = null; let wkPower = []; let wkLowCad = 0; let wkClock = null;
 // cambia modalità; con save=true è una scelta dell'utente e si ricorda (le modalità imposte da allenamenti, percorsi e giochi no)
 function setMode(m, save = false) {
@@ -738,7 +873,7 @@ function tickWorkout(dt) {
   if (dt && st.next && Math.round(st.left) === 10 && st.x.d >= 40) coach.say(t('coach.last10', { watts: st.nextW }));
   if (wkLast !== null && wkLast !== st.i) { toast(t('workout.stepToast', { label: st.x.label, watts: st.target })); gameAudio.sfx('go'); if (navigator.vibrate) navigator.vibrate([60, 60, 60]); }
   if (dt && st.next && st.left <= 3.5 && st.left > 0.5) gameAudio.sfx('beep');
-  wkLast = st.i;
+  wkLast = st.i; wkSt = st;
   $('wkStep').textContent = st.x.label; $('wkTarget').textContent = st.target; $('wkLeft').textContent = fmtClock(st.left);
   updateGameStrip(st);
   $('wkNext').textContent = st.next ? t('workout.next', { label: st.next.label, watts: st.nextW }) : t('workout.lastStep');
@@ -754,7 +889,7 @@ function tickWorkout(dt) {
 }
 async function finishWorkout(completed) {
   const w = workout?.w; if (!w) return;
-  workout = null; wkClock = null; $('workoutCard').hidden = true; document.body.classList.remove('in-workout'); updateGameStrip(null); updateView();
+  workout = null; wkSt = null; wkClock = null; $('workoutCard').hidden = true; document.body.classList.remove('in-workout'); updateGameStrip(null); updateView();
   persist(); // l'allenamento non c'è più neanche nella sessione salvata
   if (w.test) {
     let best = 0;
@@ -881,6 +1016,7 @@ function render() {
   const unit = { gears: t('ctl.gears', { ratio: fmtDec(GEARS[state.gear], 2) }), erg: t('ctl.erg'), sim: t('ctl.sim'), resistance: t('ctl.resistance') };
   $('controlValue').textContent = big[state.mode];
   $('controlUnit').textContent = unit[state.mode];
+  mini.update();
 }
 
 // ---------- Registrazione e file FIT ----------
@@ -1870,8 +2006,9 @@ const clickNav = createClickNav({
   playing: () => !!(state.ride.running || workout || (activeGame?.active && $('gameMenu').hidden)),
   inGame: () => !!(activeGame?.active && $('gameMenu').hidden && !document.querySelector('.video-pick:not([hidden])')),
   caps: () => click.caps,
+  remote: () => remote.mode, // modalità Remote: fuori dal menu il Click non naviga in Spindro
   blocked: () => clickCheck.isOpen(), // durante la verifica tasti i tasti non navigano né cambiano marcia
-  undo: () => { if (!activeGame?.active) step(+1); }, // la pressione lunga di − è già stata contata come un −
+  undo: () => { if (!activeGame?.active && !remote.mode) step(+1); }, // la pressione lunga di − è già stata contata come un −
   back: () => window.rfBack(),
   // il primo tasto del menu è quello principale della scheda "Oggi" (nel cruscotto: Pausa/Riprendi)
   prefer: () => (!trainer.connected ? ($('welcomeConnect') && !$('welcome').hidden ? $('welcomeConnect') : $('deviceBar')) : ($('today').classList.contains('plan-due') && !isRiding() ? document.querySelector('#planCard [data-pl-start]') || $('startStop') : $('startStop'))),
@@ -1899,14 +2036,15 @@ const clickNav = createClickNav({
       ];
     }
     const open = overlayOpen();
+    const rm = remoteMenu(rec);
     const finish = state.ride.log.length ? [{ icon: 'flag', label: t('clickmenu.finish'), run: () => $('finishRide').click() }] : [];
     const endWk = workout ? [{ icon: 'stop', label: t('clickmenu.endWorkout'), run: () => $('wkStop').click() }] : [];
     const close = { icon: 'close', label: t('clickmenu.close'), run: () => clickNav.stop() };
     if (isRiding() || workout) { // in uscita: pausa e fine per prime, poi cosa si può fare mentre si pedala
-      return [rec, ...finish, ...endWk, ...(open ? [home] : []), ...music, games, video, workouts, devices, settings, history, check, close];
+      return [rec, ...rm.top, ...finish, ...endWk, ...(open ? [home] : []), ...rm.cmds, ...music, games, video, workouts, devices, settings, history, check, close];
     }
     // a riposo: senza rullo il primo bisogno è collegarlo; poi partire, scegliere cosa fare, il resto
-    return [...(trainer.connected ? [rec] : [devices, rec]), ...(open ? [home] : []), workouts, games, video, history, ...(trainer.connected ? [devices] : []), settings, check, close];
+    return [...(trainer.connected ? [rec] : [devices, rec]), ...rm.top, ...(open ? [home] : []), ...rm.cmds, workouts, games, video, history, ...(trainer.connected ? [devices] : []), settings, check, close];
   },
 });
 // Verifica tasti ("Controlla il tuo controller"): si apre da sola al primo collegamento, dal pannello Dispositivi e dal menu Click

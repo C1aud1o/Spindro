@@ -17,5 +17,11 @@ const P = {
   soundOff: '<path d="M4 10v4h4l5 4V6l-5 4zM17 9.5l4 5M21 9.5l-4 5"/>',
   exit: '<path d="M10 5H5v14h5M14 8l4 4-4 4M18 12H9"/>',
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  remote: '<rect x="3" y="5" width="18" height="12" rx="2.5"/><path d="M8 21h8M12 17v4"/>',
+  mini: '<rect x="3" y="5" width="18" height="14" rx="2.5"/><rect x="11" y="12" width="8" height="5" rx="1.2"/>',
+  plus: '<path d="M5 12h14M12 5v14"/>',
+  minus: '<path d="M5 12h14"/>',
+  seekBack: '<path d="M11 6L5 12l6 6M19 6l-6 6 6 6"/>',
+  seekFwd: '<path d="M13 6l6 6-6 6M5 6l6 6-6 6"/>',
 };
 export const icon = (name, cls = 'ico-line') => (P[name] ? `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${P[name]}</svg>` : '');
