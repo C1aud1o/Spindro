@@ -25,13 +25,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  # Build and deploy are two jobs on purpose: deploy-pages looks the artifact up once, without retrying, and when it runs
+  # in the same job right after the upload it sometimes finds none ("No artifacts named github-pages were found").
+  build:
     # after an Android build, publish again only if it was a successful build of main or beta
     if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && contains(fromJSON('["main","beta"]'), github.event.workflow_run.head_branch))
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -98,5 +97,13 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: pub
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
