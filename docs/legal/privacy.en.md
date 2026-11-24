@@ -45,6 +45,11 @@ The Android app asks for these permissions:
 
 The Android app can also receive a link shared from another app (for example "Share" in YouTube) to open it as a video ride. It reads only the shared text.
 
+## Mini window and the optional "Spindro Remote" extension
+
+- **Mini window.** On Chrome and Edge for computers, Spindro can show your workout numbers in a small always-on-top window (the browser's Picture-in-Picture feature). It is drawn by the app on your device; nothing is sent anywhere.
+- **Spindro Remote** is a separate, optional browser extension (see `docs/extension.md`). It lets the Zwift Click control a video in another tab. It **collects, stores and sends nothing**: no analytics, no remote code, no account. It talks only to the Spindro page in the same browser and to the tabs you choose, on your device. Its only saved settings (the tab you pinned, the sites you allowed, the "strong mode" switch) stay in the browser's own extension storage. You grant it access site by site and can remove any site, or the extension, at any time. The optional "strong mode" uses the browser's debugging interface, and Chrome shows its warning banner while it is on.
+
 ## What the app and the website load from the internet
 
 - **The app's own files**, from the same site (`spindro.fit`), which is hosted on GitHub Pages. GitHub may log standard technical data of a request, such as the IP address.

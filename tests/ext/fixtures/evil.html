@@ -1,0 +1,6 @@
+<!doctype html><meta charset="utf-8"><title>Evil frame</title>
+<script>
+// A cross-origin frame inside the Spindro page trying to drive the extension through the bridge.
+parent.postMessage({ ns: 'spindro-remote', v: 1, from: 'app', type: 'cmd', id: 'evil1', cmd: 'playPause' }, '*');
+parent.postMessage({ ns: 'spindro-remote', v: 1, from: 'app', type: 'hello' }, '*');
+</script>

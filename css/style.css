@@ -1050,3 +1050,16 @@ main > #suggest, main > #connectHelp, main > #dropBanner, main > .update-bar, ma
 .crash-text { width: 100%; box-sizing: border-box; height: 32vh; resize: none; margin: 0 0 8px; user-select: text; }
 .crash-note { min-height: 1.2em; margin: 0 0 8px; }
 .crash-dlg .row2 { flex-wrap: wrap; }
+
+/* Finestra mini e modalità Remote (X1): comandi in alto a destra nella scheda dei numeri */
+.readout { position: relative; }
+.readout-tools { position: absolute; top: 14px; right: 14px; display: flex; align-items: center; gap: 8px; z-index: 2; }
+.remote-badge { font: 700 12px/1 var(--font-ui); letter-spacing: .12em; text-transform: uppercase; padding: 6px 8px; border-radius: 6px; background: var(--accent); color: var(--accent-ink); }
+.remote-badge[hidden], .mini-open[hidden] { display: none; }
+.mini-open { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 10px; border-radius: var(--r-btn); border: 1px solid var(--accent-line); background: var(--accent-5); color: var(--t1); font: 600 13px/1 var(--font-ui); cursor: pointer; }
+.mini-open svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.mini-open[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.cm-head { margin: 8px 4px 0; font: 700 12px/1 var(--font-ui); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+.click-bar .rm-chip { padding: 2px 8px; border-radius: 6px; background: var(--accent); color: var(--accent-ink); letter-spacing: .1em; text-transform: uppercase; }
+body.remote-on .readout { box-shadow: inset 0 0 0 2px var(--accent); }
+@media (max-width: 420px) { .mini-open span { display: none; } }

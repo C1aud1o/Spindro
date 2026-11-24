@@ -131,6 +131,10 @@
     <!-- lettura dal vivo: piccola in home, grande nel cruscotto -->
     <div id="noSource" class="hint-box" hidden><p data-i18n="ride.noSource"></p><button id="noSourceGo" class="ghost" data-i18n="welcome.connect"></button></div>
     <section id="readout" class="card readout" data-i18n-attr="aria-label:home.live">
+      <div class="readout-tools">
+        <span id="remoteBadge" class="remote-badge" data-i18n="remote.badge" hidden></span>
+        <button id="miniBtn" class="mini-open" type="button" aria-pressed="false" data-i18n-attr="aria-label:mini.open;title:mini.open" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><rect x="11" y="12" width="8" height="5" rx="1.2"/></svg><span data-i18n="mini.open"></span></button>
+      </div>
       <div class="power">
         <span class="label" data-i18n="home.power"></span>
         <span id="zone" class="zone">—</span>

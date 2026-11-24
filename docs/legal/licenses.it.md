@@ -18,6 +18,7 @@ Il codice di Spindro è rilasciato con licenza **GNU AGPL-3.0**. Il testo comple
 | **@capacitor/android** (Drifty Co.) | 7.6.10 | MIT | il guscio Android |
 | **@capacitor/local-notifications** (Ionic) | 7.0.7 | MIT | notifiche locali dell'app Android |
 | **@capacitor-community/bluetooth-le** | 7.3.2 | MIT | Bluetooth dell'app Android |
+| **Spindro Remote** (codice proprio, questo progetto) | 0.1 | AGPL-3.0 | estensione facoltativa per Chrome/Edge in `extension/`: nessun codice di terzi, nessuna libreria inclusa; le icone della barra sono generate da `icons/icon.svg` |
 
 Solo per costruire e collaudare (non fanno parte di ciò che installi): **@capacitor/cli** (MIT), **Playwright** (Apache 2.0) e **axe-core** (MPL-2.0, controlli di accessibilità).
 

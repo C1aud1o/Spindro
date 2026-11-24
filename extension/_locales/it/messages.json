@@ -1,0 +1,93 @@
+{
+  "extName": {
+    "message": "Spindro Remote"
+  },
+  "extDescription": {
+    "message": "Usa lo Zwift Click come telecomando per YouTube, Netflix e altre schede video mentre Spindro tiene attivo l'allenamento."
+  },
+  "popupSubtitle": {
+    "message": "Telecomando"
+  },
+  "connTitle": {
+    "message": "Spindro"
+  },
+  "connOn": {
+    "message": "Collegato a Spindro ($N$ scheda)",
+    "placeholders": {
+      "N": {
+        "content": "$1"
+      }
+    }
+  },
+  "connOff": {
+    "message": "Non collegato"
+  },
+  "connHint": {
+    "message": "Apri Spindro (spindro.fit/app) in una scheda e attiva lì la modalità Remote."
+  },
+  "targetTitle": {
+    "message": "Scheda controllata"
+  },
+  "targetNone": {
+    "message": "Nessuna scheda: apri un video in un'altra scheda"
+  },
+  "pinBtn": {
+    "message": "Fissa questa scheda"
+  },
+  "unpinBtn": {
+    "message": "Sblocca"
+  },
+  "pinnedNote": {
+    "message": "Fissata: resta quella controllata anche se guardi altre schede."
+  },
+  "sitesTitle": {
+    "message": "Siti consentiti"
+  },
+  "sitesIntro": {
+    "message": "Sempre attivi: Spindro, YouTube, Netflix. Gli altri siti solo dopo il tuo consenso."
+  },
+  "sitesNone": {
+    "message": "Nessun altro sito consentito."
+  },
+  "addSiteBtn": {
+    "message": "Consenti il sito della scheda controllata"
+  },
+  "removeBtn": {
+    "message": "Rimuovi"
+  },
+  "addOk": {
+    "message": "$N$ consentito.",
+    "placeholders": {
+      "N": {
+        "content": "$1"
+      }
+    }
+  },
+  "addDenied": {
+    "message": "Non consentito."
+  },
+  "addBad": {
+    "message": "Questa pagina non si può controllare."
+  },
+  "strongTitle": {
+    "message": "Modalità forte"
+  },
+  "strongLabel": {
+    "message": "Usa tasti attendibili (facoltativo)"
+  },
+  "strongExplain": {
+    "message": "Permette a Spindro di inviare veri tasti ed entrare a schermo intero nelle pagine che bloccano gli script. Chrome mostra allora l'avviso \"Spindro Remote ha avviato il debug di questo browser\" mentre lavora. Spento di default."
+  },
+  "strongOnNote": {
+    "message": "Modalità forte attiva."
+  },
+  "strongDenied": {
+    "message": "Permesso non concesso: la modalità forte resta spenta."
+  },
+  "helpTitle": {
+    "message": "Come funziona"
+  },
+  "helpText": {
+    "message": "Tieni aperto Spindro (la mini finestra è comoda), avvia un video in un'altra scheda, poi porta Spindro in modalità Remote. Il Click comanda l'ultima scheda guardata. Non viene raccolto né inviato nulla."
+  }
+}

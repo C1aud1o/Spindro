@@ -13,7 +13,8 @@
     "test:install": "playwright install --with-deps chromium",
     "dev": "node scripts/dev.mjs",
     "game:check": "node scripts/game-check.mjs",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "ext:zip": "node scripts/ext-zip.mjs"
   },
   "dependencies": {
     "@capacitor-community/bluetooth-le": "7.3.2",

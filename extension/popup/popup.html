@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spindro Remote</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header><b class="mark">Spin<i>dro</i></b> <span data-i18n="popupSubtitle"></span></header>
+
+  <section>
+    <h2 data-i18n="connTitle"></h2>
+    <p id="conn" class="status"></p>
+    <p id="connHint" class="fine" data-i18n="connHint" hidden></p>
+  </section>
+
+  <section>
+    <h2 data-i18n="targetTitle"></h2>
+    <p id="target" class="status"></p>
+    <p id="targetMsg" class="fine" hidden></p>
+    <div class="row">
+      <button id="pin" type="button" data-i18n="pinBtn"></button>
+      <button id="unpin" type="button" data-i18n="unpinBtn" hidden></button>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-i18n="sitesTitle"></h2>
+    <p class="fine" data-i18n="sitesIntro"></p>
+    <ul id="builtin" class="sites"></ul>
+    <ul id="sites" class="sites"></ul>
+    <p id="sitesNone" class="fine" data-i18n="sitesNone" hidden></p>
+    <div class="row"><button id="addSite" type="button" data-i18n="addSiteBtn"></button></div>
+    <p id="addMsg" class="fine" hidden></p>
+  </section>
+
+  <section>
+    <h2 data-i18n="strongTitle"></h2>
+    <label class="switch"><input id="strong" type="checkbox"><span data-i18n="strongLabel"></span></label>
+    <p class="fine" data-i18n="strongExplain"></p>
+    <p id="strongMsg" class="fine" hidden></p>
+  </section>
+
+  <section>
+    <h2 data-i18n="helpTitle"></h2>
+    <p class="fine" data-i18n="helpText"></p>
+  </section>
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

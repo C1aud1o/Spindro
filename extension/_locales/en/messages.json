@@ -1,0 +1,93 @@
+{
+  "extName": {
+    "message": "Spindro Remote"
+  },
+  "extDescription": {
+    "message": "Use your Zwift Click as a remote for YouTube, Netflix and other video tabs while Spindro keeps your workout running."
+  },
+  "popupSubtitle": {
+    "message": "Remote"
+  },
+  "connTitle": {
+    "message": "Spindro"
+  },
+  "connOn": {
+    "message": "Connected to Spindro ($N$ tab)",
+    "placeholders": {
+      "N": {
+        "content": "$1"
+      }
+    }
+  },
+  "connOff": {
+    "message": "Not connected"
+  },
+  "connHint": {
+    "message": "Open Spindro (spindro.fit/app) in a tab and turn on Remote mode there."
+  },
+  "targetTitle": {
+    "message": "Controlled tab"
+  },
+  "targetNone": {
+    "message": "No tab yet: open a video in another tab"
+  },
+  "pinBtn": {
+    "message": "Pin this tab"
+  },
+  "unpinBtn": {
+    "message": "Unpin"
+  },
+  "pinnedNote": {
+    "message": "Pinned: it stays the target even when you look at other tabs."
+  },
+  "sitesTitle": {
+    "message": "Allowed sites"
+  },
+  "sitesIntro": {
+    "message": "Always on: Spindro, YouTube, Netflix. Other sites only after you allow them."
+  },
+  "sitesNone": {
+    "message": "No other site allowed."
+  },
+  "addSiteBtn": {
+    "message": "Allow the controlled tab's site"
+  },
+  "removeBtn": {
+    "message": "Remove"
+  },
+  "addOk": {
+    "message": "$N$ allowed.",
+    "placeholders": {
+      "N": {
+        "content": "$1"
+      }
+    }
+  },
+  "addDenied": {
+    "message": "Not allowed."
+  },
+  "addBad": {
+    "message": "This page cannot be controlled."
+  },
+  "strongTitle": {
+    "message": "Strong mode"
+  },
+  "strongLabel": {
+    "message": "Use trusted keys (optional)"
+  },
+  "strongExplain": {
+    "message": "Lets Spindro send real key presses and enter fullscreen on pages that block scripts. Chrome then shows a banner \"Spindro Remote started debugging this browser\" while it works. Off by default."
+  },
+  "strongOnNote": {
+    "message": "Strong mode is on."
+  },
+  "strongDenied": {
+    "message": "Permission not granted: strong mode stays off."
+  },
+  "helpTitle": {
+    "message": "How it works"
+  },
+  "helpText": {
+    "message": "Keep Spindro open (the mini window is handy), play a video in another tab, then switch Spindro to Remote mode. The Click now controls the last tab you looked at. Nothing is collected or sent anywhere."
+  }
+}

@@ -45,6 +45,9 @@ jobs:
       - run: npm run build:web && npx cap sync android
         env:
           VERSION_CODE: ${{ github.run_number }}
+      # the browser extension "Spindro Remote" (extension/, docs/extension.md) travels next to the APK: same release, stable download URL
+      - name: Build the Spindro Remote extension zip
+        run: npm run ext:zip
       - name: Prepare the release key (from GitHub Secrets)
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -116,12 +119,15 @@ jobs:
           tag_name: app-android
           name: Spindro for Android
           make_latest: true
-          files: spindro.apk
+          files: |
+            spindro.apk
+            dist/spindro-remote.zip
           body: |
             Spindro for Android (build ${{ github.run_number }}).
             Open this page on your phone, download **spindro.apk** and install it
             (Android will ask you to allow installing from this source).
             Highlights: native Bluetooth and a bridge to Garmin (the phone becomes a power, cadence and speed sensor).
+            **spindro-remote.zip** is the optional Chrome/Edge extension that lets the Zwift Click control a video in another tab: see docs/extension.md.
       - name: Publish the beta APK to the "app-android-beta" prerelease
         if: github.ref == 'refs/heads/beta'
         uses: softprops/action-gh-release@v2
@@ -130,7 +136,10 @@ jobs:
           name: Spindro Beta for Android
           prerelease: true
           make_latest: false
-          files: spindro-beta.apk
+          files: |
+            spindro-beta.apk
+            dist/spindro-remote.zip
           body: |
             **Spindro Beta** (build ${{ github.run_number }}): a test version that installs next to the stable app.
             Download **spindro-beta.apk** on your phone and install it. It may contain bugs: your real data stays in the stable app.
+            **spindro-remote.zip** is the beta of the optional Chrome/Edge extension "Spindro Remote" (Zwift Click as a remote for a video in another tab): see docs/extension.md.
