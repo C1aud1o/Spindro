@@ -27,6 +27,7 @@ Spindro connects to your trainer over Bluetooth and gives you ERG, virtual gears
 - **Zwift Click, Play and Ride** as shifter and remote, with a key check that shows which key the app receives and lets you map it.
 - **Workouts:** 34 structured workouts (24 to 90 minutes), 4 multi-week plans, a ramp FTP test, a block editor, `.zwo` import, export to `.zwo` and Garmin `.fit`, a spoken coach in 5 languages.
 - **Six games that are workouts:** Pedal Strike, Horde Run, Slipstream, Breakaway, Updraft, Feed Zone. 5, 10 or 20 minutes in % of FTP, three levels, one shared menu. A game can also follow the workout you are riding. Plus any YouTube ride video at your speed.
+- **Mini window and Click as a remote** (Chrome/Edge on a computer): keep a small always-on-top Spindro window while you watch YouTube or Netflix in another tab, and use the Zwift Click to pause, seek and change volume there, with the optional [Spindro Remote extension](docs/extension.md). Real YouTube and Netflix control, and the Click with the extension, are not yet tested on real hardware or sites.
 - **Routes:** load a GPX and the slope follows the course.
 - **Your watch as the head unit** (Android app): the phone broadcasts power, cadence and speed as a Bluetooth sensor.
 - **History and records,** a share card, `.fit` export with GPS, optional Strava upload.
@@ -102,6 +103,8 @@ Everything third-party that ships with Spindro, with author, licence and use. Fu
 **Fonts** (SIL Open Font License 1.1, all served by the app itself, in `assets/fonts`)
 - [Barlow and Barlow Condensed](https://github.com/jpt/barlow), The Barlow Project Authors: text and numbers.
 - Lilita One, Juan Montoreano: game titles. [Nunito](https://github.com/googlefonts/nunito), The Nunito Project Authors: game texts.
+
+**Browser extension** (`extension/`, optional): written for this project, no third-party code or libraries; the icons are generated from `icons/icon.svg`. See [docs/extension.md](docs/extension.md).
 
 **3D models, particles and sound** (CC0 1.0, no credit required, given anyway)
 - [Kenney](https://kenney.nl): Racing Kit, Nature Kit, Blocky Characters, Graveyard Kit, Blaster Kit, Platformer Kit (3D, `assets/3d`), Particle Pack (`assets/fx`), Music Jingles (`assets/audio/jingles`).

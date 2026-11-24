@@ -45,6 +45,11 @@ L'app Android chiede questi permessi:
 
 L'app Android può anche ricevere un link condiviso da un'altra app (per esempio "Condividi" di YouTube) per aprirlo come uscita con video. Legge solo il testo condiviso.
 
+## Finestra mini e l'estensione facoltativa "Spindro Remote"
+
+- **Finestra mini.** Su Chrome ed Edge per computer Spindro può mostrare i numeri dell'allenamento in una piccola finestra sempre in primo piano (la funzione Picture-in-Picture del browser). La disegna l'app sul tuo dispositivo; non viene inviato nulla.
+- **Spindro Remote** è un'estensione del browser separata e facoltativa (vedi `docs/extension.md`). Permette al Zwift Click di comandare un video in un'altra scheda. **Non raccoglie, non salva e non invia nulla**: niente statistiche, niente codice remoto, niente account. Parla soltanto con la pagina di Spindro nello stesso browser e con le schede che scegli tu, sul tuo dispositivo. Le sue uniche impostazioni (la scheda fissata, i siti consentiti, l'interruttore "modalità forte") restano nella memoria dell'estensione nel browser. Concedi l'accesso sito per sito e puoi togliere un sito, o l'estensione, in qualsiasi momento. La "modalità forte" facoltativa usa l'interfaccia di debug del browser e Chrome mostra il suo avviso finché è attiva.
+
 ## Cosa caricano dalla rete l'app e il sito
 
 - **I file dell'app**, dallo stesso sito (`spindro.fit`), ospitato su GitHub Pages. GitHub può registrare i dati tecnici standard di una richiesta, come l'indirizzo IP.

@@ -91,6 +91,26 @@ positions, legend per context and model, key check, learned mapping, report), `t
 `clickModel` = `click | play | ride`, `clickProto` = `ride | v1 | play | zr`). The fake marks the key check as already seen
 (`clickCheckSeen`); tests of the automatic opening clear it.
 
+## Remote mode (X1)
+With the optional browser extension (`extension/`, [docs/extension.md](extension.md)) the Click can drive another tab (YouTube, Netflix…) while Spindro
+keeps running in the mini window. **Remote** is a mode toggled from the Click menu ("Remote mode: control the other tab"), the key `r`, or the mini
+window; it is only offered once the extension has answered the handshake (`js/remote.js`, protocol v1); otherwise an explanation with a link to the guide.
+
+| Role | In Remote mode |
+|---|---|
+| `plus` / `minus` (two-key Click) | short press: seek +10 s / −10 s; **hold `−`** (0.8 s) still opens the Click menu (the seek fires on release only if it was short) |
+| `up` / `down` | volume up / down |
+| `left` / `right` | seek −10 s / +10 s |
+| `ok` | play / pause |
+| `back` | browser back |
+| `menu` (or `+` and `−` together) | Click menu |
+
+In Remote mode `clicknav` does not navigate Spindro unless the menu is open (`remote()` option), so nothing moves on the Spindro page behind the video.
+The shift / hold handlers of the Spindro mode are skipped, so the workout intensity (ERG bias) does not change by accident; it stays reachable from the
+Click menu ("Harder (+)" / "Easier (−)") and from the mini window. The menu gets a **Remote: other tab** section listing every command (so the rider
+with only `+` and `−` can reach all of them). Keyboard: arrows, Enter, Esc, `+` / `−` send the same commands while Remote is on; `p` toggles the mini
+window; `m` opens the Click menu. Tests: `tests/remote.spec.mjs` (fake extension), `tests/ext/` (real extension).
+
 ## Devices panel (H1)
 The status row on the home (`#deviceBar`) opens the **Devices** panel: connected devices (role, battery, Disconnect), one “Add device”
 (`#addDevice`, one Bluetooth chooser with all supported services), the power and cadence sources (`#srcPower`, `#srcCadence`) and, when a
