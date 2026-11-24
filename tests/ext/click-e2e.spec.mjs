@@ -2,7 +2,7 @@
 // Fixture video page only: no real YouTube / Netflix, no real Click.
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
-import { startFixtures, launchExt, setOverride, makeTarget } from './helpers.mjs';
+import { startFixtures, launchExt, setOverride } from './helpers.mjs';
 
 const FAKE_BLE = fileURLToPath(new URL('../fake-ble.js', import.meta.url));
 const APP = `http://127.0.0.1:${process.env.PORT || 4173}/index.html`;
@@ -24,6 +24,11 @@ test.beforeAll(async () => {
 });
 test.afterAll(async () => { await ext?.close(); await fx?.close(); });
 
+/** Brings a page to the front and waits until the extension reports it as the target (asked through the app's own bridge client). */
+async function makeTarget(page, titleStart) {
+  await page.bringToFront();
+  await expect.poll(async () => (await app.evaluate(() => window.rfRemote.status()))?.target?.title ?? '', { timeout: 10000 }).toMatch(new RegExp(`^${titleStart}`));
+}
 const vstate = () => video.evaluate(() => { const v = document.getElementById('v'); return { paused: v.paused, t: v.currentTime, vol: v.volume, muted: v.muted }; });
 const press = async (d, ms = 0) => { await app.evaluate(([x, m]) => (m ? window.__fakeBle.hold(x, m) : window.__fakeBle.press(x)), [d, ms]); await app.waitForTimeout(200); };
 const pressId = async (id) => { await app.evaluate((x) => window.__fakeBle.pressId(x), id); await app.waitForTimeout(200); };
@@ -39,7 +44,7 @@ test('the app finds the extension and Remote mode turns on', async () => {
 
 test('two-key Click: + / − seek the video in the other tab, ok-less hold − opens the menu', async () => {
   video = await ext.ctx.newPage(); await video.goto(fx.url('video.html'));
-  await makeTarget(app, video, 'Video page');
+  await makeTarget(video, 'Video page');
   await app.bringToFront();
   await video.evaluate(() => { const v = document.getElementById('v'); v.currentTime = 30; });
   const t0 = (await vstate()).t;
@@ -57,7 +62,7 @@ test('two-key Click: + / − seek the video in the other tab, ok-less hold − o
 });
 
 test('arrows controller: ok = play/pause, up/down = volume, left/right = seek', async () => {
-  await app.evaluate(async () => { window.__fakeBle.clickProto = 'ride'; window.__fakeBle.next = 'click'; await window.__click?.disconnect?.(); });
+  await app.evaluate(async () => { window.__fakeBle.clickProto = 'ride'; window.__fakeBle.next = 'click'; });
   // a second controller (Click v2) joins; the v1 one stays connected, both are plain roles for the app
   await app.evaluate(async () => window.rfDevices.add());
   await app.waitForTimeout(400);
@@ -77,7 +82,7 @@ test('arrows controller: ok = play/pause, up/down = volume, left/right = seek', 
 
 test('a site the extension is not allowed on: the rider is told which one', async () => {
   const other = await ext.ctx.newPage(); await other.goto(fx.url('video.html', 'fake.test'));
-  await makeTarget(app, other, 'Video page');
+  await makeTarget(other, 'Video page');
   await app.bringToFront();
   await app.keyboard.press('Enter');
   await expect(app.locator('#toast')).toContainText('fake.test');
