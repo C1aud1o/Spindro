@@ -3,6 +3,7 @@
 // Caratteri (OFL, in assets/fonts): "Lilita One" per titoli e numeri, "Nunito" per istruzioni e frasi. Niente monospace.
 // Sistema anti-sovrapposizione: testo che si riduce nello spazio libero (txt), a capo automatico (paragraph),
 // margini di sicurezza (hudView/safeBox) e coda di messaggi a centro schermo (MessageQueue). Guida: docs/giochi-stile.md §6b.
+import { isSolid } from '../../glass.js';
 export const FONT_DISPLAY = '"Spindro Display", "Lilita One", "Barlow Condensed", "Arial Rounded MT Bold", "Arial Narrow", sans-serif';
 export const FONT_TEXT = '"Spindro Text", Nunito, "Segoe UI", system-ui, -apple-system, Roboto, sans-serif';
 export const HUD_FONT = FONT_DISPLAY; // compatibilità: titoli e numeri
@@ -167,10 +168,18 @@ export function trainerLostBanner(ctx, W, H, t) {
   panel(ctx, W / 2 - w / 2, y - 30 * u, w, 60 * u, { r: 12 * u, fill: 'rgba(40,8,12,.88)', border: HUD.red });
   txt(ctx, t('games.common.trainerLost'), W / 2, y + 7 * u, { size: 19 * u, align: 'center', color: HUD.white, maxW: w - 20 * u, minK: 0.6 });
 }
+// Pannello del HUD in "vetro liquido" per il canvas: tinta + luce interna dall'alto + filo speculare sul bordo. Niente sfocatura (mai sopra il WebGL):
+// due gradienti per pannello, nessun filtro. Con "Riduci la trasparenza" (js/glass.js) il pannello resta piatto.
 export function panel(ctx, x, y, w, h, { r = 10, fill = HUD.ink, border = null } = {}) {
   ctx.beginPath();
   if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h);
   ctx.fillStyle = fill; ctx.fill();
+  if (h >= 18 && !isSolid()) {
+    const sheen = ctx.createLinearGradient(0, y, 0, y + h * 0.55); sheen.addColorStop(0, 'rgba(255,255,255,.17)'); sheen.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = sheen; ctx.fill();
+    const edge = ctx.createLinearGradient(0, y, 0, y + h); edge.addColorStop(0, 'rgba(255,255,255,.42)'); edge.addColorStop(0.5, 'rgba(255,255,255,.08)'); edge.addColorStop(1, 'rgba(255,255,255,.16)');
+    ctx.lineWidth = 1; ctx.strokeStyle = edge; ctx.stroke();
+  }
   if (border) { ctx.lineWidth = 2; ctx.strokeStyle = border; ctx.stroke(); }
 }
 

@@ -19,7 +19,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="icon" href="icons/icon-192.png" type="image/png" sizes="192x192">
+  <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/glass.css">
 </head>
 <body data-mode="erg">
   <header class="top">
@@ -332,6 +334,8 @@
         <div class="chips goal-chips" id="goalChips"><button data-g="0" data-i18n="settings.goal.none"></button><button data-g="90" data-i18n="settings.goal.min90"></button><button data-g="150" data-i18n="settings.goal.min150"></button><button data-g="240" data-i18n="settings.goal.hours4"></button></div>
         <label class="switch"><input type="checkbox" id="autoPause" checked><span data-i18n="settings.autoPause"></span></label>
         <label class="switch"><input type="checkbox" id="smooth3"><span data-i18n="settings.smooth3"></span></label>
+        <label class="switch"><input type="checkbox" id="reduceGlass"><span data-i18n="settings.reduceGlass"></span></label>
+        <p class="fine" data-i18n="settings.reduceGlassHint"></p>
         <label class="switch"><input type="checkbox" id="coachOn"><span data-i18n="settings.coach"></span></label>
         <button id="fullscreen" class="ghost" data-i18n="settings.fullscreen"></button>
       </section>

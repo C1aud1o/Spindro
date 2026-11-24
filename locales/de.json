@@ -891,6 +891,8 @@
   "safety.title": "Bevor du losfährst",
   "settings.auto": "auto",
   "settings.autoPause": "Startet und pausiert automatisch, wenn du trittst oder anhältst",
+  "settings.reduceGlass": "Transparenz reduzieren",
+  "settings.reduceGlassHint": "Deckende Flächen statt Glas. Schaltet sich auf schwächeren Geräten von selbst ein.",
   "settings.coach": "Sprach-Coach: sagt Intervalle, Anstiege und Meilensteine an",
   "settings.data": "Daten und Diagnose",
   "settings.ftpHint": "Die FTP färbt die Leistungszonen; das Gewicht zählt für die virtuellen Gänge.",

@@ -891,6 +891,8 @@
   "safety.title": "Avant de pédaler",
   "settings.auto": "auto",
   "settings.autoPause": "Démarrage et pause automatiques quand tu pédales ou t'arrêtes",
+  "settings.reduceGlass": "Réduire la transparence",
+  "settings.reduceGlassHint": "Des panneaux pleins au lieu du verre. S'active tout seul sur les appareils peu puissants.",
   "settings.coach": "Coach vocal : annonce les intervalles, les montées et les caps franchis",
   "settings.data": "Données et diagnostic",
   "settings.ftpHint": "La FTP colore les zones de puissance ; le poids compte pour les vitesses virtuelles.",

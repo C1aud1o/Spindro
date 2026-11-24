@@ -1,0 +1,110 @@
+/* Liquid glass: the surface recipes. Every value comes from css/tokens.css. Loaded after css/style.css (which keeps layout and type).
+   flat glass     = tint + inner light + specular edge, no blur (cards, groups, buttons)
+   floating glass = the same + backdrop blur/saturation (header pill, ride bar, sheets, dialogs, toasts, menus): a handful on screen at most */
+
+/* ---------- ambient background: three slow colour fields behind everything ---------- */
+html::before {
+  content: ""; position: fixed; z-index: -1; inset: -12% -12%; pointer-events: none;
+  background: var(--ambient); opacity: var(--ambient-opacity); display: var(--ambient-display);
+  animation: ambient-drift var(--ambient-drift) ease-in-out infinite alternate; will-change: transform;
+}
+@keyframes ambient-drift { from { transform: translate3d(-2%, -1%, 0) scale(1); } to { transform: translate3d(2%, 2%, 0) scale(1.06); } }
+/* the drift pauses whenever a blurred layer or a game is on screen (blur behind a moving layer is re-computed every frame): js/glass.js sets html.still */
+html.still::before { animation-play-state: paused; }
+
+/* ---------- flat glass, top level ---------- */
+.card, .game-card, .device-bar, .qp {
+  background: var(--sheen), var(--glass-fill); border: 0; border-radius: var(--r-card); box-shadow: var(--shadow);
+}
+/* flat glass, one layer inside another glass */
+.group, .dev-card, .summary, .share-prompt, .ed-block, .wk-item, .hs-ride, .hs-kpis div, .hs-bests div, .hint-box, .badge, .cm-list button, .wg-card {
+  background: var(--glass-fill-2); border: 0; box-shadow: inset 0 1px 0 var(--edge-top), inset 0 0 0 1px var(--edge);
+}
+.group, .dev-card, .summary, .share-prompt, .wk-item, .ed-block { border-radius: var(--r-md); }
+.dev-card { box-shadow: inset 0 1px 0 var(--edge-top), inset 0 0 0 1px var(--accent-line); }
+/* wells (fields, tracks, profiles) sink instead of floating */
+.today-profile, .wk-profile, .hs-weeks, .goal-bar, .gs-bar, .mini-bar { background: var(--glass-fill-input); }
+.log pre, code, .dbg-pre { background: var(--glass-fill-input); }
+.big-numbers, .readout { background: var(--sheen), var(--glass-fill-strong); } /* behind the big numbers: the strongest tint */
+
+/* ---------- controls: round, glossy, springy ---------- */
+.icon-btn, .close, .step, .act, .ghost, .chips button, .step-btn, button.small, .modes label span, kbd {
+  background: var(--sheen), var(--glass-fill-2); border: 0; box-shadow: inset 0 1px 0 var(--edge-top), inset 0 0 0 1px var(--edge);
+  transition: transform var(--dur-1) var(--ease-spring), background var(--dur-1), box-shadow var(--dur-1);
+}
+.ghost, .step { box-shadow: inset 0 1px 0 var(--edge-top), inset 0 0 0 1px var(--accent-line); }
+.icon-btn, .close { border-radius: var(--r-pill); }
+.icon-btn:active, .close:active, .step:active, .act:active, .ghost:active, .chips button:active, .step-btn:active, button.small:active { transform: scale(.95); background: var(--glass-fill-3); }
+@media (hover: hover) { .icon-btn:hover, .close:hover, .act:hover, .ghost:hover, .chips button:hover, .step:hover { background: var(--sheen), var(--glass-fill-3); } }
+.step:active { color: var(--accent-ink); background: var(--accent); }
+/* selected / primary: lime glass with a gloss and a soft glow */
+.cta, .cta-sm, .modes input:checked + span, .chips button.on, .mode-list .ghost.on {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .34) 0%, rgba(255, 255, 255, 0) 52%), var(--accent); color: var(--accent-ink); border: 0; box-shadow: var(--shadow-cta);
+}
+.cta { border-radius: var(--r-lg); transition: transform var(--dur-1) var(--ease-spring), box-shadow var(--dur-1); }
+.cta:active { transform: scale(.97); }
+.cta.running, .ride-start-slot .cta.running { background: var(--sheen), var(--glass-fill-3); color: var(--t1); box-shadow: inset 0 1px 0 var(--edge-top), inset 0 0 0 1px var(--edge); }
+.modes { background: var(--glass-fill-input); border-radius: var(--r-pill); box-shadow: inset 0 1px 3px rgba(0, 0, 0, .45), inset 0 0 0 1px var(--edge); }
+.modes label span { background: none; box-shadow: none; border-radius: var(--r-pill); }
+.more-modes .modes { background: var(--glass-fill-input); }
+.pill { background: var(--glass-fill-3); box-shadow: inset 0 0 0 1px var(--edge); }
+.pill.ok { background: var(--accent-5); box-shadow: inset 0 0 0 1px var(--accent-line); }
+
+/* fields: wells with an inner shadow */
+input[type=text], input[type=number], input[type=url], input[type=password], input[type=email], .fields input, .video-pick .field input, .unit-input, .lang-pick select, #accountGroup select {
+  background: var(--glass-fill-input); border: 0; border-radius: var(--r-md); box-shadow: inset 0 1px 3px rgba(0, 0, 0, .45), inset 0 0 0 1px var(--edge);
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.switch input[type=checkbox] { background: var(--glass-fill-input); border: 0; box-shadow: inset 0 1px 3px rgba(0, 0, 0, .45), inset 0 0 0 1px var(--edge); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.switch input[type=checkbox]::after { background: var(--t2); box-shadow: 0 1px 4px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .5); transition: transform var(--dur-2) var(--ease-spring), background var(--dur-1); }
+.switch input[type=checkbox]:checked { background: rgba(var(--accent-rgb), .22); box-shadow: inset 0 0 0 1px var(--accent-line); }
+
+/* radii come from the scale, never from the component */
+.ghost, .act, .step, .step-btn, button.small, .chips button, .mini-open { border-radius: var(--r-md); }
+.act { border-radius: var(--r-lg); }
+.device-bar { border-radius: var(--r-xl); }
+.hs-ride, .hs-kpis div, .hs-bests div, .hint-box, .dev-empty { border-radius: var(--r-sm); }
+.remote-badge { border-radius: var(--r-pill); }
+.mini-open { min-height: 44px; min-width: 44px; border: 0; background: var(--sheen), var(--glass-fill-2); box-shadow: inset 0 1px 0 var(--edge-top), inset 0 0 0 1px var(--accent-line); justify-content: center; }
+/* the mini-window button sits top right of the readout: the zone chip steps aside (desktop Chromium only; the button is hidden in the app) */
+.readout:has(.readout-tools > :not([hidden])) .power .zone { margin-right: 60px; }
+
+/* ---------- floating glass: header pill, ride bar, sheets, toasts, menus ---------- */
+.top, body.riding .ride-actions, .sheet-body, .toast, .update-bar, .cm-box, .click-bar, .calib-box {
+  background: var(--sheen), var(--glass-fill-float); -webkit-backdrop-filter: var(--glass-filter); backdrop-filter: var(--glass-filter);
+  border: 0; box-shadow: var(--edge-shadow), var(--elev-2);
+}
+.top {
+  position: sticky; top: max(8px, env(safe-area-inset-top)); z-index: 9; margin: 0 0 4px; padding: 0 8px 0 20px; height: 60px; border-radius: var(--r-pill);
+}
+body.riding .ride-actions { padding: 8px; border-radius: var(--r-xl); bottom: calc(10px + env(safe-area-inset-bottom)); }
+.sheet, .calib { background: var(--scrim); }
+.calib-box { border-radius: var(--r-xl); box-shadow: var(--edge-shadow), var(--elev-3); animation: rise var(--dur-3) var(--ease-spring); }
+.dlg .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.dlg .row2 button { min-height: 56px; }
+.sheet-body { border-radius: var(--r-xl) var(--r-xl) 0 0; box-shadow: var(--edge-shadow), var(--elev-3); }
+@media (min-width: 700px) { .sheet { align-items: center; } .sheet-body { border-radius: var(--r-xl); max-height: 86vh; } }
+.toast { border-radius: var(--r-pill); color: var(--t1); box-shadow: var(--edge-shadow), var(--elev-2), 0 0 0 1px var(--accent-line); }
+.toast::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); vertical-align: middle; }
+.update-bar { border-radius: var(--r-pill); }
+.click-menu { background: var(--scrim); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.cm-box { border-radius: var(--r-xl); box-shadow: var(--edge-shadow), var(--elev-3); }
+.cm-list button { border-radius: var(--r-md); }
+.cm-list button.cn-focus { background: var(--accent-5); }
+.click-bar { border: 0; box-shadow: var(--edge-shadow), var(--elev-2), 0 0 0 1px var(--accent-line); }
+@keyframes rise { from { transform: translateY(40px) scale(.985); opacity: 0; } }
+.sheet-body { animation: rise var(--dur-3) var(--ease-spring); }
+.sheet { animation: fade var(--dur-2) ease-out; }
+
+/* ---------- games: DOM parts only (the canvas HUD draws its own cheap glass, never a blur over WebGL) ---------- */
+.game-menu { background: var(--ambient); }
+.game-bar { background: linear-gradient(rgba(0, 0, 0, .62), transparent); }
+.game-strip { background: linear-gradient(180deg, rgba(var(--paper), .10), rgba(var(--paper), 0) 50%), rgba(var(--glass-tint), .78); border: 0; border-radius: var(--r-sm); box-shadow: inset 0 1px 0 var(--edge-top), inset 0 0 0 1px var(--accent-line); }
+.video-pick { background: var(--ambient); }
+.game-card { border-radius: var(--r-lg); }
+.game-card:active { transform: scale(.985); box-shadow: var(--edge-shadow), 0 0 0 1px var(--accent); }
+
+/* ---------- focus: ring plus a soft halo, visible on any glass ---------- */
+:focus-visible { outline: var(--focus); outline-offset: 3px; box-shadow: var(--focus-halo); }
+.modes input:focus-visible + span { outline: var(--focus); box-shadow: var(--focus-halo); }
+.switch input[type=checkbox]:focus-visible { outline: var(--focus); }
