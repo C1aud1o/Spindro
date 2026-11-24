@@ -65,6 +65,12 @@ for (const vp of ['phone', 'desktop']) {
     await page.evaluate(() => document.getElementById('reset')?.click()); await page.waitForTimeout(600);
     await snap(page, `app-dialog-${vp}`); await ctx.close();
   }
+  if (want('plans')) { const { ctx, page } = await open('plans', vp); await page.locator('#openWorkouts').click(); await page.locator('#tabPlans').click(); await snap(page, `app-plans-${vp}`); await ctx.close(); }
+  if (want('editor')) { const { ctx, page } = await open('editor', vp); await page.locator('#openWorkouts').click(); await page.locator('#wkNew').click(); await snap(page, `app-editor-${vp}`); await ctx.close(); }
+  if (want('finish')) {
+    const { ctx, page } = await open('finish', vp); await startWorkout(page, 1); await page.evaluate(() => document.getElementById('finishRide')?.click()); await page.waitForTimeout(1800);
+    await snap(page, `app-finish-${vp}`); await ctx.close();
+  }
   if (want('toast')) {
     const { ctx, page } = await open('toast', vp); await page.locator('#deviceBar').click(); await page.locator('#addDevice').click(); await page.waitForTimeout(350);
     await page.screenshot({ path: join(OUT, `app-toast-${vp}.png`) }); console.log('shot', `app-toast-${vp}`); await ctx.close();

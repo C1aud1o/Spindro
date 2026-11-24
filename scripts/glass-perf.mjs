@@ -7,12 +7,15 @@ import { startServer } from './static-server.mjs';
 import { writeFileSync } from 'node:fs';
 
 const args = process.argv.slice(2); const opt = (k, d) => args.find((a) => a.startsWith(`--${k}=`))?.split('=')[1] ?? d;
+const GLASS_CSS = opt('glasscss', ''); // experiment: serve another css/glass.css
+const SOLID = opt('solid', '0') === '1'; // Reduce transparency on
+const SCENES = opt('scenes', 'dashboard,scroll,game').split(','); const EXTRA_CSS = opt('css', '');
 const RUNS = Number(opt('runs', 3)); const SEC = Number(opt('sec', 10)); const LABEL = opt('label', 'run'); const OUT = opt('out', '');
 const { server, url } = await startServer(0);
 const exe = process.env.PW_CHROMIUM_PATH || undefined;
 const browser = await chromium.launch({ executablePath: exe, args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] });
 
-const seed = () => { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('safetyAck', '1'); localStorage.setItem('ftp', '200'); localStorage.setItem('lang', 'en'); localStorage.setItem('gameQuality', 'low'); };
+const seed = (solid) => { if (solid) localStorage.setItem('reduceGlass', '1'); localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('safetyAck', '1'); localStorage.setItem('ftp', '200'); localStorage.setItem('lang', 'en'); localStorage.setItem('gameQuality', 'low'); };
 const measure = (SEC) => new Promise((resolve) => {
   const dts = []; let last = performance.now(); const t0 = last; let long = 0;
   try { new PerformanceObserver((l) => { for (const e of l.getEntries()) long += e.duration; }).observe({ entryTypes: ['longtask'] }); } catch { /* */ }
@@ -25,7 +28,7 @@ const measure = (SEC) => new Promise((resolve) => {
 async function dashboard() {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
   const page = await ctx.newPage();
-  await page.addInitScript(seed);
+  await page.addInitScript(seed, SOLID);
   await page.addInitScript({ path: new URL('../tests/fake-ble.js', import.meta.url).pathname });
   await page.goto(`${url}/index.html`);
   await page.evaluate(async () => { while (!window.rfDevices) await new Promise((r) => setTimeout(r, 50)); return window.rfDevices.add(); });
@@ -39,10 +42,13 @@ async function dashboard() {
 async function homeScroll() {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
   const page = await ctx.newPage();
-  await page.addInitScript(seed);
+  await page.addInitScript(seed, SOLID);
   await page.addInitScript(() => localStorage.setItem('rideHistory', JSON.stringify([{ t: Date.now() - 864e5, dur: 1800, km: 15, avgW: 150, kj: 270, best: {} }])));
   await page.addInitScript({ path: new URL('../tests/fake-ble.js', import.meta.url).pathname });
+  if (GLASS_CSS) await page.route('**/css/glass.css', (r) => r.fulfill({ contentType: 'text/css', path: GLASS_CSS }));
   await page.goto(`${url}/index.html`);
+  if (EXTRA_CSS.startsWith('DISABLE:')) await page.evaluate((n) => { for (const l of document.querySelectorAll('link[rel=stylesheet]')) if (l.href.includes(n)) l.disabled = true; }, EXTRA_CSS.slice(8));
+  else if (EXTRA_CSS) await page.addStyleTag({ content: EXTRA_CSS }); // experiment: variants of the glass tokens
   await page.evaluate(async () => { while (!window.rfDevices) await new Promise((r) => setTimeout(r, 50)); return window.rfDevices.add(); });
   await page.waitForTimeout(800);
   await page.locator('#openSettings').click(); await page.waitForTimeout(600); // the long settings sheet: scrolls over the blurred header/backdrop
@@ -54,7 +60,7 @@ async function homeScroll() {
 async function game() {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 780 }, serviceWorkers: 'block' });
   const page = await ctx.newPage();
-  await page.addInitScript(seed);
+  await page.addInitScript(seed, SOLID);
   await page.addInitScript({ path: new URL('../tests/fake-ble.js', import.meta.url).pathname });
   await page.goto(`${url}/index.html`);
   await page.evaluate(async () => { while (!window.rfDevices) await new Promise((r) => setTimeout(r, 50)); return window.rfDevices.add(); });
@@ -80,8 +86,8 @@ bcdp = await browser.newBrowserCDPSession();
 const median = (a) => [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)];
 const sum = (a) => ({ msFrame: median(a.map((x) => x.msFrame)), p95: median(a.map((x) => x.p95)), taskMsPerFrame: median(a.map((x) => x.taskMsPerFrame)), cpuMsPerSec: median(a.map((x) => x.cpuMsPerSec)) });
 const out = { label: LABEL, sec: SEC, runs: RUNS, dashboard: [], scroll: [], game: [] };
-for (let i = 0; i < RUNS; i++) { out.dashboard.push(await dashboard()); out.scroll.push(await homeScroll()); out.game.push(await game()); }
-out.summary = { dashboard: sum(out.dashboard), scroll: sum(out.scroll), game: sum(out.game) };
+for (let i = 0; i < RUNS; i++) { if (SCENES.includes('dashboard')) out.dashboard.push(await dashboard()); if (SCENES.includes('scroll')) out.scroll.push(await homeScroll()); if (SCENES.includes('game')) out.game.push(await game()); }
+out.summary = { dashboard: out.dashboard.length ? sum(out.dashboard) : null, scroll: out.scroll.length ? sum(out.scroll) : null, game: out.game.length ? sum(out.game) : null };
 console.log(JSON.stringify(out, null, 1));
 if (OUT) writeFileSync(OUT, JSON.stringify(out, null, 1));
 await browser.close(); server.close();

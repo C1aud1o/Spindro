@@ -52,7 +52,9 @@ test('finestra PiP vera: si apre col pulsante, mostra l\'allenamento, i pulsanti
   expect(await pip((w) => w.document.querySelector('[data-f="mode"]').textContent)).toBe('Spindro');
   expect(await pip((w) => w.document.querySelector('[data-f="target"]').textContent)).toMatch(/Target \d+ W · \d+%/);
   expect(await pip((w) => w.document.querySelector('[data-f="bias"]').firstChild.textContent)).toBe('100%');
-  expect(await pip((w) => getComputedStyle(w.document.body).backgroundColor)).toBe('rgb(15, 15, 13)');
+  // il fondo scuro è sull'elemento radice (il corpo è trasparente: sotto c'è lo sfondo ambientale del vetro, css/mini.css)
+  expect(await pip((w) => getComputedStyle(w.document.documentElement).backgroundColor)).toBe('rgb(15, 15, 13)');
+  expect(await pip((w) => getComputedStyle(w.document.documentElement, '::before').backgroundImage)).toContain('radial-gradient');
   // i dati arrivano dal rullo finto
   await page.evaluate(() => window.__fakeBle.setPower?.(180));
   // + dalla finestra mini = intensità +5 %

@@ -13,7 +13,7 @@ html::before {
 html.still::before { animation-play-state: paused; }
 
 /* ---------- flat glass, top level ---------- */
-.card, .game-card, .device-bar, .qp {
+.card, .game-card, .device-bar, .qp, .prog {
   background: var(--sheen), var(--glass-fill); border: 0; border-radius: var(--r-card); box-shadow: var(--shadow);
 }
 /* flat glass, one layer inside another glass */
@@ -61,16 +61,23 @@ input[type=text], input[type=number], input[type=url], input[type=password], inp
 
 /* radii come from the scale, never from the component */
 .ghost, .act, .step, .step-btn, button.small, .chips button, .mini-open { border-radius: var(--r-md); }
+.prog-lvl { border-radius: var(--r-xs); }
+.dbg-card { background: var(--glass-fill-2); border-radius: var(--r-md); box-shadow: inset 0 0 0 1px var(--edge); }
 .act { border-radius: var(--r-lg); }
 .device-bar { border-radius: var(--r-xl); }
 .hs-ride, .hs-kpis div, .hs-bests div, .hint-box, .dev-empty { border-radius: var(--r-sm); }
 .remote-badge { border-radius: var(--r-pill); }
 .mini-open { min-height: 44px; min-width: 44px; border: 0; background: var(--sheen), var(--glass-fill-2); box-shadow: inset 0 1px 0 var(--edge-top), inset 0 0 0 1px var(--accent-line); justify-content: center; }
-/* the mini-window button sits top right of the readout: the zone chip steps aside (desktop Chromium only; the button is hidden in the app) */
+/* the mini-window button sits top right of the readout: what is under it steps aside (desktop Chromium only; the button is hidden in the app) */
 .readout:has(.readout-tools > :not([hidden])) .power .zone { margin-right: 60px; }
+body:not(.riding) .readout:has(.readout-tools > :not([hidden])) { padding-right: 68px; }
+@media (min-width: 421px) {   /* the button shows its label here */
+  .readout:has(.readout-tools > :not([hidden])) .power .zone { margin-right: 136px; }
+  body:not(.riding) .readout:has(.readout-tools > :not([hidden])) { padding-right: 148px; }
+}
 
-/* ---------- floating glass: header pill, ride bar, sheets, toasts, menus ---------- */
-.top, body.riding .ride-actions, .sheet-body, .toast, .update-bar, .cm-box, .click-bar, .calib-box {
+/* ---------- floating glass: header pill, ride bar, toasts, bars (static: blurred) ---------- */
+.top, body.riding .ride-actions, .toast, .update-bar, .click-bar {
   background: var(--sheen), var(--glass-fill-float); -webkit-backdrop-filter: var(--glass-filter); backdrop-filter: var(--glass-filter);
   border: 0; box-shadow: var(--edge-shadow), var(--elev-2);
 }
@@ -79,22 +86,27 @@ input[type=text], input[type=number], input[type=url], input[type=password], inp
 }
 body.riding .ride-actions { padding: 8px; border-radius: var(--r-xl); bottom: calc(10px + env(safe-area-inset-bottom)); }
 .sheet, .calib { background: var(--scrim); }
-.calib-box { border-radius: var(--r-xl); box-shadow: var(--edge-shadow), var(--elev-3); animation: rise var(--dur-3) var(--ease-spring); }
+/* floating and scrolling: sheets, the Click menu box, dialogs. A dense tint, no blur (see css/tokens.css) */
+.sheet-body, .cm-box, .calib-box { background: var(--sheen), var(--glass-fill-sheet); border: 0; box-shadow: var(--edge-shadow), var(--elev-3); }
+.calib-box { border-radius: var(--r-xl); animation: rise var(--dur-3) var(--ease-spring); }
 .dlg .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .dlg .row2 button { min-height: 56px; }
-.sheet-body { border-radius: var(--r-xl) var(--r-xl) 0 0; box-shadow: var(--edge-shadow), var(--elev-3); }
+.sheet-body { border-radius: var(--r-xl) var(--r-xl) 0 0; }
 @media (min-width: 700px) { .sheet { align-items: center; } .sheet-body { border-radius: var(--r-xl); max-height: 86vh; } }
 .toast { border-radius: var(--r-pill); color: var(--t1); box-shadow: var(--edge-shadow), var(--elev-2), 0 0 0 1px var(--accent-line); }
 .toast::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); vertical-align: middle; }
 .update-bar { border-radius: var(--r-pill); }
 .click-menu { background: var(--scrim); backdrop-filter: none; -webkit-backdrop-filter: none; }
-.cm-box { border-radius: var(--r-xl); box-shadow: var(--edge-shadow), var(--elev-3); }
+.cm-box { border-radius: var(--r-xl); }
 .cm-list button { border-radius: var(--r-md); }
 .cm-list button.cn-focus { background: var(--accent-5); }
 .click-bar { border: 0; box-shadow: var(--edge-shadow), var(--elev-2), 0 0 0 1px var(--accent-line); }
 @keyframes rise { from { transform: translateY(40px) scale(.985); opacity: 0; } }
 .sheet-body { animation: rise var(--dur-3) var(--ease-spring); }
 .sheet { animation: fade var(--dur-2) ease-out; }
+
+/* over a running game (WebGL canvas below): no backdrop blur at all, only the dense tint */
+body.game-open .toast, body.game-open .click-bar, body.game-open .update-bar { background: var(--sheen), var(--glass-fill-sheet); -webkit-backdrop-filter: none; backdrop-filter: none; }
 
 /* ---------- games: DOM parts only (the canvas HUD draws its own cheap glass, never a blur over WebGL) ---------- */
 .game-menu { background: var(--ambient); }

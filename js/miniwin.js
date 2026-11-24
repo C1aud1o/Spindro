@@ -24,6 +24,9 @@ export function createMini({ t, getModel, actions, win = window }) {
       const link = doc.createElement('link'); link.rel = 'stylesheet'; link.href = new URL('css/mini.css', win.location.href).href;
       doc.head.append(link);
       doc.documentElement.lang = win.document.documentElement.lang;
+      // "Riduci la trasparenza" (js/glass.js) vale anche qui: la finestra mini segue la classe .solid della pagina
+      const syncSolid = () => doc.documentElement.classList.toggle('solid', win.document.documentElement.classList.contains('solid'));
+      syncSolid(); win.addEventListener('spindro:glass', syncSolid); w.addEventListener('pagehide', () => win.removeEventListener('spindro:glass', syncSolid));
       doc.title = t('mini.title');
       view = buildMini(doc, t, (act) => actions[act]?.());
       pip = w;

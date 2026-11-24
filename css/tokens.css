@@ -5,7 +5,8 @@
    Two kinds of glass, on purpose (backdrop-filter is expensive):
      flat     in-flow cards, groups, buttons: translucent tint + inner light + specular edge, NO backdrop blur (cheap, any number of them)
      floating the few layers that sit over moving content: header pill, ride bar, sheets, dialogs, toasts, menus: the same + blur and saturation
-   Rules: never animate the blur radius, keep the number of simultaneously blurred layers small (a handful), never blur over a WebGL canvas.
+   Rules: never animate the blur radius, keep the number of simultaneously blurred layers small (a handful), never blur over a WebGL canvas,
+   never blur an element whose content scrolls (measured with the software renderer: +1000 ms CPU per second while scrolling a blurred sheet).
    Three ways to get solid panels (same tokens, no transparency): html.solid ("Reduce transparency" in Settings, also automatic on low-end devices),
    prefers-reduced-transparency, prefers-contrast. Browsers without backdrop-filter get a more opaque floating fill (@supports below). */
 :root {
@@ -32,7 +33,8 @@
   --glass-tint: 24, 24, 20;
   --glass-fill: rgba(var(--glass-tint), .48);        /* flat panels */
   --glass-fill-strong: rgba(var(--glass-tint), .76); /* behind the big numbers: legibility first */
-  --glass-fill-float: rgba(var(--glass-tint), .58);  /* floating, blurred */
+  --glass-fill-float: rgba(var(--glass-tint), .58);  /* floating, blurred (static layers only) */
+  --glass-fill-sheet: rgba(var(--glass-tint), .86);  /* floating AND scrolling (sheets, menus, dialogs): dense tint, no blur: a blur behind scrolling content is re-computed every frame */
   --glass-fill-2: rgba(var(--paper), .06);           /* a second layer on top of a glass panel */
   --glass-fill-3: rgba(var(--paper), .11);           /* pressed / hover / selected-neutral */
   --glass-fill-input: rgba(0, 0, 0, .28);            /* wells: fields, tracks */
@@ -80,14 +82,14 @@
 
 /* ---------- solid panels: same tokens, nothing translucent ---------- */
 html.solid {
-  --glass-fill: #1b1b17; --glass-fill-strong: #1b1b17; --glass-fill-float: #1e1e19;
+  --glass-fill: #1b1b17; --glass-fill-strong: #1b1b17; --glass-fill-float: #1e1e19; --glass-fill-sheet: #1e1e19;
   --glass-fill-2: #272720; --glass-fill-3: #33332a; --glass-fill-input: #0f0f0d;
   --sheen: none; --glass-filter: none; --scrim: rgba(0, 0, 0, .78); --ambient-opacity: 0; --ambient-display: none;
   --edge-top: rgba(var(--paper), .16); --edge: rgba(var(--paper), .16); --edge-bottom: transparent;
 }
 @media (prefers-reduced-transparency: reduce) {
   :root {
-    --glass-fill: #1b1b17; --glass-fill-strong: #1b1b17; --glass-fill-float: #1e1e19;
+    --glass-fill: #1b1b17; --glass-fill-strong: #1b1b17; --glass-fill-float: #1e1e19; --glass-fill-sheet: #1e1e19;
     --glass-fill-2: #272720; --glass-fill-3: #33332a; --glass-fill-input: #0f0f0d;
     --sheen: none; --glass-filter: none; --scrim: rgba(0, 0, 0, .78); --ambient-opacity: 0; --ambient-display: none;
     --edge-top: rgba(var(--paper), .16); --edge: rgba(var(--paper), .16); --edge-bottom: transparent;
@@ -96,7 +98,7 @@ html.solid {
 /* high contrast: solid panels, firm borders, brighter secondary text */
 @media (prefers-contrast: more) {
   html:root {
-    --glass-fill: #141412; --glass-fill-strong: #141412; --glass-fill-float: #141412;
+    --glass-fill: #141412; --glass-fill-strong: #141412; --glass-fill-float: #141412; --glass-fill-sheet: #141412;
     --glass-fill-2: #222220; --glass-fill-3: #34342f; --glass-fill-input: #0a0a09;
     --sheen: none; --glass-filter: none; --scrim: rgba(0, 0, 0, .86); --ambient-opacity: 0; --ambient-display: none;
     --t2: rgba(var(--paper), 1); --t3: rgba(var(--paper), .86); --t4: rgba(var(--paper), .4);

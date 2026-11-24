@@ -1,0 +1,401 @@
+{
+ "note": "Software renderer (SwiftShader), vsync-capped rAF, 8 s per scene, median of 3 runs. cpuMsPerSec = CPU time of all browser processes per second; msFrame of the dashboard/scroll scenes is pinned at 16.67 by vsync. game = Horde Run at quality low, 390x780.",
+ "before": {
+  "dashboard": {
+   "msFrame": 16.67,
+   "p95": 16.7,
+   "taskMsPerFrame": 0.32,
+   "cpuMsPerSec": 66
+  },
+  "scroll": {
+   "msFrame": 16.67,
+   "p95": 16.8,
+   "taskMsPerFrame": 0,
+   "cpuMsPerSec": 262
+  },
+  "game": {
+   "msFrame": 42.46,
+   "p95": 50.1,
+   "taskMsPerFrame": 43.11,
+   "cpuMsPerSec": 3666
+  }
+ },
+ "afterGlass": {
+  "dashboard": {
+   "msFrame": 16.67,
+   "p95": 16.8,
+   "taskMsPerFrame": 0.33,
+   "cpuMsPerSec": 86
+  },
+  "scroll": {
+   "msFrame": 16.67,
+   "p95": 16.7,
+   "taskMsPerFrame": 0,
+   "cpuMsPerSec": 599
+  },
+  "game": {
+   "msFrame": 43.06,
+   "p95": 50.1,
+   "taskMsPerFrame": 43.85,
+   "cpuMsPerSec": 3645
+  }
+ },
+ "afterSolid": {
+  "dashboard": {
+   "msFrame": 16.67,
+   "p95": 16.8,
+   "taskMsPerFrame": 0.32,
+   "cpuMsPerSec": 64
+  },
+  "scroll": {
+   "msFrame": 16.67,
+   "p95": 16.7,
+   "taskMsPerFrame": 0,
+   "cpuMsPerSec": 335
+  },
+  "game": {
+   "msFrame": 45.62,
+   "p95": 50.1,
+   "taskMsPerFrame": 46.37,
+   "cpuMsPerSec": 3631
+  }
+ },
+ "raw": {
+  "before": {
+   "label": "before-2",
+   "sec": 8,
+   "runs": 3,
+   "dashboard": [
+    {
+     "frames": 479,
+     "msFrame": 16.67,
+     "p95": 16.7,
+     "fps": 60,
+     "longTaskMs": 0,
+     "taskMsPerFrame": 0.38,
+     "cpuMsPerSec": 70
+    },
+    {
+     "frames": 480,
+     "msFrame": 16.67,
+     "p95": 16.7,
+     "fps": 60,
+     "longTaskMs": 0,
+     "taskMsPerFrame": 0.32,
+     "cpuMsPerSec": 66
+    },
+    {
+     "frames": 479,
+     "msFrame": 16.67,
+     "p95": 16.7,
+     "fps": 60,
+     "longTaskMs": 0,
+     "taskMsPerFrame": 0.3,
+     "cpuMsPerSec": 61
+    }
+   ],
+   "scroll": [
+    {
+     "frames": 479,
+     "msFrame": 16.67,
+     "p95": 16.8,
+     "fps": 60,
+     "longTaskMs": 0,
+     "taskMsPerFrame": 0,
+     "cpuMsPerSec": 285
+    },
+    {
+     "frames": 478,
+     "msFrame": 16.7,
+     "p95": 16.8,
+     "fps": 59.9,
+     "longTaskMs": 0,
+     "taskMsPerFrame": 0,
+     "cpuMsPerSec": 262
+    },
+    {
+     "frames": 479,
+     "msFrame": 16.67,
+     "p95": 16.7,
+     "fps": 60,
+     "longTaskMs": 0,
+     "taskMsPerFrame": 0,
+     "cpuMsPerSec": 240
+    }
+   ],
+   "game": [
+    {
+     "frames": 182,
+     "msFrame": 43.86,
+     "p95": 50.1,
+     "fps": 22.8,
+     "longTaskMs": 209,
+     "taskMsPerFrame": 44.63,
+     "cpuMsPerSec": 3646
+    },
+    {
+     "frames": 193,
+     "msFrame": 41.28,
+     "p95": 50.1,
+     "fps": 24.2,
+     "longTaskMs": 52,
+     "taskMsPerFrame": 41.92,
+     "cpuMsPerSec": 3691
+    },
+    {
+     "frames": 188,
+     "msFrame": 42.46,
+     "p95": 50.1,
+     "fps": 23.5,
+     "longTaskMs": 263,
+     "taskMsPerFrame": 43.11,
+     "cpuMsPerSec": 3666
+    }
+   ],
+   "summary": {
+    "dashboard": {
+     "msFrame": 16.67,
+     "p95": 16.7,
+     "taskMsPerFrame": 0.32,
+     "cpuMsPerSec": 66
+    },
+    "scroll": {
+     "msFrame": 16.67,
+     "p95": 16.8,
+     "taskMsPerFrame": 0,
+     "cpuMsPerSec": 262
+    },
+    "game": {
+     "msFrame": 42.46,
+     "p95": 50.1,
+     "taskMsPerFrame": 43.11,
+     "cpuMsPerSec": 3666
+    }
+   }
+  },
+  "afterGlass": {
+   "label": "after-glass",
+   "sec": 8,
+   "runs": 3,
+   "dashboard": [
+    {
+     "frames": 480,
+     "msFrame": 16.67,
+     "p95": 16.7,
+     "fps": 60,
+     "longTaskMs": 0,
+     "taskMsPerFrame": 0.33,
+     "cpuMsPerSec": 86
+    },
+    {
+     "frames": 479,
+     "msFrame": 16.67,
+     "p95": 16.8,
+     "fps": 60,
+     "longTaskMs": 0,
+     "taskMsPerFrame": 0.37,
+     "cpuMsPerSec": 89
+    },
+    {
+     "frames": 480,
+     "msFrame": 16.67,
+     "p95": 16.8,
+     "fps": 60,
+     "longTaskMs": 0,
+     "taskMsPerFrame": 0.3,
+     "cpuMsPerSec": 74
+    }
+   ],
+   "scroll": [
+    {
+     "frames": 479,
+     "msFrame": 16.67,
+     "p95": 16.7,
+     "fps": 60,
+     "longTaskMs": 0,
+     "taskMsPerFrame": 0,
+     "cpuMsPerSec": 598
+    },
+    {
+     "frames": 480,
+     "msFrame": 16.67,
+     "p95": 16.7,
+     "fps": 60,
+     "longTaskMs": 0,
+     "taskMsPerFrame": 0,
+     "cpuMsPerSec": 671
+    },
+    {
+     "frames": 479,
+     "msFrame": 16.67,
+     "p95": 16.8,
+     "fps": 60,
+     "longTaskMs": 0,
+     "taskMsPerFrame": 0,
+     "cpuMsPerSec": 599
+    }
+   ],
+   "game": [
+    {
+     "frames": 175,
+     "msFrame": 45.62,
+     "p95": 50.1,
+     "fps": 21.9,
+     "longTaskMs": 604,
+     "taskMsPerFrame": 46.36,
+     "cpuMsPerSec": 3597
+    },
+    {
+     "frames": 185,
+     "msFrame": 43.06,
+     "p95": 50.1,
+     "fps": 23.2,
+     "longTaskMs": 52,
+     "taskMsPerFrame": 43.85,
+     "cpuMsPerSec": 3650
+    },
+    {
+     "frames": 196,
+     "msFrame": 40.73,
+     "p95": 50.1,
+     "fps": 24.6,
+     "longTaskMs": 153,
+     "taskMsPerFrame": 41.3,
+     "cpuMsPerSec": 3645
+    }
+   ],
+   "summary": {
+    "dashboard": {
+     "msFrame": 16.67,
+     "p95": 16.8,
+     "taskMsPerFrame": 0.33,
+     "cpuMsPerSec": 86
+    },
+    "scroll": {
+     "msFrame": 16.67,
+     "p95": 16.7,
+     "taskMsPerFrame": 0,
+     "cpuMsPerSec": 599
+    },
+    "game": {
+     "msFrame": 43.06,
+     "p95": 50.1,
+     "taskMsPerFrame": 43.85,
+     "cpuMsPerSec": 3645
+    }
+   }
+  },
+  "afterSolid": {
+   "label": "after-solid",
+   "sec": 8,
+   "runs": 3,
+   "dashboard": [
+    {
+     "frames": 479,
+     "msFrame": 16.67,
+     "p95": 16.8,
+     "fps": 60,
+     "longTaskMs": 0,
+     "taskMsPerFrame": 0.32,
+     "cpuMsPerSec": 63
+    },
+    {
+     "frames": 479,
+     "msFrame": 16.67,
+     "p95": 16.7,
+     "fps": 60,
+     "longTaskMs": 0,
+     "taskMsPerFrame": 0.31,
+     "cpuMsPerSec": 64
+    },
+    {
+     "frames": 480,
+     "msFrame": 16.67,
+     "p95": 16.8,
+     "fps": 60,
+     "longTaskMs": 0,
+     "taskMsPerFrame": 0.39,
+     "cpuMsPerSec": 71
+    }
+   ],
+   "scroll": [
+    {
+     "frames": 479,
+     "msFrame": 16.67,
+     "p95": 16.8,
+     "fps": 60,
+     "longTaskMs": 0,
+     "taskMsPerFrame": 0,
+     "cpuMsPerSec": 335
+    },
+    {
+     "frames": 479,
+     "msFrame": 16.67,
+     "p95": 16.7,
+     "fps": 60,
+     "longTaskMs": 0,
+     "taskMsPerFrame": 0,
+     "cpuMsPerSec": 311
+    },
+    {
+     "frames": 479,
+     "msFrame": 16.67,
+     "p95": 16.7,
+     "fps": 60,
+     "longTaskMs": 0,
+     "taskMsPerFrame": 0,
+     "cpuMsPerSec": 354
+    }
+   ],
+   "game": [
+    {
+     "frames": 175,
+     "msFrame": 45.62,
+     "p95": 50.1,
+     "fps": 21.9,
+     "longTaskMs": 967,
+     "taskMsPerFrame": 46.37,
+     "cpuMsPerSec": 3622
+    },
+    {
+     "frames": 185,
+     "msFrame": 43.15,
+     "p95": 50.1,
+     "fps": 23.2,
+     "longTaskMs": 96,
+     "taskMsPerFrame": 43.85,
+     "cpuMsPerSec": 3631
+    },
+    {
+     "frames": 175,
+     "msFrame": 45.81,
+     "p95": 50.1,
+     "fps": 21.8,
+     "longTaskMs": 944,
+     "taskMsPerFrame": 46.48,
+     "cpuMsPerSec": 3654
+    }
+   ],
+   "summary": {
+    "dashboard": {
+     "msFrame": 16.67,
+     "p95": 16.8,
+     "taskMsPerFrame": 0.32,
+     "cpuMsPerSec": 64
+    },
+    "scroll": {
+     "msFrame": 16.67,
+     "p95": 16.7,
+     "taskMsPerFrame": 0,
+     "cpuMsPerSec": 335
+    },
+    "game": {
+     "msFrame": 45.62,
+     "p95": 50.1,
+     "taskMsPerFrame": 46.37,
+     "cpuMsPerSec": 3631
+    }
+   }
+  }
+ }
+}
