@@ -1,0 +1,93 @@
+{
+  "extName": {
+    "message": "Spindro Remote"
+  },
+  "extDescription": {
+    "message": "Utilisez votre Zwift Click comme télécommande pour YouTube, Netflix et d'autres onglets vidéo pendant votre séance Spindro."
+  },
+  "popupSubtitle": {
+    "message": "Télécommande"
+  },
+  "connTitle": {
+    "message": "Spindro"
+  },
+  "connOn": {
+    "message": "Connecté à Spindro ($N$ onglet)",
+    "placeholders": {
+      "N": {
+        "content": "$1"
+      }
+    }
+  },
+  "connOff": {
+    "message": "Non connecté"
+  },
+  "connHint": {
+    "message": "Ouvrez Spindro (spindro.fit/app) dans un onglet et activez-y le mode Remote."
+  },
+  "targetTitle": {
+    "message": "Onglet contrôlé"
+  },
+  "targetNone": {
+    "message": "Aucun onglet : ouvrez une vidéo dans un autre onglet"
+  },
+  "pinBtn": {
+    "message": "Épingler cet onglet"
+  },
+  "unpinBtn": {
+    "message": "Détacher"
+  },
+  "pinnedNote": {
+    "message": "Épinglé : il reste la cible même si vous regardez d'autres onglets."
+  },
+  "sitesTitle": {
+    "message": "Sites autorisés"
+  },
+  "sitesIntro": {
+    "message": "Toujours actifs : Spindro, YouTube, Netflix. Les autres sites seulement après votre accord."
+  },
+  "sitesNone": {
+    "message": "Aucun autre site autorisé."
+  },
+  "addSiteBtn": {
+    "message": "Autoriser le site de l'onglet contrôlé"
+  },
+  "removeBtn": {
+    "message": "Retirer"
+  },
+  "addOk": {
+    "message": "$N$ autorisé.",
+    "placeholders": {
+      "N": {
+        "content": "$1"
+      }
+    }
+  },
+  "addDenied": {
+    "message": "Non autorisé."
+  },
+  "addBad": {
+    "message": "Cette page ne peut pas être contrôlée."
+  },
+  "strongTitle": {
+    "message": "Mode renforcé"
+  },
+  "strongLabel": {
+    "message": "Utiliser des touches fiables (facultatif)"
+  },
+  "strongExplain": {
+    "message": "Permet à Spindro d'envoyer de vraies touches et de passer en plein écran sur les pages qui bloquent les scripts. Chrome affiche alors le bandeau « Spindro Remote a commencé à déboguer ce navigateur ». Désactivé par défaut."
+  },
+  "strongOnNote": {
+    "message": "Mode renforcé activé."
+  },
+  "strongDenied": {
+    "message": "Autorisation refusée : le mode renforcé reste désactivé."
+  },
+  "helpTitle": {
+    "message": "Comment ça marche"
+  },
+  "helpText": {
+    "message": "Gardez Spindro ouvert (la mini-fenêtre est pratique), lancez une vidéo dans un autre onglet, puis passez Spindro en mode Remote. Le Click pilote le dernier onglet consulté. Rien n'est collecté ni envoyé."
+  }
+}

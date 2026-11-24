@@ -1,0 +1,8 @@
+<!doctype html><meta charset="utf-8"><title>Video page</title>
+<style>body{margin:0;background:#222;color:#fff;font:16px sans-serif} video{display:block;width:640px;height:360px;background:#000}</style>
+<video id="v" src="media.wav" loop></video>
+<p><button id="prev" aria-label="Previous episode">Prev</button> <button id="next" aria-label="Next episode">Next</button> <button id="skip">Skip Intro</button></p>
+<script>
+window.__clicks = [];
+for (const b of document.querySelectorAll('button')) b.addEventListener('click', () => window.__clicks.push(b.id));
+</script>

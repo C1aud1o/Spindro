@@ -1,0 +1,17 @@
+<!doctype html><meta charset="utf-8"><title>YouTube-like</title>
+<style>body{margin:0;background:#111;color:#fff;font:16px sans-serif} video{display:block;width:640px;height:360px}</style>
+<div id="movie_player"><video id="v" src="media.wav"></video>
+  <button class="ytp-skip-ad-button" id="adskip">Skip Ad</button><button class="ytp-fullscreen-button" id="fsb">fs</button><button class="ytp-size-button" id="theatre">theatre</button></div>
+<script>
+// Fake of the parts of the real player API that the adapter uses (names from the public YouTube IFrame API).
+const v = document.getElementById('v'); const p = document.getElementById('movie_player'); const calls = (window.__calls = []);
+let vol = 50; let muted = false;
+Object.assign(p, {
+  getPlayerState: () => (v.paused ? 2 : 1), playVideo: () => { calls.push('playVideo'); v.play(); }, pauseVideo: () => { calls.push('pauseVideo'); v.pause(); },
+  getCurrentTime: () => v.currentTime, seekTo: (t) => { calls.push(`seekTo:${Math.round(t)}`); v.currentTime = t; },
+  getVolume: () => vol, setVolume: (x) => { calls.push(`setVolume:${x}`); vol = x; }, isMuted: () => muted, mute: () => { calls.push('mute'); muted = true; }, unMute: () => { calls.push('unMute'); muted = false; },
+  nextVideo: () => calls.push('nextVideo'), previousVideo: () => calls.push('previousVideo'),
+});
+for (const b of document.querySelectorAll('button')) b.addEventListener('click', () => calls.push(`click:${b.id}`));
+document.addEventListener('keydown', (e) => calls.push(`key:${e.key}:${e.isTrusted}`));
+</script>

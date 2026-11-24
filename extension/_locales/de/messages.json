@@ -1,0 +1,93 @@
+{
+  "extName": {
+    "message": "Spindro Remote"
+  },
+  "extDescription": {
+    "message": "Nutze deinen Zwift Click als Fernbedienung für YouTube, Netflix und andere Video-Tabs, während dein Training in Spindro läuft."
+  },
+  "popupSubtitle": {
+    "message": "Fernbedienung"
+  },
+  "connTitle": {
+    "message": "Spindro"
+  },
+  "connOn": {
+    "message": "Mit Spindro verbunden ($N$ Tab)",
+    "placeholders": {
+      "N": {
+        "content": "$1"
+      }
+    }
+  },
+  "connOff": {
+    "message": "Nicht verbunden"
+  },
+  "connHint": {
+    "message": "Öffne Spindro (spindro.fit/app) in einem Tab und schalte dort den Remote-Modus ein."
+  },
+  "targetTitle": {
+    "message": "Gesteuerter Tab"
+  },
+  "targetNone": {
+    "message": "Noch kein Tab: öffne ein Video in einem anderen Tab"
+  },
+  "pinBtn": {
+    "message": "Diesen Tab festlegen"
+  },
+  "unpinBtn": {
+    "message": "Lösen"
+  },
+  "pinnedNote": {
+    "message": "Festgelegt: bleibt das Ziel, auch wenn du andere Tabs ansiehst."
+  },
+  "sitesTitle": {
+    "message": "Erlaubte Seiten"
+  },
+  "sitesIntro": {
+    "message": "Immer aktiv: Spindro, YouTube, Netflix. Andere Seiten erst nach deiner Erlaubnis."
+  },
+  "sitesNone": {
+    "message": "Keine weitere Seite erlaubt."
+  },
+  "addSiteBtn": {
+    "message": "Seite des gesteuerten Tabs erlauben"
+  },
+  "removeBtn": {
+    "message": "Entfernen"
+  },
+  "addOk": {
+    "message": "$N$ erlaubt.",
+    "placeholders": {
+      "N": {
+        "content": "$1"
+      }
+    }
+  },
+  "addDenied": {
+    "message": "Nicht erlaubt."
+  },
+  "addBad": {
+    "message": "Diese Seite lässt sich nicht steuern."
+  },
+  "strongTitle": {
+    "message": "Starker Modus"
+  },
+  "strongLabel": {
+    "message": "Vertrauenswürdige Tasten nutzen (optional)"
+  },
+  "strongExplain": {
+    "message": "Erlaubt Spindro, echte Tastendrücke zu senden und auf Seiten, die Skripte blockieren, den Vollbildmodus zu starten. Chrome zeigt dabei den Hinweis „Spindro Remote hat mit dem Debuggen dieses Browsers begonnen“. Standardmäßig aus."
+  },
+  "strongOnNote": {
+    "message": "Starker Modus ist an."
+  },
+  "strongDenied": {
+    "message": "Berechtigung nicht erteilt: Starker Modus bleibt aus."
+  },
+  "helpTitle": {
+    "message": "So funktioniert es"
+  },
+  "helpText": {
+    "message": "Lass Spindro offen (das Mini-Fenster ist praktisch), starte ein Video in einem anderen Tab und schalte Spindro auf Remote-Modus. Der Click steuert den zuletzt angesehenen Tab. Es wird nichts gesammelt oder gesendet."
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "extName": {
+    "message": "Spindro Remote"
+  },
+  "extDescription": {
+    "message": "Usa tu Zwift Click como mando para YouTube, Netflix y otras pestañas de vídeo mientras entrenas con Spindro."
+  },
+  "popupSubtitle": {
+    "message": "Mando"
+  },
+  "connTitle": {
+    "message": "Spindro"
+  },
+  "connOn": {
+    "message": "Conectado a Spindro ($N$ pestaña)",
+    "placeholders": {
+      "N": {
+        "content": "$1"
+      }
+    }
+  },
+  "connOff": {
+    "message": "No conectado"
+  },
+  "connHint": {
+    "message": "Abre Spindro (spindro.fit/app) en una pestaña y activa allí el modo Remote."
+  },
+  "targetTitle": {
+    "message": "Pestaña controlada"
+  },
+  "targetNone": {
+    "message": "Ninguna pestaña: abre un vídeo en otra pestaña"
+  },
+  "pinBtn": {
+    "message": "Fijar esta pestaña"
+  },
+  "unpinBtn": {
+    "message": "Soltar"
+  },
+  "pinnedNote": {
+    "message": "Fijada: sigue siendo la controlada aunque mires otras pestañas."
+  },
+  "sitesTitle": {
+    "message": "Sitios permitidos"
+  },
+  "sitesIntro": {
+    "message": "Siempre activos: Spindro, YouTube, Netflix. Otros sitios solo tras tu permiso."
+  },
+  "sitesNone": {
+    "message": "Ningún otro sitio permitido."
+  },
+  "addSiteBtn": {
+    "message": "Permitir el sitio de la pestaña controlada"
+  },
+  "removeBtn": {
+    "message": "Quitar"
+  },
+  "addOk": {
+    "message": "$N$ permitido.",
+    "placeholders": {
+      "N": {
+        "content": "$1"
+      }
+    }
+  },
+  "addDenied": {
+    "message": "No permitido."
+  },
+  "addBad": {
+    "message": "Esta página no se puede controlar."
+  },
+  "strongTitle": {
+    "message": "Modo fuerte"
+  },
+  "strongLabel": {
+    "message": "Usar teclas de confianza (opcional)"
+  },
+  "strongExplain": {
+    "message": "Permite a Spindro enviar pulsaciones reales y entrar en pantalla completa en páginas que bloquean scripts. Chrome muestra entonces el aviso «Spindro Remote ha empezado a depurar este navegador». Desactivado por defecto."
+  },
+  "strongOnNote": {
+    "message": "Modo fuerte activado."
+  },
+  "strongDenied": {
+    "message": "Permiso no concedido: el modo fuerte sigue desactivado."
+  },
+  "helpTitle": {
+    "message": "Cómo funciona"
+  },
+  "helpText": {
+    "message": "Mantén Spindro abierto (la mini ventana es práctica), reproduce un vídeo en otra pestaña y pon Spindro en modo Remote. El Click controla la última pestaña que miraste. No se recoge ni se envía nada."
+  }
+}

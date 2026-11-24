@@ -1,0 +1,11 @@
+<!doctype html><meta charset="utf-8"><title>Nav page</title>
+<style>body{margin:0;height:3000px;font:16px sans-serif} button,a{position:absolute;width:120px;height:40px;display:block;background:#ddd}</style>
+<button id="b1" style="left:20px;top:20px">One</button>
+<button id="b2" style="left:220px;top:20px">Two</button>
+<button id="b3" style="left:420px;top:20px">Three</button>
+<a id="l4" href="#four" style="left:20px;top:120px">Four</a>
+<button id="b5" style="left:220px;top:120px">Five</button>
+<button id="b6" style="left:420px;top:120px" disabled>Six (disabled)</button>
+<button id="b7" style="left:20px;top:220px" style="display:none">Seven</button>
+<button id="hid" style="left:420px;top:220px;display:none">Hidden</button>
+<script>window.__clicks = []; for (const b of document.querySelectorAll('button,a')) b.addEventListener('click', () => window.__clicks.push(b.id));</script>

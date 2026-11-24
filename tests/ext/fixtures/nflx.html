@@ -1,0 +1,24 @@
+<!doctype html><meta charset="utf-8"><title>Netflix-like</title>
+<style>body{margin:0;background:#000;color:#fff;font:16px sans-serif} video{display:block;width:640px;height:360px}</style>
+<video id="v" src="media.wav"></video>
+<script>
+// ?mode=api (default): fake of Netflix's player object. ?mode=buttons: no player object, only data-uia buttons. ?mode=none: just a <video>.
+window.__calls = [];
+document.addEventListener('keydown', (e) => window.__calls.push(`key:${e.key}:${e.isTrusted}`));
+const mode = new URLSearchParams(location.search).get('mode') || 'api';
+const v = document.getElementById('v'); window.__violations = [];
+// Netflix breaks when a script writes currentTime: record any write (and ignore it, like a broken player would)
+const real = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'currentTime');
+Object.defineProperty(v, 'currentTime', { get() { return real.get.call(v); }, set(x) { window.__violations.push(`currentTime=${x}`); } });
+const inner = (t) => real.set.call(v, t);
+const add = (name, text) => { const b = document.createElement('button'); b.dataset.uia = name; b.textContent = text; b.addEventListener('click', () => window.__calls.push(`click:${name}`)); document.body.append(b); };
+if (mode === 'api') {
+  let vol = 0.5; let muted = false;
+  const player = { isPaused: () => v.paused, play: () => { window.__calls.push('play'); v.play(); }, pause: () => { window.__calls.push('pause'); v.pause(); },
+    getCurrentTime: () => real.get.call(v) * 1000, seek: (ms) => { window.__calls.push(`seek:${Math.round(ms / 1000)}s`); inner(ms / 1000); },
+    getVolume: () => vol, setVolume: (x) => { window.__calls.push(`setVolume:${x}`); vol = x; }, getMuted: () => muted, setMuted: (m) => { window.__calls.push(`setMuted:${m}`); muted = m; } };
+  window.netflix = { appContext: { state: { playerApp: { getAPI: () => ({ videoPlayer: { getAllPlayerSessionIds: () => ['watch-1'], getVideoPlayerBySessionId: () => player } }) } } } };
+  add('player-skip-intro', 'Skip Intro'); add('next-episode-seek-button', 'Next Episode');
+}
+if (mode === 'buttons') { for (const [n, t] of [['control-play-pause-pause', 'Pause'], ['control-back10', 'Back 10'], ['control-forward10', 'Fwd 10'], ['control-volume-high', 'Vol'], ['player-skip-recap', 'Skip Recap']]) add(n, t); }
+</script>
