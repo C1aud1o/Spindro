@@ -4,16 +4,16 @@
   color-scheme: dark;
   --ink: #0f0f0d; --paper: 242, 240, 230; --lime: #D9FF3D; --lime-rgb: 217, 255, 61; --lime-ink: #141a00;
   --text: rgba(var(--paper), 1); --dim: rgba(var(--paper), .66);
-  --fill: rgba(24, 24, 20, .62); --fill-2: rgba(var(--paper), .07); --fill-3: rgba(var(--paper), .12); --well: rgba(0, 0, 0, .3);
-  --sheen: linear-gradient(180deg, rgba(var(--paper), .09), rgba(var(--paper), 0) 46%);
-  --edge-top: rgba(var(--paper), .30); --edge: rgba(var(--paper), .12);
-  --edge-shadow: inset 0 1px 0 var(--edge-top), inset 0 0 0 1px var(--edge), inset 0 -1px 0 rgba(0, 0, 0, .4);
-  --ambient: radial-gradient(70% 50% at 92% 0%, rgba(217, 255, 61, .12), transparent 70%), radial-gradient(60% 45% at 0% 100%, rgba(40, 200, 180, .11), transparent 70%), radial-gradient(60% 50% at 85% 85%, rgba(128, 96, 255, .13), transparent 72%), var(--ink);
-  --r-sm: 14px; --r-md: 18px; --r-pill: 999px;
+  --fill: rgba(12, 18, 22, .42); --fill-2: rgba(var(--paper), .09); --fill-3: rgba(var(--paper), .16); --well: rgba(0, 0, 0, .3);
+  --sheen: linear-gradient(158deg, rgba(var(--paper), .24), rgba(var(--paper), .07) 26%, rgba(var(--paper), 0) 52%);
+  --edge-top: rgba(255, 255, 255, .62); --edge: rgba(var(--paper), .14);
+  --edge-shadow: inset 1.5px 1.5px 1px -1px var(--edge-top), inset 0 0 0 1px var(--edge), inset -1px -1px 1px -1px rgba(255, 255, 255, .16), inset 0 0 22px rgba(var(--paper), .05);
+  --ambient: radial-gradient(120% 90% at 50% 46%, transparent 46%, rgba(4, 5, 5, .55) 100%), radial-gradient(70% 45% at 4% 2%, rgba(24, 196, 178, .55), transparent 70%), radial-gradient(60% 45% at 104% 40%, rgba(124, 92, 255, .55), transparent 70%), radial-gradient(60% 40% at 70% 104%, rgba(255, 138, 92, .30), transparent 70%), radial-gradient(34% 20% at 96% 2%, rgba(217, 255, 61, .30), transparent 72%), var(--ink);
+  --r-sm: 16px; --r-md: 22px; --r-pill: 999px;
   --ease-spring: cubic-bezier(.34, 1.45, .5, 1);
 }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-  :root { --fill: #1b1b17; --fill-2: #272720; --fill-3: #33332a; --well: #0f0f0d; --sheen: none; --ambient: var(--ink); --edge: rgba(var(--paper), .5); --dim: rgba(var(--paper), .86); }
+  :root { --fill: #1b1b17; --fill-2: #272720; --fill-3: #33332a; --well: #0f0f0d; --sheen: none; --ambient: var(--ink); --edge-shadow: inset 0 0 0 1px var(--edge); --edge: rgba(var(--paper), .5); --dim: rgba(var(--paper), .86); }
 }
 * { box-sizing: border-box; }
 body { margin: 0; width: 340px; padding: 12px; background: var(--ambient); color: var(--text); font: 13px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -29,10 +29,10 @@ p { margin: 0 0 6px; }
 .status.on::before { background: var(--lime); box-shadow: 0 0 10px var(--lime); }
 .row { display: flex; gap: 8px; margin-top: 8px; }
 button { font: inherit; font-weight: 700; min-height: 36px; color: var(--lime-ink); border: 0; border-radius: var(--r-pill); padding: 6px 16px; cursor: pointer;
-  background: linear-gradient(180deg, rgba(255, 255, 255, .34), rgba(255, 255, 255, 0) 52%), var(--lime); box-shadow: 0 4px 16px rgba(var(--lime-rgb), .24), inset 0 1px 0 rgba(255, 255, 255, .6);
+  background: linear-gradient(160deg, rgba(255, 255, 255, .62), rgba(255, 255, 255, .12) 34%, rgba(255, 255, 255, 0) 56%), linear-gradient(180deg, rgba(var(--lime-rgb), .9), rgba(var(--lime-rgb), .72)); box-shadow: 0 4px 22px rgba(var(--lime-rgb), .30), inset 1.5px 1.5px 1px -1px rgba(255, 255, 255, .9), inset 0 -8px 16px -6px rgba(var(--lime-rgb), .55);
   transition: transform .14s var(--ease-spring); }
 button:active { transform: scale(.95); }
-button.ghost, .sites button { color: var(--text); background: var(--sheen), var(--fill-2); box-shadow: inset 0 1px 0 var(--edge-top), inset 0 0 0 1px var(--edge); }
+button.ghost, .sites button { color: var(--text); background: var(--sheen), var(--fill-2); box-shadow: var(--edge-shadow); }
 button:disabled { opacity: .4; cursor: default; }
 button:focus-visible, input:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; box-shadow: 0 0 0 6px rgba(var(--lime-rgb), .2); }
 .sites { list-style: none; margin: 0 0 6px; padding: 0; }

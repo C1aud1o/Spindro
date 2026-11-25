@@ -397,5 +397,112 @@
     }
    }
   }
+ },
+ "u5": {
+  "note": "Second, bold pass. Same method (SwiftShader, 8 s per scene, median of 3 runs), measured alternately with the flat original on the same machine: two rounds. game = Horde Run at quality low. scroll = scrolling the long Settings sheet (page blur is switched off while it scrolls, js/glass.js).",
+  "beforeRound1": {
+   "dashboard": {
+    "msFrame": 16.67,
+    "p95": 16.7,
+    "taskMsPerFrame": 0.6,
+    "cpuMsPerSec": 128
+   },
+   "scroll": {
+    "msFrame": 16.67,
+    "p95": 16.8,
+    "taskMsPerFrame": 0,
+    "cpuMsPerSec": 469
+   },
+   "game": {
+    "msFrame": 61.19,
+    "p95": 66.8,
+    "taskMsPerFrame": 62.46,
+    "cpuMsPerSec": 3620
+   }
+  },
+  "afterRound1": {
+   "dashboard": {
+    "msFrame": 16.67,
+    "p95": 16.8,
+    "taskMsPerFrame": 0.63,
+    "cpuMsPerSec": 167
+   },
+   "scroll": {
+    "msFrame": 16.67,
+    "p95": 16.7,
+    "taskMsPerFrame": 0,
+    "cpuMsPerSec": 1529
+   },
+   "game": {
+    "msFrame": 61.41,
+    "p95": 66.8,
+    "taskMsPerFrame": 62.82,
+    "cpuMsPerSec": 3610
+   }
+  },
+  "beforeRound2": {
+   "dashboard": {
+    "msFrame": 16.67,
+    "p95": 16.7,
+    "taskMsPerFrame": 0.62,
+    "cpuMsPerSec": 127
+   },
+   "scroll": {
+    "msFrame": 16.67,
+    "p95": 16.7,
+    "taskMsPerFrame": 0,
+    "cpuMsPerSec": 475
+   },
+   "game": {
+    "msFrame": 60.35,
+    "p95": 66.7,
+    "taskMsPerFrame": 61.59,
+    "cpuMsPerSec": 3591
+   }
+  },
+  "afterRound2": {
+   "dashboard": {
+    "msFrame": 16.67,
+    "p95": 16.7,
+    "taskMsPerFrame": 0.65,
+    "cpuMsPerSec": 174
+   },
+   "scroll": {
+    "msFrame": 16.67,
+    "p95": 16.7,
+    "taskMsPerFrame": 0,
+    "cpuMsPerSec": 1626
+   },
+   "game": {
+    "msFrame": 60.81,
+    "p95": 83.3,
+    "taskMsPerFrame": 62.19,
+    "cpuMsPerSec": 3603
+   }
+  },
+  "afterSolid": {
+   "dashboard": {
+    "msFrame": 16.67,
+    "p95": 16.7,
+    "taskMsPerFrame": 0.67,
+    "cpuMsPerSec": 136
+   },
+   "scroll": {
+    "msFrame": 16.67,
+    "p95": 16.8,
+    "taskMsPerFrame": 0,
+    "cpuMsPerSec": 673
+   },
+   "game": {
+    "msFrame": 63.09,
+    "p95": 83.3,
+    "taskMsPerFrame": 64.62,
+    "cpuMsPerSec": 3601
+   }
+  },
+  "gameRegressionPercent": {
+   "round1": 0.4,
+   "round2": 0.8
+  }
  }
 }

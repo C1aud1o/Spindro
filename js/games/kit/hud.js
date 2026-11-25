@@ -175,10 +175,11 @@ export function panel(ctx, x, y, w, h, { r = 10, fill = HUD.ink, border = null }
   if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h);
   ctx.fillStyle = fill; ctx.fill();
   if (h >= 18 && !isSolid()) {
-    const sheen = ctx.createLinearGradient(0, y, 0, y + h * 0.55); sheen.addColorStop(0, 'rgba(255,255,255,.17)'); sheen.addColorStop(1, 'rgba(255,255,255,0)');
+    // gloss from the top-left corner, then a specular rim: bright top-left, fading, a faint return at the bottom-right
+    const sheen = ctx.createLinearGradient(x, y, x + Math.min(w, h * 2.4), y + h); sheen.addColorStop(0, 'rgba(255,255,255,.26)'); sheen.addColorStop(0.45, 'rgba(255,255,255,.06)'); sheen.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = sheen; ctx.fill();
-    const edge = ctx.createLinearGradient(0, y, 0, y + h); edge.addColorStop(0, 'rgba(255,255,255,.42)'); edge.addColorStop(0.5, 'rgba(255,255,255,.08)'); edge.addColorStop(1, 'rgba(255,255,255,.16)');
-    ctx.lineWidth = 1; ctx.strokeStyle = edge; ctx.stroke();
+    const edge = ctx.createLinearGradient(x, y, x + w * 0.6, y + h); edge.addColorStop(0, 'rgba(255,255,255,.62)'); edge.addColorStop(0.35, 'rgba(255,255,255,.16)'); edge.addColorStop(0.75, 'rgba(255,255,255,.08)'); edge.addColorStop(1, 'rgba(255,255,255,.20)');
+    ctx.lineWidth = 1.25; ctx.strokeStyle = edge; ctx.stroke();
   }
   if (border) { ctx.lineWidth = 2; ctx.strokeStyle = border; ctx.stroke(); }
 }

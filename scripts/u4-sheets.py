@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""U4 liquid glass: contact sheets from the screenshots of scripts/u4-shots.mjs and scripts/u4-mini-shots.mjs.
-   python3 scripts/u4-sheets.py BEFORE_DIR AFTER_DIR MINI_BEFORE_DIR MINI_AFTER_DIR [OUT_DIR=docs/design]
+"""U4/U5 liquid glass: contact sheets from the screenshots of scripts/u4-shots.mjs and scripts/u4-mini-shots.mjs.
+   python3 scripts/u4-sheets.py BEFORE_DIR AFTER_DIR MINI_BEFORE_DIR MINI_AFTER_DIR [OUT_DIR=docs/design] [FIRSTPASS_DIR]
 Writes u4-glass-app.png, u4-glass-games.png, u4-glass-a11y.png and u4-glass-mini.png (the new look is what the owner approves in the app)."""
 import sys, os
 from PIL import Image, ImageDraw, ImageFont
 
 B, A, MB, MA = sys.argv[1:5]
 OUT = sys.argv[5] if len(sys.argv) > 5 else 'docs/design'
+P1 = sys.argv[6] if len(sys.argv) > 6 else None   # screenshots of the first pass (U4), for u5-compare.png
 INK = (15, 15, 13); LIME = (217, 255, 61); DIM = (160, 158, 148)
 F = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'; FB = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
 font = lambda s, b=False: ImageFont.truetype(FB if b else F, s)
@@ -45,7 +46,7 @@ def shot(d, n, vp, **k): return load(d, f'{n}-{vp}', **k)
 
 # ---------- app ----------
 APP = [('home', 'Home'), ('dashboard', 'Ride + workout'), ('workouts', 'Workouts'), ('devices', 'Devices'), ('settings', 'Settings'), ('history', 'History'), ('clickmenu', 'Click menu'), ('dialog', 'Dialog'), ('toast', 'Toast')]
-s = Sheet(1900, 'U4 · Spindro liquid glass: the app', 'Before (top) and after (below), rendered from the real code with a fake trainer and a fake Click. Not photos of real devices.')
+s = Sheet(1900, 'U5 · Spindro liquid glass: the app', 'Before (top) and after (below), rendered from the real code with a fake trainer and a fake Click. Not photos of real devices.')
 s.heading('Phone 390 × 844')
 s.row([(shot(B, f'app-{k}', 'phone', w=200), f'before · {t}') for k, t in APP])
 s.row([(shot(A, f'app-{k}', 'phone', w=200), f'after · {t}') for k, t in APP])
@@ -59,7 +60,7 @@ s.save(os.path.join(OUT, 'u4-glass-app.png'))
 
 # ---------- games ----------
 G = [('games-menu', 'Game menu'), ('games-horde-play', 'Horde Run, workout strip'), ('games-gruppetto-play', 'Slipstream, workout strip')]
-s = Sheet(1900, 'U4 · Spindro liquid glass: games', 'Game menu (DOM, glass) and the in-game HUD (canvas, tinted glass without any blur over WebGL), with the shared workout strip. Before (top) and after (below).')
+s = Sheet(1900, 'U5 · Spindro liquid glass: games', 'Game menu (DOM, glass) and the in-game HUD (canvas, tinted glass without any blur over WebGL), with the shared workout strip. Before (top) and after (below).')
 s.heading('Phone 390 × 844')
 s.row([(shot(B, k, 'phone', h=560), f'before · {t}') for k, t in G])
 s.row([(shot(A, k, 'phone', h=560), f'after · {t}') for k, t in G])
@@ -69,7 +70,7 @@ for k, t in G:
 s.save(os.path.join(OUT, 'u4-glass-games.png'))
 
 # ---------- accessibility variants (new look) ----------
-s = Sheet(1900, 'U4 · Spindro liquid glass: accessibility', 'Reduce transparency (solid panels), high contrast (prefers-contrast: more) and the keyboard focus ring, new look only.')
+s = Sheet(1900, 'U5 · Spindro liquid glass: accessibility', 'Reduce transparency (solid panels), high contrast (prefers-contrast: more) and the keyboard focus ring, new look only.')
 s.heading('Reduce transparency · phone')
 s.row([(shot(A, 'a11y-solid-dashboard', 'phone', h=520), 'ride + workout'), (shot(A, 'a11y-solid-settings', 'phone', h=520), 'settings'),
        (shot(A, 'a11y-contrast-settings', 'phone', h=520), 'high contrast · settings'), (shot(A, 'a11y-focus-home', 'phone', h=520), 'focus ring · home'), (shot(A, 'a11y-focus-settings', 'phone', h=520), 'focus ring · settings')])
@@ -80,7 +81,19 @@ s.save(os.path.join(OUT, 'u4-glass-a11y.png'))
 
 # ---------- mini window + popup ----------
 M = [('mini-spindro', 'Mini window · workout'), ('mini-remote', 'Mini window · Remote mode'), ('mini-paused', 'Mini window · paused'), ('popup', 'Extension popup')]
-s = Sheet(1900, 'U4 · Spindro liquid glass: mini window and extension popup', 'Before (top) and after (below). The mini window is a Document Picture-in-Picture window; the popup is the Spindro Remote extension.')
+s = Sheet(1900, 'U5 · Spindro liquid glass: mini window and extension popup', 'Before (top) and after (below). The mini window is a Document Picture-in-Picture window; the popup is the Spindro Remote extension.')
 s.row([(load(MB, k, h=520), f'before · {t}') for k, t in M])
 s.row([(load(MA, k, h=520), f'after · {t}') for k, t in M])
 s.save(os.path.join(OUT, 'u4-glass-mini.png'))
+
+# ---------- u5-compare: original flat / first pass / this pass ----------
+if P1:
+    C = [('home', 'Home'), ('dashboard', 'Ride + workout'), ('workouts', 'Workouts sheet'), ('settings', 'Settings'), ('clickmenu', 'Click menu'), ('dialog', 'Dialog')]
+    s = Sheet(1900, 'U5 · original flat / first pass (U4) / this pass (U5)', 'Same screens, same data, rendered from the real code at each stage. Left: the flat original. Middle: the first glass pass. Right: this pass.')
+    s.heading('Phone 390 × 844')
+    s.row([(shot(d, f'app-{k}', 'phone', h=420), f'{n} · {t}') for k, t in C[:3] for d, n in ((B, 'orig'), (P1, 'U4'), (A, 'U5'))])
+    s.row([(shot(d, f'app-{k}', 'phone', h=420), f'{n} · {t}') for k, t in C[3:] for d, n in ((B, 'orig'), (P1, 'U4'), (A, 'U5'))])
+    s.heading('Desktop 1280 × 720')
+    for k, t in C:
+        s.row([(shot(d, f'app-{k}', 'desktop', w=612), f'{n} · {t}') for d, n in ((B, 'original'), (P1, 'first pass'), (A, 'this pass'))])
+    s.save(os.path.join(OUT, 'u5-compare.png'))

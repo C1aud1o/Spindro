@@ -34,8 +34,18 @@ function syncStill() {
   document.documentElement.classList.toggle('still', busy);
 }
 
+// While something scrolls (a sheet, a menu) the blur of the page behind it is switched off and comes back 160 ms after the last scroll event:
+// a blur re-composited on every scrolled frame is the one thing that made scrolling slow on weak GPUs (measured with the software renderer).
+let scrollT = 0;
+function onScroll() {
+  const root = document.documentElement;
+  if (!root.classList.contains('scrolling')) root.classList.add('scrolling');
+  clearTimeout(scrollT); scrollT = setTimeout(() => root.classList.remove('scrolling'), 160);
+}
+
 export function initGlass() {
   apply();
+  document.addEventListener('scroll', onScroll, { capture: true, passive: true });
   for (const q of ['(prefers-reduced-transparency: reduce)', '(prefers-contrast: more)']) { try { matchMedia(q).addEventListener('change', apply); } catch { /* old WebView */ } }
   window.addEventListener('spindro:quality', apply); // the game quality detection just measured "low"
   syncStill();

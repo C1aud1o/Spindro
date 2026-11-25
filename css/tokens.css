@@ -13,51 +13,61 @@
   /* ---- identity (never changes): dark base, one lime accent, off-white text ---- */
   --ink: #0f0f0d;
   --paper: 242, 240, 230;                            /* #F2F0E6, rgb for the opacities */
-  --t1: rgba(var(--paper), 1); --t2: rgba(var(--paper), .82); --t3: rgba(var(--paper), .64); --t4: rgba(var(--paper), .14);
+  --t1: rgba(var(--paper), 1); --t2: rgba(var(--paper), .82); --t3: rgba(var(--paper), .76); --t4: rgba(var(--paper), .14);
   --accent: #d9ff3d; --accent-rgb: 217, 255, 61; --accent-ink: #141a00;
   --accent-5: rgba(var(--accent-rgb), .07); --accent-line: rgba(var(--accent-rgb), .22);
   --alert: #ff5b3a; --strava: #fc5200; --warn: #ffd43a;
   --z1: #8a857b; --z2: #4aa3ff; --z3: #3cc97e; --z4: #ffd43a; --z5: #ff922b; --z6: #ff4b3e; --z7: #c07bff;
   --zone: var(--z1);
 
-  /* ---- ambient background: slow, low-contrast colour fields so the glass has something to read against ---- */
-  --amb-lime: 217, 255, 61; --amb-teal: 40, 200, 180; --amb-violet: 128, 96, 255;
-  --ambient: radial-gradient(46% 34% at 78% 12%, rgba(var(--amb-lime), .20), transparent 72%),
-             radial-gradient(48% 32% at 14% 40%, rgba(var(--amb-violet), .22), transparent 72%),
-             radial-gradient(54% 34% at 26% 90%, rgba(var(--amb-teal), .22), transparent 72%),
-             radial-gradient(46% 30% at 86% 70%, rgba(var(--amb-violet), .22), transparent 72%),
+  /* ---- ambient background: the world the glass refracts. Big saturated fields (teal, violet, a warm hint, a little lime), soft discs with a readable edge,
+          a vignette that darkens towards the edges so data stays legible ---- */
+  --amb-lime: 217, 255, 61; --amb-teal: 24, 196, 178; --amb-violet: 124, 92, 255; --amb-warm: 255, 138, 92;
+  --ambient: radial-gradient(120% 90% at 50% 46%, transparent 44%, rgba(4, 5, 5, .62) 100%),
+             radial-gradient(64% 40% at 6% 4%, rgba(var(--amb-teal), .52), transparent 70%),
+             radial-gradient(58% 40% at 104% 34%, rgba(var(--amb-violet), .52), transparent 70%),
+             radial-gradient(52% 32% at 68% 104%, rgba(var(--amb-warm), .34), transparent 70%),
+             radial-gradient(56% 34% at -4% 80%, rgba(var(--amb-teal), .44), transparent 70%),
+             radial-gradient(30% 18% at 94% 3%, rgba(var(--amb-lime), .32), transparent 72%),
              var(--ink);
-  --ambient-opacity: 1; --ambient-display: block; --ambient-drift: 90s;
+  /* two soft-edged discs that drift the other way: an edge to refract (visible through and at the rim of every glass layer) */
+  --ambient-orbs: radial-gradient(circle at 78% 24%, rgba(var(--amb-violet), .38) 0, rgba(var(--amb-violet), .24) 9%, transparent 14%),
+                  radial-gradient(circle at 16% 62%, rgba(var(--amb-teal), .42) 0, rgba(var(--amb-teal), .26) 11%, transparent 17%),
+                  radial-gradient(circle at 60% 88%, rgba(var(--amb-warm), .30) 0, rgba(var(--amb-warm), .18) 7%, transparent 11%);
+  --ambient-opacity: 1; --ambient-display: block; --ambient-drift: 70s; --zone-glow: .16;
 
-  /* ---- glass: tint, blur, saturation, edge light ---- */
-  --glass-tint: 24, 24, 20;
-  --glass-fill: rgba(var(--glass-tint), .48);        /* flat panels */
-  --glass-fill-strong: rgba(var(--glass-tint), .76); /* behind the big numbers: legibility first */
-  --glass-fill-float: rgba(var(--glass-tint), .58);  /* floating, blurred (static layers only) */
-  --glass-fill-sheet: rgba(var(--glass-tint), .97);  /* floating AND scrolling (sheets, menus, dialogs): dense tint, no blur: a blur behind scrolling content is re-computed every frame */
-  --glass-fill-2: rgba(var(--paper), .06);           /* a second layer on top of a glass panel */
-  --glass-fill-3: rgba(var(--paper), .11);           /* pressed / hover / selected-neutral */
-  --glass-fill-input: rgba(0, 0, 0, .28);            /* wells: fields, tracks */
-  --sheen: linear-gradient(180deg, rgba(var(--paper), .09) 0%, rgba(var(--paper), 0) 46%);   /* inner light from the top */
-  --blur: 22px; --saturate: 165%;
+  /* ---- glass: tint, blur, saturation, edge light. Low tint: you SEE the colour fields through the panels ---- */
+  --glass-tint: 12, 18, 22;
+  --glass-fill: rgba(var(--glass-tint), .42);        /* flat panels */
+  --glass-fill-strong: rgba(var(--glass-tint), .72); /* behind the big numbers: legibility first */
+  --glass-fill-float: rgba(var(--glass-tint), .34);  /* floating, blurred (static layers only) */
+  --glass-fill-sheet: rgba(var(--glass-tint), .80);  /* sheets, menus, dialogs: translucent over a blurred, dimmed scrim (the sheet itself never blurs: it scrolls) */
+  --glass-fill-2: rgba(var(--paper), .09);           /* a second layer on top of a glass panel */
+  --glass-fill-3: rgba(var(--paper), .16);           /* pressed / hover / selected-neutral */
+  --glass-fill-input: rgba(0, 0, 0, .30);            /* wells: fields, tracks */
+  --sheen: linear-gradient(158deg, rgba(var(--paper), .24) 0%, rgba(var(--paper), .07) 26%, rgba(var(--paper), 0) 52%);   /* gloss: a diagonal highlight from the top-left */
+  --sheen-press: linear-gradient(338deg, rgba(var(--paper), .26) 0%, rgba(var(--paper), .06) 30%, rgba(var(--paper), 0) 55%); /* the light moves to the other corner when pressed */
+  --blur: 26px; --saturate: 190%;
   --glass-filter: blur(var(--blur)) saturate(var(--saturate));
-  --edge-top: rgba(var(--paper), .30);               /* specular highlight on the top edge */
-  --edge: rgba(var(--paper), .11);                   /* hairline around the panel */
-  --edge-bottom: rgba(0, 0, 0, .40);                 /* contact shade under the panel */
-  --edge-shadow: inset 0 1px 0 var(--edge-top), inset 0 0 0 1px var(--edge), inset 0 -1px 0 var(--edge-bottom);
-  --scrim: rgba(6, 6, 5, .66);                       /* behind sheets and dialogs */
+  --page-blur: blur(12px) saturate(125%);          /* the page behind a sheet (a filter on <main>, see css/glass.css) */
+  --edge-top: rgba(255, 255, 255, .62);              /* specular rim, top-left */
+  --edge: rgba(var(--paper), .14);                   /* hairline around the panel */
+  --edge-bottom: rgba(255, 255, 255, .16);           /* faint rim, bottom-right: the light that passes through */
+  --edge-shadow: inset 1.5px 1.5px 1px -1px var(--edge-top), inset 0 0 0 1px var(--edge), inset -1px -1px 1px -1px var(--edge-bottom);
+  --scrim: rgba(4, 6, 8, .50);                       /* behind sheets and dialogs, blurred */
 
   /* ---- shape: radius scale ---- */
-  --r-xs: 10px; --r-sm: 14px; --r-md: 18px; --r-lg: 26px; --r-xl: 34px; --r-pill: 999px;
-  --r-card: var(--r-lg); --r-btn: var(--r-md);
+  --r-xs: 12px; --r-sm: 16px; --r-md: 22px; --r-lg: 28px; --r-xl: 36px; --r-pill: 999px;
+  --r-card: 26px; --r-btn: var(--r-pill);
 
   /* ---- elevation ---- */
-  --elev-1: 0 1px 2px rgba(0, 0, 0, .36), 0 8px 20px rgba(0, 0, 0, .26);
+  --elev-1: 0 1px 2px rgba(0, 0, 0, .34), 0 10px 28px rgba(0, 0, 0, .34);
   --elev-2: 0 2px 4px rgba(0, 0, 0, .38), 0 16px 36px rgba(0, 0, 0, .40);
   --elev-3: 0 4px 10px rgba(0, 0, 0, .42), 0 30px 72px rgba(0, 0, 0, .55);
-  --glow-accent: 0 6px 26px rgba(var(--accent-rgb), .26);
+  --glow-accent: 0 4px 22px rgba(var(--accent-rgb), .30);
   --shadow: var(--edge-shadow), var(--elev-1);
-  --shadow-cta: var(--glow-accent), inset 0 1px 0 rgba(255, 255, 255, .62), inset 0 -2px 6px rgba(80, 100, 0, .28);
+  --shadow-cta: var(--glow-accent), inset 1.5px 1.5px 1px -1px rgba(255, 255, 255, .9), inset -1px -1px 1px -1px rgba(255, 255, 255, .35), inset 0 -8px 16px -6px rgba(217, 255, 61, .55);
+  --cta-fill: linear-gradient(160deg, rgba(255, 255, 255, .62) 0%, rgba(255, 255, 255, .12) 34%, rgba(255, 255, 255, 0) 56%), linear-gradient(180deg, rgba(var(--accent-rgb), .90), rgba(var(--accent-rgb), .72));
 
   /* ---- motion: calm; the spring overshoots a little, blur is never animated ---- */
   --ease-out: cubic-bezier(.22, 1, .36, 1); --ease-spring: cubic-bezier(.34, 1.45, .5, 1);
@@ -84,15 +94,15 @@
 html.solid {
   --glass-fill: #1b1b17; --glass-fill-strong: #1b1b17; --glass-fill-float: #1e1e19; --glass-fill-sheet: #1e1e19;
   --glass-fill-2: #272720; --glass-fill-3: #33332a; --glass-fill-input: #0f0f0d;
-  --sheen: none; --glass-filter: none; --scrim: rgba(0, 0, 0, .78); --ambient-opacity: 0; --ambient-display: none;
-  --edge-top: rgba(var(--paper), .16); --edge: rgba(var(--paper), .16); --edge-bottom: transparent;
+  --sheen: none; --sheen-press: none; --cta-fill: var(--accent); --page-blur: none; --zone-glow: 0; --glass-filter: none; --scrim: rgba(0, 0, 0, .78); --ambient-opacity: 0; --ambient-display: none;
+  --edge-top: rgba(var(--paper), .16); --edge: rgba(var(--paper), .16); --edge-bottom: transparent; --shadow-cta: 0 0 0 1px var(--accent-line);
 }
 @media (prefers-reduced-transparency: reduce) {
   :root {
     --glass-fill: #1b1b17; --glass-fill-strong: #1b1b17; --glass-fill-float: #1e1e19; --glass-fill-sheet: #1e1e19;
     --glass-fill-2: #272720; --glass-fill-3: #33332a; --glass-fill-input: #0f0f0d;
-    --sheen: none; --glass-filter: none; --scrim: rgba(0, 0, 0, .78); --ambient-opacity: 0; --ambient-display: none;
-    --edge-top: rgba(var(--paper), .16); --edge: rgba(var(--paper), .16); --edge-bottom: transparent;
+    --sheen: none; --sheen-press: none; --cta-fill: var(--accent); --page-blur: none; --zone-glow: 0; --glass-filter: none; --scrim: rgba(0, 0, 0, .78); --ambient-opacity: 0; --ambient-display: none;
+    --edge-top: rgba(var(--paper), .16); --edge: rgba(var(--paper), .16); --edge-bottom: transparent; --shadow-cta: 0 0 0 1px var(--accent-line);
   }
 }
 /* high contrast: solid panels, firm borders, brighter secondary text */
@@ -100,12 +110,12 @@ html.solid {
   html:root {
     --glass-fill: #141412; --glass-fill-strong: #141412; --glass-fill-float: #141412; --glass-fill-sheet: #141412;
     --glass-fill-2: #222220; --glass-fill-3: #34342f; --glass-fill-input: #0a0a09;
-    --sheen: none; --glass-filter: none; --scrim: rgba(0, 0, 0, .86); --ambient-opacity: 0; --ambient-display: none;
+    --sheen: none; --sheen-press: none; --cta-fill: var(--accent); --page-blur: none; --zone-glow: 0; --glass-filter: none; --scrim: rgba(0, 0, 0, .86); --ambient-opacity: 0; --ambient-display: none;
     --t2: rgba(var(--paper), 1); --t3: rgba(var(--paper), .86); --t4: rgba(var(--paper), .4);
-    --edge-top: rgba(var(--paper), .7); --edge: rgba(var(--paper), .7); --edge-bottom: transparent; --accent-line: var(--accent);
+    --edge-top: rgba(var(--paper), .7); --edge: rgba(var(--paper), .7); --edge-bottom: transparent; --accent-line: var(--accent); --shadow-cta: 0 0 0 2px var(--accent);
   }
 }
 /* no backdrop-filter (old WebView): the floating layers get an almost opaque fill instead of a blur */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  :root { --glass-fill-float: rgba(var(--glass-tint), .94); --scrim: rgba(6, 6, 5, .72); }
+  :root { --glass-fill-float: rgba(var(--glass-tint), .94); --glass-fill-sheet: rgba(var(--glass-tint), .95); --scrim: rgba(6, 6, 5, .72); --page-blur: none; }
 }
