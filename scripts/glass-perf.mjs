@@ -15,7 +15,7 @@ const { server, url } = await startServer(0);
 const exe = process.env.PW_CHROMIUM_PATH || undefined;
 const browser = await chromium.launch({ executablePath: exe, args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] });
 
-const seed = (solid) => { if (solid) localStorage.setItem('reduceGlass', '1'); localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('safetyAck', '1'); localStorage.setItem('ftp', '200'); localStorage.setItem('lang', 'en'); localStorage.setItem('gameQuality', 'low'); };
+const seed = (solid) => { localStorage.setItem('reduceGlass', solid ? '1' : '0'); localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('safetyAck', '1'); localStorage.setItem('ftp', '200'); localStorage.setItem('lang', 'en'); localStorage.setItem('gameQuality', 'low'); };
 const measure = (SEC) => new Promise((resolve) => {
   const dts = []; let last = performance.now(); const t0 = last; let long = 0;
   try { new PerformanceObserver((l) => { for (const e of l.getEntries()) long += e.duration; }).observe({ entryTypes: ['longtask'] }); } catch { /* */ }

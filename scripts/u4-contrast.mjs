@@ -77,7 +77,7 @@ for (const [vpName, vp] of Object.entries(VIEWPORTS)) for (const [mode, o] of Ob
   const ctx = await browser.newContext({ viewport: vp, deviceScaleFactor: 1, serviceWorkers: 'block' });
   const page = await ctx.newPage();
   await page.addInitScript((o) => { localStorage.setItem('safetyAck', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('lang', 'en'); localStorage.setItem('ftp', '200'); localStorage.setItem('__seeded', '1');
-    localStorage.setItem('rideHistory', JSON.stringify([{ t: Date.now() - 864e5, dur: 3180, km: 24.1, avgW: 168, kj: 534, best: { 5: 262, 60: 231 } }])); if (o.solid) localStorage.setItem('reduceGlass', '1'); }, o);
+    localStorage.setItem('rideHistory', JSON.stringify([{ t: Date.now() - 864e5, dur: 3180, km: 24.1, avgW: 168, kj: 534, best: { 5: 262, 60: 231 } }])); localStorage.setItem('reduceGlass', o.solid ? '1' : '0'); }, o);
   await page.addInitScript({ path: FAKE });
   await page.goto(`${BASE}/index.html`);
   await page.evaluate(async () => { while (!window.rfDevices) await new Promise((r) => setTimeout(r, 50)); return window.rfDevices.add(); });

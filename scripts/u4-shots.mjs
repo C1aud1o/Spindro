@@ -29,7 +29,7 @@ async function open(name, vp, { solid = false, contrast = false, workout = false
   await page.addInitScript((o) => {
     localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('safetyAck', '1'); localStorage.setItem('ftp', '200'); localStorage.setItem('lang', 'en');
     localStorage.setItem('gameQuality', 'low'); localStorage.setItem('rideHistory', JSON.stringify(o.history)); localStorage.setItem('mass', '75');
-    if (o.solid) localStorage.setItem('reduceGlass', '1');
+    localStorage.setItem('reduceGlass', o.solid ? '1' : '0'); // glass on explicitly: the automatic choice is solid on a software renderer
     window.__spindroSeed = 12345;
   }, { history: HISTORY, solid });
   await page.addInitScript({ path: FAKE });

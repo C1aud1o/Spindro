@@ -1,14 +1,32 @@
 // Liquid glass: "Reduce transparency". html.solid turns every glass panel into a solid one (css/tokens.css) and switches the ambient background off.
 // The choice is stored as reduceGlass = '1' (on) | '0' (off); when nothing is stored it is automatic: on for low-end devices
-// (little memory or few cores, or the game quality detection measured "low", see js/games/kit/quality.js).
+// (little memory or few cores, no graphics chip, or the game quality detection measured "low", see js/games/kit/quality.js).
 // The canvas HUD of the games asks isSolid() to draw its glass without the sheen when panels must be solid.
 const KEY = 'reduceGlass';
 const get = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
 const mq = (q) => { try { return matchMedia(q).matches; } catch { return false; } };
 
+// No graphics chip (the browser draws everything on the CPU: virtual machines, remote desktops, some very old devices):
+// blurred glass is far too slow there, so panels are solid unless the person switches glass on.
+let softGl;
+export function softwareRenderer() {
+  if (softGl !== undefined) return softGl;
+  softGl = false;
+  try {
+    const gl = document.createElement('canvas').getContext('webgl');
+    if (gl) {
+      const ext = gl.getExtension('WEBGL_debug_renderer_info');
+      const name = String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+      softGl = /swiftshader|llvmpipe|softpipe|software|basic render/i.test(name);
+      gl.getExtension('WEBGL_lose_context')?.loseContext();
+    }
+  } catch { /* no WebGL: unknown, treated as capable */ }
+  return softGl;
+}
+
 export function lowEndDevice() {
   const mem = navigator.deviceMemory; const cores = navigator.hardwareConcurrency;
-  return get('gameQualityAuto') === 'low' || (!!mem && mem <= 2) || (!!cores && cores <= 2);
+  return get('gameQualityAuto') === 'low' || (!!mem && mem <= 2) || (!!cores && cores <= 2) || softwareRenderer();
 }
 /** What the switch shows: the stored choice, else automatic. */
 export function reduceChoice() { const v = get(KEY); return v === '1' ? true : v === '0' ? false : lowEndDevice(); }
