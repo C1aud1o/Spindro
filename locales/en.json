@@ -892,6 +892,8 @@
   "safety.title": "Before you ride",
   "settings.auto": "auto",
   "settings.autoPause": "Auto start and pause when you pedal or stop",
+  "settings.reduceGlass": "Reduce transparency",
+  "settings.reduceGlassHint": "Solid panels instead of glass. Turns on by itself on low-end devices.",
   "settings.coach": "Voice coach: announces intervals, climbs and milestones",
   "settings.data": "Data and diagnostics",
   "settings.ftpHint": "FTP sets the power-zone colours; weight matters for the virtual gears.",

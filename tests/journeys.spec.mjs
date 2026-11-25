@@ -178,7 +178,8 @@ test('(e) Español, escritorio 1280×720, solo teclado: todo se alcanza, el foco
   await page.keyboard.press(' '); await expect(page.locator('body')).toHaveClass(/riding/);
   await page.keyboard.press('ArrowRight'); await expect(page.locator('#gearNum')).toHaveText('13');
   await page.keyboard.press('ArrowLeft'); await page.keyboard.press('ArrowLeft'); await expect(page.locator('#gearNum')).toHaveText('11'); await shot(page, 'e', '4-riding');
-  await page.waitForTimeout(1500); await page.keyboard.press(' ');
+  await page.waitForFunction(() => window.rfDevices.ride().samples >= 1); // sin una muestra registrada, pausar vuelve al inicio: se espera al tick de 1 Hz, no a un plazo fijo
+  await page.keyboard.press(' ');
   await expect(page.locator('body')).toHaveClass(/paused/);
   // juegos con la tecla g, Esc para volver
   await page.keyboard.press('g'); await expect(page.locator('#gamePanel')).toBeVisible(); await shot(page, 'e', '5-games');

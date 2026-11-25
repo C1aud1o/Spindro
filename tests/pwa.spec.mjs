@@ -23,7 +23,7 @@ test('manifest: campi richiesti per l\'installazione', () => {
   // lo sfondo del manifest è quello dell'app, il colore tema quello del meta tag
   const html = read('index.html').toString('utf8');
   expect(html).toContain(`<meta name="theme-color" content="${m.theme_color}">`);
-  expect(read('css/style.css').toString('utf8')).toContain(`--ink: ${m.background_color}`);
+  expect(read('css/tokens.css').toString('utf8')).toContain(`--ink: ${m.background_color}`); // i token stanno in css/tokens.css
   expect(m.shortcuts.map((s) => s.name)).toEqual(['Workouts', 'Games']);
 });
 

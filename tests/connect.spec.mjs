@@ -436,6 +436,7 @@ test.describe('5 · dispositivi insoliti', () => {
   test('due fonti di battito: vince l\'ultima, la precedente si toglie e lo dice', async ({ page }) => {
     await boot(page);
     await next(page, 'hr'); await page.click('#welcomeConnect');
+    await expect(page.locator('#hrStatus')).toContainText('Fake HRM');
     await page.click('#deviceBar');
     await next(page, 'hr2'); await page.click('#addDevice');
     await expect(page.locator('#toast')).toContainText('Fake HRM was disconnected');
