@@ -194,7 +194,7 @@ test('con un account: a fine partita il punteggio parte con submitScore (solo co
   await expect(page.locator('#trainerStatus')).toContainText('FTMS');
   await page.click('#openGame');
   await page.evaluate(() => document.body.classList.add('dev')); await page.click('[data-game=mattoni]');
-  await expect.poll(() => page.evaluate(() => window.__game?.state)).toBe('menu');
+  await expect.poll(() => page.evaluate(() => window.__game?.state), { timeout: 20_000 }).toBe('menu'); // a 3D game can take more than the default 8 s to load without a GPU
   await page.evaluate(() => { const g = window.__game; g.begin(); g.score = 1234; });
   await page.clock.fastForward(25_000);
   await page.evaluate(() => window.__game.end());
@@ -213,7 +213,7 @@ test('senza login nessun punteggio parte', async ({ page }) => {
   await open(page, { config: true });
   await page.evaluate(async () => { while (!window.rfDevices) await new Promise((r) => setTimeout(r, 50)); return window.rfDevices.add(); });
   await page.click('#openGame'); await page.evaluate(() => document.body.classList.add('dev')); await page.click('[data-game=mattoni]');
-  await expect.poll(() => page.evaluate(() => window.__game?.state)).toBe('menu');
+  await expect.poll(() => page.evaluate(() => window.__game?.state), { timeout: 20_000 }).toBe('menu'); // a 3D game can take more than the default 8 s to load without a GPU
   await page.evaluate(() => { const g = window.__game; g.begin(); g.score = 500; });
   await page.clock.fastForward(25_000);
   await page.evaluate(() => window.__game.end());
