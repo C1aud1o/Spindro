@@ -8,7 +8,7 @@ const FAKE_BLE = fileURLToPath(new URL('./fake-ble.js', import.meta.url));
 test.beforeEach(async ({ page }) => {
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
-  await page.addInitScript(() => { try { if (!localStorage.getItem('__seeded')) { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('lang', 'it'); localStorage.setItem('ftp', '200'); } } catch { /* */ } });
+  await page.addInitScript(() => { try { if (!localStorage.getItem('__seeded')) { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('lang', 'it'); localStorage.setItem('ftp', '200'); localStorage.setItem('autoPause', '0'); /* prove da fermi: nessuna partenza automatica che nasconda la barra in alto */ } } catch { /* */ } });
   await page.addInitScript({ path: FAKE_BLE });
 });
 test.afterEach(async ({ page }) => { expect(page.errors, 'errori JavaScript non gestiti nella pagina').toEqual([]); });

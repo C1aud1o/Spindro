@@ -517,6 +517,7 @@ test.describe('Prova il rullo e stato nel pannello', () => {
 test.describe('layout e controller', () => {
   test('360×640: avviso, suggerimento e pannello non si sovrappongono né escono dallo schermo', async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 640 });
+    await page.addInitScript(() => localStorage.setItem('autoPause', '0')); // prova da fermi: la partenza automatica nasconderebbe avviso e suggerimento
     await withHistory(page); await boot(page);
     await connectTrainer(page);
     await next(page, 'click'); await page.click('#deviceBar'); await page.click('#addDevice'); await page.click('#devicesSheet .close');
