@@ -1141,7 +1141,7 @@ export class Racer3D {
     // pendenza
     const gr = this.grade || 0;
     const gtxt = `${gr > 0.05 ? '+' : ''}${fmtDec(gr, 1)}%`;
-    panel(ctx, W - 14 - 92 * u, top + 90 * u, 92 * u, 32 * u, { fill: 'rgba(12,12,18,.55)', border: gradeColor(gr) });
+    panel(ctx, W - 14 - 92 * u, top + 90 * u, 92 * u, 32 * u, { fill: 'rgba(12,12,18,.55)', tint: gradeColor(gr), tintA: 0.34 });
     txt(ctx, gtxt, W - 14 - 46 * u, top + 114 * u, { size: 22 * u, align: 'center', color: gradeColor(gr) });
     // tempo che resta (al centro) e chilometri
     const leftT = Math.max(0, race.tl.race - race.t);
@@ -1178,7 +1178,7 @@ export class Racer3D {
     }
     this.pops = this.pops.filter((q) => q.t > 0);
     if (this.paused && this.state === 'race') {
-      panel(ctx, W / 2 - 150 * u, H * 0.42 - 34 * u, 300 * u, 84 * u, { fill: 'rgba(12,12,18,.82)', border: HUD.gold });
+      panel(ctx, W / 2 - 150 * u, H * 0.42 - 34 * u, 300 * u, 84 * u, { fill: 'rgba(12,12,18,.82)', tint: HUD.gold, tintA: 0.2 });
       txt(ctx, t('games.racer.paused'), W / 2, H * 0.42 + 2 * u, { size: 30 * u, align: 'center', color: HUD.gold, italic: true, maxW: 280 * u });
       txt(ctx, t('games.racer.pausedHint'), W / 2, H * 0.42 + 32 * u, { size: 15 * u, align: 'center', color: HUD.white, font: 'text', maxW: 280 * u });
     }
@@ -1202,7 +1202,7 @@ export class Racer3D {
     else if (m.kind === 'recover') pct = null;
     // in orizzontale la scheda sta a sinistra (sotto la posizione): al centro coprirebbe il gruppo
     const wide = this.W > this.H * 1.15; const col = KIND_COLORS[kind] || HUD.cyan; const w = Math.min(W - 28, 350 * u); const x = wide ? 14 : (W - w) / 2; const h = 60 * u;
-    panel(ctx, x, y, w, h, { fill: 'rgba(12,12,18,.7)', border: soon ? 'rgba(255,255,255,.45)' : col });
+    panel(ctx, x, y, w, h, { fill: 'rgba(12,12,18,.7)', tint: soon ? '#ffffff' : col, tintA: soon ? 0.14 : 0.3 });
     ctx.fillStyle = col; ctx.fillRect(x + 6, y + 8 * u, 5 * u, h - 16 * u);
     const pct5 = pct != null ? Math.round(pct * 20) * 5 : null;
     let title;

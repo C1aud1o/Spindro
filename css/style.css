@@ -713,7 +713,7 @@ body.riding .ride-actions { display: grid; grid-template-columns: minmax(0, 1.7f
 body.riding.has-workout .ride-actions { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 1fr); }
 .ride-start-slot { display: grid; }
 .ride-start-slot .cta { min-height: 60px; font-size: 22px; }
-.ride-start-slot .cta.running { background: var(--surface-2); color: var(--t1); border: 1px solid rgba(var(--paper), .14); box-shadow: none; }
+.ride-start-slot .cta.running { background: var(--sheen), var(--surface-2); color: var(--t1); border: 0; box-shadow: var(--edge-shadow); }
 .act { min-height: 60px; padding: 0 8px; color: var(--t1); font: 700 var(--fs-body)/1 var(--font-ui); }
 .act:active { transform: scale(.96); }
 .act-mode { min-width: 64px; font: 700 var(--fs-caption)/1.1 var(--font-ui); letter-spacing: .04em; text-transform: uppercase; color: var(--t2); }
@@ -724,7 +724,7 @@ body.riding.has-workout .ride-actions { grid-template-columns: minmax(0, 1.7fr) 
 /* ---------- elenco allenamenti: due azioni per ognuno ---------- */
 .wk-go { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; padding-top: 4px; }
 .wk-go .cta-sm, .wk-go .ghost { min-height: 48px; border-radius: var(--r-btn); font-weight: 700; padding: 0 8px; }
-.wk-go .cta-sm { border: 1px solid var(--accent); background: none; color: var(--accent); }
+.wk-go .cta-sm { border: 0; background: var(--sheen), rgba(var(--accent-rgb), .12); color: var(--accent); box-shadow: var(--hi), inset 0 0 0 1px var(--accent-line); } /* tinted glass, not an outline */
 .wk-item { cursor: default; }
 .wk-item:active { transform: none; }
 
@@ -798,7 +798,7 @@ body.click-legend { padding-bottom: 52px; }
 .click-bar i { font-style: normal; opacity: .4; }
 .click-bar.holding::after { content: ""; position: absolute; left: 0; bottom: 0; height: 4px; background: var(--accent); animation: cn-fillbar var(--hold-ms, 800ms) linear forwards; }
 @keyframes cn-fillbar { from { width: 0; } to { width: 100%; } }
-.kk { display: inline-block; min-width: 20px; padding: 1px 5px; margin: 0 1px; white-space: nowrap; border-radius: 6px; border: 1px solid var(--accent-line); border-bottom-width: 3px; background: rgba(var(--paper), .08); color: var(--accent); font: 800 13px/1.3 var(--font-ui); text-align: center; }
+.kk { display: inline-block; min-width: 20px; padding: 1px 5px; margin: 0 1px; white-space: nowrap; border-radius: 6px; border: 1px solid rgba(var(--accent-rgb), .22); border-bottom-width: 3px; background: rgba(var(--paper), .08); color: var(--accent); font: 800 13px/1.3 var(--font-ui); text-align: center; }
 .cn-fill { position: fixed; z-index: 119; pointer-events: none; overflow: hidden; border: 3px solid var(--accent); }
 .cn-fill::before { content: ""; position: absolute; inset: 0; background: rgba(217, 255, 61, .45); transform: scaleX(0); transform-origin: left; }
 .cn-fill.go::before { animation: cn-fillgo var(--hold-ms, 650ms) linear forwards; }

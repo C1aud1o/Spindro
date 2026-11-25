@@ -15,7 +15,7 @@
   --paper: 242, 240, 230;                            /* #F2F0E6, rgb for the opacities */
   --t1: rgba(var(--paper), 1); --t2: rgba(var(--paper), .82); --t3: rgba(var(--paper), .76); --t4: rgba(var(--paper), .14);
   --accent: #d9ff3d; --accent-rgb: 217, 255, 61; --accent-ink: #141a00;
-  --accent-5: rgba(var(--accent-rgb), .07); --accent-line: rgba(var(--accent-rgb), .22);
+  --accent-5: rgba(var(--accent-rgb), .07); --accent-line: transparent; /* glass has no drawn outlines: the lime rings exist only with solid panels and high contrast */
   --alert: #ff5b3a; --strava: #fc5200; --warn: #ffd43a;
   --z1: #8a857b; --z2: #4aa3ff; --z3: #3cc97e; --z4: #ffd43a; --z5: #ff922b; --z6: #ff4b3e; --z7: #c07bff;
   --zone: var(--z1);
@@ -50,14 +50,17 @@
   --blur: 26px; --saturate: 190%;
   --glass-filter: blur(var(--blur)) saturate(var(--saturate));
   --page-blur: blur(12px) saturate(125%);          /* the page behind a sheet (a filter on <main>, see css/glass.css) */
-  --edge-top: rgba(255, 255, 255, .62);              /* specular rim, top-left */
-  --edge: rgba(var(--paper), .14);                   /* hairline around the panel */
-  --edge-bottom: rgba(255, 255, 255, .16);           /* faint rim, bottom-right: the light that passes through */
+  /* glass has no outline: its edge is light. A soft highlight where the light from above catches the top rim, a fainter one where it leaves at the bottom,
+     a little glow inside for thickness. --edge (a hairline all round) is transparent here and only comes back with solid panels and high contrast. */
+  --edge-top: rgba(255, 255, 255, .34);
+  --edge: transparent;
+  --edge-bottom: rgba(255, 255, 255, .09);
+  --field-line: rgba(var(--paper), .14);             /* fields and tracks are wells, not glass: they keep a hairline */
   /* soft (blurred) shadows are tokens of their own so that solid panels can flatten them all at once: without a GPU every blurred shadow is paid again on each repaint */
   --flat: 0 0 0 0 transparent;                       /* "no shadow" that is still valid inside a shadow list */
-  --hi: inset 1px 1px 1px -1px var(--edge-top);      /* specular rim of an inner panel */
-  --hi-strong: inset 1.5px 1.5px 1px -1px var(--edge-top);
-  --lo: inset -1px -1px 1px -1px var(--edge-bottom);
+  --hi: inset 0 1px 1px -.5px rgba(255, 255, 255, .2); /* top light of an inner panel */
+  --hi-strong: inset 0 1px 1px -.5px var(--edge-top), inset 0 0 22px rgba(255, 255, 255, .035);
+  --lo: inset 0 -1px 1px -.5px var(--edge-bottom);
   --edge-shadow: var(--hi-strong), inset 0 0 0 1px var(--edge), var(--lo);
   --elev-btn: 0 4px 12px rgba(0, 0, 0, .28);         /* under round controls */
   --glow-inner: inset 0 0 16px rgba(var(--accent-rgb), .06);
@@ -104,14 +107,14 @@ html.solid {
   --glass-fill: #1b1b17; --glass-fill-strong: #1b1b17; --glass-fill-float: #1e1e19; --glass-fill-sheet: #1e1e19;
   --glass-fill-2: #272720; --glass-fill-3: #33332a; --glass-fill-input: #0f0f0d;
   --sheen: none; --sheen-press: none; --cta-fill: var(--accent); --page-blur: none; --zone-glow: 0; --glass-filter: none; --scrim: rgba(0, 0, 0, .78); --ambient-opacity: 0; --ambient-display: none;
-  --edge-top: rgba(var(--paper), .16); --edge: rgba(var(--paper), .16); --edge-bottom: transparent; --shadow-cta: 0 0 0 1px var(--accent-line); --hi: var(--flat); --hi-strong: var(--flat); --lo: var(--flat); --elev-1: var(--flat); --elev-2: var(--flat); --elev-3: var(--flat); --elev-btn: var(--flat); --glow-inner: var(--flat); --well: var(--flat); --well-sm: var(--flat); --knob-shadow: var(--flat); --glow-accent: var(--flat); --dur-2: .18s; --dur-3: .2s; --ease-spring: var(--ease-out);
+  --edge-top: rgba(var(--paper), .1); --edge: rgba(var(--paper), .1); --edge-bottom: transparent; --accent-line: rgba(var(--accent-rgb), .16); --shadow-cta: 0 0 0 1px var(--accent-line); --hi: var(--flat); --hi-strong: var(--flat); --lo: var(--flat); --elev-1: var(--flat); --elev-2: var(--flat); --elev-3: var(--flat); --elev-btn: var(--flat); --glow-inner: var(--flat); --well: var(--flat); --well-sm: var(--flat); --knob-shadow: var(--flat); --glow-accent: var(--flat); --dur-2: .18s; --dur-3: .2s; --ease-spring: var(--ease-out);
 }
 @media (prefers-reduced-transparency: reduce) {
   :root {
     --glass-fill: #1b1b17; --glass-fill-strong: #1b1b17; --glass-fill-float: #1e1e19; --glass-fill-sheet: #1e1e19;
     --glass-fill-2: #272720; --glass-fill-3: #33332a; --glass-fill-input: #0f0f0d;
     --sheen: none; --sheen-press: none; --cta-fill: var(--accent); --page-blur: none; --zone-glow: 0; --glass-filter: none; --scrim: rgba(0, 0, 0, .78); --ambient-opacity: 0; --ambient-display: none;
-    --edge-top: rgba(var(--paper), .16); --edge: rgba(var(--paper), .16); --edge-bottom: transparent; --shadow-cta: 0 0 0 1px var(--accent-line); --hi: var(--flat); --hi-strong: var(--flat); --lo: var(--flat); --elev-1: var(--flat); --elev-2: var(--flat); --elev-3: var(--flat); --elev-btn: var(--flat); --glow-inner: var(--flat); --well: var(--flat); --well-sm: var(--flat); --knob-shadow: var(--flat); --glow-accent: var(--flat); --dur-2: .18s; --dur-3: .2s; --ease-spring: var(--ease-out);
+    --edge-top: rgba(var(--paper), .1); --edge: rgba(var(--paper), .1); --edge-bottom: transparent; --accent-line: rgba(var(--accent-rgb), .16); --shadow-cta: 0 0 0 1px var(--accent-line); --hi: var(--flat); --hi-strong: var(--flat); --lo: var(--flat); --elev-1: var(--flat); --elev-2: var(--flat); --elev-3: var(--flat); --elev-btn: var(--flat); --glow-inner: var(--flat); --well: var(--flat); --well-sm: var(--flat); --knob-shadow: var(--flat); --glow-accent: var(--flat); --dur-2: .18s; --dur-3: .2s; --ease-spring: var(--ease-out);
   }
 }
 /* high contrast: solid panels, firm borders, brighter secondary text */

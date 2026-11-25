@@ -39,7 +39,7 @@ function scrims(ctx, W, H, L, top, bottom) {
   ctx.fillStyle = g2; ctx.fillRect(0, H - bottom, W, bottom);
 }
 function pill(ctx, x, y, w, h, label, on, col, u) {
-  panel(ctx, x, y, w, h, { r: 12 * u, fill: on ? col : 'rgba(12,12,18,.72)', border: on ? null : 'rgba(255,255,255,.35)' });
+  panel(ctx, x, y, w, h, { r: 12 * u, fill: on ? col : 'rgba(54,56,66,.8)' });
   txt(ctx, label, x + w / 2, y + h * 0.67, { size: 20 * u, align: 'center', color: on ? ink : HUD.white, stroke: on ? null : undefined, maxW: w - 8 });
 }
 const stars = (n, of = 3) => '★'.repeat(n) + '☆'.repeat(Math.max(0, of - n));
@@ -143,7 +143,7 @@ export class GameMenu {
     this.startTop = by - 22 * u;
     const loading = this.loading; const lf = Math.max(0, Math.min(1, this.loadFrac || 0));
     txt(ctx, loading ? (this.queued ? t('games.menu.loadingQueued') : t('games.menu.loading', { n: Math.round(lf * 100) })) : t(wk ? 'games.menu.wkKeys' : 'games.menu.keys'), cx, by - 8 * u, { size: 14 * u, align: al, color: loading ? HUD.white : HUD.lime, font: 'text', maxW: inner, minK: 0.7 });
-    panel(ctx, bx, by, bw, bh, { r: 14 * u, fill: 'rgba(12,12,18,.78)', border: loading ? 'rgba(217,255,61,.35)' : HUD.lime });
+    panel(ctx, bx, by, bw, bh, { r: 14 * u, fill: 'rgba(12,12,18,.78)', tint: HUD.lime, tintA: loading ? 0.12 : 0.28 });
     if (loading) { ctx.save(); ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, by, bw, bh, 14 * u) : ctx.rect(bx, by, bw, bh); ctx.clip(); ctx.fillStyle = 'rgba(217,255,61,.28)'; ctx.fillRect(bx, by, bw * lf, bh); ctx.restore(); }
     const f = loading ? 0 : this.fill;
     if (f > 0) { ctx.save(); ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, by, bw, bh, 14 * u) : ctx.rect(bx, by, bw, bh); ctx.clip(); ctx.fillStyle = HUD.lime; ctx.fillRect(bx, by, bw * f, bh); ctx.restore(); }
@@ -189,7 +189,7 @@ export class ResultsView {
     const bottom = H - 24 * u; const bh = 44 * u; const btnY = bottom - bh;
     const need = (22 + (r.criteria || []).length * 22 + 34 + 24 + (r.lines || []).length * 22 + (r.note ? 24 : 0)) * u;
     const py = L.land ? y + 22 * u : Math.max(y + 24 * u, btnY - 12 * u - need);
-    panel(ctx, px, py, pw, L.land ? need : btnY - 12 * u - py, { r: 14 * u, fill: 'rgba(12,12,18,.78)', border: 'rgba(255,255,255,.18)' });
+    panel(ctx, px, py, pw, L.land ? need : btnY - 12 * u - py, { r: 14 * u, fill: 'rgba(12,12,18,.78)' });
     let yy = py + 8 * u;
     for (const c of r.criteria || []) { yy += 22 * u; txt(ctx, `${c.ok ? '✓' : '✗'}  ${c.label}`, px + 14 * u, yy, { size: 15 * u, color: c.ok ? HUD.lime : '#9aa0aa', font: 'text', maxW: pw - 28 * u, minK: 0.7 }); }
     yy += 34 * u; txt(ctx, `${t('games.res.score')}  ${r.score}`, cx, yy, { size: 28 * u, align: al, color: HUD.white, maxW: pw - 20 * u });
@@ -201,7 +201,7 @@ export class ResultsView {
     ctx.save(); ctx.globalAlpha = a;
     panel(ctx, px, btnY, bw, bh, { r: 14 * u, fill: HUD.lime });
     txt(ctx, t('games.res.again'), px + bw / 2, btnY + bh * 0.66, { size: 17 * u, align: al, color: ink, stroke: null, maxW: bw - 10 });
-    panel(ctx, px + bw + gap, btnY, bw, bh, { r: 14 * u, fill: 'rgba(12,12,18,.78)', border: 'rgba(255,255,255,.45)' });
+    panel(ctx, px + bw + gap, btnY, bw, bh, { r: 14 * u, fill: 'rgba(54,56,66,.8)' });
     txt(ctx, t('games.res.back'), px + bw + gap + bw / 2, btnY + bh * 0.66, { size: 17 * u, align: al, color: HUD.white, maxW: bw - 10 });
     ctx.restore();
     this.zones.push({ dir: 1, x: px, y: btnY, w: bw, h: bh }, { dir: -1, x: px + bw + gap, y: btnY, w: bw, h: bh });

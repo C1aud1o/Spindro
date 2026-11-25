@@ -165,23 +165,24 @@ export function guardTrainer(base) {
 }
 export function trainerLostBanner(ctx, W, H, t) {
   const u = Math.max(1, Math.min(1.45, Math.min(W, H) / 390)); const w = Math.min(W - 24, 330 * u); const y = H * 0.64;
-  panel(ctx, W / 2 - w / 2, y - 30 * u, w, 60 * u, { r: 12 * u, fill: 'rgba(40,8,12,.88)', border: HUD.red });
+  panel(ctx, W / 2 - w / 2, y - 30 * u, w, 60 * u, { r: 12 * u, fill: 'rgba(40,8,12,.88)', tint: HUD.red, tintA: 0.4 });
   txt(ctx, t('games.common.trainerLost'), W / 2, y + 7 * u, { size: 19 * u, align: 'center', color: HUD.white, maxW: w - 20 * u, minK: 0.6 });
 }
 // Pannello del HUD in "vetro liquido" per il canvas: tinta + luce interna dall'alto + filo speculare sul bordo. Niente sfocatura (mai sopra il WebGL):
 // due gradienti per pannello, nessun filtro. Con "Riduci la trasparenza" (js/glass.js) il pannello resta piatto.
-export function panel(ctx, x, y, w, h, { r = 10, fill = HUD.ink, border = null } = {}) {
+// A panel that must stand out (a button, a warning, a colour-coded value) is tinted glass (tint, tintA), never outlined: glass has no drawn border.
+export function panel(ctx, x, y, w, h, { r = 10, fill = HUD.ink, tint = null, tintA = 0.26 } = {}) {
   ctx.beginPath();
   if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h);
   ctx.fillStyle = fill; ctx.fill();
+  if (tint) { ctx.save(); ctx.globalAlpha *= tintA; ctx.fillStyle = tint; ctx.fill(); ctx.restore(); }
   if (h >= 18 && !isSolid()) {
-    // gloss from the top-left corner, then a specular rim: bright top-left, fading, a faint return at the bottom-right
+    // gloss from the top-left corner, then light on the rim instead of an outline: it catches the top edge, dies out down the sides, returns faintly at the bottom
     const sheen = ctx.createLinearGradient(x, y, x + Math.min(w, h * 2.4), y + h); sheen.addColorStop(0, 'rgba(255,255,255,.26)'); sheen.addColorStop(0.45, 'rgba(255,255,255,.06)'); sheen.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = sheen; ctx.fill();
-    const edge = ctx.createLinearGradient(x, y, x + w * 0.6, y + h); edge.addColorStop(0, 'rgba(255,255,255,.62)'); edge.addColorStop(0.35, 'rgba(255,255,255,.16)'); edge.addColorStop(0.75, 'rgba(255,255,255,.08)'); edge.addColorStop(1, 'rgba(255,255,255,.20)');
-    ctx.lineWidth = 1.25; ctx.strokeStyle = edge; ctx.stroke();
+    const edge = ctx.createLinearGradient(x, y, x, y + h); edge.addColorStop(0, 'rgba(255,255,255,.34)'); edge.addColorStop(0.3, 'rgba(255,255,255,0)'); edge.addColorStop(0.8, 'rgba(255,255,255,0)'); edge.addColorStop(1, 'rgba(255,255,255,.09)');
+    ctx.lineWidth = 1; ctx.strokeStyle = edge; ctx.stroke();
   }
-  if (border) { ctx.lineWidth = 2; ctx.strokeStyle = border; ctx.stroke(); }
 }
 
 // scala dell'interfaccia: 1 su un telefono in verticale, fino a 1.45 su schermi grandi
