@@ -13,41 +13,33 @@
   /* ---- identity (never changes): dark base, one lime accent, off-white text ---- */
   --ink: #0f0f0d;
   --paper: 242, 240, 230;                            /* #F2F0E6, rgb for the opacities */
-  --t1: rgba(var(--paper), 1); --t2: rgba(var(--paper), .82); --t3: rgba(var(--paper), .76); --t4: rgba(var(--paper), .14);
+  --t1: rgba(var(--paper), 1); --t2: rgba(var(--paper), .9); --t3: rgba(var(--paper), .84); --t4: rgba(var(--paper), .14);
   --accent: #d9ff3d; --accent-rgb: 217, 255, 61; --accent-ink: #141a00;
   --accent-5: rgba(var(--accent-rgb), .07); --accent-line: transparent; /* glass has no drawn outlines: the lime rings exist only with solid panels and high contrast */
   --alert: #ff5b3a; --strava: #fc5200; --warn: #ffd43a;
   --z1: #8a857b; --z2: #4aa3ff; --z3: #3cc97e; --z4: #ffd43a; --z5: #ff922b; --z6: #ff4b3e; --z7: #c07bff;
   --zone: var(--z1);
 
-  /* ---- ambient background: the world the glass refracts. Big saturated fields (teal, violet, a warm hint, a little lime), soft discs with a readable edge,
-          a vignette that darkens towards the edges so data stays legible ---- */
-  --amb-lime: 217, 255, 61; --amb-teal: 24, 196, 178; --amb-violet: 124, 92, 255; --amb-warm: 255, 138, 92;
-  --ambient: radial-gradient(120% 90% at 50% 46%, transparent 44%, rgba(4, 5, 5, .62) 100%),
-             radial-gradient(64% 40% at 6% 4%, rgba(var(--amb-teal), .52), transparent 70%),
-             radial-gradient(58% 40% at 104% 34%, rgba(var(--amb-violet), .52), transparent 70%),
-             radial-gradient(52% 32% at 68% 104%, rgba(var(--amb-warm), .34), transparent 70%),
-             radial-gradient(56% 34% at -4% 80%, rgba(var(--amb-teal), .44), transparent 70%),
-             radial-gradient(30% 18% at 94% 3%, rgba(var(--amb-lime), .32), transparent 72%),
+  /* ---- ambient background: the world the glass refracts. Two colour fields only, large and soft (teal from the top-left, violet from the bottom-right)
+          on the dark base: calm enough that text on the glass stays easy to read ---- */
+  --amb-teal: 24, 196, 178; --amb-violet: 124, 92, 255;
+  --ambient: radial-gradient(90% 60% at 0% 0%, rgba(var(--amb-teal), .40), transparent 72%),
+             radial-gradient(90% 60% at 100% 100%, rgba(var(--amb-violet), .40), transparent 72%),
              var(--ink);
-  /* two soft-edged discs that drift the other way: an edge to refract (visible through and at the rim of every glass layer) */
-  --ambient-orbs: radial-gradient(circle at 78% 24%, rgba(var(--amb-violet), .38) 0, rgba(var(--amb-violet), .24) 9%, transparent 14%),
-                  radial-gradient(circle at 16% 62%, rgba(var(--amb-teal), .42) 0, rgba(var(--amb-teal), .26) 11%, transparent 17%),
-                  radial-gradient(circle at 60% 88%, rgba(var(--amb-warm), .30) 0, rgba(var(--amb-warm), .18) 7%, transparent 11%);
   --ambient-opacity: 1; --ambient-display: block; --ambient-drift: 70s; --zone-glow: .16;
 
-  /* ---- glass: tint, blur, saturation, edge light. Low tint: you SEE the colour fields through the panels ---- */
-  --glass-tint: 12, 18, 22;
-  --glass-fill: rgba(var(--glass-tint), .42);        /* flat panels */
-  --glass-fill-strong: rgba(var(--glass-tint), .72); /* behind the big numbers: legibility first */
-  --glass-fill-float: rgba(var(--glass-tint), .34);  /* floating, blurred (static layers only) */
-  --glass-fill-sheet: rgba(var(--glass-tint), .80);  /* sheets, menus, dialogs: translucent over a blurred, dimmed scrim (the sheet itself never blurs: it scrolls) */
+  /* ---- glass: tint, blur, saturation, edge light. A neutral grey glass, dense enough for text: the colour fields show through as a hint, not as a picture ---- */
+  --glass-tint: 44, 46, 50; --glass-tint-deep: 32, 34, 38; /* deep: where there is a lot of text (sheets, menus) or the big numbers */
+  --glass-fill: rgba(var(--glass-tint), .62);        /* flat panels */
+  --glass-fill-strong: rgba(var(--glass-tint-deep), .82); /* behind the big numbers: legibility first */
+  --glass-fill-float: rgba(var(--glass-tint), .56);  /* floating, blurred (static layers only) */
+  --glass-fill-sheet: rgba(var(--glass-tint-deep), .92);  /* sheets, menus, dialogs: translucent over a blurred, dimmed scrim (the sheet itself never blurs: it scrolls) */
   --glass-fill-2: rgba(var(--paper), .09);           /* a second layer on top of a glass panel */
   --glass-fill-3: rgba(var(--paper), .16);           /* pressed / hover / selected-neutral */
   --glass-fill-input: rgba(0, 0, 0, .30);            /* wells: fields, tracks */
-  --sheen: linear-gradient(158deg, rgba(var(--paper), .24) 0%, rgba(var(--paper), .07) 26%, rgba(var(--paper), 0) 52%);   /* gloss: a diagonal highlight from the top-left */
+  --sheen: linear-gradient(158deg, rgba(var(--paper), .14) 0%, rgba(var(--paper), .05) 26%, rgba(var(--paper), 0) 52%);   /* gloss: a diagonal highlight from the top-left */
   --sheen-press: linear-gradient(338deg, rgba(var(--paper), .26) 0%, rgba(var(--paper), .06) 30%, rgba(var(--paper), 0) 55%); /* the light moves to the other corner when pressed */
-  --blur: 26px; --saturate: 190%;
+  --blur: 26px; --saturate: 130%;
   --glass-filter: blur(var(--blur)) saturate(var(--saturate));
   --page-blur: blur(12px) saturate(125%);          /* the page behind a sheet (a filter on <main>, see css/glass.css) */
   /* glass has no outline: its edge is light. A soft highlight where the light from above catches the top rim, a fainter one where it leaves at the bottom,

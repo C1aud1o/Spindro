@@ -3,15 +3,12 @@
    floating glass = the same + backdrop blur/saturation (header pill, ride bar, sheets, dialogs, toasts, menus): a handful on screen at most */
 
 /* ---------- ambient background: the world behind the glass ---------- */
-html::before, html::after { content: ""; position: fixed; z-index: -1; pointer-events: none; display: var(--ambient-display); opacity: var(--ambient-opacity); will-change: transform; }
-html:not(.ready)::before, html:not(.ready)::after { display: none; } /* not before the app has decided between glass and solid panels (js/glass.js): no flash of colour, nothing rasterised for nothing */
+html::before { content: ""; position: fixed; z-index: -1; pointer-events: none; display: var(--ambient-display); opacity: var(--ambient-opacity); will-change: transform; }
+html:not(.ready)::before { display: none; } /* not before the app has decided between glass and solid panels (js/glass.js): no flash of colour, nothing rasterised for nothing */
 html::before { inset: -12% -12%; background: var(--ambient); animation: ambient-drift var(--ambient-drift) ease-in-out infinite alternate; }
-/* soft-edged discs drifting the other way: something with an edge to refract */
-html::after { inset: -8% -8%; background: var(--ambient-orbs); animation: ambient-drift-2 calc(var(--ambient-drift) * 1.3) ease-in-out infinite alternate; }
 @keyframes ambient-drift { from { transform: translate3d(-2%, -1%, 0) scale(1); } to { transform: translate3d(2%, 2%, 0) scale(1.07); } }
-@keyframes ambient-drift-2 { from { transform: translate3d(3%, 2%, 0) scale(1.04); } to { transform: translate3d(-3%, -2%, 0) scale(.98); } }
 /* the drift pauses whenever a blurred layer or a game is on screen (blur behind a moving layer is re-computed every frame): js/glass.js sets html.still */
-html.still::before, html.still::after { animation-play-state: paused; }
+html.still::before { animation-play-state: paused; }
 /* riding: a calm field of the current power-zone colour at the top (the colour moves over 2.5 s, never flashes) */
 body.riding::before {
   content: ""; position: fixed; z-index: -1; left: -20%; right: -20%; top: -12%; height: 62%; pointer-events: none; background: var(--zone); opacity: var(--zone-glow);
@@ -113,7 +110,7 @@ html:not(.scrolling) body:not(.game-open):has(.sheet:not([hidden]), .calib:not([
 body.game-open .sheet, body.game-open .calib, body.game-open .click-menu { background: rgba(4, 6, 8, .72); } /* never blur over the WebGL canvas */
 .cm-box { border-radius: var(--r-xl); }
 .cm-list button { border-radius: var(--r-md); }
-.cm-list button.cn-focus { background: var(--accent-5); }
+.cm-list button.cn-focus { background: var(--accent-5); box-shadow: 0 0 0 6px rgba(217, 255, 61, .28), 0 0 16px 4px rgba(217, 255, 61, .4) !important; } /* a tighter halo in the list: the wide one spilled onto the text of the next item */
 .click-bar { border: 0; box-shadow: var(--edge-shadow), var(--elev-2), 0 0 0 1px var(--accent-line); }
 @keyframes rise { from { transform: translateY(40px); opacity: 0; } } /* no scale: a scaled layer is re-rasterised whole on every frame without a GPU */
 .sheet-body { animation: rise var(--dur-3) var(--ease-spring); }
