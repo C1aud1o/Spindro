@@ -891,6 +891,8 @@
   "safety.title": "Antes de pedalear",
   "settings.auto": "auto",
   "settings.autoPause": "Inicio y pausa automáticos al pedalear o parar",
+  "settings.reduceGlass": "Reducir la transparencia",
+  "settings.reduceGlassHint": "Paneles sólidos en lugar de cristal. Se activa solo en dispositivos de gama baja.",
   "settings.coach": "Coach de voz: anuncia intervalos, subidas y hitos",
   "settings.data": "Datos y diagnóstico",
   "settings.ftpHint": "El FTP colorea las zonas de potencia; el peso importa para las marchas virtuales.",

@@ -69,6 +69,7 @@ export class Devices extends EventTarget {
     this.pending = []; // dispositivi già usati, non ancora ricollegati all'avvio: { id, name, roles, state:'reconnecting'|'tap'|'failed' }
     this.meters = [];  // PowerMeter collegati (potenza o cadenza)
     this.busyN = 0;
+    this.touched = new Set(); // dispositivi che la persona ha già scelto o tolto in questa sessione: l'avvio non li riporta fra i "da ricollegare"
     this.backoffMs = BACKOFF_MS; // i test lo accorciano
     for (const d of [trainer, hrm, click]) d.addEventListener('disconnected', () => this.sync());
     // segno di vita: quando è arrivato l'ultimo dato di ogni dispositivo
@@ -143,7 +144,7 @@ export class Devices extends EventTarget {
     let entry = this.entries.find((e) => e.device.id === device.id);
     if (entry && this.isUp(entry) && !force) { const err = new Error('Device already connected'); err.deviceName = device.name || entry.name; throw err; }
     const fresh = !entry;
-    if (!silent) { this.busyN++; this.changed(); }
+    if (!silent) { this.busyN++; this.touched.add(device.id); this.changed(); }
     try {
       const server = await device.gatt.connect();
       let roles; let ambiguous = false; let uuids = [];
@@ -181,7 +182,7 @@ export class Devices extends EventTarget {
       listen(this, `drop|${device.id}`, device, 'gattserverdisconnected', () => this.onDrop(entry));
       entry.battery = await this.readBattery(server);
       entry.state = 'connected'; entry.attempt = 0;
-      this.remember(entry);
+      if (entry.wanted !== false) this.remember(entry); // rimpiazzato mentre si collegava: non si ricorda
       this.pending = this.pending.filter((k) => k.id !== device.id);
       if (!force && entry.roles.length > 1) this.notice('devices.multi', { name: entry.name || t('devices.unnamed'), roles: entry.roles.map((r) => t(`devices.role.${r}`).toLowerCase()).join(' + ') });
       return entry;
@@ -224,7 +225,12 @@ export class Devices extends EventTarget {
     if (!prev) return;
     this.notice('devices.replaced', { old: prev.name || t('devices.unnamed'), role: t(`devices.role.${role}`).toLowerCase() });
     prev.roles = prev.roles.filter((r) => r !== role);
-    if (!prev.roles.length || role === 'trainer') { prev.wanted = false; try { prev.device.gatt.disconnect(); } catch { /* */ } }
+    if (!prev.roles.length || role === 'trainer') {
+      prev.wanted = false; this.touched.add(prev.device.id);
+      saveJson('devKnown', loadJson('devKnown', []).filter((k) => k.id !== prev.device.id)); // sostituito: non si ricollega al prossimo avvio
+      this.pending = this.pending.filter((k) => k.id !== prev.device.id);
+      try { prev.device.gatt.disconnect(); } catch { /* */ }
+    }
   }
 
   /** Una connessione è caduta da sola: si ricollega in silenzio, con attese crescenti, finché dura l'uscita. */
@@ -268,7 +274,7 @@ export class Devices extends EventTarget {
 
   /** Scollega un dispositivo (tutti i suoi ruoli). */
   remove(entry) {
-    entry.wanted = false;
+    entry.wanted = false; this.touched.add(entry.device.id);
     try { entry.device.gatt.disconnect(); } catch { /* */ }
     this.sync();
   }
@@ -295,7 +301,7 @@ export class Devices extends EventTarget {
   async reconnectKnown() {
     const known = loadJson('devKnown', []).filter((k) => !k.at || Date.now() - k.at < 3 * MONTH).slice(0, 4);
     if (!known.length) return 0;
-    this.pending = known.filter((k) => !this.entries.some((e) => e.device.id === k.id)).map((k) => ({ ...k, state: 'reconnecting' }));
+    this.pending = known.filter((k) => !this.touched.has(k.id) && !this.entries.some((e) => e.device.id === k.id)).map((k) => ({ ...k, state: 'reconnecting' }));
     this.changed();
     if (!this.pending.length) return 0;
     let devs = null;

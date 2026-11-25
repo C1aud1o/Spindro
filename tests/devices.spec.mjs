@@ -8,7 +8,7 @@ const FAKE_BLE = fileURLToPath(new URL('./fake-ble.js', import.meta.url));
 test.beforeEach(async ({ page }) => {
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
-  await page.addInitScript(() => { try { if (!localStorage.getItem('__seeded')) { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('lang', 'it'); localStorage.setItem('ftp', '200'); } } catch { /* */ } });
+  await page.addInitScript(() => { try { if (!localStorage.getItem('__seeded')) { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('lang', 'it'); localStorage.setItem('ftp', '200'); localStorage.setItem('autoPause', '0'); /* prove da fermi: nessuna partenza automatica che nasconda la barra in alto */ } } catch { /* */ } });
   await page.addInitScript({ path: FAKE_BLE });
 });
 test.afterEach(async ({ page }) => { expect(page.errors, 'errori JavaScript non gestiti nella pagina').toEqual([]); });
@@ -149,7 +149,7 @@ test('cadenza: il sensore dedicato vince sul rullo; la fonte si cambia dal panne
   await expect(page.locator('#cadence')).toHaveText('80', { timeout: 5000 });
   expect(await page.evaluate(() => localStorage.getItem('srcCadence'))).toBe('trainer');
   // senza cadenza vera (nessun rullo con cadenza, nessun sensore) il testo avverte che è una stima
-  await page.click('#deviceBar');
+  await page.evaluate(() => document.getElementById('deviceBar').click()); // the pedalling above may already have auto-started the ride, which hides the bar: open the panel the way the Click menu does
   await page.selectOption('#srcCadence', 'estimate');
   await expect(page.locator('#srcNote')).toContainText('stima');
 });

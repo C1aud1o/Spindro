@@ -16,7 +16,7 @@ export const qualitySetting = {
   set value(v) { try { localStorage.setItem('gameQuality', v); } catch { /* niente storage */ } },
 };
 const remembered = () => { try { return localStorage.getItem('gameQualityAuto'); } catch { return null; } };
-const remember = (v) => { try { localStorage.setItem('gameQualityAuto', v); } catch { /* niente storage */ } };
+const remember = (v) => { try { localStorage.setItem('gameQualityAuto', v); } catch { /* niente storage */ } try { window.dispatchEvent(new Event('spindro:quality')); } catch { /* niente finestra */ } }; // js/glass.js: "low" accende i pannelli pieni (Riduci la trasparenza, automatico)
 
 export class Quality {
   constructor() {

@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
   await page.addInitScript(() => {
-    try { if (!localStorage.getItem('__seeded')) { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('ftp', '200'); localStorage.setItem('mass', '80'); localStorage.setItem('gameQuality', 'low'); } localStorage.setItem('lang', localStorage.getItem('lang') || 'it'); } catch { /* niente storage */ }
+    try { if (!localStorage.getItem('__seeded')) { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('ftp', '200'); localStorage.setItem('mass', '80'); localStorage.setItem('gameQuality', 'low'); localStorage.setItem('autoPause', '0'); /* si naviga da fermi: nessuna partenza automatica a metà prova */ } localStorage.setItem('lang', localStorage.getItem('lang') || 'it'); } catch { /* niente storage */ }
   });
   await page.addInitScript({ path: FAKE_BLE });
   await page.goto('/index.html');

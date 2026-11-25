@@ -14,6 +14,8 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
 async function axe(page, label, opts = {}) {
+  // a sheet still fading in has half-transparent text: wait for the entrance animations to end (endless ones, like a spinner, are left alone)
+  await page.evaluate(() => Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished.catch(() => {}))));
   await page.evaluate(AXE);
   const res = await page.evaluate((o) => window.axe.run(document, { runOnly: { type: 'tag', values: o.tags }, ...(o.context ? {} : {}) }), { tags: TAGS });
   const bad = res.violations.map((v) => `${v.id}: ${v.help} → ${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join(' | ')}`);

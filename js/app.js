@@ -1,4 +1,5 @@
 import { strictSet } from './storage-guard.js'; // primissimo: se il localStorage è vietato, ripiega su una memoria temporanea prima che gli altri moduli lo leggano
+import { initGlass, setReduce, reduceChoice } from './glass.js'; // vetro liquido: "Riduci la trasparenza" (manuale o automatico)
 import { t, applyI18n, LANGS, setLang, getLang, fmtDate, fmtDec, fmtNum } from './i18n.js'; // per primo: carica le traduzioni prima del render
 import { attachLog, diaryText, diagnosticsText, copyToClipboard, checkNativeCrash, checkBridge, record as diaryRecord } from './crashreport.js'; // per primo: vede anche gli errori degli altri moduli
 import { isNative, GarminBridge, BLE, setNativeLogger } from './native.js'; // nell'app installa il Bluetooth nativo
@@ -1832,6 +1833,11 @@ for (const id of ['autoPause', 'smooth3']) {
   const saved = localStorage.getItem(id); if (saved != null) $(id).checked = saved === '1';
   $(id).addEventListener('change', () => { localStorage.setItem(id, $(id).checked ? '1' : '0'); render(); });
 }
+// Riduci la trasparenza: il pannello mostra lo stato effettivo (anche quello automatico dei dispositivi poco potenti)
+initGlass();
+const syncGlassSwitch = () => { $('reduceGlass').checked = reduceChoice(); };
+syncGlassSwitch(); window.addEventListener('spindro:glass', syncGlassSwitch);
+$('reduceGlass').addEventListener('change', () => setReduce($('reduceGlass').checked));
 function autoPauseCheck() {
   if (!$('autoPause').checked || !trainer.connected) { autoPaused = false; return; }
   const moving = (state.data.power || 0) > 5 || (state.data.speed || 0) > 2;
