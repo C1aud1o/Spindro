@@ -18,7 +18,9 @@ export default defineConfig({
     baseURL: `http://127.0.0.1:${port}`,
     // L'avviso di sicurezza (una volta, prima della prima uscita) è già stato visto: i test che pedalano non lo incontrano.
     // tests/compliance.spec.mjs riparte da uno stato vuoto per provarlo.
-    storageState: { cookies: [], origins: [{ origin: `http://127.0.0.1:${port}`, localStorage: [{ name: 'safetyAck', value: '1' }] }] },
+    // Pannelli opachi ("Riduci la trasparenza" acceso): il browser di prova disegna sulla CPU, dove il vetro sfocato è lento e l'app lo spegnerebbe comunque
+    // da sola dopo aver interrogato WebGL a ogni avvio. tests/glass.spec.mjs prova la scelta automatica e il vetro acceso.
+    storageState: { cookies: [], origins: [{ origin: `http://127.0.0.1:${port}`, localStorage: [{ name: 'safetyAck', value: '1' }, { name: 'reduceGlass', value: '1' }] }] },
     serviceWorkers: 'block', // sw.js non deve falsare la cache fra un test e l'altro
     acceptDownloads: true,
     viewport: { width: 420, height: 900 },

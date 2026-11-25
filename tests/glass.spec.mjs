@@ -3,7 +3,7 @@
 import { test, expect } from '@playwright/test';
 
 const seed = (page, extra = {}) => page.addInitScript((x) => {
-  try { if (!localStorage.getItem('__seeded')) { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('safetyAck', '1'); localStorage.setItem('lang', 'en'); for (const [k, v] of Object.entries(x)) localStorage.setItem(k, v); } } catch { /* no storage */ }
+  try { if (!localStorage.getItem('__seeded')) { localStorage.setItem('__seeded', '1'); localStorage.setItem('analytics', '0'); localStorage.setItem('safetyAck', '1'); localStorage.setItem('lang', 'en'); localStorage.removeItem('reduceGlass'); for (const [k, v] of Object.entries(x)) localStorage.setItem(k, v); } } catch { /* no storage */ }
 }, extra);
 const isSolid = (page) => page.evaluate(() => document.documentElement.classList.contains('solid'));
 const blurOf = (page, sel) => page.evaluate((s) => { const c = getComputedStyle(document.querySelector(s)); return c.backdropFilter || c.webkitBackdropFilter || 'none'; }, sel);

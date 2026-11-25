@@ -8,20 +8,26 @@ const mq = (q) => { try { return matchMedia(q).matches; } catch { return false; 
 
 // No graphics chip (the browser draws everything on the CPU: virtual machines, remote desktops, some very old devices):
 // blurred glass is far too slow there, so panels are solid unless the person switches glass on.
+// Asking costs a WebGL context (a few ms with a GPU, up to half a second without one), so the answer is remembered (glassSoft = '1' | '0'):
+// only the very first start waits for it; later starts read the stored answer and check it again once the app is idle.
+const SOFT_KEY = 'glassSoft';
 let softGl;
-export function softwareRenderer() {
-  if (softGl !== undefined) return softGl;
-  softGl = false;
+function probeRenderer() {
   try {
     const gl = document.createElement('canvas').getContext('webgl');
-    if (gl) {
-      const ext = gl.getExtension('WEBGL_debug_renderer_info');
-      const name = String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
-      softGl = /swiftshader|llvmpipe|softpipe|software|basic render/i.test(name);
-      gl.getExtension('WEBGL_lose_context')?.loseContext();
-    }
-  } catch { /* no WebGL: unknown, treated as capable */ }
-  return softGl;
+    if (!gl) return false; // no WebGL: unknown, treated as capable
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    const name = String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return /swiftshader|llvmpipe|softpipe|software|basic render/i.test(name);
+  } catch { return false; }
+}
+function rememberRenderer() { softGl = probeRenderer(); try { localStorage.setItem(SOFT_KEY, softGl ? '1' : '0'); } catch { /* no storage */ } return softGl; }
+export function softwareRenderer() {
+  if (softGl !== undefined) return softGl;
+  const stored = get(SOFT_KEY);
+  if (stored === '1' || stored === '0') return (softGl = stored === '1');
+  return rememberRenderer();
 }
 
 export function lowEndDevice() {
@@ -68,4 +74,9 @@ export function initGlass() {
   window.addEventListener('spindro:quality', apply); // the game quality detection just measured "low"
   syncStill();
   new MutationObserver(syncStill).observe(document.body, { attributes: true, attributeFilter: ['class', 'style'] });
+  // automatic choice from a remembered answer: ask the browser again when idle (the graphics setup can change) and follow it if it did
+  if (isAuto() && get(SOFT_KEY) != null) {
+    const recheck = () => { const was = softGl; if (rememberRenderer() !== was) apply(); };
+    if (window.requestIdleCallback) requestIdleCallback(recheck, { timeout: 8000 }); else setTimeout(recheck, 4000);
+  }
 }
