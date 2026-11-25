@@ -34,7 +34,7 @@
   --glass-fill: rgba(var(--glass-tint), .48);        /* flat panels */
   --glass-fill-strong: rgba(var(--glass-tint), .76); /* behind the big numbers: legibility first */
   --glass-fill-float: rgba(var(--glass-tint), .58);  /* floating, blurred (static layers only) */
-  --glass-fill-sheet: rgba(var(--glass-tint), .86);  /* floating AND scrolling (sheets, menus, dialogs): dense tint, no blur: a blur behind scrolling content is re-computed every frame */
+  --glass-fill-sheet: rgba(var(--glass-tint), .97);  /* floating AND scrolling (sheets, menus, dialogs): dense tint, no blur: a blur behind scrolling content is re-computed every frame */
   --glass-fill-2: rgba(var(--paper), .06);           /* a second layer on top of a glass panel */
   --glass-fill-3: rgba(var(--paper), .11);           /* pressed / hover / selected-neutral */
   --glass-fill-input: rgba(0, 0, 0, .28);            /* wells: fields, tracks */
@@ -45,7 +45,7 @@
   --edge: rgba(var(--paper), .11);                   /* hairline around the panel */
   --edge-bottom: rgba(0, 0, 0, .40);                 /* contact shade under the panel */
   --edge-shadow: inset 0 1px 0 var(--edge-top), inset 0 0 0 1px var(--edge), inset 0 -1px 0 var(--edge-bottom);
-  --scrim: rgba(6, 6, 5, .56);                       /* behind sheets and dialogs */
+  --scrim: rgba(6, 6, 5, .66);                       /* behind sheets and dialogs */
 
   /* ---- shape: radius scale ---- */
   --r-xs: 10px; --r-sm: 14px; --r-md: 18px; --r-lg: 26px; --r-xl: 34px; --r-pill: 999px;
