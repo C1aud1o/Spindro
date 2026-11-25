@@ -4,6 +4,7 @@
 
 /* ---------- ambient background: the world behind the glass ---------- */
 html::before, html::after { content: ""; position: fixed; z-index: -1; pointer-events: none; display: var(--ambient-display); opacity: var(--ambient-opacity); will-change: transform; }
+html:not(.ready)::before, html:not(.ready)::after { display: none; } /* not before the app has decided between glass and solid panels (js/glass.js): no flash of colour, nothing rasterised for nothing */
 html::before { inset: -12% -12%; background: var(--ambient); animation: ambient-drift var(--ambient-drift) ease-in-out infinite alternate; }
 /* soft-edged discs drifting the other way: something with an edge to refract */
 html::after { inset: -8% -8%; background: var(--ambient-orbs); animation: ambient-drift-2 calc(var(--ambient-drift) * 1.3) ease-in-out infinite alternate; }
@@ -24,10 +25,10 @@ body.riding::before {
 }
 /* flat glass, one layer inside another glass */
 .group, .dev-card, .summary, .share-prompt, .ed-block, .wk-item, .hs-ride, .hs-kpis div, .hs-bests div, .hint-box, .badge, .cm-list button, .wg-card {
-  background: var(--glass-fill-2); border: 0; box-shadow: inset 1px 1px 1px -1px var(--edge-top), inset 0 0 0 1px var(--edge);
+  background: var(--glass-fill-2); border: 0; box-shadow: var(--hi), inset 0 0 0 1px var(--edge);
 }
 .group, .dev-card, .summary, .share-prompt, .wk-item, .ed-block { border-radius: var(--r-md); }
-.dev-card { box-shadow: inset 1px 1px 1px -1px var(--edge-top), inset 0 0 0 1px var(--accent-line); }
+.dev-card { box-shadow: var(--hi), inset 0 0 0 1px var(--accent-line); }
 /* wells (fields, tracks, profiles) sink instead of floating */
 .today-profile, .wk-profile, .hs-weeks, .goal-bar, .gs-bar, .mini-bar { background: var(--glass-fill-input); }
 .log pre, code, .dbg-pre { background: var(--glass-fill-input); }
@@ -35,10 +36,10 @@ body.riding::before {
 
 /* ---------- controls: round, glossy, springy ---------- */
 .icon-btn, .close, .step, .act, .ghost, .chips button, .step-btn, button.small, .modes label span, kbd {
-  background: var(--sheen), var(--glass-fill-2); border: 0; box-shadow: var(--edge-shadow), 0 4px 12px rgba(0, 0, 0, .28);
+  background: var(--sheen), var(--glass-fill-2); border: 0; box-shadow: var(--edge-shadow), var(--elev-btn);
   transition: transform var(--dur-2) var(--ease-spring), background var(--dur-1), box-shadow var(--dur-1);
 }
-.ghost, .step { box-shadow: inset 1.5px 1.5px 1px -1px var(--edge-top), inset 0 0 0 1px var(--accent-line), inset 0 0 16px rgba(var(--accent-rgb), .06), 0 4px 12px rgba(0, 0, 0, .28); }
+.ghost, .step { box-shadow: var(--hi-strong), inset 0 0 0 1px var(--accent-line), var(--glow-inner), var(--elev-btn); }
 .icon-btn, .close { border-radius: var(--r-pill); }
 .icon-btn:active, .close:active, .step:active, .act:active, .ghost:active, .chips button:active, .step-btn:active, button.small:active { transform: scale(.93); background: var(--sheen-press), var(--glass-fill-3); }
 @media (hover: hover) { .icon-btn:hover, .close:hover, .act:hover, .ghost:hover, .chips button:hover, .step:hover { background: var(--sheen), var(--glass-fill-3); } }
@@ -51,7 +52,7 @@ body.riding::before {
 .cta:active, .cta-sm:active { transform: scale(.95); box-shadow: inset 0 0 0 1px var(--accent-line), inset 0 6px 14px rgba(0, 0, 0, .22), 0 2px 10px rgba(var(--accent-rgb), .2); }
 .cta-sm { border-radius: var(--r-pill); }
 .cta.running, .ride-start-slot .cta.running { background: var(--sheen), var(--glass-fill-3); color: var(--t1); box-shadow: var(--edge-shadow); }
-.modes { background: var(--glass-fill-input); border-radius: var(--r-pill); padding: 4px; box-shadow: inset 0 2px 6px rgba(0, 0, 0, .5), inset 0 0 0 1px var(--edge), 0 1px 0 rgba(var(--paper), .08); }
+.modes { background: var(--glass-fill-input); border-radius: var(--r-pill); padding: 4px; box-shadow: var(--well), inset 0 0 0 1px var(--edge), 0 1px 0 rgba(var(--paper), .08); }
 .modes label span { background: none; box-shadow: none; border-radius: var(--r-pill); transition: background var(--dur-2), transform var(--dur-2) var(--ease-spring); }
 .modes label span:active { transform: scale(.94); }
 .more-modes .modes { background: var(--glass-fill-input); }
@@ -60,11 +61,11 @@ body.riding::before {
 
 /* fields: wells with an inner shadow */
 input[type=text], input[type=number], input[type=url], input[type=password], input[type=email], .fields input, .video-pick .field input, .unit-input, .lang-pick select, #accountGroup select {
-  background: var(--glass-fill-input); border: 0; border-radius: var(--r-md); box-shadow: inset 0 1px 3px rgba(0, 0, 0, .45), inset 0 0 0 1px var(--edge);
+  background: var(--glass-fill-input); border: 0; border-radius: var(--r-md); box-shadow: var(--well-sm), inset 0 0 0 1px var(--edge);
   backdrop-filter: none; -webkit-backdrop-filter: none;
 }
-.switch input[type=checkbox] { background: var(--glass-fill-input); border: 0; box-shadow: inset 0 1px 3px rgba(0, 0, 0, .45), inset 0 0 0 1px var(--edge); backdrop-filter: none; -webkit-backdrop-filter: none; }
-.switch input[type=checkbox]::after { background: var(--t2); box-shadow: 0 1px 4px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .5); transition: transform var(--dur-2) var(--ease-spring), background var(--dur-1); }
+.switch input[type=checkbox] { background: var(--glass-fill-input); border: 0; box-shadow: var(--well-sm), inset 0 0 0 1px var(--edge); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.switch input[type=checkbox]::after { background: var(--t2); box-shadow: var(--knob-shadow); transition: transform var(--dur-2) var(--ease-spring), background var(--dur-1); }
 .switch input[type=checkbox]:checked { background: rgba(var(--accent-rgb), .22); box-shadow: inset 0 0 0 1px var(--accent-line); }
 
 /* radii come from the scale, never from the component */
@@ -114,7 +115,7 @@ body.game-open .sheet, body.game-open .calib, body.game-open .click-menu { backg
 .cm-list button { border-radius: var(--r-md); }
 .cm-list button.cn-focus { background: var(--accent-5); }
 .click-bar { border: 0; box-shadow: var(--edge-shadow), var(--elev-2), 0 0 0 1px var(--accent-line); }
-@keyframes rise { from { transform: translateY(40px) scale(.985); opacity: 0; } }
+@keyframes rise { from { transform: translateY(40px); opacity: 0; } } /* no scale: a scaled layer is re-rasterised whole on every frame without a GPU */
 .sheet-body { animation: rise var(--dur-3) var(--ease-spring); }
 .sheet { animation: fade var(--dur-2) ease-out; }
 
