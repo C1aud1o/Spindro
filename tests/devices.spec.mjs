@@ -149,7 +149,7 @@ test('cadenza: il sensore dedicato vince sul rullo; la fonte si cambia dal panne
   await expect(page.locator('#cadence')).toHaveText('80', { timeout: 5000 });
   expect(await page.evaluate(() => localStorage.getItem('srcCadence'))).toBe('trainer');
   // senza cadenza vera (nessun rullo con cadenza, nessun sensore) il testo avverte che è una stima
-  await page.click('#deviceBar');
+  await page.evaluate(() => document.getElementById('deviceBar').click()); // the pedalling above may already have auto-started the ride, which hides the bar: open the panel the way the Click menu does
   await page.selectOption('#srcCadence', 'estimate');
   await expect(page.locator('#srcNote')).toContainText('stima');
 });
