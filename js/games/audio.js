@@ -127,6 +127,8 @@ export class GameAudio {
       case 'overdrive': [0, 3, 7, 10, 12, 15, 19, 24].forEach((n, i) => this.tone({ freq: mtof(60 + n), dur: 0.1, vol: 0.07, type: 'sawtooth', at: t + i * 0.045 })); break;
       case 'alarm': for (let i = 0; i < 4; i++) { this.tone({ freq: 880, dur: 0.18, vol: 0.07, at: t + i * 0.4 }); this.tone({ freq: 660, dur: 0.18, vol: 0.07, at: t + i * 0.4 + 0.2 }); } break;
       case 'beep': this.tone({ freq: 660, dur: 0.12, vol: 0.08 }); break;
+      case 'lane': this.tone({ freq: 420, to: 760, dur: 0.07, vol: 0.09, type: 'triangle' }); this.noise({ dur: 0.05, vol: 0.04, freq: 2200, sweep: 600, type: 'bandpass' }); break;
+      case 'warn': this.tone({ freq: 1040, dur: 0.06, vol: 0.08, type: 'square' }); this.tone({ freq: 1040, dur: 0.06, vol: 0.08, type: 'square', at: t + 0.1 }); break;
       case 'go': this.tone({ freq: 1320, dur: 0.4, vol: 0.09 }); break;
       case 'select': this.tone({ freq: 520, to: 780, dur: 0.07, vol: 0.06 }); break;
       case 'boost': this.noise({ dur: 0.5, vol: 0.12, freq: 400, sweep: 3000 }); break;
@@ -203,7 +205,7 @@ export class GameAudio {
   // prepara in anticipo gli effetti più usati (si chiama al primo tocco)
   warmUp() {
     if (!this.useElements() || this.warmed) return; this.warmed = true;
-    const names = ['shot', 'mg', 'hit', 'coin', 'select', 'hurt', 'boom', 'pickup', 'beep', 'jump', 'land', 'laser', 'rocket', 'clank', 'boost', 'rescue', 'overdrive', 'flame', 'bomb', 'bigboom'];
+    const names = ['shot', 'mg', 'hit', 'coin', 'select', 'hurt', 'boom', 'pickup', 'beep', 'jump', 'land', 'laser', 'rocket', 'clank', 'boost', 'rescue', 'overdrive', 'flame', 'bomb', 'bigboom', 'lane', 'warn'];
     let i = 0; const next = () => { if (i < names.length) { this.playElementSfxPrepare(names[i++]).finally(next); } }; next();
   }
 

@@ -1,6 +1,6 @@
 // Horde Run: la forma dell'allenamento. Logica pura (nessuna grafica): si può provare anche senza browser.
 // Ogni partita dura 5, 10 o 20 minuti e segue una curva in % della FTP: avvio facile, ondate di sforzo e recupero,
-// un finale più duro con lo scatto, 30 s di defaticamento. Vedi docs/giochi-design.md §1.
+// un finale più duro con lo scatto, 30 s di defaticamento. Vedi docs/games/DESIGN-RULES.md §1.
 
 export const DURATIONS = [300, 600, 1200];
 export const LEVELS = [{ id: 'easy', k: -0.10 }, { id: 'normal', k: 0 }, { id: 'hard', k: 0.10 }];
@@ -13,12 +13,43 @@ export function waveCount(total) { return total <= 300 ? 4 : total <= 600 ? 7 : 
 
 // composizione delle ondate: quale mix di nemici arriva (il blocco si ripete, sempre più duro)
 export const COMPOS = [
-  { id: 'walkers', mix: { zombie: 0.82, runner: 0.18 }, pack: [4, 16], demand: 1.15 },   // camminatori lenti in massa
-  { id: 'runners', mix: { runner: 0.7, zombie: 0.3 }, pack: [3, 9], demand: 1.0 },       // corridori veloci
-  { id: 'brutes', mix: { brute: 0.2, zombie: 0.8 }, pack: [3, 10], demand: 1.0 },          // bruti resistenti
-  { id: 'bones', mix: { skeleton: 0.6, zombie: 0.25, runner: 0.15 }, pack: [3, 9], demand: 1.0 }, // scheletri che schivano
+  { id: 'walkers', mix: { zombie: 0.82, runner: 0.18 } },                  // camminatori lenti
+  { id: 'runners', mix: { runner: 0.7, zombie: 0.3 } },                    // corridori veloci: hanno la precedenza
+  { id: 'brutes', mix: { brute: 0.2, zombie: 0.8 } },                      // bruti resistenti: tengono una corsia
+  { id: 'bones', mix: { skeleton: 0.6, zombie: 0.25, runner: 0.15 } },     // scheletri che cambiano corsia al primo colpo
 ];
-export const WARM_MIX = { id: 'warm', mix: { zombie: 1 }, pack: [2, 5], demand: 1 };
+export const WARM_MIX = { id: 'warm', mix: { zombie: 1 } };
+
+// ---------- corsie e direttore (logica pura, provata senza browser) ----------
+export const LANES = 3;
+export const LANE_W = 3.2;                      // m
+export const laneX = (l) => (1 - l) * LANE_W;   // corsia 0 = sinistra sullo schermo (la camera guarda +Z: destra = −X)
+// il margine che il direttore lascia al giocatore: il tempo che serve per ripulire ≤ (1 − margine) × il tempo che i nemici impiegano ad arrivare
+export const SLACK = { easy: 0.4, normal: 0.25, hard: 0.1 };
+export const SWITCH_S = 0.6;                    // cambio di corsia + mira + volo del colpo (s)
+// ogni quanto nasce un nemico (s) e quanto spesso nascono in due corsie insieme, per tipo di tratto
+export const DENSITY = {
+  warm: { gap: [2.6, 3.4], pair: 0 }, pace: { gap: [1.8, 2.5], pair: 0.15 }, effort: { gap: [1.4, 2], pair: 0.3 },
+  sprint: { gap: [1.1, 1.6], pair: 0.35 }, rest: { gap: [2.4, 3.1], pair: 0 }, cool: null,
+};
+export const GAP_K = { easy: 1.05, normal: 1, hard: 0.85 }; // il livello cambia quanto fitta è l'orda (mai i watt)
+
+// Si può ripulire tutto in tempo? jobs = [{ a: secondi all'arrivo alla linea, r: secondi al primo colpo possibile, w: secondi di tiro, lane }].
+// Il giocatore parte dalla corsia `lane`, serve sempre il nemico che arriva prima fra quelli a tiro e perde SWITCH_S a ogni cambio.
+// Tutti i tempi sono gonfiati di 1/(1 − margine): vuol dire lasciare quel margine.
+export function feasible(jobs, { lane, slack }) {
+  const k = 1 / (1 - slack); const todo = jobs.map((j) => ({ ...j })).sort((x, y) => x.a - y.a);
+  let t = 0; let at = lane;
+  while (todo.length) {
+    let i = todo.findIndex((j) => j.r <= t);
+    if (i < 0) { t = Math.min(...todo.map((j) => j.r)); i = todo.findIndex((j) => j.r <= t); }
+    const j = todo.splice(i, 1)[0];
+    if (j.lane !== at) { t += SWITCH_S * k; at = j.lane; }
+    t += j.w * k;
+    if (t > j.a) return false;
+  }
+  return true;
+}
 
 import { wkTarget } from './kit/workout-plan.js';
 
@@ -68,18 +99,16 @@ export function planFromWorkout(wp, kindMap = WK_KIND) {
   return { total: wp.total, N: wp.N, segs, bossWaves, L: wp.total / Math.max(1, wp.N), wk: true, name: wp.name };
 }
 
-// Stelle: 1 = finita; 2 = almeno metà degli sforzi; 3 = almeno l'80 %, tutti i Custodi battuti e al massimo 3 cadute
-export function starsFor({ done, total, bossKilled, bossTotal, ko }) {
-  const ratio = total ? done / total : 0;
+// Stelle (senza allenamento): 1 = finita; 2 = almeno 4 cuori alla fine; 3 = tutti i 6 cuori, oppure al massimo uno perso
+export function starsFor({ hp, lost }) {
   let s = 1;
-  if (ratio >= 0.5) s = 2;
-  if (ratio >= 0.8 && bossKilled >= bossTotal && ko <= 3) s = 3;
-  return { stars: s, ratio };
+  if (hp >= 4) s = 2;
+  if (hp >= 6 || lost <= 1) s = 3;
+  return { stars: s };
 }
 
 // cosa manca alla stella successiva
-export function nextStarHint({ stars, done, total, bossKilled, bossTotal, ko }) {
+export function nextStarHint({ stars }) {
   if (stars >= 3) return null;
-  if (stars === 1) return { key: 'games.horde.res.next2', n: Math.max(1, Math.ceil(total * 0.5) - done) };
-  return { key: 'games.horde.res.next3', n: Math.max(0, Math.ceil(total * 0.8) - done), boss: Math.max(0, bossTotal - bossKilled), ko: Math.max(0, ko - 3) };
+  return { key: stars === 1 ? 'games.horde.res.next2' : 'games.horde.res.next3' };
 }

@@ -3,6 +3,7 @@
 // la strada è infinita e ogni oggetto è deterministico (stesso posto a ogni giro), un draw call per modello.
 import { THREE, fxTexture, skyDome, styleLights, styleFog, toonMaterial, prepareModel } from './kit3d.js';
 import { hash } from './engine.js';
+import { LANE_W } from './horde-plan.js';
 
 export const ROAD_W = 13;
 const CELL = 6;       // m: una cellula di scenografia
@@ -60,9 +61,9 @@ export function buildGround(scene) {
   const rc = document.createElement('canvas'); rc.width = 256; rc.height = 256; const g = rc.getContext('2d');
   g.fillStyle = '#7b839a'; g.fillRect(0, 0, 256, 256);
   for (let i = 0; i < 2600; i++) { g.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.12)'; g.fillRect(Math.random() * 256, Math.random() * 256, 2, 2); }
-  // bordi chiari, due corsie tratteggiate: la strada si legge anche al buio
+  // bordi chiari e le linee tratteggiate fra le tre corsie di gioco (LANE_W): la strada si legge anche al buio
   const e = 256 * 0.025; g.fillStyle = '#e6eaf5'; g.fillRect(e, 0, 6, 256); g.fillRect(256 - e - 6, 0, 6, 256);
-  g.fillStyle = 'rgba(230,226,205,.85)'; for (const x of [256 / 3, 512 / 3]) for (let y = 0; y < 256; y += 128) g.fillRect(x - 3, y + 8, 6, 62);
+  g.fillStyle = 'rgba(230,226,205,.85)'; for (const x of [128 - 256 * (LANE_W / 2) / ROAD_W, 128 + 256 * (LANE_W / 2) / ROAD_W]) for (let y = 0; y < 256; y += 128) g.fillRect(x - 3, y + 8, 6, 62);
   const rt = tex(rc, 1, 416 / SNAP); // la tessitura copre SNAP metri
   const road = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_W, 416), new THREE.MeshLambertMaterial({ map: rt }));
   road.rotation.x = -Math.PI / 2; road.position.y = 0.01; road.receiveShadow = true; scene.add(road);
