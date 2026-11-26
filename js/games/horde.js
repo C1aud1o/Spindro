@@ -282,6 +282,10 @@ export class Horde {
     this.setLane(this.lane + dir);
   }
 
+  // per `npm run game:check` e i test: gioca come il bot LANE, va nella corsia del nemico che arriva per primo (una corsia per volta, come i tasti)
+  pilot() { const l = this.threatLane(); if (l >= 0 && l !== this.lane) this.setLane(this.lane + Math.sign(l - this.lane)); }
+  get starsIgnorePower() { return true; } // le stelle vengono dai cuori: i watt li tiene il rullo (ERG)
+
   setLane(l) {
     l = clamp(l, 0, LANES - 1);
     if (l === this.lane) return;
@@ -406,14 +410,18 @@ export class Horde {
       // gli ultimi nemici entrano nei primi secondi del defaticamento (sparsi): l'orda si ritira all'inizio, ma fino ad allora c'è sempre qualcosa
       const cfg = DENSITY[segA.kind === 'cool' && enEl < this.total - COOL_S + 4 ? 'rest' : segA.kind]; if (!cfg) return;
       const comp = composAt(segA.wave); const alone = this.bossAlive; // con il Custode in strada solo qualche camminatore
-      const k = GAP_K[this.level.id] ?? 1; const [g0, g1] = (alone ? [3, 4] : cfg.gap).map((x) => x * k);
+      const k = (GAP_K[this.level.id] ?? 1) * (1 - 0.04 * this.weapon); /* più l'arma è forte, più nemici da falciare */ const [g0, g1] = (alone ? [3, 4] : cfg.gap).map((x) => x * k);
       const l1 = this.pickLane(); const batch = [{ type: alone ? 'zombie' : this.pickType(comp.mix), lane: l1, dz: 0 }];
       if (!alone && this.rnd() < cfg.pair) batch.push({ type: this.pickType(comp.mix), lane: this.pickLane(l1), dz: 1 + this.rnd() * 5 });
       n = this.nextSpawn = { batch, enter: this.lastEnter + g0 + this.rnd() * (g1 - g0) }; n.e0 = n.enter;
     }
     const travel = (SPAWN_Z - ZONE_D) / (V + ENEMIES[n.batch[0].type].speed);
     if (this.gt < n.enter - travel) return;
-    if (this.tryAdd(n.batch)) { this.lastEnter = Math.max(this.gt + travel, n.enter); this.nextSpawn = null; } else { n.enter += 0.3; if (n.enter - n.e0 > 0.9 && n.batch.length > 1) n.batch.length = 1; } // troppo carico: slitta, e un branco di due diventa uno solo
+    if (this.tryAdd(n.batch)) { this.lastEnter = Math.max(this.gt + travel, n.enter); this.nextSpawn = null; } else { // troppo carico: slitta; dopo un po' il branco diventa un solo camminatore, e poi un camminatore nella corsia dove sei già (non costa un cambio)
+      n.enter += 0.3; const slip = n.enter - n.e0;
+      if (slip > 0.9 && (n.batch.length > 1 || n.batch[0].type !== 'zombie')) n.batch = [{ type: 'zombie', lane: n.batch[0].lane, dz: 0 }];
+      if (slip > 1.5) n.batch[0].lane = this.lane;
+    }
   }
 
   // la strada all'inizio non è vuota: il primo nemico arriva in 6 s (si vede dopo 2 s)
@@ -632,7 +640,7 @@ export class Horde {
 
   // una cassa in una corsia libera: bomba o cuore (il cuore solo se ne manca uno)
   spawnPick(z) {
-    if (this.gates.some((g) => !g.used && Math.abs(g.z - z) < 24)) return false; // una coppia di portali è appena comparsa
+    if (this.gates.some((g) => !g.used && Math.abs(g.z - z) < 36)) return false; // una coppia di portali è appena comparsa o sta per arrivare: le scelte non si accavallano
     const busy = new Set(this.gates.filter((g) => !g.used && Math.abs(g.z - z) < 40).map((g) => g.lane));
     const lanes = [0, 1, 2].filter((l) => !busy.has(l)); if (!lanes.length) return false;
     const lane = lanes[Math.floor(this.rnd() * lanes.length)];

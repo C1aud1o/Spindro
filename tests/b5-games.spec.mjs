@@ -29,51 +29,47 @@ async function openGame(page, kind) {
   await expect.poll(() => page.evaluate(() => window.__game?.state), { timeout: 120_000 }).toBe('menu');
 }
 
-// Il bot: avanza il gioco a mano (1/30 s), tiene una potenza fissa (multiplo della FTP) e passa dai portali (arma > alleato > cadenza > danno).
-// Restituisce le misure richieste da docs/giochi-design.md §5: stelle, tempo al primo evento, intervallo più lungo senza eventi, eventi al minuto.
-function botRun({ mult, durIdx, lvl, ftp }) {
-  const g = window.__game; g.active = false; g.durIdx = durIdx; g.lvlIdx = lvl; g.reset(); g.begin();
+// Il bot: avanza il gioco a mano (1/30 s), tiene una potenza fissa (multiplo della FTP) e gioca con la politica LANE: va sempre nella
+// corsia del nemico che arriva per primo (scripts/horde-bot.mjs ha anche IDLE e LATE, con la tabella completa).
+// Restituisce le misure richieste da docs/games/DESIGN-RULES.md §5: cuori, stelle, tempo al primo evento, intervallo più lungo senza eventi.
+function botRun({ mult, durIdx, lvl, ftp, seed }) {
+  const g = window.__game; g.active = false; window.__spindroSeed = seed; g.durIdx = durIdx; g.lvlIdx = lvl; g.reset(); g.begin();
   g.hooks = { ...g.hooks, connected: () => true, ftp: () => ftp, stats: () => ({ power: ftp * mult, cadence: 85 }), speedKmh: () => 30, setGrade() {} };
-  const order = ['weapon', 'ally', 'rate', 'dmg', 'life'];
-  const pairs = []; const seen = new Set();
   let n = 0; let near = 0; let ns = 0;
   while (g.state === 'play' && n < 1500 * 30) {
-    const gate = g.gates.filter((x) => !x.used && x.z - g.z > -1 && x.z - g.z < 45).sort((a, b) => a.z - b.z)[0];
-    if (gate) { const pair = g.gates.filter((x) => x.pair === gate.pair && !x.used).sort((a, b) => order.indexOf(a.def.kind) - order.indexOf(b.def.kind)); g.tx = pair[0].x; }
-    for (const x of g.gates) if (!seen.has(x)) { seen.add(x); if (!pairs[x.pair]) pairs[x.pair] = { t: g.el, kinds: [] }; pairs[x.pair].kinds.push(x.def.kind); }
+    const l = g.threatLane(); if (l > g.lane) g.input(1); else if (l >= 0 && l < g.lane) g.input(-1);
     g.update(1 / 30); n++;
     if (n % 30 === 0) { near += g.enemies.filter((e) => !e.dead && e.z - g.z < 40 && e.z > g.z - 2).length; ns++; }
   }
   const es = g.eventStats();
-  return { state: g.state, secs: n / 30, res: g.result, es, kills: g.kills, weapon: g.weapon, near: near / ns, pairs: pairs.filter(Boolean), plan: { N: g.plan.N } };
+  return { state: g.state, secs: n / 30, res: g.result, es, kills: g.kills, weapon: g.weapon, hp: g.hp, lost: g.lost, moves: g.moves, near: near / ns, plan: { N: g.plan.N } };
 }
 
 async function runBot(page, mult, durIdx = 0, lvl = 1) {
   await openGame(page, 'horde');
-  return page.evaluate(botRun, { mult, durIdx, lvl, ftp: 200 });
+  return page.evaluate(botRun, { mult, durIdx, lvl, ftp: 200, seed: 6 });
 }
 
-// atteso (docs/giochi-design.md §5): 0,6 × → 1 stella; 0,8 × → 1–2; 1,0 × → 2–3; 1,2 × → 3
-const EXPECT = { 0.6: [1, 1], 0.8: [1, 2], 1.0: [2, 3], 1.2: [3, 3] };
+// i watt non sono un'abilità (il rullo è in ERG): decidono solo se lo sforzo riesce, cioè se l'arma sale di livello. Le stelle vengono dai cuori.
 for (const mult of [0.6, 0.8, 1.0, 1.2]) {
-  test(`Horde Run: bot a ${mult} × FTP, 5 minuti, livello Normale`, async ({ page }) => {
+  test(`Horde Run: bot LANE a ${mult} × FTP, 5 minuti, livello Normale`, async ({ page }) => {
     const r = await runBot(page, mult);
-    console.log(`BOT ${mult}× → stelle ${r.res.stars}, sforzi ${r.res.done}/${r.res.total}, Custodi ${r.res.bossKilled}/${r.res.bossTotal}, cadute ${r.res.ko}, primo evento ${r.es.first.toFixed(1)} s, max senza eventi ${r.es.maxGap.toFixed(1)} s, eventi/min ${Math.round(r.es.perMin)}, nemici entro 40 m ${r.near.toFixed(1)}`);
+    console.log(`BOT ${mult}× → stelle ${r.res.stars}, cuori ${r.hp}, persi ${r.lost}, arma ${r.weapon}, sforzi ${r.res.done}/${r.res.total}, Custodi ${r.res.bossKilled}/${r.res.bossTotal}, cambi corsia/min ${(r.moves / 5).toFixed(1)}, primo evento ${r.es.first.toFixed(1)} s, max senza eventi ${r.es.maxGap.toFixed(1)} s, eventi/min ${Math.round(r.es.perMin)}, nemici entro 40 m ${r.near.toFixed(1)}`);
     expect(r.state, 'la partita finisce da sola').toBe('results');
     expect(r.secs, 'durata: 5 minuti').toBeGreaterThanOrEqual(299);
     expect(r.secs).toBeLessThanOrEqual(301);
-    expect(r.res.stars, 'stelle').toBeGreaterThanOrEqual(EXPECT[mult][0]);
-    expect(r.res.stars, 'stelle').toBeLessThanOrEqual(EXPECT[mult][1]);
+    expect(r.hp, 'chi segue la minaccia tiene almeno 5 cuori su 6').toBeGreaterThanOrEqual(5);
+    expect(r.res.stars, 'stelle: 6 cuori o al massimo uno perso = 3').toBe(3);
     expect(r.es.first, 'tempo al primo evento (s)').toBeLessThanOrEqual(8);
     expect(r.es.maxGap, 'intervallo più lungo senza eventi (s)').toBeLessThanOrEqual(5);
     expect(r.es.perMin, 'eventi al minuto').toBeGreaterThanOrEqual(30);
-    expect(r.near, 'l’orda riempie lo schermo: nemici entro 40 m').toBeGreaterThanOrEqual(5);
-    // i portali: una coppia ogni 13–17 s, sempre due scelte diverse, tipi vari
-    expect(r.pairs.length, 'coppie di portali in 5 minuti').toBeGreaterThanOrEqual(15);
-    const gaps = r.pairs.slice(1).map((p, i) => p.t - r.pairs[i].t);
-    expect(Math.max(...gaps.slice(1)), 'pausa più lunga fra due coppie (s)').toBeLessThanOrEqual(18);
-    expect(r.pairs.every((p) => p.kinds.length === 2 && p.kinds[0] !== p.kinds[1]), 'ogni coppia è una scelta fra due cose diverse').toBe(true);
-    expect(new Set(r.pairs.flatMap((p) => p.kinds)).size, 'tipi di portale').toBeGreaterThanOrEqual(5);
+    expect(r.moves / 5, 'cambi di corsia al minuto: movimentato ma non frenetico').toBeGreaterThanOrEqual(8); expect(r.moves / 5).toBeLessThanOrEqual(30);
+    expect(r.near, 'la strada non è vuota: nemici entro 40 m').toBeGreaterThanOrEqual(1);
+    if (mult < 0.9) expect(r.res.done, 'sotto il bersaglio nessuno sforzo riesce').toBe(0);
+    if (mult >= 1) expect(r.res.done, 'a 1,0 × riescono gli sforzi (non lo scatto), a 1,2 × tutti').toBeGreaterThanOrEqual(mult >= 1.2 ? r.res.total : r.res.total - 1);
+    if (mult < 0.9) expect(r.weapon, 'senza sforzi riusciti l’arma resta la pistola, salvo i portali presi per caso').toBeLessThanOrEqual(3);
+    if (mult >= 1.2) expect(r.weapon, 'ogni sforzo riuscito alza l’arma: sei livelli in 5 minuti').toBe(5);
+    if (mult === 1) expect(r.weapon).toBeGreaterThanOrEqual(3);
   });
 }
 

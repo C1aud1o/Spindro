@@ -8,6 +8,7 @@
 //   --levels a,b    power levels, default 0.6,0.8,1,1.2
 //   --seconds N     stop each run after N seconds of game time (quick look; stars are then not checked)
 //   --seed N        random seed (default 1234)
+//   (A game may define pilot() to steer while the bot pedals, and starsIgnorePower = true when its stars do not depend on watts: see docs/games/DESIGN-RULES.md §5.)
 //   --ftp W         rider's FTP (default 200)
 //   --measure-at S  also time 90 frames with rendering after S seconds of the run (mid-game frame cost, printed as ms/frame @S)
 //   --quality Q     game quality setting: low | medium | high | auto (default medium)
@@ -54,6 +55,8 @@ async function botRun({ mult, ftp, limit, measureAt }) {
   const pe = hooks.progress?.event?.bind(hooks.progress); if (pe) hooks.progress.event = (...r) => { if (t0 !== null) evs.push((performance.now() - t0) / 1000); return pe(...r); };
   const rs = hooks.runStart; hooks.runStart = (...r) => { t0 = performance.now(); return rs?.(...r); };
   g.menu.durIdx = 0; g.menu.level = 1; g.menu.age = 1; // 5 minutes, Normal
+  // a game whose + / − matter all the time can offer pilot(): called before every update, it steers like a rider who follows the game's cues
+  if (typeof g.pilot === 'function') { const upd = g.update.bind(g); g.update = (...a) => { if (g.state === 'play') g.pilot(); return upd(...a); }; }
   g.menu.start();
   let frames = 0; let timed = 0; let ms = 0; const wall = () => Date.now();
   const budget = (limit || 1500) * 30 + 30 * 40;
@@ -79,7 +82,7 @@ async function botRun({ mult, ftp, limit, measureAt }) {
   const ts = evs.sort((a, b) => a - b); let maxGap = 0; let prev = 0; for (const x of ts) { maxGap = Math.max(maxGap, x - prev); prev = x; }
   const dur = t0 === null ? 0 : (performance.now() - t0) / 1000; maxGap = Math.max(maxGap, dur - prev);
   const ev = es ? { first: es.first, maxGap: es.maxGap, perMin: es.perMin, from: 'eventStats()' } : { first: ts[0] ?? Infinity, maxGap, perMin: dur > 0 ? ts.length / (dur / 60) : 0, from: 'sfx+progress' };
-  return { state: g.state, stars: g.result?.stars ?? null, secs: Math.round(dur), ev, frameMs: ms / timed, midMs, started: t0 !== null };
+  return { state: g.state, stars: g.result?.stars ?? null, secs: Math.round(dur), ev, frameMs: ms / timed, midMs, starsIgnorePower: !!g.starsIgnorePower, hearts: g.hp, started: t0 !== null };
 }
 
 // ---- driver --------------------------------------------------------------------------------------------------------
@@ -115,7 +118,7 @@ for (const r of rows) {
   if (r.started && r.ev.first > MAX_FIRST) problems.push(`${tag}: first event after ${Number.isFinite(r.ev.first) ? r.ev.first.toFixed(1) : 'never'} s (rule: within ${MAX_FIRST} s). Give the rider something to do at the start.`);
   if (r.started && r.ev.maxGap > MAX_GAP) problems.push(`${tag}: longest gap without an event ${r.ev.maxGap.toFixed(1)} s (rule: never more than ${MAX_GAP} s). Add an event (target, reward, obstacle) in the gap${r.ev.from === 'eventStats()' ? '' : ', and call this.ev(kind) so eventStats() sees it'}.`);
   const exp = EXPECT[r.mult];
-  if (!LIMIT && exp && r.state === 'results' && (r.stars == null || r.stars < exp[0] || r.stars > exp[1])) problems.push(`${tag}: ${r.stars ?? 'no'} stars, expected ${exp[0] === exp[1] ? exp[0] : `${exp[0]}-${exp[1]}`}. Stars must come from result.stars; see the star criteria in DESIGN-RULES §1.`);
+  if (!LIMIT && exp && !r.starsIgnorePower && r.state === 'results' && (r.stars == null || r.stars < exp[0] || r.stars > exp[1])) problems.push(`${tag}: ${r.stars ?? 'no'} stars, expected ${exp[0] === exp[1] ? exp[0] : `${exp[0]}-${exp[1]}`}. Stars must come from result.stars; see the star criteria in DESIGN-RULES §1.`);
   if (r.frameMs > MAX_FRAME_MS) console.warn(`note: ${tag}: ${r.frameMs.toFixed(0)} ms/frame at 4× CPU slowdown on software GL: informational only (rule: < ${MAX_FRAME_MS} ms on a real GPU).`);
 }
 if (flag('json')) console.log(JSON.stringify(rows.map(({ errors, ...r }) => r), null, 1));
@@ -124,7 +127,7 @@ else {
   console.log(`\ngame:check ${id}  ·  FTP ${FTP} W  ·  seed ${SEED}  ·  ${LIMIT ? `first ${LIMIT} s of the run` : 'full session at the first length of the menu (5 min in most games), level Normal'}\n`);
   console.log(`| × FTP | stars | expected | first event (s) | longest gap (s) | events/min | game s | ms/frame |${MEASURE_AT ? ` ms/frame @${MEASURE_AT}s |` : ''}`);
   console.log(`|---|---|---|---|---|---|---|---|${MEASURE_AT ? '---|' : ''}`);
-  for (const r of rows) { const e = EXPECT[r.mult]; console.log(`| ${r.mult} | ${r.stars ?? '—'} | ${e ? (e[0] === e[1] ? e[0] : `${e[0]}-${e[1]}`) : '—'} | ${f(r.ev.first)} | ${f(r.ev.maxGap)} | ${f(r.ev.perMin)} | ${r.secs} | ${f(r.frameMs, 1)} |${MEASURE_AT ? ` ${f(r.midMs, 1)} |` : ''}`); }
+  for (const r of rows) { const e = EXPECT[r.mult]; console.log(`| ${r.mult} | ${r.stars ?? '—'} | ${r.starsIgnorePower ? 'hearts' : e ? (e[0] === e[1] ? e[0] : `${e[0]}-${e[1]}`) : '—'} | ${f(r.ev.first)} | ${f(r.ev.maxGap)} | ${f(r.ev.perMin)} | ${r.secs} | ${f(r.frameMs, 1)} |${MEASURE_AT ? ` ${f(r.midMs, 1)} |` : ''}`); }
   console.log(`\nevents read from: ${rows[0]?.ev.from ?? '—'}\n`);
 }
 if (problems.length) { console.error(`✗ ${problems.length} rule${problems.length > 1 ? 's' : ''} broken:\n${problems.map((p) => `  - ${p}`).join('\n')}`); process.exit(1); }

@@ -11,7 +11,7 @@ reference. The interface a game implements is in [API.md](API.md).)
 | id in code | name | in one line |
 |---|---|---|
 | `racer` | **Breakaway** | stage race: slipstream, climbs, sprint |
-| `horde` | **Horde Run** | hold the road against the horde: more watts, more shots |
+| `horde` | **Horde Run** | hold the road: three lanes, + / − to change lane |
 | `gruppetto` | **Slipstream** | pick up the riders and bring them into your slipstream |
 | `planata` | **Updraft** | pedal-powered plane: your watts are your altitude |
 | `mattoni` | **Feed Zone** | cycling-themed bouncing game: cadence is the speed |
@@ -70,6 +70,7 @@ New games add their own row here when they are accepted. `tempo` (and the `skele
 1. **Bot** at four power levels: 0.6 × / 0.8 × / 1.0 × / 1.2 × FTP (FTP 200), 5-minute run at Normal level, seeded
    (`js/games/kit/rng.js`). For each: stars, time to the first event, longest interval without events, events per minute.
    Expected: 0.6 × finishes the run with 1 star; 0.8 × → 1–2; 1.0 × → 2–3; 1.2 × → 3.
+   A game where + / − matter all the time (Horde Run) defines `pilot()`, which `game:check` calls before every step so the bot steers like a rider who follows the game's cues, and `starsIgnorePower = true` when its stars do not come from watts (the table then skips the star check).
    **`npm run game:check -- <id>` does exactly this** and prints the table; it exits with an error naming the rule that is
    broken (first event later than 8 s, a gap longer than 5 s, stars outside the expected range, a run that never reaches the
    results screen, a JavaScript error). The table goes in the pull request.

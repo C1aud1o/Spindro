@@ -1,6 +1,6 @@
 // Horde Run: la forma dell'allenamento (js/games/horde-plan.js) rispetta docs/games/DESIGN-RULES.md §1. Logica pura, senza browser.
 import { test, expect } from '@playwright/test';
-import { DURATIONS, LEVELS, WARM_S, COOL_S, buildPlan, targetPct, targetW, starsFor } from '../js/games/horde-plan.js';
+import { DURATIONS, LEVELS, WARM_S, COOL_S, buildPlan, targetPct, targetW, starsFor, nextStarHint, feasible, SLACK, SWITCH_S, DENSITY, GAP_K, LANES, laneX, LANE_W } from '../js/games/horde-plan.js';
 
 test('piano: durate 5/10/20 min, avvio 45–60 s, defaticamento 30 s, tratti in % FTP nelle fasce del documento', () => {
   expect(DURATIONS).toEqual([300, 600, 1200]);
@@ -39,8 +39,40 @@ test('livelli: ±10 % sul livello e nient\'altro; il recupero non cambia; i watt
   expect(targetW(eff, 200, 0, 10)).toBe(targetW(eff, 200, 0));
 });
 
-test('stelle: una per aver finito, due con metà degli sforzi, tre con l’80 %, tutti i Custodi e al massimo 3 cadute', () => {
-  const s = (o) => starsFor({ done: 0, total: 5, bossKilled: 0, bossTotal: 1, ko: 0, ...o }).stars;
-  expect(s({})).toBe(1); expect(s({ done: 3 })).toBe(2); expect(s({ done: 4 })).toBe(2);
-  expect(s({ done: 4, bossKilled: 1 })).toBe(3); expect(s({ done: 4, bossKilled: 1, ko: 3 })).toBe(3); expect(s({ done: 4, bossKilled: 1, ko: 4 })).toBe(2);
+test('stelle (senza allenamento): una per aver finito, due con almeno 4 cuori, tre con tutti e 6 o al massimo uno perso', () => {
+  const s = (hp, lost) => starsFor({ hp, lost }).stars;
+  expect(s(1, 9)).toBe(1); expect(s(3, 5)).toBe(1); expect(s(4, 4)).toBe(2); expect(s(5, 4)).toBe(2);
+  expect(s(6, 0)).toBe(3); expect(s(5, 1)).toBe(3); expect(s(6, 5), 'tutti i cuori alla fine (cuori ripresi dai portali)').toBe(3); expect(s(4, 2)).toBe(2);
+  expect(nextStarHint({ stars: 1 }).key).toBe('games.horde.res.next2'); expect(nextStarHint({ stars: 2 }).key).toBe('games.horde.res.next3'); expect(nextStarHint({ stars: 3 })).toBeNull();
+});
+
+test('corsie: tre, simmetriche; la corsia 0 è a sinistra sullo schermo (X positivo: la camera guarda +Z)', () => {
+  expect(LANES).toBe(3); expect(laneX(1)).toBe(0); expect(laneX(0)).toBe(LANE_W); expect(laneX(2)).toBe(-LANE_W);
+});
+
+test('direttore: il margine è 25 % a Normale, 40 % a Facile, 10 % a Difficile; più margine = meno carico', () => {
+  expect(SLACK).toEqual({ easy: 0.4, normal: 0.25, hard: 0.1 });
+  expect(GAP_K.easy).toBeGreaterThan(GAP_K.normal); expect(GAP_K.normal).toBeGreaterThan(GAP_K.hard);
+  // in recupero pochi nemici, nello sforzo fitto; mai più di 3,6 s fra due ingressi (regola 2: niente più di 5 s senza eventi)
+  for (const k of ['warm', 'pace', 'effort', 'sprint', 'rest']) expect(DENSITY[k].gap[1] * GAP_K.easy).toBeLessThanOrEqual(3.7);
+  expect(DENSITY.rest.gap[0]).toBeGreaterThan(DENSITY.effort.gap[1]); expect(DENSITY.effort.pair).toBeGreaterThan(DENSITY.pace.pair); expect(DENSITY.rest.pair).toBe(0);
+});
+
+test('feasible: il tempo per ripulire (tiro + cambi di corsia) deve stare nel margine, con i nemici che arrivano', () => {
+  const o = { lane: 1, slack: 0.25 };
+  expect(feasible([], o)).toBe(true);
+  // un nemico nella propria corsia: serve 1 s di tiro, arriva fra 3 s → 1 / 0,75 = 1,33 s ≤ 3
+  expect(feasible([{ a: 3, r: 0, w: 1, lane: 1 }], o)).toBe(true);
+  expect(feasible([{ a: 1.2, r: 0, w: 1, lane: 1 }], o), 'con il margine del 25 % 1 s di tiro non entra in 1,2 s').toBe(false);
+  // cambio di corsia: costa SWITCH_S (gonfiato dal margine)
+  const need = (1 + SWITCH_S) / 0.75;
+  expect(feasible([{ a: need + 0.05, r: 0, w: 1, lane: 2 }], o)).toBe(true); expect(feasible([{ a: need - 0.05, r: 0, w: 1, lane: 2 }], o)).toBe(false);
+  // due nemici in corsie diverse che arrivano insieme: uno dei due si perde
+  expect(feasible([{ a: 2, r: 0, w: 0.5, lane: 0 }, { a: 2.1, r: 0, w: 0.5, lane: 2 }], o)).toBe(false);
+  expect(feasible([{ a: 2, r: 0, w: 0.5, lane: 0 }, { a: 6, r: 0, w: 0.5, lane: 2 }], o)).toBe(true);
+  // più margine = più difficile far entrare lo stesso carico; meno margine = più facile
+  const J = [{ a: 1.5, r: 0, w: 1, lane: 1 }];
+  expect(feasible(J, { lane: 1, slack: 0.1 })).toBe(true); expect(feasible(J, { lane: 1, slack: 0.4 })).toBe(false);
+  // un nemico non ancora a tiro (r > 0) non si può colpire prima
+  expect(feasible([{ a: 3, r: 2.5, w: 1, lane: 1 }], o)).toBe(false);
 });
