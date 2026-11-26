@@ -262,6 +262,8 @@ function gitDate(paths) {
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 cpSync(join(here, 'assets'), join(out, 'assets'), { recursive: true });
+// icone alla radice del dominio: Google e i browser cercano /favicon.ico e /apple-touch-icon.png lì
+for (const f of ['favicon.ico', 'apple-touch-icon.png']) cpSync(join(here, f), join(out, f));
 
 // profilo altimetrico della pagina: cinque "tappe" = cinque sezioni
 const ROUTE = [[0, 128], [60, 124], [120, 116], [180, 120], [240, 100], [300, 108], [360, 84], [420, 96], [480, 70], [540, 88], [600, 60], [660, 78], [720, 52], [780, 70], [840, 44], [900, 66], [960, 36], [1020, 48], [1080, 18], [1140, 40], [1200, 34]];
@@ -287,6 +289,9 @@ const appLd = (lang, description) => ({
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
   image: abs('/assets/og.png'), sameAs: [cfg.github], license: 'https://www.gnu.org/licenses/agpl-3.0.html',
 });
+/** Il nome del sito e il logo per i motori di ricerca ("Spindro" invece del dominio, il logo accanto al risultato). Solo sulle home. */
+const siteLd = (lang) => ({ '@context': 'https://schema.org', '@type': 'WebSite', '@id': `${SITE_URL}/#website`, name: 'Spindro', alternateName: ['Spindro.fit', 'spindro.fit'], url: `${SITE_URL}/`, inLanguage: lang, publisher: { '@id': `${SITE_URL}/#org` } });
+const orgLd = () => ({ '@context': 'https://schema.org', '@type': 'Organization', '@id': `${SITE_URL}/#org`, name: 'Spindro', url: `${SITE_URL}/`, logo: { '@type': 'ImageObject', url: abs('/assets/logo-512.png'), width: 512, height: 512 }, sameAs: [cfg.github] });
 const ldTag = (o) => `<script type="application/ld+json">${JSON.stringify(o).replace(/</g, '\\u003c')}</script>`;
 const faqLd = (faq, lang) => ({ '@context': 'https://schema.org', '@type': 'FAQPage', inLanguage: lang, mainEntity: faq.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) });
 
@@ -296,7 +301,7 @@ for (const lang of cfg.langs) {
   writePage({
     lang, tplName: 'home', title: h.title, description: h.description,
     lastmod: gitDate(['site/i18n', 'site/templates/home.html']),
-    jsonld: ldTag(ld) + ldTag(faqLd(h.faq.map((f) => ({ q: f.q, a: f.a })), lang)),
+    jsonld: ldTag(siteLd(lang)) + ldTag(orgLd()) + ldTag(ld) + ldTag(faqLd(h.faq.map((f) => ({ q: f.q, a: f.a })), lang)),
     extra: (() => {
       const bib = (i) => `<p class="bib"><span>${esc(h.stageWord)}</span><b>${pad2(i + 1)}</b></p>`;
       const stage = (i, flip) => {
