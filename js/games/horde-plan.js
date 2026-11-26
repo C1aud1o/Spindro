@@ -26,7 +26,7 @@ export const LANE_W = 3.2;                      // m
 export const laneX = (l) => (1 - l) * LANE_W;   // corsia 0 = sinistra sullo schermo (la camera guarda +Z: destra = −X)
 // il margine che il direttore lascia al giocatore: il tempo che serve per ripulire ≤ (1 − margine) × il tempo che i nemici impiegano ad arrivare
 export const SLACK = { easy: 0.4, normal: 0.25, hard: 0.1 };
-export const SWITCH_S = 0.6;                    // cambio di corsia + mira + volo del colpo (s)
+export const SWITCH_S = 0.8;                    // cambio di corsia + mira + volo del colpo (s)
 // ogni quanto nasce un nemico (s) e quanto spesso nascono in due corsie insieme, per tipo di tratto
 export const DENSITY = {
   warm: { gap: [2.6, 3.4], pair: 0 }, pace: { gap: [1.8, 2.5], pair: 0.15 }, effort: { gap: [1.4, 2], pair: 0.3 },
@@ -99,16 +99,32 @@ export function planFromWorkout(wp, kindMap = WK_KIND) {
   return { total: wp.total, N: wp.N, segs, bossWaves, L: wp.total / Math.max(1, wp.N), wk: true, name: wp.name };
 }
 
-// Stelle (senza allenamento): 1 = finita; 2 = almeno 4 cuori alla fine; 3 = tutti i 6 cuori, oppure al massimo uno perso
-export function starsFor({ hp, lost }) {
+// Stelle: 1 = finita; 2 = almeno metà degli sforzi; 3 = almeno l'80 %, tutti i Custodi battuti e al massimo 3 cadute
+export function starsFor({ done, total, bossKilled, bossTotal, ko }) {
+  const ratio = total ? done / total : 0;
+  let s = 1;
+  if (ratio >= 0.5) s = 2;
+  if (ratio >= 0.8 && bossKilled >= bossTotal && ko <= 3) s = 3;
+  return { stars: s, ratio };
+}
+
+// cosa manca alla stella successiva
+export function nextStarHint({ stars, done, total, bossKilled, bossTotal, ko }) {
+  if (stars >= 3) return null;
+  if (stars === 1) return { key: 'games.horde.res.next2', n: Math.max(1, Math.ceil(total * 0.5) - done) };
+  return { key: 'games.horde.res.next3', n: Math.max(0, Math.ceil(total * 0.8) - done), boss: Math.max(0, bossTotal - bossKilled), ko: Math.max(0, ko - 3) };
+}
+
+// Horde Run, stelle (senza allenamento): 1 = finita; 2 = almeno 4 cuori alla fine; 3 = tutti i 6 cuori, oppure al massimo uno perso
+export function heartStars({ hp, lost }) {
   let s = 1;
   if (hp >= 4) s = 2;
   if (hp >= 6 || lost <= 1) s = 3;
   return { stars: s };
 }
 
-// cosa manca alla stella successiva
-export function nextStarHint({ stars }) {
+// Horde Run: cosa manca alla stella successiva
+export function heartHint({ stars }) {
   if (stars >= 3) return null;
-  return { key: stars === 1 ? 'games.horde.res.next2' : 'games.horde.res.next3' };
+  return { key: stars === 1 ? 'games.horde.res.heartsNext2' : 'games.horde.res.heartsNext3' };
 }

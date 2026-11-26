@@ -1,6 +1,6 @@
 // Horde Run: la forma dell'allenamento (js/games/horde-plan.js) rispetta docs/games/DESIGN-RULES.md §1. Logica pura, senza browser.
 import { test, expect } from '@playwright/test';
-import { DURATIONS, LEVELS, WARM_S, COOL_S, buildPlan, targetPct, targetW, starsFor, nextStarHint, feasible, SLACK, SWITCH_S, DENSITY, GAP_K, LANES, laneX, LANE_W } from '../js/games/horde-plan.js';
+import { DURATIONS, LEVELS, WARM_S, COOL_S, buildPlan, targetPct, targetW, starsFor, heartStars, heartHint, feasible, SLACK, SWITCH_S, DENSITY, GAP_K, LANES, laneX, LANE_W } from '../js/games/horde-plan.js';
 
 test('piano: durate 5/10/20 min, avvio 45–60 s, defaticamento 30 s, tratti in % FTP nelle fasce del documento', () => {
   expect(DURATIONS).toEqual([300, 600, 1200]);
@@ -39,11 +39,17 @@ test('livelli: ±10 % sul livello e nient\'altro; il recupero non cambia; i watt
   expect(targetW(eff, 200, 0, 10)).toBe(targetW(eff, 200, 0));
 });
 
-test('stelle (senza allenamento): una per aver finito, due con almeno 4 cuori, tre con tutti e 6 o al massimo uno perso', () => {
-  const s = (hp, lost) => starsFor({ hp, lost }).stars;
+test('stelle di Feed Zone (starsFor, stesso piano): una per aver finito, due con metà degli sforzi, tre con l’80 %, tutti i Custodi e al massimo 3 cadute', () => {
+  const s = (o) => starsFor({ done: 0, total: 5, bossKilled: 0, bossTotal: 1, ko: 0, ...o }).stars;
+  expect(s({})).toBe(1); expect(s({ done: 3 })).toBe(2); expect(s({ done: 4 })).toBe(2);
+  expect(s({ done: 4, bossKilled: 1 })).toBe(3); expect(s({ done: 4, bossKilled: 1, ko: 3 })).toBe(3); expect(s({ done: 4, bossKilled: 1, ko: 4 })).toBe(2);
+});
+
+test('stelle di Horde Run (senza allenamento): una per aver finito, due con almeno 4 cuori, tre con tutti e 6 o al massimo uno perso', () => {
+  const s = (hp, lost) => heartStars({ hp, lost }).stars;
   expect(s(1, 9)).toBe(1); expect(s(3, 5)).toBe(1); expect(s(4, 4)).toBe(2); expect(s(5, 4)).toBe(2);
   expect(s(6, 0)).toBe(3); expect(s(5, 1)).toBe(3); expect(s(6, 5), 'tutti i cuori alla fine (cuori ripresi dai portali)').toBe(3); expect(s(4, 2)).toBe(2);
-  expect(nextStarHint({ stars: 1 }).key).toBe('games.horde.res.next2'); expect(nextStarHint({ stars: 2 }).key).toBe('games.horde.res.next3'); expect(nextStarHint({ stars: 3 })).toBeNull();
+  expect(heartHint({ stars: 1 }).key).toBe('games.horde.res.heartsNext2'); expect(heartHint({ stars: 2 }).key).toBe('games.horde.res.heartsNext3'); expect(heartHint({ stars: 3 })).toBeNull();
 });
 
 test('corsie: tre, simmetriche; la corsia 0 è a sinistra sullo schermo (X positivo: la camera guarda +Z)', () => {

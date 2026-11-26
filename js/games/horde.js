@@ -17,7 +17,7 @@ import { t } from '../i18n.js';
 import { GameMenu, ResultsView } from './kit/menu.js';
 import { makeRandom } from './kit/rng.js';
 import { SONGS } from './audio.js';
-import { DURATIONS, LEVELS, COOL_S, buildPlan, planFromWorkout, segAt, composAt, targetW, targetPct, starsFor, nextStarHint, LANES, LANE_W, laneX, SLACK, SWITCH_S, DENSITY, GAP_K, feasible } from './horde-plan.js';
+import { DURATIONS, LEVELS, COOL_S, buildPlan, planFromWorkout, segAt, composAt, targetW, targetPct, heartStars, heartHint, LANES, LANE_W, laneX, SLACK, SWITCH_S, DENSITY, GAP_K, feasible } from './horde-plan.js';
 import { WorkoutClock, BandMeter, workoutStars } from './kit/workout-plan.js';
 import { drawWorkoutStrip, stripBottom, stripFromPlan } from './kit/workout-strip.js';
 
@@ -500,12 +500,12 @@ export class Horde {
   finishResult() {
     const bossTotal = this.plan.bossWaves.length;
     // con un allenamento le stelle sono le stesse di tutti i giochi: tempo entro ±7 % del bersaglio (kit/workout-plan.js)
-    const s = this.wk ? { stars: workoutStars(this.band.ratio, true), ratio: this.band.ratio } : starsFor({ hp: this.hp, lost: this.lost });
+    const s = this.wk ? { stars: workoutStars(this.band.ratio, true), ratio: this.band.ratio } : heartStars({ hp: this.hp, lost: this.lost });
     const rec = this.record(); const prevBest = rec.score || 0;
     const newBest = this.score > prevBest;
     if (!this.wk && (newBest || (s.stars > (rec.stars || 0)))) { try { localStorage.setItem(this.recordKey(), JSON.stringify({ score: Math.max(prevBest, this.score), stars: Math.max(rec.stars || 0, s.stars) })); } catch { /* niente storage */ } }
     this.result = { ...s, done: this.effortsDone, total: this.effortsTotal, bossKilled: this.bossKilled, bossTotal, ko: this.ko, hp: this.hp, lost: this.lost, score: this.score, newBest, prevStars: rec.stars || 0, bestScore: Math.max(prevBest, this.score) };
-    this.result.hint = this.wk ? null : nextStarHint(this.result);
+    this.result.hint = this.wk ? null : heartHint(this.result);
     this.result.wk = !!this.wk; this.result.band = this.band.ratio;
     this.prog('races', 0, 40 + s.stars * 40 + this.effortsDone * 10);
     if (!this.wk) this.hooks.progress?.setMax('hordeStars', s.stars);
