@@ -12,7 +12,7 @@ export const glowSetting = { get on() { return localStorage.getItem('gameGlow') 
 
 // Parametri del bagliore, uguali per tutti i giochi, tenuti bassi (soglia alta, forza ridotta): solo le vere sorgenti sfiorano la soglia. Un gioco non li cambia: se una scena brilla troppo si abbassa la
 // luminosità dell'oggetto, non si alza la soglia). Misurati con tests QA: lo spazio lineare delle superfici illuminate sta sotto 1.1.
-export const BLOOM = { threshold: 2.2, strength: 0.1, radius: 0.12 }; // valori di riserva; i valori veri stanno in kit/quality.js (bloomThreshold/Strength/Radius)
+export const BLOOM = { threshold: 1.3, strength: 0.3, radius: 0.26 }; // valori di riserva; i valori veri stanno in kit/quality.js (bloomThreshold/Strength/Radius)
 
 export { THREE };
 // caricamento con cache e decoder meshopt (js/games/kit/loader.js)
@@ -313,7 +313,7 @@ export function tracer(color = '#fff3a0') {
   }
   // nucleo bianco quasi puro + alone colorato (due passaggi additivi)
   const group = new THREE.Group();
-  const glow = new THREE.Mesh(tracerGeo, new THREE.MeshBasicMaterial({ map: tracerTexture(false), color, opacity: 0.32, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+  const glow = new THREE.Mesh(tracerGeo, new THREE.MeshBasicMaterial({ map: tracerTexture(false), color, opacity: 0.5, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
   const core = new THREE.Mesh(tracerGeo, new THREE.MeshBasicMaterial({ map: tracerTexture(true), color: '#ffe9b8', opacity: 0.8, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
   glow.scale.set(0.42, 1, 1.7); core.scale.set(0.12, 1, 1.4); core.position.z = 0.1;
   group.add(glow, core); group.glow = glow; group.core = core;
@@ -384,7 +384,8 @@ export function labelTexture(text, bg = '#1b1b1b', fg = '#ffffff', w = 512, h = 
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const g = c.getContext('2d'); if (bg) { g.fillStyle = bg; g.fillRect(0, 0, w, h); }
   g.fillStyle = fg; g.font = font; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText(text, w / 2, h / 2 + 4);
+  const tw = g.measureText(text).width; const k = Math.min(1, (w - 36) / (tw || 1)); // a long label shrinks to fit instead of being cut
+  g.translate(w / 2, h / 2 + 4); g.scale(k, k); g.fillText(text, 0, 0);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 export function skyTexture(top, mid, bottom) {

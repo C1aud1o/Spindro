@@ -5,12 +5,12 @@
 // a fine blocco arriva il Custode e chiede uno scatto. I portali arrivano a coppie: scegli da che parte passare.
 // Grafica: ciclisti Meshy con scheletro automatico; nemici Meshy con animazione procedurale
 // (vicini: ossa vere, fino a un tetto che dipende dalla qualità; lontani: istanze in posa cotta); cimitero al crepuscolo.
-import { THREE, Stage, loadAll, Pool, Effects, labelTexture, tracer, fxTexture, Cyclist, makeKit, loadCyclistTemplate, toonMaterial, prepareModel, Quality } from './kit3d.js';
+import { THREE, Stage, loadAll, Pool, Effects, tracer, fxTexture, Cyclist, makeKit, loadCyclistTemplate, toonMaterial, prepareModel, Quality } from './kit3d.js';
 import { loadMeshyTemplate, CYCLIST_URL, MESHY_FAN_URL, BIKE } from './kit/cyclist.js';
 import { Walker, FarCrowd, makeEnemyKit, bakePose, enemyMaterial } from './kit/walkers.js';
 import { buildSky, buildGround, Scenery, LampLights } from './horde-world.js';
 import { clamp, lerp } from './engine.js';
-import { txt as hudText, hudView, paragraph, MessageQueue, loadHudFonts, hurtVignette, HURT_FLASH_S, guardTrainer, trainerLostBanner } from './kit/hud.js';
+import { txt as hudText, hudView, paragraph, MessageQueue, loadHudFonts, hurtVignette, HURT_FLASH_S, guardTrainer, trainerLostBanner, panel as hudPanel } from './kit/hud.js';
 import { t, fmtDec } from '../i18n.js';
 import { GameMenu, ResultsView } from './kit/menu.js';
 import { makeRandom } from './kit/rng.js';
@@ -598,8 +598,7 @@ export class Horde {
       const frame = new THREE.Group();
       P.info.parts.forEach((pt, j) => { frame.add(new THREE.Mesh(pt.geo, this.portalMats[j])); });
       frame.rotation.y = P.turn; frame.scale.set(s, sy, s); group.add(frame);
-      const label = new THREE.Mesh(new THREE.PlaneGeometry(width - 1.0, 0.8), new THREE.MeshBasicMaterial({ map: labelTexture(t(def.text), null, '#ffffff'), transparent: true, side: THREE.DoubleSide, depthWrite: false }));
-      label.position.set(0, 1.8, -0.08); label.rotation.y = Math.PI; group.add(label);
+      // what the portal gives is written in the HUD, above the arch, at a size that never changes with the distance (see drawHud)
       group.position.set(x, 0, z);
       this.stage.scene.add(group);
       this.gates.push({ def, x, z, group, used: false, pair: this.gateN, panel });
@@ -942,8 +941,9 @@ export class Horde {
     // riga in alto
     ctx.fillStyle = 'rgba(8,10,26,.62)'; rrect(ctx, pad - 4, y0 - 22, W - 2 * pad + 8, 36, 10); ctx.fill();
     hudText(ctx, String(this.score), pad + 6, y0 + 5, { size: 26, maxW: 100 });
-    const wn = seg.kind === 'warm' ? t('games.horde.seg.warm') : seg.kind === 'cool' ? t('games.horde.seg.cool') : t('games.horde.waveOf', { n: seg.wave, m: this.plan.N });
-    hudText(ctx, wn, W / 2, y0 + 3, { size: W < 400 ? 19 : 22, align: 'center', color: '#d9ff3d', maxW: W - 2 * (pad + 100) });
+    // warm-up and cool-down are already named in the workout strip right above: here only the wave count
+    const wn = seg.kind === 'warm' || seg.kind === 'cool' ? '' : t('games.horde.waveOf', { n: seg.wave, m: this.plan.N });
+    if (wn) hudText(ctx, wn, W / 2, y0 + 3, { size: W < 400 ? 19 : 22, align: 'center', color: '#d9ff3d', maxW: W - 2 * (pad + 100) });
     let hx = W - pad - 4 - (this.maxHp - 1) * 18;
     for (let i = 0; i < this.maxHp; i++) { hudText(ctx, i < this.hp ? '♥' : '♡', hx + i * 18, y0 + 4, { size: 21, color: i < this.hp ? '#ff4d6d' : '#7a7a99', align: 'center' }); }
     const col = SEG_COLOR[seg.kind]; const tw = this.tgtW || targetW(seg, this.ftp, this.level.k, this.el); const ty = y0 + 8;
@@ -983,6 +983,18 @@ export class Horde {
 
     this.msgs.draw(ctx, W, H, { u: W < 500 ? 0.9 : 1.1, y: H * 0.33 });
     const v3 = new THREE.Vector3();
+    // the two portal choices: a tinted plate above each arch, always the same readable size, drawn over everything else
+    for (const g of this.gates) {
+      const d = g.z - this.z; if (g.used || d > 70 || d < 1.5) continue;
+      v3.set(g.x, 4.6, g.z).project(this.stage.camera);
+      const pw = Math.min(170, W * 0.42); const ph = 30; const side = g.x < 0 ? -1 : 1;
+      const sx = side < 0 ? Math.min((v3.x + 1) / 2 * W, W / 2 - pw / 2 - 4) : Math.max((v3.x + 1) / 2 * W, W / 2 + pw / 2 + 4);
+      const sy = clamp((1 - v3.y) / 2 * H, H * 0.405, H * 0.6); // never above 40 % of the height: that band belongs to the announcements
+      ctx.globalAlpha = clamp((70 - d) / 12, 0, 1);
+      hudPanel(ctx, clamp(sx - pw / 2, 6, W - pw - 6), sy - ph / 2, pw, ph, { r: 12, fill: 'rgba(10,10,14,.88)', tint: g.def.color, tintA: 0.3, gloss: false });
+      hudText(ctx, t(g.def.text), clamp(sx, 6 + pw / 2, W - 6 - pw / 2), sy + 7, { size: 18, align: 'center', color: '#ffffff', maxW: pw - 14 });
+      ctx.globalAlpha = 1;
+    }
     for (const p of this.pops) {
       p.t -= dt; const k = 1 - p.t / p.t0;
       v3.set(p.x, 3.0 + k * 2.0, p.z).project(this.stage.camera);

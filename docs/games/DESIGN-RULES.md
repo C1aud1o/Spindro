@@ -56,8 +56,11 @@ New games add their own row here when they are accepted. `tempo` (and the `skele
 - The playfield must be readable: the player's character is a **small figure, about 8–12 % of the screen height** (Horde Run, Feed Zone and
   the camera of every game: pulled back, never a close-up), enemies and targets at least 4–6 %, on 16:9 desktop (1280×720, 1920×1080)
   and on a portrait phone (390×844). Hitboxes do not follow the camera: balance stays as it is.
-- **Matte, not neon**: no halos around characters or pickups, no blown-out whites, emissive only as a small accent. Bloom threshold high
-  and strength low on every preset (`kit/quality.js`); lime `#D9FF3D` is used sparingly, like in the flat UI.
+- **A little glow, not neon** (owner's feedback: the glow had to be reduced, not removed): no halos around characters or pickups, no
+  blown-out whites. Real lights (shots, muzzle flashes, lamps, portals) keep a short soft glow: bloom threshold above the white of lit surfaces
+  and low strength (`kit/quality.js`: 1.3 / 0.3 / 0.26), on the high and medium presets; lime `#D9FF3D` is used sparingly, like in the flat UI.
+- **Text you can read from the saddle**: the workout strip and every HUD label at least 18 px on a phone, white or near-white on a plain dark
+  plate (no gloss under small text); what a portal or pickup gives is written in the HUD at a fixed size, never only on a 3D object.
 - No half-empty screen: the camera frames the action, not the asphalt.
 - Text with the shared system (`js/games/kit/hud.js`): no overlaps, no text off screen, numbers readable from a metre away.
 - **No defects in motion**: no object popping in near the camera, no model passing through another, no flicker of

@@ -20,7 +20,7 @@ import { t } from '../../i18n.js';
 import { uiScale, panel } from './hud.js';
 
 export const STRIP_FONT = '"Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif';
-export const KIND_COLOR = { warm: '#8fd18b', pace: '#ffd34d', effort: '#ff9f43', sprint: '#ff5a6a', recovery: '#4de3ff', cool: '#8fd18b' };
+export const KIND_COLOR = { warm: '#a6f08f', pace: '#ffd34d', effort: '#ff9f43', sprint: '#ff5a6a', recovery: '#4de3ff', cool: '#a6f08f' };
 const INK = '#0F0F0D'; const LIME = '#D9FF3D';
 
 // kinds of every game plan → the six strip kinds (horde family: warm | pace | effort | sprint | rest | cool;
@@ -65,7 +65,7 @@ export function stripFromPlan(plan, { el, ftp, target, targetWfn, bias = 1 }) {
 // The strip sits right under the game's own title bar (title, audio, exit). `u` is the usual UI scale (1 on a phone, up to 1.45).
 export function stripBox(W, H) {
   const u = uiScale(W, H); const pad = Math.round(10 * u); const top = Math.round(56 * u);
-  const h = Math.round(74 * u); const w = Math.min(W - 2 * pad, Math.round(760 * u));
+  const h = Math.round(92 * u); const w = Math.min(W - 2 * pad, Math.round(760 * u));
   return { x: Math.round((W - w) / 2), y: top, w, h, u, bottom: top + h + Math.round(6 * u) };
 }
 export const stripBottom = (W, H) => stripBox(W, H).bottom;
@@ -82,37 +82,44 @@ function text(ctx, s, x, y, size, { color = '#fff', align = 'left', weight = 700
 export function drawWorkoutStrip(ctx, W, H, info) {
   const b = stripBox(W, H); if (!info) return b.bottom;
   const { x, y, w, h, u } = b; const col = KIND_COLOR[info.kind] || KIND_COLOR.pace;
-  panel(ctx, x, y, w, h, { r: 10 * u, fill: 'rgba(15,15,13,.88)' });
+  panel(ctx, x, y, w, h, { r: 12 * u, fill: 'rgba(10,10,12,.92)', gloss: false });
   ctx.fillStyle = col; ctx.fillRect(x, y + 8 * u, 4 * u, h - 16 * u);
   const px = x + 14 * u; const rx = x + w - 12 * u;
   // row 1: kind · label on the left; on the right (from the edge): W, target, % FTP, intensity chip when it was changed by hand
   const kindName = t(`games.strip.kind.${info.kind}`).toUpperCase();
-  const r1 = y + 26 * u; const big = 32 * u;
+  const r1 = y + 32 * u; const big = 40 * u;
   let cx = rx;
-  cx -= text(ctx, 'W', cx, r1 + 3 * u, 17 * u, { align: 'right', color: '#c9c9c0', weight: 700 }) + 3 * u;
+  cx -= text(ctx, 'W', cx, r1 + 3 * u, 20 * u, { align: 'right', color: '#ecece4', weight: 700 }) + 3 * u;
   cx -= text(ctx, `${info.target}`, cx, r1 + 3 * u, big, { align: 'right', weight: 700, color: '#fff' }) + 9 * u;
-  if (info.pct != null) cx -= text(ctx, t('games.strip.pct', { pct: info.pct }), cx, r1 + 2 * u, 15 * u, { align: 'right', color: '#c9c9c0', weight: 600 }) + 8 * u;
-  if (info.bias && Math.abs(info.bias - 1) > 0.004) cx -= text(ctx, t('games.strip.bias', { pct: Math.round(info.bias * 100) }), cx, r1 + 2 * u, 15 * u, { align: 'right', color: LIME, weight: 700 }) + 8 * u;
+  if (info.pct != null) cx -= text(ctx, t('games.strip.pct', { pct: info.pct }), cx, r1 + 2 * u, 18 * u, { align: 'right', color: '#ecece4', weight: 600 }) + 8 * u;
+  if (info.bias && Math.abs(info.bias - 1) > 0.004) cx -= text(ctx, t('games.strip.bias', { pct: Math.round(info.bias * 100) }), cx, r1 + 2 * u, 18 * u, { align: 'right', color: LIME, weight: 700 }) + 8 * u;
   const labelMax = cx - px - 6 * u;
-  const nameW = text(ctx, kindName, px, r1, 21 * u, { color: col, weight: 700, maxW: Math.max(40 * u, labelMax) });
-  if (info.label && labelMax - nameW > 36 * u) text(ctx, info.label, px + nameW + 8 * u, r1, 19 * u, { color: '#e6e6de', weight: 600, maxW: labelMax - nameW - 8 * u });
+  const nameW = text(ctx, kindName, px, r1, 26 * u, { color: col, weight: 700, maxW: Math.max(40 * u, labelMax) });
+  if (info.label && labelMax - nameW > 36 * u) text(ctx, info.label, px + nameW + 8 * u, r1, 22 * u, { color: '#f2f0e6', weight: 600, maxW: labelMax - nameW - 8 * u });
   // row 2: time left · elapsed / total · next
-  const r2 = y + 47 * u; const sm = 16 * u;
-  text(ctx, t('games.strip.left', { left: fmt(info.left) }), px, r2, sm, { color: '#fff', weight: 700 });
-  if (info.total > 0) text(ctx, `${fmt(info.elapsed)} / ${fmt(info.total)}`, x + w / 2, r2, sm, { align: 'center', color: '#c9c9c0', weight: 600 });
+  const r2 = y + 59 * u; const sm = 20 * u;
+  const leftW = text(ctx, t('games.strip.left', { left: fmt(info.left) }), px, r2, sm, { color: '#fff', weight: 700 });
+  let rightW = 0;
   if (info.next) {
     const nt = t('games.strip.next', { watts: info.next.watts, dur: fmt(info.next.dur) });
-    ctx.font = font(sm, 700); const nw = Math.min(ctx.measureText(nt).width, w * 0.42);
-    ctx.fillStyle = KIND_COLOR[info.next.kind] || '#fff'; ctx.fillRect(rx - nw - 8 * u, r2 - 11 * u, 3 * u, 13 * u);
+    ctx.font = font(sm, 700); const nw = Math.min(ctx.measureText(nt).width, w * 0.42); rightW = nw + 8 * u;
+    ctx.fillStyle = KIND_COLOR[info.next.kind] || '#fff'; ctx.fillRect(rx - nw - 8 * u, r2 - 14 * u, 3 * u, 16 * u);
     text(ctx, nt, rx, r2, sm, { align: 'right', color: '#fff', weight: 700, maxW: w * 0.42 });
-  } else text(ctx, t('games.strip.last'), rx, r2, sm, { align: 'right', color: '#c9c9c0', weight: 600 });
+  } else rightW = text(ctx, t('games.strip.last'), rx, r2, sm, { align: 'right', color: '#ecece4', weight: 600 });
+  // elapsed / total sits in the middle of the room left between the two; on a narrow phone it steps aside instead of touching them
+  if (info.total > 0) {
+    const et = `${fmt(info.elapsed)} / ${fmt(info.total)}`; ctx.font = font(sm, 600); const ew = ctx.measureText(et).width;
+    const g0 = px + leftW + 10 * u; const g1 = rx - rightW - 10 * u;
+    if (g1 - g0 >= ew) text(ctx, et, (g0 + g1) / 2, r2, sm, { align: 'center', color: '#ecece4', weight: 600 });
+    else if (g1 - g0 >= ctx.measureText(fmt(info.elapsed)).width) text(ctx, fmt(info.elapsed), (g0 + g1) / 2, r2, sm, { align: 'center', color: '#ecece4', weight: 600 });
+  }
   // row 3: the whole workout as a profile: bar heights follow the % FTP, the lime line is where you are
-  const by = y + h - 21 * u; const bh = 14 * u; const bx = px; const bw = rx - px;
+  const by = y + h - 23 * u; const bh = 15 * u; const bx = px; const bw = rx - px;
   const tot = info.total || 1; const mx = Math.max(1.2, ...info.track.map((g) => g.pct));
   ctx.save(); ctx.beginPath(); ctx.rect(bx, by - 1, bw, bh + 2); ctx.clip();
   for (const g of info.track) {
     const gx = bx + (g.t0 / tot) * bw; const gw = Math.max(1, ((g.t1 - g.t0) / tot) * bw - 0.6); const gh = Math.max(2 * u, Math.min(1, g.pct / mx) * bh);
-    ctx.globalAlpha = g.t1 <= info.elapsed ? 0.95 : 0.4; ctx.fillStyle = KIND_COLOR[g.kind] || '#999'; ctx.fillRect(gx, by + bh - gh, gw, gh);
+    ctx.globalAlpha = g.t1 <= info.elapsed ? 1 : 0.68; ctx.fillStyle = KIND_COLOR[g.kind] || '#999'; ctx.fillRect(gx, by + bh - gh, gw, gh);
   }
   ctx.restore(); ctx.globalAlpha = 1;
   const px2 = bx + Math.min(1, info.elapsed / tot) * bw; ctx.fillStyle = LIME; ctx.fillRect(Math.round(px2) - 1, by - 3 * u, 2.4 * u, bh + 6 * u);

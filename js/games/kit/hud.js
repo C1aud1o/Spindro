@@ -171,12 +171,13 @@ export function trainerLostBanner(ctx, W, H, t) {
 // Pannello del HUD in "vetro liquido" per il canvas: tinta + luce interna dall'alto + filo speculare sul bordo. Niente sfocatura (mai sopra il WebGL):
 // due gradienti per pannello, nessun filtro. Con "Riduci la trasparenza" (js/glass.js) il pannello resta piatto.
 // A panel that must stand out (a button, a warning, a colour-coded value) is tinted glass (tint, tintA), never outlined: glass has no drawn border.
-export function panel(ctx, x, y, w, h, { r = 10, fill = HUD.ink, tint = null, tintA = 0.26 } = {}) {
+// gloss: false = a plain dark plate (where there is a lot of small text, the gloss only lowers the contrast).
+export function panel(ctx, x, y, w, h, { r = 10, fill = HUD.ink, tint = null, tintA = 0.26, gloss = true } = {}) {
   ctx.beginPath();
   if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h);
   ctx.fillStyle = fill; ctx.fill();
   if (tint) { ctx.save(); ctx.globalAlpha *= tintA; ctx.fillStyle = tint; ctx.fill(); ctx.restore(); }
-  if (h >= 18 && !isSolid()) {
+  if (gloss && h >= 18 && !isSolid()) {
     // gloss from the top-left corner, then light on the rim instead of an outline: it catches the top edge, dies out down the sides, returns faintly at the bottom
     const sheen = ctx.createLinearGradient(x, y, x + Math.min(w, h * 2.4), y + h); sheen.addColorStop(0, 'rgba(255,255,255,.26)'); sheen.addColorStop(0.45, 'rgba(255,255,255,.06)'); sheen.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = sheen; ctx.fill();
