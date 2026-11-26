@@ -43,7 +43,7 @@ async function run(browser, url, vp, tag) {
       window.__idle = name === 'threat'; let n = 0; while (!T(g) && n < 30 * 400 && !(g.state === 'results' && name !== 'results')) { window.__step(1); n++; }
       for (let i = 0; i < (name === 'boss' ? 1 : 8); i++) { g.stage.render(); g.drawHud(1 / 30); window.__step(1); }
       if (name === 'results') for (let i = 0; i < 60; i++) { g.update(1 / 30); }
-      window.__idle = false; g.hp = 6; g.pops = []; window.__shot();
+      window.__idle = false; g.hp = 6; g.lost = 0; g.pops = []; window.__shot();
       return { ok: T(g), el: Math.round(g.el) };
     }, [name]);
     const f = `${FRAMES || OUT}/${tag}-${name}.png`; await page.screenshot({ path: f }); files.push(f); console.log(tag, name, JSON.stringify(ok));
