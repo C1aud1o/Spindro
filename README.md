@@ -8,7 +8,7 @@ Spindro connects to your trainer over Bluetooth and gives you ERG, virtual gears
 <img src="site/assets/shots/home-en.webp" width="150" alt="Home screen: a free ride in ERG with a 130 W target">
 <img src="site/assets/shots/workout-en.webp" width="150" alt="A Sweet spot workout in progress">
 <img src="site/assets/shots/game-strike-en.webp" width="150" alt="Pedal Strike, the runner shooter">
-<img src="site/assets/shots/game-horde-en.webp" width="150" alt="Horde Run">
+<img src="site/assets/shots/game-horde-en.webp" width="150" alt="Horde Run, three lanes with portals">
 <img src="site/assets/shots/keycheck-en.webp" width="150" alt="Controller key check">
 </p>
 
