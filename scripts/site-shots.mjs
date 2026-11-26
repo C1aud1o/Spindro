@@ -61,7 +61,7 @@ function history() {
 }
 const HISTORY = history();
 const seed = (lang, extra = {}) => ({
-  lang, analytics: '0', safetyAck: '1', autoPause: '0', ftp: '220', mass: '72', hrMax: '188', weekGoal: '150', gameQuality: 'high', mode: 'erg',
+  lang, analytics: '0', safetyAck: '1', reduceGlass: '0', autoPause: '0', ftp: '220', mass: '72', hrMax: '188', weekGoal: '150', gameQuality: 'high', mode: 'erg',
   rideHistory: JSON.stringify(HISTORY), seenTrainers: JSON.stringify(['Van Rysel D100']), ...extra,
 });
 
@@ -180,7 +180,20 @@ const GAMES = {
     for (let i = 0; i < 40 && (await page.evaluate(() => window.__game.state)) !== 'race'; i++) await run(page, 0.5);
     await run(page, 150);
   } },
-  horde: { card: 'horde', async scene(page) { await startGame(page); await run(page, T(135)); } },
+  // Horde Run (three lanes): played by its own lane bot (g.pilot() follows the nearest threat) on the fixed 1/30 s step until a normal
+  // wave is on screen with enemies in the lanes and a portal pair with its plates ahead (the threat cue is shown too when it coincides).
+  horde: { card: 'horde', async scene(page) {
+    await startGame(page);
+    const info = await page.evaluate(() => {
+      const g = window.__game; const dt = 1 / 30;
+      const ok = () => g.state === 'play' && g.el > 30 && g.hp >= 5 && g.enemies.filter((e) => !e.dead && !e.def.boss && e.z - g.z > 6 && e.z - g.z < 40).length >= 3
+        && g.gates.some((x) => !x.used && x.z - g.z > 9 && x.z - g.z < 24);
+      let n = 0; while (!ok() && n < 30 * 600 && g.state !== 'results') { g.pilot(); g.update(dt); n++; }
+      for (let i = 0; i < 6; i++) { g.pilot(); g.update(dt); }
+      return { ok: ok(), el: Math.round(g.el), enemies: g.enemies.length, threat: g.threatT.map((x) => +x.toFixed(1)) };
+    });
+    console.log('  horde scene', JSON.stringify(info));
+  } },
   gruppetto: { card: 'gruppetto', async scene(page) { await startGame(page); await run(page, T(135)); } },
   planata: { card: 'planata', async scene(page) { await startGame(page); await run(page, T(135)); } },
   mattoni: { card: 'mattoni', async scene(page) { await startGame(page); await run(page, T(135)); } },

@@ -180,7 +180,7 @@
       ],
       [
         "Horde Run",
-        "Hold the road against waves of zombies. More watts, more shots."
+        "Hold the road against waves of zombies on three lanes: switch lane to the nearest threat, ride through portals, level up your weapon with every effort."
       ],
       [
         "Slipstream",
@@ -202,8 +202,8 @@
     "gamesMore": "The games menu also plays any YouTube ride video, or a video of your own, at your own speed. If the trainer drops during a game, the game pauses with a message.",
     "gamesAlt": [
       "Pedal Strike: a rider on a harbour road facing a shielded mini-boss, with the score, the workout step bar and the overdrive meter.",
-      "Horde Run: a rider on a night road firing at a horde of zombies, with a wave counter and shots per second.",
-      "Slipstream: a rider on a country road collecting bottles, with the next rider 45 metres ahead.",
+      "Horde Run: a rider on a three-lane dusk road with zombies walking down the lanes, a lit strip showing the firing lane, a portal pair with plates above them (+1 ally, fire rate), the wave counter and six hearts.",
+      "Slipstream: a rider on a tree-lined road with a bar telling you to get in the next rider's lane, a countdown, and the wave and caught counters.",
       "Breakaway: the rider in pink leads the bunch towards the sea, with the gear, the climb goal and a profile of the stage on screen.",
       "Updraft: a yellow plane carrying the rider through a ring, with an altitude gauge.",
       "Feed Zone: a rider bouncing a bottle off a line of fans holding buckets."

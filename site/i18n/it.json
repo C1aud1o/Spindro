@@ -180,7 +180,7 @@
       ],
       [
         "Horde Run",
-        "Tieni la strada contro ondate di zombie. Più watt, più colpi."
+        "Tieni la strada contro ondate di zombie su tre corsie: cambia corsia verso la minaccia più vicina, attraversa i portali, migliora l'arma a ogni sforzo."
       ],
       [
         "Slipstream",
@@ -202,8 +202,8 @@
     "gamesMore": "Il menu dei giochi riproduce anche un video di una salita da YouTube, o un tuo video, alla tua velocità. Se il rullo si stacca durante un gioco, il gioco va in pausa con un messaggio.",
     "gamesAlt": [
       "Pedal Strike: un ciclista su una strada del porto di fronte a un mini-boss con lo scudo, con il punteggio, la barra dei tratti dell'allenamento e il misuratore dell'overdrive.",
-      "Horde Run: un ciclista su una strada di notte spara a un'orda di zombie, con il contatore delle ondate e i colpi al secondo.",
-      "Slipstream: un ciclista su una strada di campagna raccoglie borracce, con il prossimo corridore a 45 metri.",
+      "Horde Run: un ciclista su una strada a tre corsie al tramonto con gli zombie che avanzano nelle corsie, una striscia chiara che mostra la corsia di tiro, una coppia di portali con le targhe (+1 alleato, cadenza di fuoco), il contatore delle ondate e sei cuori.",
+      "Slipstream: un ciclista su una strada alberata con una barra che dice di entrare nella corsia del corridore davanti, un conto alla rovescia e i contatori di ondata e di raggiunti.",
       "Breakaway: il corridore in rosa guida un gruppo verso il mare, con la marcia, l'obiettivo della salita e il profilo della tappa sullo schermo.",
       "Updraft: un aereo giallo porta il ciclista attraverso un anello, con l'indicatore di quota.",
       "Feed Zone: un ciclista fa rimbalzare una borraccia su una fila di tifosi con i secchi in mano."
