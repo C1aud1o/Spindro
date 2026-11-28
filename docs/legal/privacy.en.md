@@ -70,7 +70,7 @@ We cannot trace this data back to you.
 
 ## Error reports
 
-Spindro does not send crash or error reports. If something breaks, you can report it yourself on GitHub (see below).
+Spindro does not send crash or error reports by itself. If something breaks, you can report it yourself by e-mail (see below).
 
 ## Services you choose to use
 
@@ -78,11 +78,12 @@ These start only when you act. They have their own privacy policies.
 
 - **YouTube.** If you start a video ride, the player and its script are loaded from YouTube (`www.youtube.com`). YouTube may set cookies and collect data, as it does for any embedded video. By using this feature you are also subject to the [YouTube Terms of Service](https://www.youtube.com/t/terms) and the [Google Privacy Policy](https://policies.google.com/privacy). Spindro does not record, download or separate the audio of YouTube videos.
 - **Strava.** If you connect Strava, you use "personal mode": you create your own Strava API application and enter its credentials, and the app talks directly to Strava (`www.strava.com`). Your ride file (`.FIT`, which includes heart rate if you used a strap), the activity name and description go from your device to Strava. The access token stays on your device. Spindro's project has no server in between. You can disconnect in the app (the app also asks Strava to revoke the token) and revoke access in your Strava settings.
-- **GitHub.** If you tap "Report your trainer" or "Report a problem", the app opens a pre-filled GitHub issue in your browser. It contains the trainer's Bluetooth name, services, protocol, platform, app version, browser and language. Nothing is sent until you press submit on GitHub. GitHub issues are public.
+- **E-mail reports.** If you tap "Report a problem", "Report your trainer" or "Report this device", the app opens your own e-mail program with a message already written to `report@spindro.fit`. It contains the device's Bluetooth name, its services, the protocol, the platform, the app version, your browser or phone model, the language and the last connection steps. You write what happened, you can delete anything, and nothing is sent until you press send. If you send it, we receive your e-mail address and what you wrote, like any e-mail: we use them only to understand the problem and to answer you, we do not publish them or pass them on, and we delete the message when the matter is closed, at the latest after 12 months. The mailbox is run by our e-mail provider. To have a message deleted earlier, write to the same address.
+- **GitHub.** You can also open an issue at https://github.com/C1aud1o/Spindro/issues. Issues on GitHub are public.
 
 ## Your rights
 
-Because we hold no personal data about you, there is nothing for us to give, correct or delete. To remove your local data, use "Delete all my data" in Settings, clear the site data in your browser, clear the app's storage in Android settings, or uninstall the app. For data held by Google, Strava, YouTube, GitHub or GoatCounter, contact those companies. You can also complain to your data protection authority (in Italy, the Garante per la protezione dei dati personali).
+Apart from e-mails you choose to send us (see "E-mail reports"), we hold no personal data about you, so there is nothing else for us to give, correct or delete. To remove your local data, use "Delete all my data" in Settings, clear the site data in your browser, clear the app's storage in Android settings, or uninstall the app. For data held by Google, Strava, YouTube, GitHub or GoatCounter, contact those companies. You can also complain to your data protection authority (in Italy, the Garante per la protezione dei dati personali).
 
 ## Minimum age
 
@@ -98,4 +99,4 @@ If this changes, for example if accounts or statistics are added, we will update
 
 ## Contact
 
-Questions: open an issue at https://github.com/C1aud1o/Spindro/issues. For private matters, use GitHub's private security reporting on the same repository. Please do not post personal data in public issues.
+Questions: write to report@spindro.fit, or open an issue at https://github.com/C1aud1o/Spindro/issues. For private matters, use GitHub's private security reporting on the same repository. Please do not post personal data in public issues.

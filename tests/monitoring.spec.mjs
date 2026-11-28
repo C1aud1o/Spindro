@@ -101,7 +101,7 @@ test('with consent: the kind of device, a ride started and its length as a range
   expect(page.errors).toEqual([]);
 });
 
-test('"Segnala il tuo rullo": il link contiene template e campi giusti, senza dati personali', async ({ page }) => {
+test('"Segnala il tuo rullo": apre un\'email già compilata con i dettagli del rullo, e offre di copiarla', async ({ page }) => {
   await setup(page, { analytics: '0' });
   await page.evaluate(() => { window.__opened = []; window.open = (u) => { window.__opened.push(u); return null; }; });
   await page.evaluate(async () => { while (!window.rfDevices) await new Promise((r) => setTimeout(r, 50)); return window.rfDevices.add(); });
@@ -109,26 +109,29 @@ test('"Segnala il tuo rullo": il link contiene template e campi giusti, senza da
   // prima connessione: compare l'invito
   await expect(page.locator('#reportHint')).toBeVisible();
   await page.click('#reportHintGo');
+  await page.locator('.dlg [data-cancel]').click();
   await page.click('#openSettings');
   await page.click('#reportTrainer');
   const urls = await page.evaluate(() => window.__opened);
   expect(urls).toHaveLength(2);
   for (const raw of urls) {
-    const u = new URL(raw);
-    expect(u.origin + u.pathname).toBe('https://github.com/C1aud1o/Spindro/issues/new');
-    expect(u.searchParams.get('template')).toBe('trainer_compatibility.yml');
-    expect(u.searchParams.get('platform')).toBe('Web app (Chrome on desktop)');
-    expect(u.searchParams.get('model')).toBeTruthy();
-    const d = u.searchParams.get('details');
+    // an e-mail ready in the person's own mail program: nobody needs a GitHub account, and nothing is sent until they press send
+    expect(raw.startsWith('mailto:report@spindro.fit?subject=')).toBe(true);
+    expect(raw.length, 'short enough for every mail program').toBeLessThanOrEqual(1900);
+    const u = new URL(raw); const d = u.searchParams.get('body');
+    expect(u.searchParams.get('subject')).toMatch(/^\[Trainer\] /);
+    expect(d.startsWith('Scrivi qui cosa è successo')).toBe(true);
     expect(d).toContain('BLE name: ');
     expect(d).toContain('BLE services: Fitness Machine (FTMS)');
     expect(d).toContain('Protocol used: FTMS');
     expect(d).toMatch(/ERG \(target power\) available: (yes|no)/);
-    expect(d).toMatch(/Gradient \(simulation\) available: (yes|no)/);
     expect(d).toContain('App version: ');
     expect(d).toContain('Platform: Web');
-    expect(raw).not.toContain('+');
+    expect(d).toContain('Device: ');
   }
+  // the way out when no mail program opens: the same text can be copied
+  await expect(page.locator('.dlg')).toContainText('report@spindro.fit');
+  await page.locator('.dlg [data-cancel]').click();
   // la seconda volta lo stesso rullo non rifà l'invito
   await page.click('.close[data-close="settingsSheet"]');
   await page.evaluate(async () => { while (!window.rfDevices) await new Promise((r) => setTimeout(r, 50)); return window.rfDevices.add(); }); // scollega

@@ -404,9 +404,10 @@ public class GarminBridgePlugin extends Plugin {
         try {
             Uri target = Uri.parse(call.getString("url", ""));
             String scheme = target.getScheme();
-            // solo link web: niente file:, content:, intent: o altri schemi da una pagina
-            if (!"https".equalsIgnoreCase(scheme) && !"http".equalsIgnoreCase(scheme)) { call.reject("link non consentito"); return; }
-            Intent i = new Intent(Intent.ACTION_VIEW, target);
+            // solo link web e mailto: (segnalazioni: apre il programma di posta con il messaggio già scritto); niente file:, content:, intent: o altri schemi da una pagina
+            boolean mail = "mailto".equalsIgnoreCase(scheme);
+            if (!mail && !"https".equalsIgnoreCase(scheme) && !"http".equalsIgnoreCase(scheme)) { call.reject("link non consentito"); return; }
+            Intent i = new Intent(mail ? Intent.ACTION_SENDTO : Intent.ACTION_VIEW, target);
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             getContext().startActivity(i);
             call.resolve();

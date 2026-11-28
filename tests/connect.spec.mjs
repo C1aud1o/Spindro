@@ -415,12 +415,15 @@ test.describe('5 · dispositivi insoliti', () => {
     await expect(page.locator('#connectHelp')).toContainText('can\'t use “Mystery Gadget” yet');
     await expect(page.locator('#connectHelp')).toContainText('0x1234');
     await page.click('#connectHelpReport');
-    const url = new URL(await page.evaluate(() => window.__urls[0]));
-    expect(url.hostname + url.pathname).toBe('github.com/C1aud1o/Spindro/issues/new');
-    expect(url.searchParams.get('title')).toBe('[Device] Mystery Gadget');
-    const details = url.searchParams.get('details');
-    expect(details).toContain('BLE name: Mystery Gadget'); expect(details).toContain('0x1234');
-    expect(url.toString()).not.toMatch(/localStorage|127\.0\.0\.1|@/);
+    // an e-mail ready in the person's own mail program (no GitHub account needed), with the device's name and services and nothing personal
+    const raw = await page.evaluate(() => window.__urls[0]);
+    expect(raw.startsWith('mailto:report@spindro.fit?')).toBe(true);
+    const url = new URL(raw);
+    expect(url.searchParams.get('subject')).toBe('[Device] Mystery Gadget');
+    const details = url.searchParams.get('body');
+    expect(details).toContain('BLE name: Mystery Gadget'); expect(details).toContain('0x1234'); expect(details).toContain('Protocol used: not supported');
+    expect(details).not.toMatch(/localStorage|127\.0\.0\.1|@/);
+    await page.locator('.dlg [data-cancel]').click();
     expect(await page.evaluate(() => window.rfDevices.hub.entries.length)).toBe(0);
   });
 

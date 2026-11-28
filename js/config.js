@@ -11,6 +11,11 @@ export const SENTRY_DSN = '';
 // GoatCounter (statistiche anonime, senza cookie, solo con consenso). Esempio: 'https://spindro.goatcounter.com/count'
 export const GOATCOUNTER_URL = 'https://c1laud1o.goatcounter.com/count';
 
+// ---- Segnalazioni. ----
+// Indirizzo a cui vanno "Segnala un problema", "Segnala il tuo rullo" e "Segnala questo dispositivo": l'app apre il programma di posta
+// della persona con il messaggio già compilato (mailto:), niente passa da un server. Vuoto = come prima, una issue GitHub precompilata (fork).
+export const REPORT_EMAIL = 'report@spindro.fit';
+
 // ---- Account facoltativo (E3/E4, docs/account-architettura.md). ----
 // FIREBASE_CONFIG = null → nessun login, nessuna richiesta di rete verso Google: è il comportamento di fork e build foss.
 // ATTENZIONE: la Content-Security-Policy di index.html non ammette i siti di Firebase/Google. Prima di attivare l'account aggiungi

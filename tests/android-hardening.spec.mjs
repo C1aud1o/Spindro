@@ -106,3 +106,11 @@ test('la CSP resta stretta (niente script in linea): il ponte Capacitor arriva d
   expect(script).not.toContain("'unsafe-inline'");
   expect(read('android/app/src/main/java/com/spindro/app/CrashRecorder.java')).toContain('DOCUMENT_START_SCRIPT');
 });
+
+test('the native "open a link" accepts web links and mailto: (reports by e-mail), nothing else', () => {
+  const src = readFileSync(new URL('../android/app/src/main/java/com/spindro/app/GarminBridgePlugin.java', import.meta.url), 'utf8');
+  const body = src.slice(src.indexOf('public void openUrl('), src.indexOf('public void openUrl(') + 1200);
+  expect(body).toMatch(/"mailto"\.equalsIgnoreCase\(scheme\)/);
+  expect(body).toMatch(/Intent\.ACTION_SENDTO/);
+  expect(body).toMatch(/call\.reject\("link non consentito"\)/); // every other scheme is still refused
+});

@@ -70,7 +70,7 @@ Non possiamo risalire a te da questi dati.
 
 ## Segnalazione degli errori
 
-Spindro non invia segnalazioni di arresto o di errore. Se qualcosa non va, puoi segnalarlo tu su GitHub (vedi sotto).
+Spindro non invia da solo segnalazioni di arresto o di errore. Se qualcosa non va, puoi segnalarlo tu per email (vedi sotto).
 
 ## Servizi che scegli tu di usare
 
@@ -78,11 +78,12 @@ Partono solo quando agisci tu. Hanno le proprie informative.
 
 - **YouTube.** Se avvii un'uscita con video, il lettore e il suo script vengono caricati da YouTube (`www.youtube.com`). YouTube può usare cookie e raccogliere dati, come per ogni video incorporato. Usando questa funzione sei soggetto anche ai [Termini di servizio di YouTube](https://www.youtube.com/t/terms) e alla [Privacy Policy di Google](https://policies.google.com/privacy). Spindro non registra, non scarica e non separa l'audio dei video di YouTube.
 - **Strava.** Se colleghi Strava usi la "modalità personale": crei la tua applicazione API di Strava e inserisci le sue credenziali, e l'app parla direttamente con Strava (`www.strava.com`). Il file dell'uscita (`.FIT`, che include il battito se usi una fascia), il nome e la descrizione dell'attività vanno dal tuo dispositivo a Strava. Il token di accesso resta sul tuo dispositivo. Il progetto Spindro non ha alcun server in mezzo. Puoi scollegarti nell'app (l'app chiede anche a Strava di revocare il token) e revocare l'accesso dalle impostazioni di Strava.
-- **GitHub.** Se tocchi "Segnala il tuo rullo" o "Segnala un problema", l'app apre nel browser una segnalazione GitHub già compilata. Contiene nome Bluetooth del rullo, servizi, protocollo, piattaforma, versione dell'app, browser e lingua. Non viene inviato nulla finché non premi invio su GitHub. Le segnalazioni su GitHub sono pubbliche.
+- **Segnalazioni per email.** Se tocchi "Segnala un problema", "Segnala il tuo rullo" o "Segnala questo dispositivo", l'app apre il tuo programma di posta con un messaggio già scritto per `report@spindro.fit`. Contiene nome Bluetooth del dispositivo, servizi, protocollo, piattaforma, versione dell'app, browser o modello di telefono, lingua e gli ultimi passi del collegamento. Tu scrivi cosa è successo, puoi cancellare quello che vuoi, e non viene inviato nulla finché non premi invia. Se lo invii, riceviamo il tuo indirizzo email e quello che hai scritto, come per qualsiasi email: li usiamo solo per capire il problema e risponderti, non li pubblichiamo né li cediamo, e cancelliamo il messaggio quando la questione è chiusa, al più tardi dopo 12 mesi. La casella è gestita dal nostro fornitore di posta. Per far cancellare prima un messaggio, scrivi allo stesso indirizzo.
+- **GitHub.** Puoi anche aprire una segnalazione su https://github.com/C1aud1o/Spindro/issues. Le segnalazioni su GitHub sono pubbliche.
 
 ## I tuoi diritti
 
-Poiché non conserviamo dati personali su di te, non c'è nulla da fornire, correggere o cancellare. Per eliminare i dati locali usa "Cancella tutti i dati" nelle Impostazioni, cancella i dati del sito nel browser, svuota la memoria dell'app nelle impostazioni di Android o disinstalla l'app. Per i dati detenuti da Google, Strava, YouTube, GitHub o GoatCounter rivolgiti a quelle aziende. Puoi anche presentare reclamo all'autorità per la protezione dei dati (in Italia, il Garante per la protezione dei dati personali).
+A parte le email che scegli di mandarci (vedi "Segnalazioni per email"), non conserviamo dati personali su di te, quindi non c'è altro da fornire, correggere o cancellare. Per eliminare i dati locali usa "Cancella tutti i dati" nelle Impostazioni, cancella i dati del sito nel browser, svuota la memoria dell'app nelle impostazioni di Android o disinstalla l'app. Per i dati detenuti da Google, Strava, YouTube, GitHub o GoatCounter rivolgiti a quelle aziende. Puoi anche presentare reclamo all'autorità per la protezione dei dati (in Italia, il Garante per la protezione dei dati personali).
 
 ## Età minima
 
@@ -98,4 +99,4 @@ Se qualcosa cambia, per esempio con account o statistiche, aggiorneremo questa p
 
 ## Contatti
 
-Domande: apri una segnalazione su https://github.com/C1aud1o/Spindro/issues. Per questioni riservate usa le segnalazioni private di sicurezza di GitHub, nello stesso repository. Non scrivere dati personali nelle segnalazioni pubbliche.
+Domande: scrivi a report@spindro.fit, oppure apri una segnalazione su https://github.com/C1aud1o/Spindro/issues. Per questioni riservate usa le segnalazioni private di sicurezza di GitHub, nello stesso repository. Non scrivere dati personali nelle segnalazioni pubbliche.

@@ -17,9 +17,9 @@ import { GEARS, virtualSpeed, powerForSpeed } from './gears.js';
 import { HeartRate } from './hr.js';
 import { encodeFit, encodeWorkoutFit, encodeZwo } from './fit.js';
 import { Strava } from './strava.js';
-import { STRAVA_PROXY, GOATCOUNTER_URL, SENTRY_DSN, SITE_URL } from './config.js';
+import { STRAVA_PROXY, GOATCOUNTER_URL, SENTRY_DSN, SITE_URL , REPORT_EMAIL } from './config.js';
 import { initMonitoring, track, trackOnce, durationRange, consentAsked, consentGiven, setConsent } from './monitor.js';
-import { buildReportUrl, REPO } from './report.js';
+import { buildReportUrl, buildMail, REPO } from './report.js';
 import { setupDebug } from './debugview.js';
 import { rideStats, renderHistory } from './history.js';
 // glowSetting vive qui (stessa chiave di games/kit3d.js) per non caricare three.js all'avvio
@@ -1259,9 +1259,27 @@ $('reportIssue').addEventListener('click', () => {
     '**What happened?**', '', '', '**What did you expect?**', '', '', '---',
     `App version: ${BUILD}`, `Platform: ${isNative ? 'Android app' : 'Web'}`, `Browser: ${navigator.userAgent}`, `Connected device: ${dev}`, `Language: ${getLang()}`,
   ].join('\n');
+  if (REPORT_EMAIL) { sendReport(buildMail({ to: REPORT_EMAIL, subject: '[Problem] Report from Spindro', ...mailWords(), lines: [`App version: ${BUILD}`, `Platform: ${isNative ? 'Android app' : 'Web'}`, `Connected device: ${dev}`, `Language: ${getLang()}`, ...reportExtra()] })); return; }
   const url = `https://github.com/C1aud1o/Spindro/issues/new?title=${encodeURIComponent('Report from Spindro')}&body=${encodeURIComponent(body)}`;
   openExternal(url);
 });
+// ---------- Reports by e-mail: the person's own mail program opens with the message ready (js/report.js) ----------
+// the two lines under the buttons name the address; without one (a fork) the buttons open a GitHub issue and the lines are hidden
+const setReportHelp = () => { $('reportHelp').textContent = REPORT_EMAIL ? t('report.hint', { email: REPORT_EMAIL }) : ''; $('reportHelp').hidden = $('trainerReportHelp').hidden = !REPORT_EMAIL; };
+setReportHelp(); window.addEventListener('langchange', setReportHelp);
+const mailWords = () => ({ intro: t('report.mailIntro'), autoLabel: t('report.mailAuto') });
+// the phone or browser, then the last connection steps (newest last): what tells us where a connection stopped
+const reportExtra = () => [`Device: ${navigator.userAgent}`, 'Last steps:', ...diaryText().split('\n').filter(Boolean).slice(-25)];
+/** `r`: a link (GitHub issue or mailto:) or { url, text } from buildMail. A mailto: opens the mail program; if none opens, the report can be copied. */
+function sendReport(r) {
+  const url = typeof r === 'string' ? r : r.url;
+  if (!url.startsWith('mailto:')) { openExternal(url); return; }
+  const text = typeof r === 'string' ? decodeURIComponent(url.replace(/^mailto:([^?]*)\?subject=([^&]*)&body=/, 'To: $1\nSubject: $2\n\n')) : r.text;
+  const offerCopy = async () => { if (await ask(t('report.mailOpened', { email: REPORT_EMAIL }), { ok: t('report.copy'), cancel: t('ui.close') })) toast(t((await copyToClipboard(text)) ? 'report.copied' : 'diag.copyFail', { email: REPORT_EMAIL })); };
+  if (GarminBridge) { GarminBridge.openUrl({ url }).catch(offerCopy); return; } // the Android app: the mail app opens, or we say how to send it by hand
+  try { window.open(url, '_self'); } catch { /* no handler */ }
+  offerCopy(); // a browser cannot tell whether a mail program opened: the way out is always offered
+}
 
 // ---------- Monitoraggio e consenso (D1) ----------
 // where the app runs, for the anonymous count: the Android app, the web app installed on the home screen, or a browser tab
@@ -1287,9 +1305,9 @@ if (GOATCOUNTER_URL && !consentAsked()) openSheet('consentSheet');
 
 // ---------- Segnala il tuo rullo (issue GitHub precompilata, senza dati personali) ----------
 function trainerReportUrl() {
-  return buildReportUrl({ ...(lastTrainer && trainer.connected ? lastTrainer : {}), native: isNative, android: /Android/i.test(navigator.userAgent), version: BUILD, lang: getLang() });
+  return buildReportUrl({ ...(lastTrainer && trainer.connected ? lastTrainer : {}), native: isNative, android: /Android/i.test(navigator.userAgent), version: BUILD, lang: getLang(), email: REPORT_EMAIL, ...mailWords(), extra: reportExtra() });
 }
-$('reportTrainer').addEventListener('click', () => openExternal(trainerReportUrl()));
+$('reportTrainer').addEventListener('click', () => sendReport(trainerReportUrl()));
 function offerTrainerReport(name) { // la prima volta che si collega un rullo con questo nome
   let seen = [];
   try { seen = JSON.parse(localStorage.getItem('seenTrainers') || '[]'); } catch { /* vuoto */ }
@@ -1301,14 +1319,14 @@ function offerTrainerReport(name) { // la prima volta che si collega un rullo co
 // pulsanti dentro il riquadro d'aiuto (home e pannello): "Riprova" e "Segnala"
 function problemAction(act) {
   if (act === 'retry') { $('connectHelp').hidden = true; addDevice({ skipCheck: true }); }
-  if (act === 'report') openExternal(lastProblem?.code === 'unsupportedDevice' ? deviceReportUrl(lastProblem) : trainerReportUrl());
+  if (act === 'report') sendReport(lastProblem?.code === 'unsupportedDevice' ? deviceReportUrl(lastProblem) : trainerReportUrl());
 }
 $('connectHelp').addEventListener('click', (e) => { const a = e.target.closest('[data-act]'); if (a) problemAction(a.dataset.act); });
 // "Segnala questo dispositivo": issue GitHub precompilata con nome Bluetooth e servizi (nessun dato personale)
 function deviceReportUrl(p) {
-  return buildReportUrl({ name: p.name, services: p.services, protocol: 'not supported', kind: 'device', native: isNative, android: /Android/i.test(navigator.userAgent), version: BUILD, lang: getLang() });
+  return buildReportUrl({ name: p.name, services: p.services, protocol: 'not supported', kind: 'device', native: isNative, android: /Android/i.test(navigator.userAgent), version: BUILD, lang: getLang(), email: REPORT_EMAIL, ...mailWords(), extra: reportExtra() });
 }
-$('reportHintGo').addEventListener('click', () => { $('reportHint').hidden = true; openExternal(trainerReportUrl()); });
+$('reportHintGo').addEventListener('click', () => { $('reportHint').hidden = true; sendReport(trainerReportUrl()); });
 $('reportHintLater').addEventListener('click', () => { $('reportHint').hidden = true; });
 trainer.addEventListener('disconnected', () => { $('reportHint').hidden = true; });
 
