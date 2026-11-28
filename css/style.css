@@ -917,7 +917,18 @@ body.click-legend { --legend-pad: calc(var(--legend-h) + 12px); }
   body.riding .workout .wk-next { display: none; }
 }
 @media (max-height: 800px) { body.riding .workout .wk-actions .fine { display: none; } }
-@media (max-height: 740px) { body.riding .workout .wk-profile { display: none; } }
+/* The whole-workout chart is never hidden: it is how you see where you are. On short screens (a phone browser with its bars) it gets
+   lower, and the room comes from the big power number and the "next step" line instead. */
+@media (max-height: 740px) {
+  body.riding .workout .wk-profile { height: 34px; }
+  body.riding.in-workout .power-value { font-size: min(15vh, 44vw); font-size: min(15dvh, 44vw); }
+  body.riding .workout .wk-next { display: none; }
+  body.riding.in-workout #workoutCard { padding: 8px 12px; gap: 4px; }
+}
+@media (max-height: 640px) {
+  body.riding .workout .wk-profile { height: 26px; }
+  body.riding.in-workout .power-value { font-size: min(13vh, 40vw); font-size: min(13dvh, 40vw); }
+}
 /* legenda del controller: lo spazio che occupa (misurato in js/clicknav.js → --legend-h) si aggiunge in fondo a ogni contenitore che scorre */
 body.click-legend { padding-bottom: calc(var(--legend-pad) + env(safe-area-inset-bottom)); }
 body.click-legend .sheet-body { padding-bottom: calc(24px + var(--legend-pad)); }
