@@ -2,7 +2,7 @@
 //   detectSupport()   può questa piattaforma parlare Bluetooth dal browser? se no, perché e cosa fare
 //   explainError()    da un errore Bluetooth al motivo in parole semplici (spento, permesso negato, occupato…)
 //   nextSuggestion()  qual è il prossimo dispositivo da proporre (uno alla volta)
-//   BACKOFF_MS        attese fra i tentativi di ricollegamento in corsa
+//   BACKOFF_MS        attese fra i tentativi di ricollegamento in corsa; IDLE_WAITS fuori dall'uscita
 //   roleSummary()     frase semplice per un dispositivo con più ruoli
 // Testi: js/i18n.js (chiavi connect.*). Spiegazione per l'utente: docs/connecting-devices.md.
 
@@ -49,8 +49,10 @@ export function nextSuggestion({ trainer = false, haveClick = false, haveHr = fa
 export const BACKOFF_MS = [1000, 2000, 5000, 10000, 15000, 30000];
 export const backoffAt = (list, attempt) => list[Math.min(attempt, list.length - 1)];
 
-/** Quanti tentativi fuori dall'uscita prima di arrendersi (poi resta il pulsante "Ricollega"). */
-export const IDLE_ATTEMPTS = 4;
+/** Ricollegamento automatico fuori dall'uscita: attesa (ms) fra due tentativi, breve per il primo minuto dopo l'apertura o la caduta, poi lunga. */
+export const IDLE_WAITS = { fast: 5000, slow: 15000, fastFor: 60000 };
+/** Tempo massimo (ms) di un tentativo in silenzio. */
+export const ATTEMPT_MS = 12000;
 
 /** Servizi per ogni scelta "mirata": la lista del browser mostra solo quel tipo di dispositivo. */
 export const KIND_FILTERS = {

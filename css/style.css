@@ -589,16 +589,31 @@ body:not(.dev) .lab-game { display: none; }
 /* schede grandi, ognuna col suo colore e la sua spiegazione */
 /* pannello Dispositivi */
 .dev-list { display: grid; gap: 12px; }
-.dev-empty { margin: 0; padding: 20px 16px; text-align: center; color: var(--t3); border: 1px dashed var(--t4); border-radius: 16px; }
-.dev-card { display: grid; gap: 10px; padding: 14px; }
+.dev-empty { margin: 0; padding: 20px 16px; text-align: center; color: var(--t3); }
+.dev-card { display: grid; gap: 8px; padding: 14px; }
 .dev-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .dev-name { font: 700 1.125rem/1.2 var(--font-num); letter-spacing: .03em; overflow-wrap: anywhere; }
 .dev-bat { font: 700 var(--fs-caption)/1 var(--font-ui); color: var(--t2); white-space: nowrap; }
 .dev-roles { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.dev-state { font-size: var(--fs-caption); color: var(--t3); }
+.dev-sub { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 12px; }
+.dev-type { font-size: var(--fs-caption); color: var(--t2); }
+.dev-state { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-caption); color: var(--t2); }
+.dev-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--t3); flex: none; }
+.dev-state.ok .dev-dot { background: var(--accent); }
+.dev-state.search .dev-dot { animation: devPulse 1.4s ease-in-out infinite; }
+.dev-state.tap .dev-dot { background: var(--warn); }
+@keyframes devPulse { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .dev-state.search .dev-dot { animation: none; } }
+.dev-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.dev-actions button { flex: 1 1 120px; min-height: 44px; }
 .dev-role { display: grid; gap: 4px; }
 #devicesSheet .sheet-body { display: grid; gap: 14px; align-content: start; }
 #devicesSheet .cta { width: 100%; min-height: 60px; font-size: 22px; letter-spacing: .05em; }
+.dev-advanced > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; color: var(--t2); font-weight: 700; }
+.dev-advanced[open] > summary { margin-bottom: 8px; }
+.dev-advanced-body, .dev-adv-list { display: grid; gap: 12px; }
+.dev-adv-item { display: grid; gap: 8px; padding: 14px; }
+.dev-adv-item button, .dev-adv-list > button { min-height: 44px; }
 .dv-extra { flex: 0 0 auto; }
 
 
@@ -993,13 +1008,11 @@ body.riding .metrics dd[data-long] { font-size: calc(var(--fs-title) * .8); }
 .suggest p { margin: 0; color: var(--t1); }
 .suggest .row2 { display: flex; flex-wrap: wrap; gap: 8px; }
 .suggest button, .drop-banner button { min-height: 44px; }
-.dev-down { border-style: dashed; opacity: .92; }
 .dev-why, .dev-meta { margin: 0; }
 .dev-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .dev-life.live { color: var(--accent); }
 .dev-life.stale { color: #f2c230; }
 .dev-test-note { margin: 0; }
-#deviceList [data-test], #deviceList [data-remove], #deviceList [data-forget], #reconnectDevice { min-height: 44px; }
 #unsupported { overflow-wrap: anywhere; }
 .suggest .cta-sm { min-height: 44px; border: 0; border-radius: var(--r-btn); background: var(--accent); color: var(--accent-ink); font-weight: 700; padding: 0 14px; box-shadow: var(--shadow-cta); }
 #deviceList .cta-sm { min-height: 44px; border: 0; border-radius: var(--r-btn); background: var(--accent); color: var(--accent-ink); font-weight: 700; }

@@ -415,14 +415,10 @@ function showDrop() {
   $('dropBanner').hidden = !down.length;
   if (!down.length) return;
   const names = down.map((e) => e.name || t('devices.unnamed')).join(', ');
-  const lost = down.some((e) => e.state === 'lost');
-  $('dropText').textContent = t(lost ? 'connect.lost' : 'connect.drop', { name: names });
-  $('dropRetry').hidden = !lost;
+  $('dropText').textContent = t('connect.drop', { name: names });
 }
-$('dropRetry').addEventListener('click', () => hub.retryLost());
 hub.addEventListener('drop', (e) => { log(`Dropped: ${e.detail.name}`); showDrop(); });
 hub.addEventListener('back', (e) => { log(`Back: ${e.detail.name}`); toast(t('connect.back', { name: e.detail.name || t('devices.unnamed') })); showDrop(); });
-hub.addEventListener('lost', () => showDrop());
 hub.addEventListener('notice', (e) => toast(e.detail));
 // un solo suggerimento alla volta: dopo il rullo, i comandi; poi il cardio; scartabile per sempre
 const suggestOff = () => { try { return JSON.parse(localStorage.getItem('suggestOff') || '[]'); } catch { return []; } };
@@ -640,7 +636,7 @@ $('startStop').addEventListener('click', () => {
   const r = state.ride;
   if (!r.running && !safetyAcknowledged()) { openSheet('safetySheet'); return; }
   r.running = !r.running;
-  if (r.running) { $('reportHint').hidden = true; hub.retryLost(); renderSuggest(); } // niente inviti mentre si pedala; i dispositivi persi si riprovano
+  if (r.running) { $('reportHint').hidden = true; hub.retryNow(); renderSuggest(); } // niente inviti mentre si pedala; i dispositivi non collegati si riprovano subito
   if (r.running) { r.start = Date.now() - r.elapsed * 1000; requestWakeLock(); r.historySaved = false; } // riprendere un'uscita già conclusa: al prossimo "Termina" la voce dello storico si aggiorna (stesso orario, niente doppione)
   else if (!activeGame) releaseWakeLock(); // in pausa lo schermo può spegnersi di nuovo
   updateView();
@@ -1351,10 +1347,10 @@ async function testTrainer(onStep) {
     restore: async () => { testingTrainer = false; state.lastSent = null; await applyMode(true); },
   });
 }
-const devicesUi = initDevicesUi({ hub, trainer, hrm, click, src, prefs, setPref, addDevice, reconnect, openSheet, closeSheet, t, openClickCheck: () => clickCheck.open(), testTrainer, isRiding: liveRide, onProblemAction: problemAction });
+const devicesUi = initDevicesUi({ hub, trainer, hrm, click, src, prefs, setPref, addDevice, reconnect, openSheet, closeSheet, t, openClickCheck: () => clickCheck.open(), testTrainer, isRiding: liveRide, onProblemAction: problemAction, ask });
 $('deviceBar').addEventListener('click', () => devicesUi.open());
 // all'avvio riprova, in silenzio, i dispositivi già usati (browser: navigator.bluetooth.getDevices(); app Android: plugin)
-setTimeout(() => { if ('bluetooth' in navigator) hub.reconnectKnown().catch(() => {}); }, 800);
+setTimeout(() => { if ('bluetooth' in navigator) hub.reconnectKnown().catch(() => {}); }, 800); // poi il ricollegamento automatico non smette (js/devices.js)
 
 // ---------- Scelte rapide in home (allenamenti, giochi, storico): spariscono mentre pedali ----------
 document.querySelectorAll('#quickPick [data-open]').forEach((b) => b.addEventListener('click', () => {
