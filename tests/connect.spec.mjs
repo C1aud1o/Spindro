@@ -641,7 +641,7 @@ test.describe('Prova il rullo e stato nel pannello', () => {
     await page.evaluate(() => { window.__fakeBle.state.trainer.gatt.connected && clearInterval(window.__fakeBle.state.timer); });
     await expect(a.locator('.dev-life')).toContainText('Last data', { timeout: 6000 });
     // chiudendo e riaprendo il pannello, le opzioni avanzate tornano chiuse (non ricorda nulla)
-    await page.click('#devicesSheet .close'); await page.click('#deviceBar');
+    await page.click('#devicesSheet .close'); await page.evaluate(() => document.getElementById('deviceBar').click()); // la pedalata può aver nascosto la barra: si apre come dal menu Click
     await expect(page.locator('#devAdvanced')).not.toHaveJSProperty('open', true);
   });
 

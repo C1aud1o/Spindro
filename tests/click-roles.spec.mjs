@@ -407,7 +407,7 @@ test.describe('verifica tasti', () => {
 
   test('si apre dal pannello Dispositivi e dal menu Click', async ({ page }) => {
     await boot(page);
-    await page.locator('#deviceBar').click();
+    await page.locator('#deviceBar').click(); await page.locator('#devAdvanced > summary').click(); // la verifica sta fra le opzioni avanzate
     await page.locator('#clickCheckOpen').click();
     await expect(page.locator('#clickCheck')).toBeVisible();
     await page.locator('#clickCheck [data-cc="close"]').first().click();
