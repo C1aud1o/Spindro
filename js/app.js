@@ -723,7 +723,7 @@ function allWorkouts() { return [...customWorkouts(), ...workouts()]; }
 const escHtml = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function renderWorkoutList() {
   $('wkFtp').textContent = state.ftp;
-  $('workoutList').innerHTML = `<div class="row2 wk-top"><button class="cta-sm" id="wkNew">${t('editor.create')}</button><label class="ghost file-btn"><span>${t('workouts.importZwo')}</span><input id="zwoFile" type="file" accept=".zwo,application/xml,text/xml" hidden></label></div>` + allWorkouts().map((w) => `<div class="wk-wrap"><div class="wk-item">
+  $('workoutList').innerHTML = `<div class="row2 wk-top"><button class="cta-sm" id="wkNew">${t('editor.create')}</button><label class="ghost file-btn"><span>${t('workouts.importZwo')}</span><input id="zwoFile" type="file"${fileAccept('.zwo,application/xml,text/xml')} hidden></label></div>` + allWorkouts().map((w) => `<div class="wk-wrap"><div class="wk-item">
     <span class="row"><b>${escHtml(w.name)}</b><small>${escHtml(w.tag)}${tss(w) ? ` · ${t('workouts.load', { n: tss(w) })}` : ''}</small></span>
     <canvas data-prof="${w.id}"></canvas><small>${escHtml(w.desc)}</small>
     <span class="wk-go"><button class="cta-sm" data-wk="${w.id}">${t('workouts.start')}</button><button class="ghost" data-wk-play="${w.id}">${t('workouts.play')}</button></span></div>
@@ -782,6 +782,11 @@ function renderRoutePick() {
 document.querySelectorAll('#routeReal button').forEach((b) => b.addEventListener('click', () => {
   routeRealism = +b.dataset.r; localStorage.setItem('routeRealism', routeRealism); renderRoutePick();
 }));
+// File pickers. In the Android app the WebView turns `accept` into a list of MIME types, and Android does not know .zwo or .gpx:
+// a downloaded workout or route is "unknown type" there, so the picker showed it greyed out and it could not be chosen.
+// In the app the pickers show every file; each import checks the content anyway (parseZwo, parseGpx, the backup check).
+function fileAccept(types) { return isNative ? '' : ` accept="${types}"`; }
+if (isNative) for (const id of ['gpxFile', 'backupIn']) $(id).removeAttribute('accept');
 $('gpxFile').addEventListener('change', async (e) => {
   const f = e.target.files[0]; if (!f) return;
   try { startRoute(parseGpx(await f.text(), f.name)); } catch (err) { toast(err.message); }
