@@ -5,15 +5,16 @@
 //   solo Cycling Power → ambiguo (rullo o misuratore?): si chiede una volta e si ricorda
 // Un dispositivo con più servizi copre più ruoli. L'app non tocca Bluetooth da sola: qui si decide, i driver restano
 // quelli di sempre (js/trainers, js/hr.js, js/click.js, js/powermeter.js).
-// Qui vive anche la tenuta: se un dispositivo cade lo si ritenta con attese crescenti (1, 2, 5, 10 s…) e si rimettono i ruoli;
-// all'avvio si ricollegano quelli già usati (stato "Ricollego…" per dispositivo). Eventi: change, meter, drop, back, lost, notice.
+// Qui vive anche la tenuta, SEMPRE ATTIVA: ogni dispositivo ricordato (devKnown) che non è collegato viene ritentato in silenzio,
+// uno alla volta (il rullo per primo), finché l'app è aperta e visibile; nessun pulsante da premere (vedi "Ricollegamento automatico").
+// Eventi: change, meter, drop, back, notice.
 import { PowerMeter } from './powermeter.js';
 import { FEC_SERVICE } from './trainers/fec.js';
 import { WAHOO_CONTROL } from './trainers/wahoo.js';
 import { t } from './i18n.js';
 import { serviceName } from './trainers/index.js';
 import { listen } from './ble-util.js';
-import { BACKOFF_MS, IDLE_ATTEMPTS, KIND_FILTERS, backoffAt } from './connect.js';
+import { BACKOFF_MS, IDLE_WAITS, ATTEMPT_MS, KIND_FILTERS, backoffAt } from './connect.js';
 
 const FTMS = 0x1826, CPS = 0x1818, CSC = 0x1816, HRS = 0x180d, BAT = 0x180f;
 const ZWIFT_SERVICES = ['00000001-19ca-4651-86e5-fa29dcdd09d1', 0xfc82];
@@ -64,13 +65,22 @@ export class Devices extends EventTarget {
   constructor({ trainer, click, hrm, ask, meterDbg, isRiding = () => false }) {
     super();
     Object.assign(this, { trainer, click, hrm, ask, meterDbg, isRiding });
-    // entry: { device, name, roles:[], switchable, battery, state:'connected'|'reconnecting'|'lost', wanted, lastData, attempt, nextTry, proto }
+    // entry: { device, name, roles:[], switchable, battery, state:'connected'|'reconnecting', wanted, lastData, attempt, nextTry, proto }
     this.entries = [];
-    this.pending = []; // dispositivi già usati, non ancora ricollegati all'avvio: { id, name, roles, state:'reconnecting'|'tap'|'failed' }
+    this.pending = []; // dispositivi già usati, non ancora ricollegati all'avvio: { id, name, roles, state:'reconnecting'|'tap' }
     this.meters = [];  // PowerMeter collegati (potenza o cadenza)
     this.busyN = 0;
     this.touched = new Set(); // dispositivi che la persona ha già scelto o tolto in questa sessione: l'avvio non li riporta fra i "da ricollegare"
-    this.backoffMs = BACKOFF_MS; // i test lo accorciano
+    this.backoffMs = BACKOFF_MS; // in uscita; i test lo accorciano
+    this.idleWaits = { ...IDLE_WAITS }; // fuori dall'uscita; i test lo accorciano
+    this.attemptMs = ATTEMPT_MS;
+    this.openedAt = Date.now();
+    this.forgotten = new Set(); // dispositivi tolti con "Dimentica": mai più ritentati (né ricordati da un tentativo già in volo)
+    this.sched = new Map();     // chiave del dispositivo → { attempt, nextAt, since } per il ricollegamento automatico
+    this.watchers = new Map();  // id → { device, onAdv, ctl }: watchAdvertisements, dove il browser lo offre
+    this.noWatch = new Set();   // dispositivi senza watchAdvertisements: non si chiede più
+    this.autoOn = false; this.wakeAuto = null;
+    this.visible = () => typeof document === 'undefined' || document.visibilityState !== 'hidden';
     for (const d of [trainer, hrm, click]) d.addEventListener('disconnected', () => this.sync());
     // segno di vita: quando è arrivato l'ultimo dato di ogni dispositivo
     trainer.addEventListener('data', () => this.stamp('trainer'));
@@ -79,7 +89,7 @@ export class Devices extends EventTarget {
   }
 
   get busy() { return this.busyN > 0; }
-  changed() { this.dispatchEvent(new Event('change')); }
+  changed() { this.dispatchEvent(new Event('change')); this.wake(); }
   notice(key, params) { this.dispatchEvent(new CustomEvent('notice', { detail: t(key, params) })); }
   stamp(role) { const e = this.entries.find((x) => x.roles.includes(role)); if (e) e.lastData = Date.now(); }
   isUp(entry) { return !!entry.device?.gatt?.connected; }
@@ -107,11 +117,29 @@ export class Devices extends EventTarget {
     list.unshift({ id: entry.device.id, name: entry.name, roles: entry.roles.filter((r) => r !== '?'), at: Date.now() });
     saveJson('devKnown', list.slice(0, 8));
   }
-  /** "Dimentica": toglie un dispositivo dall'elenco dei già usati (e dai "da ricollegare"). */
+  /** "Dimentica": il dispositivo esce da devKnown, da devRoles e (dove il browser lo permette) dai permessi; si scollega e non si ritenta più. */
   forget(id) {
-    saveJson('devKnown', loadJson('devKnown', []).filter((k) => k.id !== id));
+    this.forgotten.add(id);
+    const known = loadJson('devKnown', []);
+    const entry = this.entries.find((e) => e.device.id === id);
+    const name = entry?.name || known.find((k) => k.id === id)?.name || this.pending.find((k) => k.id === id)?.name || '';
+    const rest = known.filter((k) => k.id !== id);
+    saveJson('devKnown', rest);
+    const roles = loadJson('devRoles', {});
+    delete roles[id];
+    if (name && !rest.some((k) => k.name === name)) delete roles[`n:${name}`];
+    saveJson('devRoles', roles);
     this.pending = this.pending.filter((k) => k.id !== id);
-    this.changed();
+    this.sched.delete(`e:${id}`); this.sched.delete(`k:${id}`);
+    this.unwatch(id);
+    if (entry) { this.touched.add(id); entry.wanted = false; try { entry.device.gatt.disconnect(); } catch { /* */ } }
+    // il permesso del browser: l'oggetto c'è se è collegato, altrimenti lo si cerca fra quelli che il browser ricorda
+    Promise.resolve().then(async () => {
+      let dev = entry?.device;
+      if (!dev && typeof navigator.bluetooth?.getDevices === 'function') dev = (await navigator.bluetooth.getDevices()).find((d) => d.id === id);
+      if (typeof dev?.forget === 'function') await dev.forget();
+    }).catch(() => {});
+    this.sync();
   }
 
   async readServices(server, device) {
@@ -135,18 +163,21 @@ export class Devices extends EventTarget {
 
   /** Scelta Bluetooth, poi assegna i ruoli. `kind` ('click' | 'hr'): la lista del browser mostra solo quel tipo (suggerimento "aggiungi i comandi"). */
   async add({ kind = null } = {}) {
-    const device = await navigator.bluetooth.requestDevice(KIND_FILTERS[kind] ? { filters: KIND_FILTERS[kind], optionalServices: REQUEST.optionalServices } : REQUEST);
+    // la scelta Bluetooth aperta conta come "occupato": il ricollegamento automatico sta fermo finché la persona sceglie
+    this.busyN++; this.changed();
+    let device;
+    try { device = await navigator.bluetooth.requestDevice(KIND_FILTERS[kind] ? { filters: KIND_FILTERS[kind], optionalServices: REQUEST.optionalServices } : REQUEST); } finally { this.busyN--; this.changed(); }
     try { return await this.attach(device); } catch (err) { err.afterPick = true; err.deviceName = device.name || ''; throw err; }
   }
 
   /** `force`: ruoli già decisi (ricollegamento o cambio ruolo): niente domande. `silent`: tentativo automatico, non occupa il pannello. */
-  async attach(device, { force = null, silent = false } = {}) {
+  async attach(device, { force = null, silent = false, timeout = 0 } = {}) {
     let entry = this.entries.find((e) => e.device.id === device.id);
     if (entry && this.isUp(entry) && !force) { const err = new Error('Device already connected'); err.deviceName = device.name || entry.name; throw err; }
     const fresh = !entry;
-    if (!silent) { this.busyN++; this.touched.add(device.id); this.changed(); }
+    if (!silent) { this.busyN++; this.touched.add(device.id); this.forgotten.delete(device.id); this.changed(); }
     try {
-      const server = await device.gatt.connect();
+      const server = await device.gatt.connect(silent && timeout ? { timeout, silent: true } : undefined); // l'app Android lo usa (tempo massimo, niente richieste); il browser ignora l'argomento
       let roles; let ambiguous = false; let uuids = [];
       if (force) roles = force.includes('trainer') ? force.filter((r) => r !== 'click') : force; // ruoli salvati da versioni vecchie
       else {
@@ -233,44 +264,136 @@ export class Devices extends EventTarget {
     }
   }
 
-  /** Una connessione è caduta da sola: si ricollega in silenzio, con attese crescenti, finché dura l'uscita. */
+  /** Una connessione è caduta da sola: se ne occupa il ricollegamento automatico (sotto), in silenzio. */
   onDrop(entry) {
     if (entry.wanted === false) { this.sync(); return; }
     entry.state = 'reconnecting';
     entry.lostAt ||= Date.now();
+    this.sched.delete(`e:${entry.device.id}`); // un'attesa nuova, contata da adesso
     this.dispatchEvent(new CustomEvent('drop', { detail: entry }));
     this.sync();
-    this.retry(entry);
+    this.startAuto();
   }
 
-  async retry(entry) {
-    if (entry.retrying) return;
-    entry.retrying = true;
-    try {
-      for (;;) {
-        const wait = backoffAt(this.backoffMs, entry.attempt);
-        entry.nextTry = Date.now() + wait; entry.state = 'reconnecting'; this.changed();
-        await sleep(wait);
-        if (entry.wanted === false) return;
-        if (this.isUp(entry)) break;
-        if (entry.attempt >= IDLE_ATTEMPTS && !this.isRiding()) { entry.state = 'lost'; this.dispatchEvent(new CustomEvent('lost', { detail: entry })); this.changed(); return; }
-        entry.attempt++;
-        try { await this.attach(entry.device, { force: entry.roles.length ? entry.roles : ['trainer'], silent: true }); break; } catch { /* prossimo tentativo */ }
+  // ---------- Ricollegamento automatico ----------
+  // Ogni dispositivo ricordato (devKnown, non tolto con "Dimentica") che non è collegato viene ritentato, uno alla volta e il rullo
+  // per primo, senza messaggi né suoni: solo una persona che tocca un pulsante vede un errore.
+  //   attesa fra due tentativi: 5 s per il primo minuto dopo l'apertura dell'app (o dopo una caduta), poi 15 s; in uscita le attese
+  //   brevi di backoffMs (1, 2, 5, 10, 15, 30 s).  Ogni tentativo dura al massimo 12 s (ATTEMPT_MS).
+  //   Si ferma quando la pagina è nascosta (document.visibilityState) e riparte subito alla comparsa; sta fermo mentre la persona è
+  //   nella scelta Bluetooth o un altro collegamento è in corso (busy).
+  //   Batteria: tutto avviene solo con l'app sullo schermo. Peggio che vada (un dispositivo spento) è un tentativo da ≤ 12 s ogni
+  //   15 s, cioè un tentativo di connessione GATT ogni 15 s sul telefono; con lo schermo spento o l'app in secondo piano: zero.
+  //   Browser: dove c'è watchAdvertisements() il tentativo parte appena il dispositivo si annuncia; senza, bastano i tentativi a tempo.
+  //   Se il browser non ricorda il permesso (getDevices() non lo restituisce) il dispositivo resta "serve un tocco" (state 'tap'): un solo
+  //   pulsante "Ricollega", nessun ciclo di errori.
+  startAuto() {
+    if (this.autoOn) { this.wake(); return; }
+    this.autoOn = true;
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => {
+      if (this.visible()) { for (const s of this.sched.values()) s.nextAt = 0; this.watchAll(); } else this.unwatchAll();
+      this.wake();
+    });
+    this.autoLoop();
+  }
+  wake() { const w = this.wakeAuto; this.wakeAuto = null; w?.(); }
+  parkFor(ms) {
+    return new Promise((resolve) => {
+      const timer = ms == null ? null : setTimeout(() => { this.wakeAuto = null; resolve(); }, Math.max(0, ms));
+      this.wakeAuto = () => { clearTimeout(timer); resolve(); };
+    });
+  }
+  /** Chi va ritentato adesso: voci cadute e dispositivi ricordati non ancora collegati. Il rullo per primo. */
+  autoTargets() {
+    const list = [];
+    for (const e of this.entries) if (e.wanted !== false && !this.isUp(e) && !this.forgotten.has(e.device.id)) list.push({ key: `e:${e.device.id}`, entry: e, roles: e.roles, since: e.lostAt || this.openedAt });
+    for (const k of this.pending) if (k.state === 'reconnecting' && !this.forgotten.has(k.id)) list.push({ key: `k:${k.id}`, known: k, roles: k.roles, since: this.openedAt });
+    return list.sort((a, b) => (b.roles.includes('trainer') ? 1 : 0) - (a.roles.includes('trainer') ? 1 : 0));
+  }
+  waitAfter(slot) {
+    if (this.isRiding()) return backoffAt(this.backoffMs, slot.attempt);
+    return Date.now() - slot.since < this.idleWaits.fastFor ? this.idleWaits.fast : this.idleWaits.slow;
+  }
+  async autoLoop() {
+    for (;;) {
+      let wait = null; // null: niente da aspettare, ci si sveglia da soli (change, visibilitychange)
+      if (this.visible() && !this.busy) {
+        const now = Date.now(); let due = null; let next = Infinity;
+        for (const tg of this.autoTargets()) {
+          let slot = this.sched.get(tg.key);
+          if (!slot) { // un dispositivo ricordato si prova subito; uno appena caduto dopo la prima attesa
+            slot = { attempt: 0, since: tg.since, nextAt: 0 };
+            if (tg.entry) slot.nextAt = now + this.waitAfter(slot);
+            this.sched.set(tg.key, slot);
+          }
+          if (slot.nextAt <= now) { due ||= tg; } else next = Math.min(next, slot.nextAt);
+          if (tg.entry) tg.entry.nextTry = slot.nextAt; else tg.known.nextTry = slot.nextAt;
+        }
+        if (due) { await this.autoAttempt(due); continue; }
+        if (next !== Infinity) wait = next - now;
       }
-      if (entry.wanted !== false && this.isUp(entry)) {
-        entry.attempt = 0; entry.state = 'connected'; entry.lostAt = null;
-        this.dispatchEvent(new CustomEvent('back', { detail: entry }));
-      }
-    } finally {
-      entry.retrying = false;
-      // caduto di nuovo mentre si chiudeva il ciclo
-      if (entry.wanted !== false && !this.isUp(entry) && entry.state !== 'lost') queueMicrotask(() => this.retry(entry));
-      this.sync();
+      this.watchAll();
+      await this.parkFor(wait);
     }
   }
+  async knownDevice(k) {
+    let devs = null;
+    if (typeof navigator.bluetooth?.getDevices === 'function') { try { devs = await navigator.bluetooth.getDevices(); } catch { devs = null; } }
+    return devs?.find((d) => d.id === k.id) || null;
+  }
+  async autoAttempt(tg) {
+    const slot = this.sched.get(tg.key);
+    slot.attempt++;
+    let device = tg.entry?.device;
+    if (!device) {
+      device = await this.knownDevice(tg.known);
+      if (!device) { tg.known.state = 'tap'; this.sched.delete(tg.key); this.changed(); return; } // il browser non ricorda il permesso: serve un tocco
+      if (this.forgotten.has(tg.known.id) || this.entries.some((e) => e.device.id === device.id)) { this.pending = this.pending.filter((x) => x !== tg.known); this.sched.delete(tg.key); return; }
+    }
+    let timer; let ok = false;
+    try {
+      await Promise.race([this.attach(device, { force: tg.roles.length ? tg.roles : ['trainer'], silent: true, timeout: this.attemptMs }), new Promise((_, rej) => { timer = setTimeout(() => rej(new Error('timeout')), this.attemptMs); })]);
+      ok = true;
+    } catch { try { device.gatt.disconnect(); } catch { /* */ } } finally { clearTimeout(timer); }
+    if (ok) {
+      this.sched.delete(tg.key); this.unwatch(device.id);
+      if (this.forgotten.has(device.id)) { this.forget(device.id); return; } // tolto mentre si collegava
+      const e = this.entries.find((x) => x.device.id === device.id);
+      if (e && tg.entry) { e.attempt = 0; e.lostAt = null; this.dispatchEvent(new CustomEvent('back', { detail: e })); }
+      this.sync();
+      return;
+    }
+    slot.nextAt = Date.now() + this.waitAfter(slot);
+    if (tg.entry) tg.entry.nextTry = slot.nextAt; else tg.known.nextTry = slot.nextAt;
+    this.changed();
+  }
+  /** watchAdvertisements (Chrome, dove c'è): appena il dispositivo si annuncia si prova subito, senza aspettare l'attesa. */
+  watchFor(tg) {
+    if (!this.visible()) return;
+    const id = tg.entry?.device.id || tg.known.id;
+    if (this.watchers.has(id) || this.noWatch.has(id) || typeof navigator === 'undefined') return;
+    const device = tg.entry?.device;
+    const go = (d) => {
+      if (!d || this.watchers.has(id)) return;
+      if (typeof d.watchAdvertisements !== 'function') { this.noWatch.add(id); return; }
+      const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+      const onAdv = () => { const s = this.sched.get(tg.key); if (s && this.visible()) { s.nextAt = 0; this.wake(); } };
+      this.watchers.set(id, { device: d, onAdv, ctl });
+      try { d.addEventListener('advertisementreceived', onAdv); Promise.resolve(d.watchAdvertisements(ctl ? { signal: ctl.signal } : undefined)).catch(() => {}); } catch { /* non c'è o non è permesso */ }
+    };
+    if (device) go(device); else this.knownDevice(tg.known).then(go).catch(() => {});
+  }
+  watchAll() { for (const tg of this.autoTargets()) this.watchFor(tg); }
+  unwatch(id) {
+    const w = this.watchers.get(id); if (!w) return;
+    this.watchers.delete(id);
+    try { w.device.removeEventListener('advertisementreceived', w.onAdv); w.ctl?.abort(); } catch { /* */ }
+  }
+  unwatchAll() { for (const id of [...this.watchers.keys()]) this.unwatch(id); }
 
-  /** Riprova subito i dispositivi persi (l'uscita è ripartita o la persona ha toccato "Ricollega"). */
-  retryLost() { for (const e of this.entries) if (e.state === 'lost' && e.wanted !== false) { e.attempt = 0; this.retry(e); } }
+  /** Riprova subito, senza aspettare (l'uscita è ripartita, o la persona ha toccato "Ricollega"). */
+  retryNow() { for (const s of this.sched.values()) s.nextAt = 0; this.startAuto(); this.wake(); }
+  retryLost() { this.retryNow(); }
 
   /** Scollega un dispositivo (tutti i suoi ruoli). */
   remove(entry) {
@@ -296,30 +419,15 @@ export class Devices extends EventTarget {
   pendingFor(role) { return this.pending.find((k) => k.roles.includes(role)) || null; }
   get needsTap() { return this.pending.filter((k) => k.state !== 'reconnecting'); }
 
-  /** All'avvio: ritenta i dispositivi già usati, in silenzio, mostrando "Ricollego…" per ciascuno. Browser: navigator.bluetooth.getDevices(); app: il plugin.
-   *  Se il browser non conserva il permesso, il dispositivo passa a 'tap': basta il pulsante "Ricollega" (vedi reconnectNext). */
+  /** All'avvio: i dispositivi già usati diventano "da ricollegare" ("Cerco…" per ciascuno) e parte il ricollegamento automatico,
+   *  che li prova uno alla volta (il rullo per primo) e non smette finché non si collegano o la persona li dimentica. Browser:
+   *  navigator.bluetooth.getDevices(); app: il plugin. Se il browser non conserva il permesso passano a 'tap' (vedi autoAttempt). */
   async reconnectKnown() {
     const known = loadJson('devKnown', []).filter((k) => !k.at || Date.now() - k.at < 3 * MONTH).slice(0, 4);
-    if (!known.length) return 0;
-    this.pending = known.filter((k) => !this.touched.has(k.id) && !this.entries.some((e) => e.device.id === k.id)).map((k) => ({ ...k, state: 'reconnecting' }));
+    this.pending = known.filter((k) => !this.touched.has(k.id) && !this.forgotten.has(k.id) && !this.entries.some((e) => e.device.id === k.id)).map((k) => ({ ...k, state: 'reconnecting' }));
     this.changed();
-    if (!this.pending.length) return 0;
-    let devs = null;
-    if (typeof navigator.bluetooth?.getDevices === 'function') { try { devs = await navigator.bluetooth.getDevices(); } catch { devs = null; } }
-    let n = 0;
-    // il rullo per primo: è quello che serve subito
-    for (const k of [...this.pending].sort((a, b) => (b.roles.includes('trainer') ? 1 : 0) - (a.roles.includes('trainer') ? 1 : 0))) {
-      const device = devs?.find((d) => d.id === k.id);
-      if (!device) { k.state = 'tap'; this.changed(); continue; }
-      if (this.entries.some((e) => e.device.id === device.id)) { this.pending = this.pending.filter((x) => x !== k); continue; }
-      let timer;
-      try {
-        await Promise.race([this.attach(device, { force: k.roles, silent: true }), new Promise((_, rej) => { timer = setTimeout(() => rej(new Error('timeout')), 12000); })]);
-        n++;
-      } catch { try { device.gatt.disconnect(); } catch { /* */ } k.state = 'failed'; this.sync(); } finally { clearTimeout(timer); }
-    }
-    this.changed();
-    return n;
+    this.startAuto();
+    return this.pending.length;
   }
 
   /** Il pulsante "Ricollega": passa i dispositivi già usati uno alla volta. Prima senza scelta (permesso già dato), poi con la scelta del browser
@@ -336,7 +444,7 @@ export class Devices extends EventTarget {
       }
       return await this.attach(device, { force: k.roles, silent: true });
     } catch (err) {
-      k.state = 'failed'; err.deviceName = k.name; err.afterPick = true; throw err;
+      k.state = 'tap'; err.deviceName = k.name; err.afterPick = true; throw err;
     } finally { this.busyN--; this.changed(); }
   }
 }

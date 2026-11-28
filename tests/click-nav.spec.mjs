@@ -142,7 +142,10 @@ test('dispositivi: il pannello si apre e "Aggiungi dispositivo" si raggiunge sol
   await expect(page.locator('#devicesSheet')).toBeVisible();
   await goTo(page, '#addDevice');
   await expect(page.locator('#deviceList .dev-card')).toHaveCount(2); // rullo e Click già collegati dal beforeEach
-  await goTo(page, '#srcCadence'); // le fonti sono elenchi veri: si prendono con tieni +
+  await goTo(page, '#devAdvanced > summary'); // le opzioni avanzate si aprono col tieni +, poi le fonti (elenchi veri) si prendono allo stesso modo
+  await hold(page, +1);
+  await expect(page.locator('#devAdvanced')).toHaveJSProperty('open', true);
+  await goTo(page, '#srcCadence');
   await hold(page, -1); // indietro
   await expect(page.locator('#devicesSheet')).toBeHidden();
 });

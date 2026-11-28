@@ -80,10 +80,12 @@ export function createBluetooth(BLE, { log = nativeLog, crumb = defaultCrumb, st
     }
   })());
   // Bluetooth spento: senza questo il selettore del plugin restava aperto senza trovare nulla
-  const ensureEnabled = async () => {
+  // `silent`: tentativo in sottofondo (ricollegamento automatico): niente richiesta di accensione, solo un errore che nessuno vede
+  const ensureEnabled = async ({ silent = false } = {}) => {
     let on = true;
     try { on = (await BLE.isEnabled())?.value !== false; } catch { /* non si sa: si prova comunque */ }
     if (on) return;
+    if (silent) throw new DOMException('Bluetooth is turned off', 'InvalidStateError');
     step('Bluetooth spento: richiesta di accensione');
     try { await BLE.requestEnable(); } catch (e) {
       step(`accensione rifiutata: ${e?.message || e}`);
@@ -130,6 +132,8 @@ export function createBluetooth(BLE, { log = nativeLog, crumb = defaultCrumb, st
       super();
       this.id = id; this.name = name; this.services = [];
       const dev = this;
+      // "Dimentica": l'app non lo ricollega più (getDevices() lo elenca da qui)
+      this.forget = async () => { try { storage?.setItem('nativeDevices', JSON.stringify(JSON.parse(storage.getItem('nativeDevices') || '[]').filter((x) => x.id !== id))); } catch { /* niente storage */ } };
       let attempt = 0; // ogni connect() ha un numero: un disconnect() arrivato nel frattempo lo annulla
       let cancelledAt = 0;
       const release = async () => { // rilascia ascoltatore e connessione nativa dopo un collegamento fallito o annullato
@@ -139,16 +143,20 @@ export function createBluetooth(BLE, { log = nativeLog, crumb = defaultCrumb, st
       };
       this.gatt = {
         connected: false, device: dev,
-        async connect() {
+        // opts (solo dal ricollegamento automatico): { timeout } tempo massimo del plugin per questo tentativo (predefinito 10 s),
+        // { silent } niente richiesta di accendere il Bluetooth. Web Bluetooth non ha argomenti: il browser li ignorerebbe.
+        async connect(opts = {}) {
           const mine = ++attempt;
+          const silent = !!opts?.silent;
+          const timeout = Number(opts?.timeout) > 0 ? Number(opts.timeout) : 0;
           const aborted = () => cancelledAt >= mine;
           step(`connect ${id}`);
           try {
             await init();
-            await ensureEnabled();
+            await ensureEnabled({ silent });
             await dev._disc?.remove();
             dev._disc = await BLE.addListener(`disconnected|${id}`, () => { dev.gatt.connected = false; dev.dispatchEvent(new Event('gattserverdisconnected')); });
-            await serial(() => BLE.connect({ deviceId: id }));
+            await serial(() => BLE.connect(timeout ? { deviceId: id, timeout } : { deviceId: id }));
             if (aborted()) throw new DOMException('GATT connection aborted by disconnect()', 'NetworkError');
             step(`collegato ${id}: lettura servizi`);
             let res = await serial(() => BLE.getServices({ deviceId: id }));

@@ -21,11 +21,10 @@ body.riding::before {
   background: var(--sheen), var(--glass-fill); border: 0; border-radius: var(--r-card); box-shadow: var(--shadow);
 }
 /* flat glass, one layer inside another glass */
-.group, .dev-card, .summary, .share-prompt, .ed-block, .wk-item, .hs-ride, .hs-kpis div, .hs-bests div, .hint-box, .badge, .cm-list button, .wg-card {
+.group, .dev-card, .dev-adv-item, .dev-empty, .summary, .share-prompt, .ed-block, .wk-item, .hs-ride, .hs-kpis div, .hs-bests div, .hint-box, .badge, .cm-list button, .wg-card {
   background: var(--glass-fill-2); border: 0; box-shadow: var(--hi), inset 0 0 0 1px var(--edge);
 }
-.group, .dev-card, .summary, .share-prompt, .wk-item, .ed-block { border-radius: var(--r-md); }
-.dev-card { box-shadow: var(--hi), inset 0 0 0 1px var(--accent-line); }
+.group, .dev-card, .dev-adv-item, .summary, .share-prompt, .wk-item, .ed-block { border-radius: var(--r-md); }
 /* wells (fields, tracks, profiles) sink instead of floating */
 .today-profile, .wk-profile, .hs-weeks, .goal-bar, .gs-bar, .mini-bar { background: var(--glass-fill-input); }
 .log pre, code, .dbg-pre { background: var(--glass-fill-input); }

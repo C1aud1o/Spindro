@@ -52,6 +52,7 @@
         connected: false, device: dev,
         async connect() {
           const fb = window.__fakeBle;
+          fb.tries = (fb.tries || 0) + 1; fb.triesBy = fb.triesBy || {}; fb.triesBy[dev.id] = (fb.triesBy[dev.id] || 0) + 1; // ogni tentativo, riuscito o no
           if (fb?.connectDelay) await new Promise((r) => setTimeout(r, fb.connectDelay));
           if (fb?.failConnect > 0) { fb.failConnect--; throw new DOMException('Connection attempt failed', 'NetworkError'); } // p.es. rullo già in uso da un'altra app
           fb.connects = (fb.connects || 0) + 1;
@@ -68,6 +69,8 @@
         async getPrimaryServices() { return dev.services; },
       };
     }
+    /** Come Chrome: "dimentica" il permesso. Si può togliere (fb.noForget) per provare un browser che non ha forget(). */
+    forget() { const fb = window.__fakeBle; (fb.forgot = fb.forgot || []).push(this.id); fb.known = fb.known.filter((d) => d !== this); }
   }
 
   // ---- Fascia cardio, sensore di cadenza (CSC), misuratore di potenza (CPS) ----
@@ -196,10 +199,12 @@
     /** Cade durante la stretta di mano: dopo n chiamate a getPrimaryService. Rifiuta i prossimi n collegamenti: failConnect. connectDelay: ritardo in ms. */
     dropAt: 0, failConnect: 0, connectDelay: 0,
   };
+  // un browser senza forget(): window.__fakeBle.noForget = true prima di creare i dispositivi
+  const fg = Device.prototype.forget; Object.defineProperty(Device.prototype, 'forget', { get() { return window.__fakeBle.noForget ? undefined : fg; }, configurable: true });
 
   navigator.bluetooth = {
     async getAvailability() { return true; },
-    async getDevices() { return window.__fakeBle.known; },
+    async getDevices() { window.__fakeBle.getDevicesCalls = (window.__fakeBle.getDevicesCalls || 0) + 1; return window.__fakeBle.known; },
     async requestDevice(opts = {}) {
       const f = opts.filters || [];
       const onlyZwift = f.length && f.every((x) => (x.namePrefix || '').startsWith('Zwift') || (x.services || []).includes(0xfc82));

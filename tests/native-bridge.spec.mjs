@@ -34,8 +34,8 @@ function fakeBle(o = {}) {
 }
 const setup = (o) => {
   const ble = fakeBle(o); const log = []; const crumbs = [];
-  const { bluetooth } = createBluetooth(ble, { log: (m) => log.push(m), crumb: (m) => crumbs.push(m), storage: memory() });
-  return { ble, bluetooth, log, crumbs };
+  const { bluetooth, NativeDevice } = createBluetooth(ble, { log: (m) => log.push(m), crumb: (m) => crumbs.push(m), storage: memory() });
+  return { ble, bluetooth, log, crumbs, NativeDevice };
 };
 const FTMS_REQ = { filters: [{ services: [0x1826] }], optionalServices: [0x1826] };
 
@@ -187,4 +187,37 @@ test('still no services after two new searches: the connection stays up with an 
   expect(ble.count('discoverServices')).toBe(2);
   expect(ble.count('getServices')).toBe(3);
   expect(await server.getPrimaryServices()).toEqual([]);
+});
+
+// ---- ricollegamento automatico (js/devices.js) sopra il ponte: tempo massimo per tentativo, niente richieste, "Dimentica" ----
+test('ricollegamento in sottofondo: il tempo massimo del tentativo arriva al plugin (connect({ timeout }))', async () => {
+  const { ble, bluetooth } = setup();
+  const dev = await bluetooth.requestDevice(FTMS_REQ);
+  await dev.gatt.connect(); // un collegamento chiesto dalla persona: il tempo del plugin resta quello predefinito
+  await dev.gatt.connect({ timeout: 12000, silent: true });
+  const connects = ble.calls.filter((c) => c[0] === 'connect').map((c) => c[1]);
+  expect(connects[0]).toEqual({ deviceId: 'AA:BB:CC:DD:EE:FF' });
+  expect(connects[1]).toEqual({ deviceId: 'AA:BB:CC:DD:EE:FF', timeout: 12000 });
+});
+
+test('ricollegamento in sottofondo con il Bluetooth spento: nessuna richiesta di accensione, solo un errore che nessuno vede', async () => {
+  const { ble, NativeDevice } = setup({ enabled: false });
+  const dev = new NativeDevice('AA:BB:CC:DD:EE:FF', 'Van Rysel D100');
+  const err = await dev.gatt.connect({ timeout: 12000, silent: true }).catch((e) => e);
+  expect(err.name).toBe('InvalidStateError');
+  expect(ble.count('requestEnable')).toBe(0);
+  expect(ble.count('connect')).toBe(0);
+  // un collegamento chiesto dalla persona invece lo propone (e poi collega)
+  await dev.gatt.connect();
+  expect(ble.count('requestEnable')).toBe(1);
+  expect(ble.count('connect')).toBe(1);
+});
+
+test('"Dimentica": il dispositivo esce dall\'elenco che getDevices() restituisce, quindi l\'app non lo ricollega più', async () => {
+  const { bluetooth } = setup();
+  const dev = await bluetooth.requestDevice(FTMS_REQ);
+  expect((await bluetooth.getDevices()).map((d) => d.id)).toEqual(['AA:BB:CC:DD:EE:FF']);
+  expect(typeof dev.forget).toBe('function');
+  await dev.forget();
+  expect(await bluetooth.getDevices()).toEqual([]);
 });

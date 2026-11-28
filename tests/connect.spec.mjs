@@ -17,8 +17,9 @@ test.beforeEach(async ({ page }) => {
 });
 test.afterEach(async ({ page }) => { expect(page.errors, 'errori JavaScript non gestiti nella pagina').toEqual([]); });
 
-const boot = async (page) => { await page.goto('/index.html'); await page.waitForFunction(() => window.rfDevices); await page.evaluate(() => { window.rfDevices.hub.backoffMs = [80, 80, 80, 80, 80]; }); };
-const fast = (page, ms = [80, 80, 80, 80, 80]) => page.evaluate((m) => { window.rfDevices.hub.backoffMs = m; }, ms);
+// le attese del ricollegamento automatico si accorciano dai ganci del hub: backoffMs (in uscita) e idleWaits (da fermi)
+const boot = async (page) => { await page.goto('/index.html'); await page.waitForFunction(() => window.rfDevices); await page.evaluate(() => { const h = window.rfDevices.hub; h.backoffMs = [80, 80, 80, 80, 80]; h.idleWaits = { fast: 80, slow: 80, fastFor: 60000 }; }); };
+const fast = (page, ms = [80, 80, 80, 80, 80]) => page.evaluate((m) => { window.rfDevices.hub.backoffMs = m; window.rfDevices.hub.idleWaits = { fast: m[m.length - 1], slow: m[m.length - 1], fastFor: 60000 }; }, ms);
 const next = (page, kind) => page.evaluate((k) => { window.__fakeBle.next = k; }, kind);
 const erg = (page) => page.evaluate(() => window.__fakeBle.state.controlLog.filter((b) => b[0] === 0x05).map((b) => b[1] | (b[2] << 8)));
 const dataEvents = (page) => page.evaluate(() => { // quante volte arriva "data" per un solo pacchetto del rullo (deve essere 1)
@@ -28,6 +29,12 @@ const dataEvents = (page) => page.evaluate(() => { // quante volte arriva "data"
 const hrEvents = (page) => page.evaluate(() => { const h = window.rfDevices.hub.hrm; let n = 0; const f = () => { n++; }; h.addEventListener('hr', f); window.__fakeBle.setHr(120); h.removeEventListener('hr', f); return n; });
 const connectTrainer = async (page) => { await page.click('#welcomeConnect'); await expect(page.locator('#trainerStatus')).toContainText('Van Rysel'); };
 const cards = (page) => page.locator('#deviceList .dev-card');
+const adv = (page) => page.locator('#devAdvList .dev-adv-item'); // "Opzioni avanzate": a ogni apertura del pannello è chiuso
+const openAdv = async (page) => { if (!(await page.locator('#devicesSheet').isVisible())) await page.click('#deviceBar'); if (!(await page.locator('#devAdvanced').evaluate((d) => d.open))) await page.click('#devAdvanced > summary'); };
+const forgetCard = async (page, card) => { await card.locator('[data-forget]').click(); await page.click('.dlg [data-ok]'); };
+/** Una pagina nascosta o di nuovo visibile, come quando si cambia scheda o si spegne lo schermo. */
+const setHidden = (page, hidden) => page.evaluate((h) => { if (!window.__vis) { window.__vis = { v: 'visible' }; Object.defineProperty(document, 'visibilityState', { get: () => window.__vis.v, configurable: true }); } window.__vis.v = h ? 'hidden' : 'visible'; document.dispatchEvent(new Event('visibilitychange')); }, hidden);
+const tries = (page) => page.evaluate(() => window.__fakeBle.tries || 0);
 
 test.describe('funzioni pure', () => {
   test('detectSupport, explainError, nextSuggestion', async ({ page }) => {
@@ -200,15 +207,17 @@ test.describe('2 · rullo, comandi e cardio: un suggerimento alla volta', () => 
     await boot(page);
     await connectTrainer(page); // rullo
     await page.click('#deviceBar');
-    await expect(cards(page).first()).toContainText('Sets the resistance');
-    await expect(cards(page).first()).toContainText('Protocol: FTMS');
+    await expect(page.locator('#deviceList')).not.toContainText('Sets the resistance'); // il primo livello resta semplice
+    await openAdv(page);
+    await expect(adv(page).first()).toContainText('Sets the resistance');
+    await expect(adv(page).first()).toContainText('Protocol: FTMS');
     // Cycling Power + CSC (misuratore con cadenza): "un solo dispositivo, più compiti"
     await next(page, 'cps-csc'); await page.click('#addDevice');
-    await expect(cards(page).nth(1)).toContainText('Measures your real watts');
+    await expect(adv(page).nth(1)).toContainText('Measures your real watts');
     // FTMS + cardio nello stesso apparecchio: due ruoli, spiegati
     await next(page, 'trainer-hr'); await page.click('#addDevice');
     await expect(page.locator('#toast')).toContainText('works as trainer + heart rate');
-    await expect(cards(page).nth(1)).toContainText('One device, several jobs: trainer + heart rate');
+    await expect(adv(page).nth(1)).toContainText('One device, several jobs: trainer + heart rate');
   });
 });
 
@@ -225,34 +234,140 @@ test.describe('3 · il giorno dopo', () => {
     await expect(page.locator('#connectHelp')).toBeHidden();
   });
 
-  test('il browser non ricorda i permessi: un pulsante "Ricollega" li passa uno alla volta', async ({ page }) => {
+  test('il browser non ricorda i permessi: una volta sola "Serve un tocco" e un pulsante "Ricollega" per ciascuno', async ({ page }) => {
     await page.addInitScript((k) => { localStorage.setItem('devKnown', JSON.stringify(k)); window.__fakeBle.known = []; window.__asks = []; const r = navigator.bluetooth.requestDevice; navigator.bluetooth.requestDevice = (o) => { window.__asks.push(o); window.__fakeBle.next = window.__asks.length === 1 ? 'trainer' : 'hr'; return r(o); }; }, known);
     await page.goto('/index.html');
     await expect(page.locator('#trainerStatus')).toHaveText('—', { timeout: 3000 });
     await expect(page.locator('#welcomeConnect')).toHaveText('Reconnect Van Rysel D100 (finto)');
     await expect(page.locator('#welcomeConnect')).toBeEnabled();
+    // nessun ciclo di errori: il browser è stato interrogato una volta per dispositivo, nessun messaggio, nessun tentativo di collegamento
+    await page.waitForTimeout(1500);
+    expect(await page.evaluate(() => window.__fakeBle.getDevicesCalls)).toBeLessThanOrEqual(known.length);
+    expect(await tries(page)).toBe(0);
+    await expect(page.locator('#toast.show, #toast.on')).toHaveCount(0);
+    await expect(page.locator('#connectHelp')).toBeHidden();
     await page.click('#welcomeConnect');
     await expect(page.locator('#trainerStatus')).toContainText('Van Rysel');
     // la lista del browser era ristretta a quel nome
     expect(await page.evaluate(() => window.__asks[0].filters)).toEqual([{ name: 'Van Rysel D100 (finto)' }]);
-    // e col rullo collegato resta l'altro dispositivo da ricollegare: dal pannello, con lo stesso pulsante
+    // e col rullo collegato resta l'altro dispositivo, con il suo "Ricollega" nella scheda
     await page.click('#deviceBar');
-    await expect(page.locator('#reconnectDevice')).toHaveText('Reconnect Fake HRM');
-    await expect(cards(page).nth(1)).toContainText('needs a tap');
-    await page.click('#reconnectDevice');
-    await expect(page.locator('#hrStatus')).toContainText('Fake HRM');
-    await expect(page.locator('#reconnectDevice')).toBeHidden();
     await expect(cards(page)).toHaveCount(2);
+    await expect(cards(page).nth(1).locator('.dev-state')).toHaveText('Needs a tap');
+    await expect(cards(page).nth(1).locator('button')).toHaveText(['Reconnect', 'Forget']);
+    await cards(page).nth(1).locator('[data-reconnect]').click();
+    await expect(page.locator('#hrStatus')).toContainText('Fake HRM');
+    await expect(cards(page)).toHaveCount(2);
+    await expect(page.locator('[data-reconnect]')).toHaveCount(0);
   });
 
-  test('un dispositivo che non si trova: "Non trovato", si può dimenticare', async ({ page }) => {
-    await page.addInitScript((k) => { localStorage.setItem('devKnown', JSON.stringify(k)); window.__fakeBle.known = [window.__fakeBle.make('hr')]; window.__fakeBle.failConnect = 1; }, known);
+  test('un dispositivo spento: "Cerco…" senza messaggi, e si collega da solo appena si accende', async ({ page }) => {
+    page.on('console', (m) => { if (m.type() === 'error') page.errors.push(`console: ${m.text()}`); });
+    await page.addInitScript((k) => { localStorage.setItem('devKnown', JSON.stringify(k)); window.__fakeBle.known = [window.__fakeBle.make('trainer'), window.__fakeBle.make('hr')]; window.__fakeBle.failConnect = 1000; }, known);
     await page.goto('/index.html');
+    await page.waitForFunction(() => window.rfDevices);
+    await page.evaluate(() => { const h = window.rfDevices.hub; h.idleWaits = { fast: 200, slow: 200, fastFor: 60000 }; });
     await page.click('#deviceBar');
-    await expect(cards(page).filter({ hasText: 'Fake HRM' })).toContainText('Not found', { timeout: 6000 });
-    await cards(page).filter({ hasText: 'Fake HRM' }).locator('[data-forget]').click();
-    await expect(cards(page).filter({ hasText: 'Fake HRM' })).toHaveCount(0);
+    await expect(cards(page).filter({ hasText: 'Fake HRM' }).locator('.dev-state')).toHaveText('Searching…');
+    await expect(cards(page).filter({ hasText: 'Fake HRM' }).locator('button')).toHaveText(['Forget']); // niente "Ricollega": l'app sta già cercando
+    await expect.poll(() => tries(page)).toBeGreaterThan(4); // continua a provare, un dispositivo alla volta
+    await expect(page.locator('#toast.show, #toast.on')).toHaveCount(0);
+    await expect(page.locator('#connectHelp')).toBeHidden();
+    await expect(page.locator('#devMsg')).toBeHidden();
+    // il rullo si accende (qui dopo qualche secondo invece di 20: le attese sono accorciate): si collega da solo, senza toccare nulla
+    await page.evaluate(() => { window.__fakeBle.failConnect = 0; });
+    await expect(page.locator('#trainerStatus')).toContainText('Van Rysel', { timeout: 6000 });
+    await expect(page.locator('#hrStatus')).toContainText('Fake HRM', { timeout: 6000 });
+    await expect(cards(page).locator('.dev-state')).toHaveText(['Connected', 'Connected']);
+    await expect(page.locator('#toast.show, #toast.on')).toHaveCount(0);
+  });
+
+  test('il rullo si prova per primo; un dispositivo alla volta', async ({ page }) => {
+    await page.addInitScript((k) => {
+      localStorage.setItem('devKnown', JSON.stringify([...k].reverse())); // la fascia è la prima della lista
+      window.__fakeBle.known = [window.__fakeBle.make('hr'), window.__fakeBle.make('trainer')]; window.__fakeBle.failConnect = 1000;
+      window.__order = []; window.__maxParallel = 0; let now = 0;
+      for (const d of window.__fakeBle.known) { const c = d.gatt.connect; d.gatt.connect = async function () { window.__order.push(d.id); now++; window.__maxParallel = Math.max(window.__maxParallel, now); try { return await c.call(this); } finally { now--; } }; }
+    }, known);
+    await page.goto('/index.html');
+    await page.waitForFunction(() => window.rfDevices);
+    await expect.poll(() => page.evaluate(() => window.__order.length)).toBeGreaterThan(1);
+    expect((await page.evaluate(() => window.__order))[0]).toBe('fake-trainer');
+    expect(await page.evaluate(() => window.__maxParallel)).toBe(1);
+  });
+
+  test('a pagina nascosta non si prova nulla; appena torna visibile si riparte subito', async ({ page }) => {
+    await page.addInitScript((k) => { localStorage.setItem('devKnown', JSON.stringify(k)); window.__fakeBle.known = [window.__fakeBle.make('trainer'), window.__fakeBle.make('hr')]; window.__fakeBle.failConnect = 1000; }, known);
+    await page.goto('/index.html');
+    await page.waitForFunction(() => window.rfDevices);
+    await page.evaluate(() => { window.rfDevices.hub.idleWaits = { fast: 150, slow: 150, fastFor: 60000 }; });
+    await expect.poll(() => tries(page)).toBeGreaterThan(2);
+    await setHidden(page, true);
+    await page.waitForTimeout(400); // un tentativo già partito può finire
+    const frozen = await tries(page);
+    await page.waitForTimeout(1500);
+    expect(await tries(page), 'nessun tentativo con la pagina nascosta').toBe(frozen);
+    await page.evaluate(() => { window.__fakeBle.failConnect = 0; });
+    await setHidden(page, false);
+    await expect(page.locator('#trainerStatus')).toContainText('Van Rysel', { timeout: 3000 });
+    await expect(page.locator('#hrStatus')).toContainText('Fake HRM', { timeout: 3000 });
+  });
+
+  test('un dispositivo dimenticato non si prova mai più, anche se è lì accanto', async ({ page }) => {
+    await page.addInitScript((k) => { if (!localStorage.getItem('__d2')) { localStorage.setItem('__d2', '1'); localStorage.setItem('devKnown', JSON.stringify(k)); localStorage.setItem('devRoles', JSON.stringify({ 'fake-hr': 'x', 'n:Fake HRM': 'x', 'fake-other': 'y' })); } window.__fakeBle.known = [window.__fakeBle.make('trainer'), window.__fakeBle.make('hr')]; window.__fakeBle.failConnect = 1000; }, known);
+    await page.goto('/index.html');
+    await page.waitForFunction(() => window.rfDevices);
+    await page.evaluate(() => { window.rfDevices.hub.idleWaits = { fast: 100, slow: 100, fastFor: 60000 }; });
+    await page.click('#deviceBar');
+    await forgetCard(page, cards(page).filter({ hasText: 'Fake HRM' }));
+    await expect(cards(page)).toHaveCount(1);
+    const before = await page.evaluate(() => window.__fakeBle.triesBy['fake-hr'] || 0);
+    await page.evaluate(() => { window.__fakeBle.failConnect = 0; });
+    await expect(page.locator('#trainerStatus')).toContainText('Van Rysel', { timeout: 4000 }); // il rullo sì
+    await page.waitForTimeout(1200);
+    expect(await page.evaluate(() => window.__fakeBle.triesBy['fake-hr'] || 0), 'nessun tentativo dopo "Dimentica"').toBe(before);
+    await expect(page.locator('#hrStatus')).toHaveText('—');
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('devKnown')).map((k) => k.id))).toEqual(['fake-trainer']);
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('devRoles')))).toEqual({ 'fake-other': 'y' });
+    expect(await page.evaluate(() => window.__fakeBle.forgot)).toEqual(['fake-hr']); // il permesso del browser
+    // anche dopo un riavvio
+    await page.reload();
+    await page.waitForFunction(() => window.rfDevices);
+    await page.waitForTimeout(1000);
+    await expect(page.locator('#hrStatus')).toHaveText('—');
+  });
+
+  test('"Dimentica" senza forget() nel browser: nessun errore e il dispositivo esce comunque dall\'elenco', async ({ page }) => {
+    await page.addInitScript((k) => { localStorage.setItem('devKnown', JSON.stringify(k)); window.__fakeBle.noForget = true; window.__fakeBle.known = [window.__fakeBle.make('trainer'), window.__fakeBle.make('hr')]; }, known);
+    await page.goto('/index.html');
+    await expect(page.locator('#hrStatus')).toContainText('Fake HRM', { timeout: 6000 });
+    await page.click('#deviceBar');
+    await forgetCard(page, cards(page).filter({ hasText: 'Fake HRM' }));
+    await expect(cards(page)).toHaveCount(1);
+    await expect(page.locator('#hrStatus')).toHaveText('—');
+  });
+
+  test('watchAdvertisements, dove c\'è: si prova appena il dispositivo si annuncia, senza aspettare l\'attesa lunga', async ({ page }) => {
+    await page.addInitScript((k) => {
+      localStorage.setItem('devKnown', JSON.stringify([k[1]])); window.__fakeBle.failConnect = 1;
+      const hr = window.__fakeBle.make('hr'); window.__fakeBle.known = [hr]; window.__watch = 0;
+      hr.watchAdvertisements = async () => { window.__watch++; };
+    }, known);
+    await page.goto('/index.html');
+    await page.waitForFunction(() => window.rfDevices && window.__watch > 0);
+    await page.evaluate(() => { const h = window.rfDevices.hub; h.idleWaits = { fast: 60000, slow: 60000, fastFor: 60000 }; }); // senza l'annuncio non si proverebbe prima di un minuto
+    await expect.poll(() => tries(page)).toBe(1);
+    await page.evaluate(() => window.__fakeBle.known[0].dispatchEvent(new Event('advertisementreceived')));
+    await expect(page.locator('#hrStatus')).toContainText('Fake HRM', { timeout: 3000 });
+  });
+
+  test('le attese: 5 s il primo minuto, poi 15 s; in uscita quelle brevi', async ({ page }) => {
+    await page.goto('/index.html');
+    await page.waitForFunction(() => window.rfDevices);
+    const w = await page.evaluate(() => { const h = window.rfDevices.hub; const now = Date.now(); return [h.waitAfter({ attempt: 3, since: now }), h.waitAfter({ attempt: 3, since: now - 59000 }), h.waitAfter({ attempt: 3, since: now - 61000 })]; });
+    expect(w).toEqual([5000, 5000, 15000]);
+    await page.evaluate(() => { const h = window.rfDevices.hub; h.isRiding = () => true; });
+    expect(await page.evaluate(() => { const h = window.rfDevices.hub; return [h.waitAfter({ attempt: 0, since: 0 }), h.waitAfter({ attempt: 9, since: 0 })]; })).toEqual([1000, 30000]);
   });
 });
 
@@ -382,14 +497,16 @@ test.describe('4 · cadute in corsa', () => {
     expect(parseInt(await page.locator('#gearNum').textContent(), 10) - parseInt(g0, 10)).toBe(1);
   });
 
-  test('fuori dall\'uscita ci si arrende dopo qualche tentativo: "Riprova ora" ricollega', async ({ page }) => {
+  test('fuori dall\'uscita non ci si arrende mai: continua da solo e si ricollega appena il rullo risponde, senza pulsanti', async ({ page }) => {
     await boot(page);
     await connectTrainer(page);
     await page.evaluate(() => { window.__fakeBle.failConnect = 99; window.__fakeBle.disconnectTrainer(); });
-    await expect(page.locator('#dropText')).toContainText("Can't reach Van Rysel", { timeout: 8000 });
-    await expect(page.locator('#dropRetry')).toBeVisible();
+    await expect(page.locator('#dropText')).toContainText('disconnected. Reconnecting');
+    await expect.poll(() => tries(page)).toBeGreaterThan(8); // ben più dei vecchi 4 tentativi "da fermo"
+    await expect(page.locator('#dropText')).toContainText('Reconnecting');
+    await expect(page.locator('#dropBanner button')).toHaveCount(0);
+    await expect(page.locator('#toast.show, #toast.on')).toHaveCount(0);
     await page.evaluate(() => { window.__fakeBle.failConnect = 0; });
-    await page.click('#dropRetry');
     await expect(page.locator('#trainerStatus')).toContainText('Van Rysel', { timeout: 6000 });
     await expect(page.locator('#dropBanner')).toBeHidden();
   });
@@ -471,7 +588,8 @@ test.describe('5 · dispositivi insoliti', () => {
     await next(page, 'cps-csc'); await page.click('#welcomeConnect');
     await page.click('#deviceBar');
     await expect(page.locator('#srcNote')).toContainText('No trainer is connected');
-    await expect(cards(page).first()).toContainText("can't change resistance");
+    await openAdv(page);
+    await expect(adv(page).first()).toContainText("can't change resistance");
     await expect(page.locator('#srcPower')).toBeVisible();
   });
 });
@@ -483,8 +601,10 @@ test.describe('Prova il rullo e stato nel pannello', () => {
     await boot(page);
     await connectTrainer(page);
     await page.click('#deviceBar');
+    await expect(page.locator('[data-test]')).toHaveCount(0); // la prova sta fra le opzioni avanzate
+    await openAdv(page);
     await expect(page.locator('[data-test]')).toBeEnabled();
-    await expect(cards(page).first()).toContainText('Only when you are not riding');
+    await expect(adv(page).first()).toContainText('Only when you are not riding');
     const before = await erg(page);
     await page.click('[data-test]');
     await expect(page.locator('.dev-test-note')).toContainText('Testing');
@@ -497,20 +617,50 @@ test.describe('Prova il rullo e stato nel pannello', () => {
     // a uscita avviata il pulsante non c'è più
     await page.evaluate(() => document.getElementById('startStop').click()); // l'uscita parte con il pannello aperto
     await expect(page.locator('[data-test]')).toBeDisabled();
-    await expect(cards(page).first()).toContainText('only available when you are not riding');
+    await expect(adv(page).first()).toContainText('only available when you are not riding');
   });
 
-  test('ogni scheda: ruolo, segno di vita, batteria, protocollo, riga di spiegazione', async ({ page }) => {
+  test('la scheda è semplice: nome, batteria, tipo, stato; il resto sta nelle opzioni avanzate', async ({ page }) => {
     await boot(page);
     await connectTrainer(page);
     await page.click('#deviceBar');
     const c = cards(page).first();
-    await expect(c.locator('.pill')).toContainText('Trainer');
-    await expect(c).toContainText('83%');
-    await expect(c.locator('.dev-life')).toHaveText('Live data');
-    await expect(c.locator('.dev-why')).not.toBeEmpty();
+    await expect(c.locator('.dev-name')).toContainText('Van Rysel');
+    await expect(c.locator('.dev-bat')).toHaveText('83%');
+    await expect(c.locator('.dev-type')).toHaveText('Trainer');
+    await expect(c.locator('.dev-state')).toHaveText('Connected');
+    await expect(c.locator('button')).toHaveText(['Forget']);
+    await expect(c.locator('.dev-life, .dev-why, .pill')).toHaveCount(0);
+    // opzioni avanzate: chiuse; segno di vita, protocollo, spiegazione
+    await expect(page.locator('#devAdvanced')).not.toHaveJSProperty('open', true);
+    await openAdv(page);
+    const a = adv(page).first();
+    await expect(a.locator('.pill')).toContainText('Trainer');
+    await expect(a.locator('.dev-life')).toHaveText('Live data');
+    await expect(a.locator('.dev-why')).not.toBeEmpty();
     await page.evaluate(() => { window.__fakeBle.state.trainer.gatt.connected && clearInterval(window.__fakeBle.state.timer); });
-    await expect(c.locator('.dev-life')).toContainText('Last data', { timeout: 6000 });
+    await expect(a.locator('.dev-life')).toContainText('Last data', { timeout: 6000 });
+    // chiudendo e riaprendo il pannello, le opzioni avanzate tornano chiuse (non ricorda nulla)
+    await page.click('#devicesSheet .close'); await page.click('#deviceBar');
+    await expect(page.locator('#devAdvanced')).not.toHaveJSProperty('open', true);
+  });
+
+  test('carta "Cerco…" (grigia) e "Serve un tocco" (ambra) usano i colori dell\'app, senza contorni, con bersagli di almeno 44 px', async ({ page }) => {
+    await page.addInitScript((k) => { localStorage.setItem('devKnown', JSON.stringify(k)); window.__fakeBle.known = [window.__fakeBle.make('trainer')]; window.__fakeBle.failConnect = 1000; }, [{ id: 'fake-trainer', name: 'Van Rysel D100 (finto)', roles: ['trainer'] }, { id: 'fake-gone', name: 'Not permitted', roles: ['hr'] }]);
+    await page.goto('/index.html');
+    await page.click('#deviceBar');
+    await expect(cards(page).nth(1).locator('.dev-state')).toHaveText('Needs a tap');
+    const r = await page.evaluate(() => {
+      const dot = (i) => { const el = document.querySelectorAll('#deviceList .dev-card')[i].querySelector('.dev-dot'); return getComputedStyle(el).backgroundColor; };
+      const tok = (n) => { const d = document.createElement('i'); d.style.background = `var(${n})`; document.body.append(d); const c = getComputedStyle(d).backgroundColor; d.remove(); return c; };
+      const btns = [...document.querySelectorAll('#deviceList button, #addDevice, #devAdvanced > summary')].map((b) => Math.round(b.getBoundingClientRect().height));
+      const card = getComputedStyle(document.querySelector('#deviceList .dev-card'));
+      return { search: dot(0), tap: dot(1), warn: tok('--warn'), grey: tok('--t3'), minBtn: Math.min(...btns), border: card.borderTopWidth, style: card.borderTopStyle };
+    });
+    expect(r.tap).toBe(r.warn);
+    expect(r.minBtn).toBeGreaterThanOrEqual(44);
+    expect(r.border === '0px' || r.style === 'none').toBe(true);
+    await expect(cards(page).first().locator('.dev-state')).toHaveText('Searching…');
   });
 });
 

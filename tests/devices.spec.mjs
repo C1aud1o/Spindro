@@ -20,6 +20,13 @@ async function addVia(page, kind) {
   await page.click('#addDevice');
 }
 const cards = (page) => page.locator('#deviceList .dev-card');
+/** "Opzioni avanzate" è chiuso a ogni apertura del pannello: lo apre come farebbe una persona. */
+async function openAdvanced(page) {
+  if (!(await page.locator('#devicesSheet').isVisible())) await page.click('#deviceBar');
+  if (!(await page.locator('#devAdvanced').evaluate((d) => d.open))) await page.click('#devAdvanced > summary');
+}
+/** "Dimentica" dalla scheda, con la conferma. */
+async function forgetCard(page, card) { await card.locator('[data-forget]').click(); await page.click('.dlg [data-ok]'); }
 
 test('il pannello si apre dalla riga di stato; vuoto non ha dispositivi e propone di aggiungerne uno', async ({ page }) => {
   await page.goto('/index.html');
@@ -28,7 +35,7 @@ test('il pannello si apre dalla riga di stato; vuoto non ha dispositivi e propon
   await page.click('#deviceBar');
   await expect(page.locator('#devicesSheet')).toBeVisible();
   await expect(page.locator('.dev-empty')).toBeVisible();
-  await expect(page.locator('#addDevice')).toHaveText('Aggiungi dispositivo');
+  await expect(page.locator('#addDevice')).toHaveText('Aggiungi un dispositivo');
   await expect(page.locator('#sourcesGroup')).toBeHidden();
   // niente doppioni in alto: resta solo l'ingranaggio
   await page.click('#devicesSheet .close');
@@ -40,19 +47,21 @@ test('rullo, Click, cardio e sensore di cadenza: ognuno prende da solo il suo ru
   await addVia(page, 'trainer');
   await expect(cards(page)).toHaveCount(1);
   await expect(cards(page).nth(0)).toContainText('Van Rysel');
-  await expect(cards(page).nth(0).locator('.pill')).toContainText('Rullo');
+  await expect(cards(page).nth(0).locator('.dev-type')).toHaveText('Rullo');
+  await expect(cards(page).nth(0).locator('.dev-state')).toHaveText('Collegato');
   await expect(cards(page).nth(0)).toContainText('83%'); // batteria letta dal servizio standard
+  await expect(cards(page).nth(0).locator('button')).toHaveText(['Dimentica']); // collegato: niente "Ricollega", l'app ci pensa da sola
 
   await addVia(page, 'click');
   await expect(cards(page)).toHaveCount(2);
-  await expect(cards(page).nth(1).locator('.pill')).toContainText('Comandi');
+  await expect(cards(page).nth(1).locator('.dev-type')).toHaveText('Comandi');
 
   await addVia(page, 'hr');
-  await expect(cards(page).nth(2).locator('.pill')).toContainText('Cardio');
+  await expect(cards(page).nth(2).locator('.dev-type')).toHaveText('Cardio');
 
   await addVia(page, 'csc');
-  await expect(cards(page).nth(3).locator('.pill')).toContainText('Sensore di cadenza');
-  await expect(page.locator('#addDevice')).toHaveText('Aggiungi un altro dispositivo');
+  await expect(cards(page).nth(3).locator('.dev-type')).toHaveText('Sensore di cadenza');
+  await expect(page.locator('#addDevice')).toHaveText('Aggiungi un dispositivo'); // sempre lo stesso pulsante
 
   // riga di stato in home con i nomi veri
   await page.click('#devicesSheet .close');
@@ -65,19 +74,22 @@ test('rullo, Click, cardio e sensore di cadenza: ognuno prende da solo il suo ru
   await page.evaluate(() => window.__fakeBle.setHr(142));
   await expect(page.locator('#hr')).toHaveText('142');
 
-  // Scollega dal pannello
+  // "Dimentica" dal pannello: chiede conferma, scollega e non lo ricorda più
   await page.click('#deviceBar');
-  await cards(page).nth(2).locator('[data-remove]').click();
+  await cards(page).nth(2).locator('[data-forget]').click();
+  await page.click('.dlg [data-cancel]');
+  await expect(cards(page)).toHaveCount(4); // annullato: non succede nulla
+  await forgetCard(page, cards(page).nth(2));
   await expect(cards(page)).toHaveCount(3);
   await expect(page.locator('#hrStatus')).toHaveText('—');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('devKnown')).map((k) => k.id))).not.toContain('fake-hr');
 });
 
 test('rullo "Zwift Ready" (FTMS + servizio Zwift): è solo un rullo, non parte l\'handshake dei telecomandi', async ({ page }) => {
   await page.goto('/index.html');
   await addVia(page, 'trainer-zwift');
   await expect(cards(page)).toHaveCount(1);
-  await expect(cards(page).nth(0).locator('.pill')).toHaveCount(1);
-  await expect(cards(page).nth(0).locator('.pill')).toContainText('Rullo');
+  await expect(cards(page).nth(0).locator('.dev-type')).toHaveText('Rullo'); // un solo tipo, non "Rullo + Comandi'
   expect(await page.evaluate(() => window.__fakeBle.state.rideOn || 0), 'nessun "RideOn" scritto sul rullo').toBe(0);
   await page.click('#devicesSheet .close');
   await expect(page.locator('#trainerStatus')).toContainText('Van Rysel');
@@ -96,19 +108,22 @@ test('solo Cycling Power: se non c\'è un rullo chiede una volta "rullo o misura
   await expect(page.locator('.dlg')).toContainText('rullo o un misuratore di potenza');
   await page.click('.dlg [data-cancel]'); // "Misuratore"
   await expect(cards(page)).toHaveCount(1);
-  await expect(cards(page).nth(0).locator('.pill')).toContainText('Misuratore di potenza');
-  // il ruolo si può cambiare dal pannello
-  await expect(cards(page).nth(0).locator('[data-role]')).toHaveValue('power');
+  await expect(cards(page).nth(0).locator('.dev-type')).toHaveText('Misuratore di potenza');
+  // il ruolo si può cambiare dalle opzioni avanzate
+  await expect(page.locator('#devAdvList [data-role]')).toBeHidden();
+  await openAdvanced(page);
+  await expect(page.locator('#devAdvList [data-role]')).toHaveValue('power');
   // scollego e ricollego: non chiede più
-  await cards(page).nth(0).locator('[data-remove]').click();
+  await page.evaluate(() => window.rfDevices.disconnectAll());
   await expect(cards(page)).toHaveCount(0);
   await addVia(page, 'cps');
   await expect(page.locator('.dlg')).toHaveCount(0);
-  await expect(cards(page).nth(0).locator('.pill')).toContainText('Misuratore di potenza');
+  await expect(cards(page).nth(0).locator('.dev-type')).toHaveText('Misuratore di potenza');
   expect(await page.evaluate(() => localStorage.getItem('devRoles'))).toContain('"power"');
   // cambio ruolo: era un rullo
-  await cards(page).nth(0).locator('[data-role]').selectOption('trainer');
-  await expect(cards(page).nth(0).locator('.pill')).toContainText('Rullo');
+  await openAdvanced(page);
+  await page.locator('#devAdvList [data-role]').selectOption('trainer');
+  await expect(cards(page).nth(0).locator('.dev-type')).toHaveText('Rullo');
   await expect(page.locator('#trainerStatus')).toContainText('Fake Power Pedals');
 });
 
@@ -117,11 +132,12 @@ test('solo Cycling Power con un rullo già collegato: è un misuratore, nessuna 
   await addVia(page, 'trainer');
   await addVia(page, 'cps');
   await expect(page.locator('.dlg')).toHaveCount(0);
-  await expect(cards(page).nth(1).locator('.pill')).toContainText('Misuratore di potenza');
+  await expect(cards(page).nth(1).locator('.dev-type')).toHaveText('Misuratore di potenza');
   // i suoi watt vincono su quelli del rullo (150 W)
   await page.evaluate(() => window.__fakeBle.pushCps(222));
   await expect(page.locator('#power')).toHaveText('222');
-  // fonte di potenza: dal pannello si torna a quella del rullo
+  // fonte di potenza: dalle opzioni avanzate si torna a quella del rullo
+  await openAdvanced(page);
   await page.selectOption('#srcPower', 'trainer');
   await expect(page.locator('#power')).toHaveText('150');
 });
@@ -140,6 +156,7 @@ test('cadenza: il sensore dedicato vince sul rullo; la fonte si cambia dal panne
   await page.click('#devicesSheet .close');
   await expect(page.locator('#cadence')).toHaveText('90');
   await page.click('#deviceBar');
+  await openAdvanced(page);
   await expect(page.locator('#srcCadence')).toHaveValue('auto');
   await expect(page.locator('#srcCadence option[value=auto]')).toContainText('Sensore di cadenza');
   // scelgo il rullo come fonte: 80 rpm
@@ -150,6 +167,7 @@ test('cadenza: il sensore dedicato vince sul rullo; la fonte si cambia dal panne
   expect(await page.evaluate(() => localStorage.getItem('srcCadence'))).toBe('trainer');
   // senza cadenza vera (nessun rullo con cadenza, nessun sensore) il testo avverte che è una stima
   await page.evaluate(() => document.getElementById('deviceBar').click()); // the pedalling above may already have auto-started the ride, which hides the bar: open the panel the way the Click menu does
+  await openAdvanced(page);
   await page.selectOption('#srcCadence', 'estimate');
   await expect(page.locator('#srcNote')).toContainText('stima');
 });
@@ -173,8 +191,8 @@ test('sensore CSC di qualsiasi marca: pedivella e ruota, rollover a 16 bit, cade
   await expect(cad()).not.toHaveText('0');
   // sensore con anche la ruota: ruolo "cadenza e velocità"
   await page.evaluate(() => window.__fakeBle.pushCsc({ wheel: { revs: 10, t: 0 }, crank: { revs: 2, t: (65000 + 1366 + 1200) & 0xffff } }));
-  await page.click('#deviceBar');
-  await expect(cards(page).nth(0).locator('.pill')).toContainText('cadenza e velocità');
+  await openAdvanced(page);
+  await expect(page.locator('#devAdvList .pill')).toContainText('cadenza e velocità');
 });
 
 test('parsing CSC: solo ruota, solo pedivella, flag misti (funzioni pure del modulo)', async ({ page }) => {
