@@ -24,6 +24,7 @@ function fakeBle(o = {}) {
       if (o.getServices) return o.getServices();
       return { services: [{ uuid: '00001826-0000-1000-8000-00805f9b34fb', characteristics: [{ uuid: '00002ad2-0000-1000-8000-00805f9b34fb', properties: { notify: true } }] }] };
     },
+    async discoverServices(a) { calls.push(['discoverServices', a]); if (o.discoverServices) await o.discoverServices(); },
     async disconnect(a) { calls.push(['disconnect', a]); },
     async startNotifications(a) { calls.push(['startNotifications', a]); if (o.startNotifications) await o.startNotifications(); },
     async stopNotifications(a) { calls.push(['stopNotifications', a]); },
@@ -165,4 +166,25 @@ test('normalizeError: ogni messaggio noto del plugin ha il suo nome', () => {
   expect(name('qualcosa di strano')).toBe('NetworkError');
   const dom = new DOMException('x', 'AbortError');
   expect(normalizeError(dom)).toBe(dom);
+});
+
+test('Android reports no services right after connecting: the cache is cleared and the services searched again', async () => {
+  let n = 0;
+  const full = { services: [{ uuid: '00001826-0000-1000-8000-00805f9b34fb', characteristics: [{ uuid: '00002ad2-0000-1000-8000-00805f9b34fb', properties: { notify: true } }] }] };
+  const { ble, bluetooth, crumbs } = setup({ getServices: () => (++n === 1 ? { services: [] } : full) });
+  const dev = await bluetooth.requestDevice(FTMS_REQ);
+  const server = await dev.gatt.connect();
+  expect(ble.count('discoverServices')).toBe(1);
+  expect(ble.count('getServices')).toBe(2);
+  expect((await server.getPrimaryServices()).length).toBe(1);
+  expect(crumbs.some((c) => /nessun servizio, nuova ricerca/.test(c))).toBe(true);
+});
+
+test('still no services after two new searches: the connection stays up with an empty list (the app then explains it)', async () => {
+  const { ble, bluetooth } = setup({ getServices: () => ({ services: [] }) });
+  const dev = await bluetooth.requestDevice(FTMS_REQ);
+  const server = await dev.gatt.connect();
+  expect(ble.count('discoverServices')).toBe(2);
+  expect(ble.count('getServices')).toBe(3);
+  expect(await server.getPrimaryServices()).toEqual([]);
 });

@@ -151,8 +151,18 @@ export function createBluetooth(BLE, { log = nativeLog, crumb = defaultCrumb, st
             await serial(() => BLE.connect({ deviceId: id }));
             if (aborted()) throw new DOMException('GATT connection aborted by disconnect()', 'NetworkError');
             step(`collegato ${id}: lettura servizi`);
-            const res = await serial(() => BLE.getServices({ deviceId: id }));
+            let res = await serial(() => BLE.getServices({ deviceId: id }));
             if (aborted()) throw new DOMException('GATT connection aborted by disconnect()', 'NetworkError');
+            // Android sometimes connects and then reports NO services (a stale GATT cache on the phone, or a discovery that ended
+            // too early): the trainer then looked "not supported" although it is an ordinary FTMS trainer (two reports from
+            // Pixel phones, Wahoo KICKR CORE and Van Rysel). Clear the cache and search again, twice at most.
+            for (let k = 0; k < 2 && !(res?.services || []).length && typeof BLE.discoverServices === 'function'; k++) {
+              step(`collegato ${id}: nessun servizio, nuova ricerca (${k + 1})`);
+              await new Promise((r) => setTimeout(r, 400 + 600 * k));
+              try { await serial(() => BLE.discoverServices({ deviceId: id })); } catch (e) { step(`discoverServices fallito: ${normalizeError(e).message}`); }
+              if (aborted()) throw new DOMException('GATT connection aborted by disconnect()', 'NetworkError');
+              res = await serial(() => BLE.getServices({ deviceId: id }));
+            }
             dev.services = (res?.services || []).map((s) => new NativeService(dev, s));
             this.connected = true;
             step(`pronto ${id}: ${dev.services.length} servizi`);
