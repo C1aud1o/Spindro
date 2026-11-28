@@ -16,7 +16,7 @@ async function open(page, { rides = 0, consent = false, lang = 'en' } = {}) {
   await page.addInitScript(({ rides, consent, lang }) => {
     try {
       if (!localStorage.getItem('__init')) {
-        localStorage.setItem('__init', '1'); localStorage.setItem('lang', lang); localStorage.setItem('analytics', consent ? '1' : '0'); localStorage.setItem('ftp', '200');
+        localStorage.setItem('__init', '1'); localStorage.setItem('lang', lang); localStorage.setItem('analytics', consent ? '1' : '0'); if (consent) localStorage.setItem('analyticsList', '2'); localStorage.setItem('ftp', '200');
         if (rides) localStorage.setItem('rideHistory', rides);
       }
     } catch { /* */ }

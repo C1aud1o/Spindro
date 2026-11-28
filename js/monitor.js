@@ -8,11 +8,16 @@ const SENTRY_SDK = 'https://browser.sentry-cdn.com/8.55.0/bundle.min.js';
 const GC_SCRIPT = 'https://gc.zgo.at/count.js';
 
 // ---- consenso: '1' sì, '0' no, assente = non ancora chiesto ----
+// CONSENT_LIST is the version of the list of things counted (the text of the question, privacy.body, and docs/legal/privacy.*).
+// A "yes" given to an older, shorter list does not cover the new one: nothing is counted and the question is asked once more.
+// A "no" stays a no and is never asked again, as the privacy policy promises.
+export const CONSENT_LIST = '2';
 export function consent() { try { return localStorage.getItem('analytics'); } catch { return null; } }
-export const consentAsked = () => consent() !== null;
-export const consentGiven = () => consent() === '1';
+const listSeen = () => { try { return localStorage.getItem('analyticsList') || '1'; } catch { return '1'; } };
+export const consentAsked = () => consent() === '0' || (consent() === '1' && listSeen() === CONSENT_LIST);
+export const consentGiven = () => consent() === '1' && listSeen() === CONSENT_LIST;
 export function setConsent(yes) {
-  try { localStorage.setItem('analytics', yes ? '1' : '0'); } catch { /* storage non disponibile */ }
+  try { localStorage.setItem('analytics', yes ? '1' : '0'); localStorage.setItem('analyticsList', CONSENT_LIST); } catch { /* storage non disponibile */ }
   if (yes) loadGoatCounter(); else { queue.length = 0; }
 }
 
@@ -40,6 +45,22 @@ export function track(name, detail) {
   const path = detail ? `${name}/${String(detail).slice(0, 40)}` : name;
   queue.push({ path, title: path, event: true });
   if (gcState === 'idle') loadGoatCounter(); else flush();
+}
+
+// The same event at most once per page load (for example "a heart-rate strap connected").
+const once = new Set();
+export function trackOnce(name, detail) { const k = `${name}/${detail || ''}`; if (once.has(k) || !consentGiven()) return; once.add(k); track(name, detail); }
+// Lengths are only ever sent as a range, never as a number.
+export const durationRange = (s) => (s < 60 ? 'under-1m' : s < 300 ? '1-5m' : s < 900 ? '5-15m' : s < 1800 ? '15-30m' : s < 3600 ? '30-60m' : 'over-60m');
+// Time with the app on screen, as milestones reached (1, 5, 15 and 60 minutes): sent while the app is open, so nothing depends on the page closing.
+const STAY = [[60, '1m'], [300, '5m'], [900, '15m'], [3600, '60m']];
+function watchStay(step = 15) {
+  let shown = 0; let next = 0;
+  setInterval(() => {
+    if (globalThis.document?.visibilityState !== 'visible') return;
+    shown += step;
+    while (next < STAY.length && shown >= STAY[next][0]) track('stay', STAY[next++][1]);
+  }, step * 1000);
 }
 
 // ---- Sentry ----
@@ -78,11 +99,12 @@ function loadSentry({ release, environment }) {
   document.head.append(s);
 }
 
-export function initMonitoring({ release, environment, lang }) {
+export function initMonitoring({ release, environment, lang, platform }) {
   loadSentry({ release, environment });
+  watchStay();
   if (consentGiven()) {
     loadGoatCounter();
-    track('app-open');
+    track('app-open', platform);
     if (lang) track('lang', lang);
   }
 }

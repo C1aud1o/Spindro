@@ -18,7 +18,7 @@ import { HeartRate } from './hr.js';
 import { encodeFit, encodeWorkoutFit, encodeZwo } from './fit.js';
 import { Strava } from './strava.js';
 import { STRAVA_PROXY, GOATCOUNTER_URL, SENTRY_DSN, SITE_URL } from './config.js';
-import { initMonitoring, track, consentAsked, consentGiven, setConsent } from './monitor.js';
+import { initMonitoring, track, trackOnce, durationRange, consentAsked, consentGiven, setConsent } from './monitor.js';
 import { buildReportUrl, REPO } from './report.js';
 import { setupDebug } from './debugview.js';
 import { rideStats, renderHistory } from './history.js';
@@ -241,6 +241,7 @@ async function bluetoothOff() {
 function showProblem(problem) {
   if (problem.code === 'browser') { $('unsupported').hidden = false; $('unsupported').scrollIntoView?.({ block: 'nearest' }); return; } // il motivo è già scritto in alto: non si ripete
   lastProblem = { platform: support.platform, ...problem };
+  track('connect-fail', problem.code); // the kind of problem only (for example "unsupportedDevice"), never a device name
   $('connectHelp').innerHTML = problemHtml(lastProblem, t, { retryId: 'connectHelpRetry', reportId: 'connectHelpReport' });
   $('connectHelp').hidden = false;
   devicesUi?.error(lastProblem);
@@ -321,7 +322,7 @@ trainer.addEventListener('data', (e) => {
   render();
 });
 
-click.addEventListener('connected', () => refreshDeviceBar());
+click.addEventListener('connected', () => { trackOnce('device', 'controller'); refreshDeviceBar(); });
 click.addEventListener('disconnected', () => refreshDeviceBar());
 // Controller Zwift: il driver emette ROLI (press / release con il ruolo, shift, hold, combo); vedi js/click.js e docs/click-navigazione.md
 click.addEventListener('shift', (e) => { if (clickCheck.isOpen()) return; clickNav.sync(); if (clickNav.active || remoteOn()) return; if (activeGame?.active) activeGame.input(e.detail); else step(e.detail); });
@@ -361,7 +362,7 @@ if (GarminBridge) {
   $('musicOn').addEventListener('change', () => localStorage.setItem('musicOn', $('musicOn').checked ? '1' : '0'));
 }
 
-hrm.addEventListener('connected', () => {});
+hrm.addEventListener('connected', () => { trackOnce('device', 'heart-rate'); });
 hrm.addEventListener('hr', (e) => { state.hrFromSensor = true; state.data.hr = e.detail; render(); });
 hrm.addEventListener('disconnected', () => {
   state.hrFromSensor = false;
@@ -402,7 +403,7 @@ function onMeterData(m, d) {
   render();
 }
 hub.addEventListener('meter', (e) => {
-  const m = e.detail;
+  const m = e.detail; trackOnce('device', 'meter');
   m.addEventListener('data', (ev) => onMeterData(m, ev.detail));
   m.addEventListener('disconnected', () => { if (state.data.power != null && src.power === 'meter') state.data.power = 0; refreshSources(); });
   refreshSources();
@@ -861,6 +862,7 @@ async function startWorkout(w, opts = {}) {
   setMode('erg');
   closeSheet('workoutSheet');
   document.body.classList.add('in-workout');
+  if (!w.test) track('workout', 'start');
   $('workoutCard').hidden = false; $('wkName').textContent = w.name; $('wkTotal').textContent = fmtClock(duration(w));
   if (!state.ride.running) $('startStop').click();
   if (!trainer.connected) toast(t('workout.connectHint'));
@@ -895,6 +897,7 @@ function tickWorkout(dt) {
 }
 async function finishWorkout(completed) {
   const w = workout?.w; if (!w) return;
+  if (!w.test) track('workout', completed ? 'done' : 'stopped');
   workout = null; wkSt = null; wkClock = null; $('workoutCard').hidden = true; document.body.classList.remove('in-workout'); updateGameStrip(null); updateView();
   persist(); // l'allenamento non c'è più neanche nella sessione salvata
   if (w.test) {
@@ -964,6 +967,7 @@ function updateView() {
   const r = state.ride; const riding = isRiding();
   document.body.classList.toggle('riding', riding);
   if (riding !== viewRiding) {
+    if (riding && viewRiding === false) track('ride-start');
     viewRiding = riding;
     (riding ? $('rideStartSlot') : $('startSlot')).append($('startStop'));
     (riding ? $('targetSlot') : $('dialSlot')).append($('dial'));
@@ -1260,16 +1264,18 @@ $('reportIssue').addEventListener('click', () => {
 });
 
 // ---------- Monitoraggio e consenso (D1) ----------
-initMonitoring({ release: BUILD, environment: isNative ? 'android' : 'web', lang: getLang() });
+// where the app runs, for the anonymous count: the Android app, the web app installed on the home screen, or a browser tab
+const PLATFORM = isNative ? 'android' : (matchMedia('(display-mode: standalone)').matches || navigator.standalone ? 'installed' : 'web');
+initMonitoring({ release: BUILD, environment: isNative ? 'android' : 'web', lang: getLang(), platform: PLATFORM });
 // pagine legali del sito (in italiano sotto /it/) e licenze open source dalle Impostazioni
 function legalHref(slug) { return `${SITE_URL}${getLang() === 'it' ? '/it' : ''}/${slug}/`; }
 function setLegalLinks() { document.querySelectorAll('a[data-legal]').forEach((el) => { el.href = legalHref(el.dataset.legal); }); }
 setLegalLinks(); window.addEventListener('langchange', setLegalLinks);
 $('analyticsOn').checked = consentGiven();
-$('analyticsOn').addEventListener('change', (e) => { setConsent(e.target.checked); if (e.target.checked) { track('app-open'); track('lang', getLang()); } });
+$('analyticsOn').addEventListener('change', (e) => { setConsent(e.target.checked); if (e.target.checked) { track('app-open', PLATFORM); track('lang', getLang()); } });
 function answerConsent(yes) {
   setConsent(yes); $('analyticsOn').checked = yes; closeSheet('consentSheet');
-  if (yes) { track('app-open'); track('lang', getLang()); }
+  if (yes) { track('app-open', PLATFORM); track('lang', getLang()); }
 }
 $('consentYes').addEventListener('click', () => answerConsent(true));
 $('consentNo').addEventListener('click', () => answerConsent(false));
@@ -1779,7 +1785,7 @@ $('finishRide').addEventListener('click', () => {
   badges($('finishBadges'), medals.slice(0, 4));
   maybeSharePrompt(hist.length, r.elapsed >= 60);
   openSheet('finishSheet');
-  if (r.elapsed >= 60) track('ride-complete');
+  track('ride-complete', durationRange(r.elapsed)); // the length only as a range
   if (r.elapsed >= 60) { party($('finishSheet'), { records: medals.length }); if (medals.length) gameAudio.jingle('win', 0.6); }
   if (strava.connected && strava.cfg.auto && !r.stravaUrl) uploadToStrava();
 });
@@ -1887,7 +1893,7 @@ $('hrMax').value = localStorage.getItem('hrMax') || '';
 $('hrMax').addEventListener('change', (e) => { const v = Math.round(+e.target.value); if (v >= 120 && v <= 220) localStorage.setItem('hrMax', v); else { localStorage.removeItem('hrMax'); e.target.value = ''; } render(); });
 
 // ---------- Backup: esporta / importa i dati tra dispositivi ----------
-const NO_BACKUP = /^(stravaConfig|ride-freedom-session|account:session|sync:.*|analytics|safetyAck|clickCheckSeen|seenTrainers|nativeDevices|devRoles|devKnown|trainerProtocol|__.*)$/; // non viaggiano tra dispositivi: token Strava, uscita in corso, stato dell'account e della sincronizzazione, scelta sul consenso, presa visione, dispositivi Bluetooth visti
+const NO_BACKUP = /^(stravaConfig|ride-freedom-session|account:session|sync:.*|analytics|analyticsList|safetyAck|clickCheckSeen|seenTrainers|nativeDevices|devRoles|devKnown|trainerProtocol|__.*)$/; // non viaggiano tra dispositivi: token Strava, uscita in corso, stato dell'account e della sincronizzazione, scelta sul consenso, presa visione, dispositivi Bluetooth visti
 $('backupOut').addEventListener('click', () => {
   const data = {};
   for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!NO_BACKUP.test(k)) data[k] = localStorage.getItem(k); }

@@ -846,7 +846,7 @@
   "preset.res.light": "Ligero",
   "preset.res.max": "Máx.",
   "preset.res.medium": "Medio",
-  "privacy.body": "¿Nos envías estadísticas anónimas? Contamos solo: app abierta, idioma, tipo de protocolo del rodillo (p. ej. FTMS), juego abierto y salida completada. Sin datos personales ni cookies. Si no respondes, no se envía nada.",
+  "privacy.body": "¿Nos envías estadísticas anónimas? Contamos: app abierta (app o navegador), idioma, qué tipo de dispositivo se conecta o no lo consigue, salidas y entrenamientos empezados y terminados (duración por tramos), juegos abiertos y tiempo en la app (por tramos). Nunca potencia, pulso, ubicación ni nombres de dispositivos. Sin cookies. Si no respondes, no se envía nada.",
   "privacy.change": "Puedes cambiar de opinión cuando quieras en Ajustes.",
   "privacy.errors": "Los errores de la app se envían de forma anónima para poder corregirlos (sin IP, nombres ni datos personales), aunque respondas No.",
   "privacy.no": "No, gracias",

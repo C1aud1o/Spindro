@@ -1,6 +1,6 @@
 # Spindro Privacy Policy
 
-*Last updated: 15 November 2026*
+*Last updated: 28 November 2026*
 
 Spindro is a free, open source app for smart trainers. It runs in the browser and as an Android app. It is maintained by the Spindro project, an open-source project maintained by volunteers.
 
@@ -64,7 +64,7 @@ The Android app can also receive a link shared from another app (for example "Sh
 To understand how many people use Spindro we count visits with **GoatCounter** (`goatcounter.com`), an open-source service that uses no cookies and stores nothing on your device.
 
 - **On the website** the opened page is counted, with generic technical data: referring page, browser and system type, screen size, country. The IP address is not stored.
-- **In the app** counting starts **only if you agree** when you first open it. If you do not answer, or answer "No", the app does not load the counter and sends nothing; you will not be asked again. You can change your mind at any time in Settings → Privacy. These are counted: app opened, language, trainer protocol type (for example FTMS), game opened, ride completed. Never power, heart rate, location or device names.
+- **In the app** counting starts **only if you agree** when you first open it. If you do not answer, or answer "No", the app does not load the counter and sends nothing; you will not be asked again. You can change your mind at any time in Settings → Privacy. These are counted: app opened and where (Android app, installed web app or browser), language, the kind of device that connects (trainer and its protocol type, for example FTMS; heart-rate strap; controller; power or cadence sensor), a connection that fails and the kind of problem, rides and workouts started and finished with their length only as a range (for example 15 to 30 minutes), game opened, and the time the app stays on screen as milestones (1, 5, 15 and 60 minutes). Never power, heart rate, location or device names. If this list grows, the app asks you again before counting anything new; a "No" is never asked again.
 
 We cannot trace this data back to you.
 

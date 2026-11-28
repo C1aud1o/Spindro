@@ -846,7 +846,7 @@
   "preset.res.light": "Leggera",
   "preset.res.max": "Massima",
   "preset.res.medium": "Media",
-  "privacy.body": "Vuoi inviarci statistiche anonime? Contiamo solo: app aperta, lingua, tipo di protocollo del rullo (per esempio FTMS), gioco aperto e uscita completata. Nessun dato personale, nessun cookie. Se non rispondi, non viene inviato nulla.",
+  "privacy.body": "Ci mandi statistiche anonime? Contiamo: app aperta (app o browser), lingua, che tipo di dispositivo si collega o non ci riesce, uscite e allenamenti iniziati e finiti (durata a fasce), giochi aperti e tempo nell'app (a fasce). Mai potenza, battito, posizione o nomi dei dispositivi. Niente cookie. Se non rispondi, non viene inviato nulla.",
   "privacy.change": "Puoi cambiare idea quando vuoi nelle Impostazioni.",
   "privacy.errors": "Gli errori dell'app vengono inviati in forma anonima per poterli correggere (senza IP, nomi o dati personali), anche se rispondi No.",
   "privacy.no": "No, grazie",

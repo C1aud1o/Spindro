@@ -847,7 +847,7 @@
   "preset.res.light": "Light",
   "preset.res.max": "Max",
   "preset.res.medium": "Medium",
-  "privacy.body": "Send us anonymous statistics? We count only: app opened, language, trainer protocol type (e.g. FTMS), game opened and ride completed. No personal data, no cookies. If you don't answer, nothing is sent.",
+  "privacy.body": "Send us anonymous statistics? We count: app opened (app or browser), language, which kind of device connects or fails to, rides and workouts started and finished (length in ranges), games opened and time in the app (in ranges). Never power, heart rate, location or device names. No cookies. If you don't answer, nothing is sent.",
   "privacy.change": "You can change your mind any time in Settings.",
   "privacy.errors": "App errors are sent anonymously so we can fix them (no IP, names or personal data), even if you answer No.",
   "privacy.no": "No, thanks",

@@ -1,6 +1,6 @@
 # Informativa sulla privacy di Spindro
 
-*Ultimo aggiornamento: 15 novembre 2026*
+*Ultimo aggiornamento: 28 novembre 2026*
 
 Spindro è un'app gratuita e open source per rulli smart. Funziona nel browser e come app Android. È curata dal progetto Spindro, un progetto open source curato da volontari.
 
@@ -64,7 +64,7 @@ L'app Android può anche ricevere un link condiviso da un'altra app (per esempio
 Per capire quante persone usano Spindro contiamo le visite con **GoatCounter** (`goatcounter.com`), un servizio open source che non usa cookie e non salva nulla sul tuo dispositivo.
 
 - **Sul sito** si conta la pagina aperta, con dati tecnici generici: pagina di provenienza, tipo di browser e di sistema, dimensione dello schermo, paese. L'indirizzo IP non viene conservato.
-- **Nell'app** il conteggio parte **solo se acconsenti** alla prima apertura. Se non rispondi, o rispondi "No", l'app non carica il contatore e non invia nulla; la domanda non si ripete. Puoi cambiare idea quando vuoi in Impostazioni → Privacy. Si contano: app aperta, lingua, tipo di protocollo del rullo (per esempio FTMS), gioco aperto, uscita completata. Mai potenza, battito, posizione o nomi dei dispositivi.
+- **Nell'app** il conteggio parte **solo se acconsenti** alla prima apertura. Se non rispondi, o rispondi "No", l'app non carica il contatore e non invia nulla; la domanda non si ripete. Puoi cambiare idea quando vuoi in Impostazioni → Privacy. Si contano: app aperta e dove (app Android, app web installata o browser), lingua, il tipo di dispositivo che si collega (rullo e tipo di protocollo, per esempio FTMS; fascia cardio; controller; sensore di potenza o cadenza), un collegamento che non riesce e il tipo di problema, uscite e allenamenti iniziati e finiti con la durata solo a fasce (per esempio da 15 a 30 minuti), gioco aperto, e il tempo in cui l'app resta sullo schermo come traguardi (1, 5, 15 e 60 minuti). Mai potenza, battito, posizione o nomi dei dispositivi. Se questo elenco cresce, l'app te lo chiede di nuovo prima di contare qualcosa di nuovo; un "No" non viene mai richiesto di nuovo.
 
 Non possiamo risalire a te da questi dati.
 

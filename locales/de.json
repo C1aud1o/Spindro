@@ -846,7 +846,7 @@
   "preset.res.light": "Leicht",
   "preset.res.max": "Max",
   "preset.res.medium": "Mittel",
-  "privacy.body": "Schickst du uns anonyme Statistiken? Wir zählen nur: App geöffnet, Sprache, Art des Rollentrainer-Protokolls (z. B. FTMS), Spiel geöffnet und Fahrt beendet. Keine persönlichen Daten, keine Cookies. Ohne Antwort wird nichts gesendet.",
+  "privacy.body": "Dürfen wir anonyme Statistiken erhalten? Wir zählen: App geöffnet (App oder Browser), Sprache, welche Art von Gerät sich verbindet oder dabei scheitert, begonnene und beendete Fahrten und Workouts (Dauer in Stufen), geöffnete Spiele und Zeit in der App (in Stufen). Nie Leistung, Puls, Standort oder Gerätenamen. Keine Cookies. Ohne Antwort wird nichts gesendet.",
   "privacy.change": "Du kannst es jederzeit in den Einstellungen ändern.",
   "privacy.errors": "App-Fehler werden anonym gesendet, damit wir sie beheben können (keine IP, keine Namen, keine persönlichen Daten), auch wenn du Nein sagst.",
   "privacy.no": "Nein, danke",

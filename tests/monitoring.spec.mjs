@@ -7,7 +7,7 @@ const FAKE_BLE = fileURLToPath(new URL('./fake-ble.js', import.meta.url));
 const CONFIG = fileURLToPath(new URL('../js/config.js', import.meta.url));
 
 // Per il test, config.js ha un indirizzo GoatCounter; count.js è sostituito da un finto che registra gli eventi.
-async function setup(page, { analytics } = {}) {
+async function setup(page, { analytics, list = '2' } = {}) {
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
   page.gcRequests = [];
@@ -20,8 +20,8 @@ async function setup(page, { analytics } = {}) {
     route.fulfill({ contentType: 'text/javascript', body: 'window.__gcEvents = []; window.goatcounter.count = (e) => window.__gcEvents.push(e.path);' });
   });
   await page.addInitScript((a) => {
-    try { localStorage.setItem('lang', 'it'); if (a != null && !localStorage.getItem('analytics')) localStorage.setItem('analytics', a); } catch { /* */ }
-  }, analytics ?? null);
+    try { localStorage.setItem('lang', 'it'); localStorage.setItem('autoPause', '0'); if (a.analytics != null && !localStorage.getItem('analytics')) { localStorage.setItem('analytics', a.analytics); if (a.list) localStorage.setItem('analyticsList', a.list); } } catch { /* */ }
+  }, { analytics: analytics ?? null, list });
   await page.addInitScript({ path: FAKE_BLE });
   await page.goto('/index.html');
 }
@@ -47,7 +47,7 @@ test('"Sì" carica GoatCounter e invia gli eventi anonimi; modificabile nelle Im
   await setup(page);
   await page.click('#consentYes');
   await expect.poll(() => page.gcRequests.length).toBe(1);
-  await expect.poll(() => page.evaluate(() => window.__gcEvents)).toEqual(expect.arrayContaining(['app-open', 'lang/it']));
+  await expect.poll(() => page.evaluate(() => window.__gcEvents)).toEqual(expect.arrayContaining(['app-open/web', 'lang/it']));
   // dalle Impostazioni si può togliere il consenso: l'impostazione è salvata
   await page.click('#openSettings');
   await expect(page.locator('#analyticsOn')).toBeChecked();
@@ -63,6 +63,42 @@ test('con consenso già dato GoatCounter parte all\'apertura; con rullo collegat
   await page.evaluate(async () => { while (!window.rfDevices) await new Promise((r) => setTimeout(r, 50)); return window.rfDevices.add(); });
   await expect(page.locator('#trainerStatus')).toContainText('FTMS');
   await expect.poll(() => page.evaluate(() => window.__gcEvents)).toContain('trainer/FTMS');
+});
+
+test('a "yes" given to the older, shorter list counts nothing: the question comes back once with the new list; a "no" is never asked again', async ({ page }) => {
+  await setup(page, { analytics: '1', list: null }); // consent from before the list grew
+  await expect(page.locator('#consentSheet')).toBeVisible();
+  await expect(page.locator('#consentSheet')).toContainText('durata a fasce');
+  await page.waitForTimeout(400);
+  expect(page.gcRequests, 'nothing is loaded before the new answer').toEqual([]);
+  await page.click('#consentYes');
+  await expect.poll(() => page.evaluate(() => window.__gcEvents)).toEqual(expect.arrayContaining(['app-open/web']));
+  expect(await page.evaluate(() => localStorage.getItem('analyticsList'))).toBe('2');
+  await page.reload();
+  await expect(page.locator('#consentSheet')).toBeHidden();
+});
+
+test('an old "no" stays a no: no question, nothing sent', async ({ page }) => {
+  await setup(page, { analytics: '0', list: null });
+  await expect(page.locator('#startStop')).toBeVisible();
+  await expect(page.locator('#consentSheet')).toBeHidden();
+  await page.waitForTimeout(400);
+  expect(page.gcRequests).toEqual([]);
+});
+
+test('with consent: the kind of device, a ride started and its length as a range, a workout started; never a device name or a number of watts', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 12, 18, 0) });
+  await setup(page, { analytics: '1' });
+  await page.evaluate(async () => { while (!window.rfDevices) await new Promise((r) => setTimeout(r, 50)); return window.rfDevices.add(); });
+  await expect(page.locator('#trainerStatus')).toContainText('FTMS');
+  await page.click('#startStop');
+  await page.clock.runFor(70 * 1000);
+  await page.click('#finishRide');
+  await expect(page.locator('#finishSheet')).toBeVisible();
+  const ev = await page.evaluate(() => window.__gcEvents);
+  expect(ev).toEqual(expect.arrayContaining(['app-open/web', 'trainer/FTMS', 'ride-start', 'ride-complete/1-5m', 'stay/1m']));
+  for (const e of ev) { expect(e, e).not.toMatch(/rysel|d100|kickr|\d{3}\s*w/i); expect(e.length, e).toBeLessThanOrEqual(60); }
+  expect(page.errors).toEqual([]);
 });
 
 test('"Segnala il tuo rullo": il link contiene template e campi giusti, senza dati personali', async ({ page }) => {

@@ -846,7 +846,7 @@
   "preset.res.light": "Léger",
   "preset.res.max": "Max",
   "preset.res.medium": "Moyen",
-  "privacy.body": "Nous envoyer des statistiques anonymes ? Nous comptons seulement : appli ouverte, langue, type de protocole du home-trainer (p. ex. FTMS), jeu ouvert et sortie terminée. Aucune donnée personnelle, aucun cookie. Sans réponse, rien n'est envoyé.",
+  "privacy.body": "Nous envoyer des statistiques anonymes ? Nous comptons : ouverture de l'app (app ou navigateur), langue, le type d'appareil qui se connecte ou n'y arrive pas, sorties et entraînements commencés et terminés (durée par tranches), jeux ouverts et temps passé dans l'app (par tranches). Jamais la puissance, le cardio, la position ni le nom des appareils. Pas de cookies. Sans réponse, rien n'est envoyé.",
   "privacy.change": "Tu peux changer d'avis à tout moment dans les Réglages.",
   "privacy.errors": "Les erreurs de l'appli sont envoyées de façon anonyme pour que nous puissions les corriger (pas d'IP, de noms ni de données personnelles), même si tu réponds Non.",
   "privacy.no": "Non merci",
